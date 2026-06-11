@@ -1,41 +1,540 @@
-# scope.yaml — THE AUTHORIZATION BOUNDARY. Edit before every engagement.
+# scope.yaml — Google / Alphabet Vulnerability Reward Program (VRP)
+# Source: github.com/google/bughunters/tree/main/domain-tiers (authoritative protobuf)
+# Program: https://bughunters.google.com/about/rules
+# Platform: bughunters.google.com
 #
-# This file is the single source of truth for what the agent may touch.
-# scripts/scope-check.sh enforces it (default-deny). The agent will REFUSE to
-# hunt while in_scope is empty — this is intentional. No scope, no hunt.
+# TIER SYSTEM (from the official bughunters repo):
+#   TIER0 = Highest reward (account compromise, RCE, cross-tenant impact)
+#   TIER1 = High reward (sensitive user data, auth bypass)
+#   TIER2 = Medium reward (limited data access)
+#   TIER3 = Lower reward (limited impact)
+#   TIER4 = NEVER IN SCOPE — explicitly excluded
 #
-# Rules:
-#   - out_of_scope is checked first and ALWAYS wins on conflict.
-#   - Wildcards: "*.example.com" matches any subdomain AND the apex example.com.
-#   - Only list assets the program's brief explicitly authorizes. When unsure,
-#     leave it out — a finding outside scope is invalid and a liability.
+# IMPORTANT NOTES:
+#   - Wiz (*.wiz.io) is TIER1 and EXPLICITLY EXEMPT from the 6-month blackout.
+#   - For Google core domains, subdomains INHERIT the parent tier.
+#   - For ACQUISITION domains, unlisted subdomains default to TIER4 (out of scope).
+#     Only explicitly listed acquisition subdomains are in scope.
+#   - TIER4 domains always win (default-deny on conflict).
+#   - doubleclick.net, gstatic.com, googleapis.com, googletagmanager.com,
+#     googleusercontent.com are TIER4 — do NOT test them.
+#
+# scripts/scope-check.sh enforces this file. Leave in_scope empty = agent refuses to hunt.
 
-program: ""           # e.g. "Example Corp Public Program (HackerOne)"
-platform: ""          # e.g. hackerone | bugcrowd | intigriti | self-hosted
-handle: ""            # your researcher handle (used in identifying headers)
+program: "Google & Alphabet Vulnerability Reward Program (VRP)"
+platform: "bughunters.google.com"
+handle: ""   # <-- fill in your bughunters.google.com researcher handle
+report_url: "https://bughunters.google.com/report/"
 
-# Domains / wildcards / IPs you ARE authorized to test.
-# Leave empty to keep the safety gate closed until you fill it in.
-in_scope: []
-  # - "*.example.com"
-  # - "api.example.com"
-  # - "203.0.113.0/24"
+# ---------------------------------------------------------------------------
+# IN SCOPE
+# Organized by TIER (highest reward first), then by target cluster.
+# Focus hunting effort on TIER0 first, then TIER1 acquisitions.
+# ---------------------------------------------------------------------------
+in_scope:
 
-# Anything you must NOT touch (subsidiaries, third-party SaaS, sensitive hosts).
-out_of_scope: []
-  # - "blog.example.com"
-  # - "status.example.com"
-  # - "*.corp.example.com"
+  # ==========================================================================
+  # TIER 0 — GOOGLE CORE (highest reward: up to $151,515)
+  # Account compromise, auth bypass, RCE, cross-product impact
+  # ==========================================================================
 
-# Rules of engagement — the agent honors these.
+  # Identity & Auth (prime IDOR/auth-bypass targets)
+  - "accounts.google.com"
+  - "myaccount.google.com"
+  - "admin.google.com"
+  - "passwords.google.com"
+  - "mail.google.com"
+  - "inbox.google.com"
+
+  # Google Cloud Console (privileged infra — Cloud VRP, up to $151,515)
+  - "console.cloud.google.com"
+  - "accounts.cloud.google.com"
+  - "console-secure.cloud.google.com"
+  - "ide.cloud.google.com"
+  - "shell.cloud.google.com"
+  - "ssh.cloud.google.com"
+
+  # Google Cloud Storage API (Cloud VRP — cross-tenant data access)
+  - "storage.cloud.google.com"
+
+  # Developer / Code surfaces
+  - "console.developers.google.com"
+  - "console.firebase.google.com"
+  - "console.actions.google.com"
+  - "issuetracker.google.com"
+  - "cloudssh.developers.google.com"
+
+  # Productivity & high-sensitivity (Workspace)
+  - "meet.google.com"
+  - "vault.google.com"
+  - "ediscovery.google.com"
+  - "takeout.google.com"
+  - "pay.google.com"
+  - "payments.google.com"
+  - "wallet.google.com"
+  - "fi.google.com"
+
+  # AI flagship (AI VRP, up to $30,000)
+  - "bard.google.com"
+  - "gemini.google.com"
+
+  # Other TIER0 Google core
+  - "play.google.com"
+  - "remotedesktop.google.com"
+  - "cloudsearch.google.com"
+  - "bughunters.google.com"
+
+  # ==========================================================================
+  # TIER 0 — ACQUISITIONS (highest reward; confirm before each test)
+  # ==========================================================================
+
+  # AppSheet (acquired 2020) — PROVEN SSRF + RCE; any new URL-intake = first test
+  - "api.appsheet.com"
+  - "eu.appsheet.com"
+  - "www.appsheet.com"
+
+  # Looker (acquired 2019 — $2.6B) — cross-tenant SQLi cluster (LeakyLooker 2026)
+  - "de.looker.com"
+  - "keybox.looker.com"
+  - "rampart.looker.com"
+  - "pbvpn.looker.com"
+  - "gw2-pbvpn.looker.com"
+
+  # Mandiant (acquired Sept 2022 — $5.4B) — TIER0 auth endpoints
+  - "login.mandiant.com"
+  - "app.validation.mandiant.com"
+
+  # Nest (acquired 2014 — $3.2B) — TIER0 account auth
+  - "accounts.nest.com"
+  - "accounts.ft.nest.com"
+
+  # Cameyo (acquired ~2023) — TIER0; propagates to direct subdomains
+  - "cameyo.com"
+  - "cameyo.net"
+  - "marketplace.cameyo.com"
+  - "online.cameyo.com"
+  - "getip.svc.cameyo.com"
+  - "kb.svc.cameyo.com"
+  - "session.svc.cameyo.com"
+  - "support.svc.cameyo.com"
+  - "gwebhook.svc.cameyo.com"
+
+  # Photomath (acquired 2022) — TIER0; multiple internal/admin subdomains
+  - "dpcapi-admin.photomath.com"
+  - "internal.photomath.com"
+  - "dpcapi-admin.photomath.net"
+  - "internal.photomath.net"
+  - "baja.photomath.net"
+  - "cuvar.photomath.net"
+  - "daportal.photomath.net"
+  - "dpcapi.photomath.net"
+  - "lapi.photomath.net"
+  - "mankey.photomath.net"
+  - "metabase.photomath.net"
+  - "taportal.photomath.net"
+  - "tlapi.photomath.net"
+  - "zuja.photomath.net"
+
+  # Pring (acquired ~2022) — TIER0 payment app (Japan)
+  - "admin.pring.app"
+  - "callback.pring.app"
+  - "staging.callback.pring.app"
+  - "api.pring.jp"
+  - "dev-api.pring.jp"
+  - "future-api.pring.jp"
+  - "support.pring.jp"
+  - "www.pring.jp"
+
+  # ==========================================================================
+  # TIER 1 — GOOGLE CORE
+  # ==========================================================================
+
+  # Workspace core (TIER1 — high reward)
+  - "docs.google.com"
+  - "drive.google.com"
+  - "calendar.google.com"
+  - "chat.google.com"
+  - "groups.google.com"
+  - "photos.google.com"
+  - "hangouts.google.com"
+  - "messages.google.com"
+  - "voice.google.com"
+  - "script.google.com"
+  - "home.google.com"
+  - "express.google.com"
+  - "shopping.google.com"
+  - "store.google.com"
+  - "myactivity.google.com"
+  - "ads.google.com"
+  - "adsense.google.com"
+  - "adwords.google.com"
+  - "bigquery.cloud.google.com"
+  - "source.cloud.google.com"
+  - "channelservices.cloud.google.com"
+  - "admin.baseline.google.com"
+  - "baseline.google.com"
+  - "lens.google.com"
+  - "android.google.com"
+
+  # TIER1 core non-google.com
+  - "googlesource.com"
+  - "googleapps.com"
+
+  # YouTube (TIER1 specific subdomains; apex youtube.com is TIER2)
+  - "studio.youtube.com"
+  - "payments.youtube.com"
+  - "m.youtube.com"
+  - "www.youtube.com"
+
+  # Google Workspace app area
+  - "baseline.sandbox.google.com"
+  - "admin-baseline.sandbox.google.com"
+
+  # Google .google TLD (TIER1)
+  - "console.cloud.google"
+  - "service.cloudvmwareengine.google"
+  - "wayfinder.goog"
+
+  # Area 120 incubator
+  - "orionwifi.area120.com"
+  - "signals.area120.com"
+  - "threadit.area120.com"
+  - "threadit.app"
+  - "enexpress.app"
+
+  # Chromium bug trackers
+  - "bugs.chromium.org"
+  - "g-issues.chromium.org"
+  - "issues.chromium.org"
+
+  # ==========================================================================
+  # TIER 1 — ACQUISITIONS (high reward; primary hunting targets)
+  # Focus: SSRF, IDOR, auth-bridge, multi-tenant isolation
+  # ==========================================================================
+
+  # Wiz (acquired March 2026 — $32B) — TIER1, EXEMPT FROM 6-MONTH BLACKOUT
+  # CNAPP with deep cloud permissions; underresearched; TEST NOW
+  - "*.wiz.io"
+  - "wiz.io"
+  - "app.wiz.io"
+
+  # Looker SaaS (TIER1) — cross-tenant BI; 9 vulns patched 2026; look for bypasses
+  - "looker.com"
+  - "lookerstudio.google.com"
+  - "datastudio.google.com"
+  - "corp.looker.com"
+  - "instancemanagerui.looker.com"
+  - "lk.looker.com"
+  - "lookercdn.com"
+  - "lookerdata.com"
+  - "lookermail.com"
+  - "censuslooker.com"
+  - "devops-survey.com"
+
+  # Mandiant Advantage (TIER1) — complex multi-org B2B; minimal prior research
+  - "advantage.mandiant.com"
+  - "api.advantage.mandiant.com"
+  - "advantage-api.mandiant.com"
+  - "intel.mandiant.com"
+  - "api.intelligence.mandiant.com"
+  - "md.mandiant.com"
+  - "md-us.mandiant.com"
+  - "msvportal.mandiant.com"
+  - "plextrac.mandiant.com"
+  - "validation.mandiant.com"
+  - "intelligence.fireeye.com"
+  - "mandiant.com"
+
+  # VirusTotal (TIER1) — file parsing + SSRF + YARA code exec
+  - "www.virustotal.com"
+  - "virustotal.com"
+  - "virustotal-plugins.com"
+  - "gtidocs.virustotal.com"
+
+  # Waze (TIER1) — biz portal confirmed prior XSS + location IDOR
+  - "waze.com"
+  - "www.waze.com"
+  - "biz.waze.com"
+  - "adsapi.waze.com"
+  - "adsapi-staging.waze.com"
+  - "proxy.waze.com"
+  - "proxy-staging.waze.com"
+
+  # Fitbit (TIER1 subdomains; apex fitbit.com is TIER3)
+  # 50 bugs paid in 2023; health data = max sensitivity; Mobile VRP also in scope
+  - "accounts.fitbit.com"
+  - "health-admin.fitbit.com"
+  - "ngw.fitbit.com"
+  - "mgmt.fitbit.com"
+  - "coaching-dashboard.fitbit.com"
+  - "autodiscover.fitbit.com"
+  - "help.fitbit.com"
+  - "myhelp.fitbit.com"
+  - "strava.fitbit.com"
+
+  # Nest (TIER1 subdomains) — home.nest.com + SDM API + hardware
+  - "home.nest.com"
+  - "api.home.nest.com"
+  - "beta.home.nest.com"
+  - "alpha.home.nest.com"
+  - "fleet.home.nest.com"
+  - "clips.home.nest.com"
+  - "home.ft.nest.com"
+  - "api.home.ft.nest.com"
+  - "myaccount.nest.com"
+  - "myaccount.ft.nest.com"
+  - "developer-api.nest.com"
+  - "developer-api-ft.nest.com"
+  - "nssbridge.nest.com"
+  - "admin.store.nest.com"
+  - "admin.store.ft.nest.com"
+  - "supportadmin.nestlabs.com"
+  - "smartdevicemanagement.googleapis.com"
+  - "homegraph.googleapis.com"
+
+  # Chronicle Security / Google SecOps (TIER1)
+  - "chronicle.security"
+  - "backstory.googleapis.com"
+  - "secops.googleapis.com"
+  - "iafwsjwcmh.com"
+
+  # Apigee (TIER1) — recurring sandbox RCE class; test new policy types
+  - "apigee.com"
+  - "enterprise.apigee.com"
+  - "sense-ui.apigee.com"
+  - "apigee.google.com"
+
+  # Tenor (acquired 2018) — TIER1
+  - "tenor.com"
+
+  # Wing (Alphabet) — TIER1 drone delivery
+  - "wing.com"
+  - "opensky.wing.com"
+
+  # Siemplify SOAR (acquired Jan 2022) — TIER1/2; hundreds of SSRF connectors
+  - "siemplifycloud.com"
+  - "siemplify.co"
+  - "passbolt.siemplify.co"
+  - "siemplify-soar.com"
+
+  # Dropcam / Nest Labs (TIER1)
+  - "dropcam.com"
+
+  # Dataform (acquired 2020, now BigQuery) — TIER1
+  - "app.dataform.co"
+
+  # Webpass (acquired 2016) — TIER1
+  - "webpass.net"
+  - "work.webpass.net"
+
+  # Respond Software (acquired 2021) — TIER1
+  - "prod.respond-software.com"
+
+  # Adhawk Microsystems (acquired ~2022) — TIER1
+  - "adhawkdev.com"
+
+  # Google acquisition migration portal
+  - "googleacquisitionmigration.com"
+
+  # ==========================================================================
+  # TIER 2 — GOOGLE CORE (medium reward)
+  # ==========================================================================
+  - "google.com"
+  - "youtube.com"
+  - "blogger.com"
+  - "admob.com"
+  - "gfiber.com"
+  - "chromium.org"
+  - "webrtc.org"
+  - "recaptcha.net"
+  - "projectshield.withgoogle.com"
+  - "gamesnacks.com"
+
+  # ==========================================================================
+  # TIER 2 — ACQUISITIONS
+  # ==========================================================================
+  - "waymo.com"
+  - "sidewalklabs.com"
+  - "appsheet.com"
+  - "riffusion.com"
+
+  # DeepMind (TIER2 — apex deepmind.com is TIER3)
+  - "www.deepmind.com"
+  - "explore.deepmind.com"
+
+  # ==========================================================================
+  # TIER 3 — LOWER REWARD (still valid bugs, lower payout)
+  # ==========================================================================
+  - "fitbit.com"
+  - "nest.com"
+  - "deepmind.com"
+  - "kaggle.com"
+  - "www.kaggle.com"
+  - "neverware.com"
+  - "photomath.com"
+
+# ---------------------------------------------------------------------------
+# OUT OF SCOPE — TIER4 domains. These ALWAYS win. Never test them.
+# ---------------------------------------------------------------------------
+out_of_scope:
+
+  # TIER4 — Customer-hosted / sandbox (not Google-operated infra)
+  - "*.appspot.com"
+  - "*.bc.googleusercontent.com"
+  - "*.googleusercontent.com"     # sandbox XSS not a bug unless sensitive data proven
+
+  # TIER4 — Ad/analytics/CDN infrastructure
+  - "doubleclick.net"
+  - "*.doubleclick.net"
+  - "gstatic.com"
+  - "*.gstatic.com"
+  - "gstatic-cn.com"
+  - "googlesyndication.com"
+  - "*.googlesyndication.com"
+  - "googleadservices.com"
+  - "*.googleadservices.com"
+  - "googletagmanager.com"
+  - "*.googletagmanager.com"
+  - "googletagservices.com"
+  - "google-analytics.com"
+  - "*.google-analytics.com"
+  - "2mdn.net"
+  - "2mdn-cn.net"
+  - "joonix.net"
+  - "dartsearch.net"
+  - "googletraveladservices.com"
+  - "ggpht.com"
+  - "gmodules.com"
+  - "googleadservices.com"
+
+  # TIER4 — Serving infrastructure / CDN
+  - "googleapis.com"              # Most subdomains TIER4; specific ones listed in in_scope above
+  - "*.googleapis.com"            # Only exceptions: storage.cloud.google.com etc. (listed in in_scope)
+  - "googlezip.net"
+  - "googlevideo.com"
+  - "ytimg.com"
+  - "youtube-nocookie.com"
+  - "youtube-3rd-party.com"
+  - "gvt1.com"
+  - "gvt2.com"
+  - "gvt3.com"
+  - "googledrive.com"
+  - "googleweblight.com"
+  - "googlegroups.com"
+  - "storage.googleapis.com"
+
+  # TIER4 — Cloud customer hosting
+  - "run.app"
+  - "cloudfunctions.net"
+  - "gcr.io"
+  - "pkg.dev"
+  - "cloudshell.dev"
+  - "gateway.dev"
+  - "page.link"
+
+  # TIER4 — Acquisition subdomains explicitly excluded
+  - "community.nest.com"
+  - "training.nest.com"
+  - "status.nest.com"
+  - "academy.mandiant.com"
+  - "blog.mandiant.com"
+  - "mwise.mandiant.com"
+  - "mandiant.com"               # apex is TIER4; specific subdomains listed in in_scope above
+  - "lookersandbox.com"
+  - "crashlytics.com"
+  - "devops-research.com"
+  - "nianticlabs.com"            # Niantic spun off; out of scope
+  - "sketchup.com"               # sold; out of scope
+  - "polar.com"                  # out of scope
+  - "zagat.com"                  # out of scope
+  - "youtube-creatorcommunity.com"
+  - "youtube-nocookie.com"
+  - "adhawkmicrosystems.com"
+  - "getmindlink.com"
+  - "riffusionlabs.com"
+
+  # TIER4 — Shortuner / CDN / utility domains
+  - "goo.gl"
+  - "g.co"
+  - "g.page"
+  - "business.site"
+  - "translate.goog"
+  - "usercontent.goog"
+  - "cloud.goog"
+  - "podcasts.goog"
+  - "blogblog.com"
+  - "blogspot.com"               # user blogs treated as third-party content
+  - "bp.blogspot.com"
+
+  # TIER4 — Third-party SaaS Google merely uses
+  - "*.workday.com"
+  - "*.salesforce.com"
+  - "*.zendesk.com"
+  - "*.servicenow.com"
+
+  # AI VRP — explicitly out of scope (use in-product reporting instead)
+  # Prompt injections, jailbreaks, and alignment/content issues are NOT VRP eligible
+
+# ---------------------------------------------------------------------------
+# RULES OF ENGAGEMENT
+# ---------------------------------------------------------------------------
 rules:
-  max_requests_per_second: 100      # politeness ceiling; lower if the program says so
-  identifying_header: ""            # e.g. "X-Bug-Bounty: yourhandle" — sent on active requests
-  forbidden_techniques:             # never perform these
-    - "denial of service / load testing"
-    - "automated mass exploitation"
-    - "social engineering"
-    - "physical attacks"
-    - "testing with real user data or real payments"
-  allowed_payloads: "benign, non-destructive, read-only proofs and OOB confirmation only"
-  notes: ""                         # any program-specific caveats
+  max_requests_per_second: 100    # conservative Pi 5 ceiling; lower if needed
+
+  identifying_header: ""          # Google VRP does not require a specific header
+
+  forbidden_techniques:
+    - "denial of service / load testing / service degradation"
+    - "automated mass scanning of IP blocks (especially Google Cloud customer VMs)"
+    - "social engineering / phishing of Google employees"
+    - "physical access attempts (entering Google offices)"
+    - "black hat SEO / spam"
+    - "testing with real user credentials (use your own test accounts only)"
+    - "testing production payment flows with real money"
+    - "exfiltrating real user data beyond what proves impact"
+    - "production data destruction or corruption"
+    - "user enumeration without demonstrating missing rate-limiting"
+    - "testing *.appspot.com / *.bc.googleusercontent.com (customer-hosted)"
+    - "testing acquisition subdomains NOT listed in in_scope (default TIER4)"
+    - "prompt injections, jailbreaks, AI alignment/content issues (use in-product reporting)"
+    - "Linux kernel vulnerabilities without functional Android/Pixel PoC"
+
+  allowed_payloads: >
+    Benign, non-destructive, read-only proofs only. OOB DNS/HTTP interaction
+    (e.g. Burp Collaborator, interactsh) for blind SSRF/injection confirmation.
+    Your own Google test accounts and test data only. CVSS 3.1 PoC must use
+    minimal reproduction with no real-user impact.
+
+  test_accounts: >
+    Create dedicated @gmail.com test accounts for all testing.
+    For Fitbit/Nest: register test devices to your own test accounts only.
+    For Cloud: use your own GCP project. Never touch other users' projects or data.
+
+  # Reward tiers (2024-2026 confirmed rates)
+  reward_tiers:
+    web_alphabet_vrp:
+      tier0_rce_critical: "up to $101,010 (+ 1.5x quality → $151,515)"
+      high: "up to $31,337"
+      medium: "varies by tier"
+      low: "typically $1,000–$7,500"
+    cloud_vrp:
+      s0_cross_tenant_no_perms: "$7,500 minimum (Tier 1 products up to $101,010)"
+      top: "$101,010 (+ 1.5x → $151,515)"
+    mobile_vrp_tier1:       # Fitbit, Nest, Waze apps
+      rce_critical: "up to $300,000 (+ 1.5x → $450,000)"
+      sensitive_data: "up to $75,000"
+    chrome_vrp:
+      non_sandboxed_rce: "up to $250,000"
+      miracleptr_bypass: "$250,128"
+    android_devices_vrp:
+      zero_click_full_chain_titan_m2: "$1,500,000 (with persistence)"
+    ai_vrp:
+      flagship_data_modification: "up to $20,000 (+ 1.5x → $30,000)"
+
+  notes: >
+    Multiple VRP tracks: Web/Alphabet VRP, Cloud VRP, Mobile VRP (Fitbit/Nest/Waze),
+    Chrome VRP, Android/Devices VRP, AI VRP, OSS VRP.
+    A finding may qualify for multiple tracks — submit to all that apply.
+    Acquisition domain subdomains NOT in in_scope default to TIER4 (out of scope).
+    Always verify a new acquisition's blackout status before testing.
+    Wiz (*.wiz.io) is confirmed TIER1 and EXEMPT from the 6-month blackout.
