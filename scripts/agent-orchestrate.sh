@@ -117,7 +117,7 @@ state_init() {
 import json, datetime
 state = {
     "target": "$TARGET",
-    "started": datetime.datetime.utcnow().isoformat() + "Z",
+    "started": datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
     "current_phase": 0,
     "phase_status": {},
     "leads": {},
@@ -166,7 +166,7 @@ elif cmd == "update_lead":
     d["leads"][lead_id].update({
         "status": status,
         "reason": reason,
-        "updated": datetime.datetime.utcnow().isoformat() + "Z"
+        "updated": datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
     })
     save(d)
 
@@ -194,7 +194,7 @@ elif cmd == "chain_update":
     cg = d.setdefault("chain_graph", {}).setdefault(sys.argv[2], {})
     cg.setdefault("tests", {})[sys.argv[3]] = {
         "status": sys.argv[4],
-        "updated": datetime.datetime.utcnow().isoformat() + "Z"
+        "updated": datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
     }
     save(d)
 
@@ -241,12 +241,20 @@ pi_resource_check() {
   ram_used_kb=$(grep -E '^(MemTotal|MemAvailable)' /proc/meminfo 2>/dev/null | awk '{sum += ($2 * (NR==1 ? 1 : -1))} END {print sum}' || echo "0")
   [ "$ram_total_kb" -gt 0 ] && ram_pct=$((ram_used_kb * 100 / ram_total_kb)) || ram_pct=0
 
-  # CPU (1-second sample)
-  local cpu_idle=0
-  cpu_idle=$(top -bn1 2>/dev/null | awk '/Cpu\(s\)/ || /%Cpu/ {
-    for(i=1;i<=NF;i++) if ($i ~ /id/) {val=$(i-1); gsub(/,/,"",val); print val; exit}
-  }' || echo "0")
-  local cpu_used=$((100 - ${cpu_idle%.*}))
+  # CPU (two-sample /proc/stat delta — avoids top's stray output on Pi OS)
+  local _l1 _l2 _cpu_used=0
+  read -r _l1 < /proc/stat 2>/dev/null || true
+  sleep 0.3
+  read -r _l2 < /proc/stat 2>/dev/null || true
+  _cpu_used=$(awk -v l1="$_l1" -v l2="$_l2" 'BEGIN {
+    n = split(l1, a); split(l2, b)
+    idle1 = a[5]; idle2 = b[5]
+    total1=0; total2=0
+    for (i=2;i<=n;i++) { total1+=a[i]; total2+=b[i] }
+    td = total2 - total1; id = idle2 - idle1
+    if (td > 0) print int((td - id) * 100 / td); else print 0
+  }') 2>/dev/null || _cpu_used=0
+  local cpu_used=$((_cpu_used + 0))
 
   log_info "Pi5 resources — CPU:${cpu_used}% RAM:${ram_pct}% TEMP:${temp_c}°C"
 
@@ -270,7 +278,7 @@ pi_resource_check() {
 }
 
 count_active_nuclei() {
-  pgrep -c -f "nuclei" 2>/dev/null || echo "0"
+  pgrep -f "nuclei" 2>/dev/null | wc -l
 }
 
 wait_for_slot() {
@@ -1058,7 +1066,7 @@ intelligence_replan() {
     4)
       local v; v=$(find "$RESULTS/04-verified" -name "verification.txt" 2>/dev/null \
         | xargs -I{} grep -l "CONFIRMED" {} 2>/dev/null | wc -l || echo "0")
-      local m; m=$(wc -l < "$RESULTS/04-verified/manual-queue.txt" 2>/dev/null || echo "0")
+      local m; m=$(cat "$RESULTS/04-verified/manual-queue.txt" 2>/dev/null | wc -l)
       log_decision "Phase 4: $v auto-verified, $m need manual verification"
       if [ "$v" -eq 0 ] && [ "$m" -eq 0 ]; then
         log_decision "Zero findings — consider: (1) Trial account for SSRF/IDOR, (2) Deeper JS analysis, (3) Manual auth testing"
