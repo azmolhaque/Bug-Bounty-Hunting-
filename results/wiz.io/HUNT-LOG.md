@@ -28,6 +28,13 @@ Started: 2026-06-11
 | 2026-06-11 | 2 | prod-us52.forensics-package.app.wiz.io | HTTP/2 401 Lambda@Edge auth (x-cache: LambdaGeneratedResponse); browser UA bypasses WAF, Lambda validates Bearer before routing; all paths 401 |
 | 2026-06-11 | 2 | events-ingestion.eu21.app.wiz.io | AWS API Gateway EU21; GET/POST all 403 ForbiddenException (application/json, empty body); requires auth token |
 | 2026-06-11 | 2 | cli-results.us1.integration.wiz.io | Amazon S3 + CloudFront; bucket listing disabled (AccessDenied XML); all path probes auth-gated |
+| 2026-06-12 | 2 | file-upload.eu1.e2e.wiz.io | S3 + CloudFront; 403 AccessDenied; bucket exists; e2e environment |
+| 2026-06-12 | 2 | outpost-storage.eu1.e2e.wiz.io | S3 + CloudFront; 403 AccessDenied; Wiz Outpost on-prem storage in e2e |
+| 2026-06-12 | 2 | prod-us116-outpost-storage.app.wiz.io | AWS API Gateway; 403 "Missing Authentication Token"; production outpost storage API |
+| 2026-06-12 | 2 | netscanner-v2-results.us3.integration.wiz.io | S3 + CloudFront; 403 AccessDenied; network scanner v2 results bucket |
+| 2026-06-12 | 2 | netscanner-results.us23.app.wiz.io | S3 + CloudFront; 403 AccessDenied; netscanner results bucket |
+| 2026-06-12 | 2 | prod-us106.sensor-forensics.app.wiz.io | CloudFront HTML 403; WAF bot block (same pattern as forensics-package) |
+| 2026-06-12 | 2 | prod-eu32-sensor.app.wiz.io | AWS API Gateway; 403 "Missing Authentication Token" |
 
 ## Key Findings
 
@@ -106,6 +113,30 @@ Started: 2026-06-11
 - `?list-type=2` probe confirmed bucket exists but listing blocked
 - **Attack hypothesis:** If WizCLI scan result paths follow a guessable pattern (e.g., `/results/<tenant-id>/<uuid>.json`), try cross-tenant path traversal with a valid token
 - **Blocker:** Requires WizCLI token and known path pattern
+
+### [NEW BATCH — 2026-06-12] 8 more subdomains fingerprinted
+
+**S3 + CloudFront buckets (all 403 AccessDenied, listing disabled):**
+- `file-upload.eu1.e2e.wiz.io` — e2e file upload bucket (name suggests direct file upload target)
+- `outpost-storage.eu1.e2e.wiz.io` — Wiz Outpost on-prem agent storage in e2e env
+- `netscanner-v2-results.us3.integration.wiz.io` — network scanner v2 results
+- `netscanner-results.us23.app.wiz.io` — network scanner results
+
+**AWS API Gateway (403 "Missing Authentication Token"):**
+- `prod-us116-outpost-storage.app.wiz.io` — production Outpost storage API (different from e2e S3 bucket; this is an API)
+- `prod-eu32-sensor.app.wiz.io` — sensor API endpoint EU
+
+**CloudFront WAF bot-block (same pattern as forensics-package):**
+- `prod-us106.sensor-forensics.app.wiz.io` — combined sensor+forensics service; browser UA likely bypasses to Lambda@Edge auth
+
+**Pattern emerging:** Wiz has a consistent microservice fleet:
+- `*.sensor.app.wiz.io` — cloud security sensor (data collection from customer cloud)
+- `*.forensics-package.app.wiz.io` — forensic scan package storage
+- `*.sensor-forensics.app.wiz.io` — combined sensor+forensics
+- `*-outpost-storage.app.wiz.io` — Wiz Outpost on-prem data storage
+- `netscanner*-results.*.wiz.io` — network scan result storage
+
+All follow the same auth pattern: valid Wiz tenant token required. The cross-tenant IDOR hypothesis (Chain 9) applies to the entire fleet — if any one endpoint fails to validate tenant-path ownership, the entire fleet of result buckets is vulnerable to cross-tenant read.
 
 ## Decision Log
 
