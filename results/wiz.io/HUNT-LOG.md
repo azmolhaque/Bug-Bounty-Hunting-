@@ -17,7 +17,14 @@ Started: 2026-06-11
 | 2026-06-11 | 3 | downloads.wiz.io/v1/wizcli/* | wizcli-linux-arm64 200 OK, 247MB, no auth (public binary) |
 | 2026-06-11 | 3 | www.wiz.io CSP audit | ws://localhost:3000 dev artifact in production CSP connect-src |
 | 2026-06-11 | 3 | blog.wiz.io Ghost CMS | /ghost/api/content/ confirmed; API key extraction PENDING |
-| 2026-06-11 | 3 | WizCLI binary analysis | PENDING — binary downloaded, strings extraction queued |
+| 2026-06-11 | 3 | WizCLI binary analysis | COMPLETE — 247MB Go binary, Envoy embedded, client_id fetched dynamically via gRPC (not hardcoded) |
+| 2026-06-11 | 3 | Auth0 client_id hunt | CLOSED — server-side auth SDK, key never exposed in client JS or HTTP redirects |
+| 2026-06-11 | 3 | www.wiz.io CSP full audit | Chain 1 CLOSED — win-test.wiz.io NOT in script-src/connect-src; frame-src has *.wiz.io but no script exec |
+| 2026-06-11 | 3 | auth.app.wiz.io | AWS ELB 403 all paths — VPC-internal auth service; added to SSRF target list |
+| 2026-06-11 | 3 | languageserver.app.wiz.io | AWS ELB 403 all paths — VPC-internal WebSocket LSP service; added to SSRF target list |
+| 2026-06-11 | 3 | evs.wiz.io | Mixpanel analytics proxy (405 + developer.mixpanel.com body) — CLOSED informational |
+| 2026-06-11 | 3 | hey.wiz.io | Full Supabase deployment (PostgREST 401, CORS *, JWKS public). Supabase project: gdujsswviqkyszcyopoh.supabase.co. Anon key NOT in any client-side bundle (server-side proxied). CLOSED — informational. |
+| 2026-06-11 | 3 | F001 re-confirmed live | DEPLOYMENT_NOT_FOUND still returned — takeover window still open |
 
 ## Key Findings
 
@@ -59,6 +66,20 @@ Started: 2026-06-11
 ### [PENDING] Developer RDE webhook endpoints
 - `webhooks.{developer}.rde.wiz.io` — 100+ personal dev environments
 - Status: MUST PROBE FROM PI
+
+### [CLOSED] hey.wiz.io Supabase
+- Full Supabase Cloud deployment (project: gdujsswviqkyszcyopoh.supabase.co)
+- CORS `*`, JWKS public key obtained, all services confirmed (REST/Auth/Storage/Functions/Realtime)
+- Supabase anon key NOT accessible — all calls server-side proxied through Next.js API routes
+- CTF challenge names embedded in /ctf chunk: BigIAMChallenge, AISecurityChallenge
+- OIDC discovery leaks project URL — but this is STANDARD Supabase behavior (designed to be public)
+- No submission value — informational
+
+### [CONFIRMED VPC-INTERNAL] SSRF Target List (requires webhook SSRF to reach)
+- `us1.grafana.wiz.io`, `us2.grafana.wiz.io` — Grafana (creds/dashboards)
+- `auth.app.wiz.io` — Auth service (could expose Auth0 client_id via OIDC)
+- `languageserver.app.wiz.io` — IaC language server (WebSocket LSP)
+- All confirmed AWS ELB, all return 403 from external internet
 
 ## Decision Log
 
