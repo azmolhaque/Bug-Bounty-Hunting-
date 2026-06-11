@@ -91,15 +91,15 @@ fi
 if [ "$PASSIVE_ONLY" = false ]; then
   log "Phase 2: crawling for endpoints (katana, scope-locked, rate-capped)…"
   if have katana && [ -s "$OUT/02-surface/live.txt" ]; then
-    # Build optional -domain flag (added in katana v0.9+; older builds lack it)
-    _katana_domain=()
-    katana --help 2>/dev/null | grep -q -- '-domain' && _katana_domain=(-domain "$TARGET")
-    # Depth 1 + domain scope prevents crawling into content pages (CVE DB, blog, etc.)
-    # -exclude-regex filters known non-attack-surface content paths
+    # Detect optional flags — both added in katana v0.9+; older builds lack them
+    _katana_flags=()
+    _katana_help=$(katana --help 2>&1 || true)
+    echo "$_katana_help" | grep -q -- '-domain'        && _katana_flags+=(-domain "$TARGET")
+    echo "$_katana_help" | grep -q -- '-exclude-regex' && _katana_flags+=(-exclude-regex \
+      '/(vulnerability-database|blog|docs|changelog|pricing|customers|about|careers|legal|press|partners)/|\.pdf$|\.png$|\.jpg$|\.svg$|\.woff')
     katana -list "$OUT/02-surface/live.txt" -silent -d 1 -jc -kf all \
       -rate-limit "$RATE" -c "$THREADS" \
-      "${_katana_domain[@]}" \
-      -exclude-regex '/(vulnerability-database|blog|docs|changelog|pricing|customers|about|careers|legal|press|partners)/|\.pdf$|\.png$|\.jpg$|\.svg$|\.woff' \
+      "${_katana_flags[@]}" \
       -o "$OUT/02-surface/endpoints.txt" 2>/dev/null || warn "katana failed"
   fi
 

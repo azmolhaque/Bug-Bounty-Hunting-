@@ -717,7 +717,7 @@ run_phase_4() {
     return 0
   fi
 
-  local pursuing; pursuing=$(grep -c '"status":"PURSUE"' "$CANDIDATES" 2>/dev/null || echo "0")
+  local pursuing; pursuing=$(grep -c '"status":"PURSUE"' "$CANDIDATES" 2>/dev/null; true)
   log_info "$pursuing candidates in PURSUE status"
 
   while IFS= read -r cand; do
@@ -891,7 +891,7 @@ run_phase_5() {
       [ -f "$vfile" ] || continue
       local verdict; verdict=$(grep "VERDICT:" "$vfile" | tail -1 | sed 's/VERDICT: //')
       local chain_pending=0
-      [ -f "$vdir/chain-queue.txt" ] && chain_pending=$(grep -c '^\[ \]' "$vdir/chain-queue.txt" 2>/dev/null || echo "0")
+      [ -f "$vdir/chain-queue.txt" ] && chain_pending=$(grep -c '^\[ \]' "$vdir/chain-queue.txt" 2>/dev/null; true) || chain_pending=0
       echo "| $vid | auto | TBD | novel | TBD | $verdict (chain-pending: $chain_pending) |"
       vcount=$((vcount + 1))
     done < <(ls -d "$RESULTS/04-verified"/*/ 2>/dev/null || true)
@@ -1053,8 +1053,8 @@ intelligence_replan() {
       fi
       ;;
     3)
-      local high_count; high_count=$(grep -c '"confidence":"HIGH"' "$CANDIDATES" 2>/dev/null || echo "0")
-      local pursue_count; pursue_count=$(grep -c '"status":"PURSUE"' "$CANDIDATES" 2>/dev/null || echo "0")
+      local high_count; high_count=$(grep -c '"confidence":"HIGH"' "$CANDIDATES" 2>/dev/null; true)
+      local pursue_count; pursue_count=$(grep -c '"status":"PURSUE"' "$CANDIDATES" 2>/dev/null; true)
       log_decision "Phase 3 result: $pursue_count pursuing ($high_count HIGH confidence)"
       if grep -q '"class":"SSRF' "$CANDIDATES" 2>/dev/null; then
         log_decision "SSRF candidate found → chain tests for metadata + internal services queued in Phase 4"
@@ -1105,9 +1105,9 @@ print_status() {
   if [ -f "$CANDIDATES" ]; then
     local tot pur cls dead
     tot=$(wc -l  < "$CANDIDATES"  2>/dev/null || echo "0")
-    pur=$(grep -c '"status":"PURSUE"'    "$CANDIDATES" 2>/dev/null || echo "0")
-    cls=$(grep -c '"status":"AUTO_CLOSE"' "$CANDIDATES" 2>/dev/null || echo "0")
-    dead=$(grep -c '"status":"DEAD_END"' "$CANDIDATES" 2>/dev/null || echo "0")
+    pur=$(grep -c '"status":"PURSUE"'    "$CANDIDATES" 2>/dev/null; true)
+    cls=$(grep -c '"status":"AUTO_CLOSE"' "$CANDIDATES" 2>/dev/null; true)
+    dead=$(grep -c '"status":"DEAD_END"' "$CANDIDATES" 2>/dev/null; true)
     echo "  Total=$tot  Pursuing=$pur  Auto-closed=$cls  Dead-ends=$dead"
   else
     echo "  (no candidates yet)"
