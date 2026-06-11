@@ -1,49 +1,151 @@
 ---
-description: Vulnerability discovery + verification (Phases 3-4)
-argument-hint: "<target-or-priority-file> [--class idor|ssrf|auth|injection|logic|xss]"
+description: Vulnerability discovery + verification (Phases 3-4) with lead qualification and chain elevation
+argument-hint: "<target-or-priority-file> [--class idor|ssrf|auth|injection|logic|xss] [--qualify-only] [--chain <finding-id>]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 ---
 
-# /hunt — Find, then prove, real bugs
+# /hunt — Find, Qualify, Prove, Chain
 
-Input: `$ARGUMENTS` (a target, or a `priority.md` from `/recon`). Execute Phase 3
-(Discovery) and Phase 4 (Verification) from `methodology/METHODOLOGY.md`.
+Input: `$ARGUMENTS` — a target domain, a `priority.md` from `/recon`, or a
+specific finding ID for chain elevation. Runs Phase 3 (Discovery) and Phase 4
+(Verification + Chain Elevation) from `methodology/METHODOLOGY.md`.
 
-## Steps
+## Parse Arguments
 
-1. **Scope gate** on every target via `./scripts/scope-check.sh`. Abort
-   out-of-scope. Honor permitted test types and rate caps.
+- `--class <X>`: focus only on this bug class in Phase 3
+- `--qualify-only`: run Phase 3 + lead qualification, stop before Phase 4
+- `--chain <id>`: skip Phase 3, jump to chain analysis for finding `<id>`
+- `--phase 3` or `--phase 4`: run that phase only
 
-2. **Automated breadth.** Run `nuclei` (curated templates, Pi-tuned severity &
-   rate) and exposure checks (`.git`, `.env`, backups, takeover, default creds).
-   Stream output to `results/<target>/03-candidates/`.
+## Step 1 — Scope Gate
 
-3. **Agentic depth (the real work).** For each high-priority endpoint, do NOT
-   shotgun every payload. Instead:
-   - **Hypothesize:** given the tech, behavior, and data it handles, what are the
-     2–3 most plausible bug classes? (If `--class` was passed, focus there.)
-   - **Test those first**, prioritizing the high-value classes: Broken Access
-     Control / IDOR / BOLA, SSRF, auth/OAuth/JWT, injection, business-logic /
-     race conditions, then XSS/CSRF/CORS, file handling, misconfig.
-   - Use OOB confirmation for blind cases. Use benign, non-destructive payloads.
-   - For breadth fan-out, delegate clusters to **vuln-hunter** subagents in
-     parallel (resource-capped per `config/tools.yaml`).
-   - Record each lead to `03-candidates/candidates.jsonl` as
-     `{target, class, evidence, confidence, why_it_matters}`.
+```bash
+./scripts/scope-check.sh <target>
+```
+Abort on OUT-OF-SCOPE. Re-check every discovered host before probing it.
 
-4. **Verify (Phase 4).** For each candidate worth it:
-   - Reproduce from a **clean state** (fresh session/account) — kill false
-     positives.
-   - **Minimize** the PoC to the smallest reproducing request/steps.
-   - **Prove impact safely** (read-only, your-own-account, OOB) — never
-     destructive, never real-user data.
-   - **Chain:** ask "what does this unlock?" Combine low-severity issues into
-     high/critical narratives.
-   - Write confirmed bugs to `results/<target>/04-verified/<bug>/` with sanitized
-     evidence, PoC, and a CVSS 3.1 vector + impact note.
+## Step 2 — Resource Check
 
-5. **Update** `HUNT-LOG.md`. End with: candidates found, verified count, the
-   strongest finding, and the most promising chain to pursue next.
+```bash
+./scripts/pi-resource-guard.sh --wait
+```
 
-Be skeptical of your own hits. If it does not reproduce twice, it is a lead, not
-a bug — label it honestly.
+## Step 3 — Automated Breadth (Phase 3)
+
+If `--class` specified, focus nuclei templates on that class. Otherwise:
+
+```bash
+nuclei -u https://<target> \
+  -severity critical,high,medium \
+  -exclude-tags dos,fuzz,intrusive \
+  -include-tags cve,misconfig,exposure,takeover,default-login,tech \
+  -c 25 -rl 100 -bs 25 \
+  -o results/<target>/03-candidates/nuclei-<target>.txt
+```
+
+For high-priority clusters from `priority.md`, fan out up to 3 parallel
+`vuln-hunter` subagents. Cap at `config/tools.yaml: max_parallel_subagents`.
+
+## Step 4 — Lead Qualification Gate (every candidate, <60s)
+
+For EVERY signal from nuclei or manual testing, run qualification BEFORE
+investing verification time:
+
+```bash
+./scripts/lead-qualify.sh <class> <confidence> <impact> <evidence>
+```
+
+| Verdict | Action |
+|---------|--------|
+| `PURSUE:HIGH` | Proceed to Phase 4 immediately |
+| `PURSUE:MARGINAL` | Verify fast — max 2 probes, then drop if no confirmation |
+| `AUTO_CLOSE` | Log reason, move on. Do not revisit unless class changes. |
+
+**If batch processing candidates**: delegate to **lead-qualifier** subagent.
+
+Record each decision in `03-candidates/candidates.jsonl`:
+```json
+{"id":"C001","target":"...","class":"SSRF","qualify":"PURSUE:HIGH:5/5","status":"PURSUING"}
+```
+
+## Step 5 — Agentic Depth (manual Phase 3)
+
+For each PURSUE target, hypothesize the 2-3 most plausible bug classes given
+tech and behavior — do NOT shotgun every class:
+
+| If you see... | Hypothesize first... |
+|--------------|---------------------|
+| Webhook/URL-fetch | SSRF → IMDS → internal services |
+| Multi-tenant GraphQL | IDOR/BOLA → cross-tenant object access |
+| OAuth/SSO login | redirect_uri bypass → account takeover |
+| Dangling CNAME | Subdomain takeover → CSP/OAuth chain |
+| JWT in headers | alg:none, weak secret, iss confusion |
+| File upload | Path traversal, stored XSS, SSRF |
+| Admin panel | Broken access control, default creds |
+
+Use OOB canaries (interactsh) for blind detection. Benign payloads only.
+
+## Step 6 — Verification (Phase 4)
+
+For each PURSUING candidate:
+
+1. **Dead-end check**: count probes in `.orchestrator-state.json`.
+   If probes ≥ 3 and no confirmation → mark DEAD_END, stop.
+
+2. **Reproduce twice** from a clean state (fresh session/account).
+   If it doesn't reproduce twice → downgrade to UNVERIFIED candidate.
+
+3. **Minimize PoC** to the smallest reproducing sequence.
+
+4. **Prove impact safely**:
+   - Read-only evidence only
+   - Your own test account data only
+   - OOB DNS/HTTP for blind SSRF
+   - No real user data, no destructive operations
+
+5. Write to `results/<target>/04-verified/<id>/`:
+   - `verification.txt` with VERDICT: CONFIRMED | NOT_CONFIRMED
+   - `poc.txt` with minimal request/response
+   - `chain-queue.txt` (auto-populated in step 7)
+
+## Step 7 — Chain Elevation
+
+For every CONFIRMED finding:
+
+```bash
+./scripts/chain-graph.sh add <target> <id> <class> <base-severity>
+# Automatically queues all chain tests as PENDING
+```
+
+Then work through PENDING tests — or delegate to **chain-analyst** subagent:
+
+| Confirmed class | Immediately test... |
+|----------------|---------------------|
+| subdomain-takeover | CSP script-src, OAuth redirect_uri, cookie domain |
+| SSRF-blind | IMDS v1/v2, GCP metadata, internal Grafana, internal auth |
+| IDOR-read | Write escalation, cross-tenant enum, connector ID |
+| XSS-stored | Admin panel delivery, session theft PoC |
+| credential-exposure | Validity check, privilege level |
+| default-creds | Datasource list, sensitive dashboards, internal pivot |
+
+Record each chain test result:
+```bash
+./scripts/chain-graph.sh link <target> <id> <test-name> PASS|FAIL
+```
+
+If any chain link passes → severity elevates → report immediately.
+
+## Step 8 — Update State
+
+```bash
+./scripts/chain-graph.sh report <target>
+```
+
+Update `HUNT-LOG.md`: candidates found, qualified, verified, chains tested,
+strongest finding, next action.
+
+End your turn with: candidates (total / pursuing / auto-closed / dead-ends),
+verified count, strongest finding + chain status, most promising next probe.
+
+Be skeptical. If it does not reproduce twice cleanly, it is a lead — label it
+honestly. One confirmed High beats one hundred uncertain candidates.
