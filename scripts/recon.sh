@@ -89,10 +89,14 @@ else
 fi
 
 if [ "$PASSIVE_ONLY" = false ]; then
-  log "Phase 2: crawling for endpoints (katana, rate-capped)…"
+  log "Phase 2: crawling for endpoints (katana, scope-locked, rate-capped)…"
   if have katana && [ -s "$OUT/02-surface/live.txt" ]; then
-    katana -list "$OUT/02-surface/live.txt" -silent -d 2 -jc -kf all \
+    # Depth 1 + domain scope prevents crawling into content pages (CVE DB, blog, etc.)
+    # -exclude-regex filters known non-attack-surface content paths
+    katana -list "$OUT/02-surface/live.txt" -silent -d 1 -jc -kf all \
       -rate-limit "$RATE" -c "$THREADS" \
+      -domain "$TARGET" \
+      -exclude-regex '/(vulnerability-database|blog|docs|changelog|pricing|customers|about|careers|legal|press|partners)/|\.pdf$|\.png$|\.jpg$|\.svg$|\.woff' \
       -o "$OUT/02-surface/endpoints.txt" 2>/dev/null || warn "katana failed"
   fi
 
@@ -111,6 +115,42 @@ grep -iE '\.js(\?|$)' "$OUT/02-surface/all-endpoints.txt" 2>/dev/null \
   | sort -u > "$OUT/02-surface/js-files.txt" || true
 
 # ---------------------------------------------------------------------------
+# Priority map — orchestrator reads this to know Phase 1+2 is done
+# ---------------------------------------------------------------------------
+log "Phase 2: building priority.md…"
+{
+  echo "# Priority Targets — $TARGET"
+  echo "# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo ""
+  echo "| Target | Signals | Priority | Rationale |"
+  echo "|--------|---------|----------|-----------|"
+
+  # High-priority: dev/staging/internal/api subdomains
+  if [ -s "$OUT/02-surface/live.txt" ]; then
+    grep -iE '(dev|test|staging|internal|admin|api|rde|grafana|jenkins|kibana|dashboard|debug|beta|qa|uat)\.' \
+      "$OUT/02-surface/live.txt" 2>/dev/null | head -20 | while read -r url; do
+      host="${url#*://}"; host="${host%%/*}"
+      echo "| $host | non-prod keyword | P0 | Dev/staging/internal — relaxed auth likely |"
+    done
+
+    # Medium-priority: interesting subdomains (integration, cli, events, forensics, webhooks)
+    grep -iE '(integration|cli|event|forensic|webhook|connect|hook|scan|result|report|ingest)\.' \
+      "$OUT/02-surface/live.txt" 2>/dev/null | head -20 | while read -r url; do
+      host="${url#*://}"; host="${host%%/*}"
+      echo "| $host | integration keyword | P1 | May handle data ingest, webhooks, or file ops |"
+    done
+
+    # All other live hosts (lower priority)
+    grep -viE '(dev|test|staging|internal|admin|api|rde|grafana|jenkins|kibana|dashboard|debug|beta|qa|uat|integration|cli|event|forensic|webhook|connect|hook|scan|result|report|ingest)\.' \
+      "$OUT/02-surface/live.txt" 2>/dev/null | head -30 | while read -r url; do
+      host="${url#*://}"; host="${host%%/*}"
+      echo "| $host | live | P2 | Production surface — auth and API focus |"
+    done
+  fi
+} > "$OUT/02-surface/priority.md"
+log "  Priority map → $OUT/02-surface/priority.md"
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 cat > "$OUT/02-surface/SUMMARY.txt" <<EOF
@@ -122,7 +162,6 @@ Recon summary for $TARGET  ($(date -u +%Y-%m-%dT%H:%M:%SZ))
   js files:         $(wc -l < "$OUT/02-surface/js-files.txt" 2>/dev/null || echo 0)
   historical urls:  $(wc -l < "$OUT/01-assets/historical-urls.txt" 2>/dev/null || echo 0)
 
-Next: the agent should read these, classify anomalous hosts, mine JS, build
-02-surface/priority.md, then run /hunt. See methodology/METHODOLOGY.md Phase 3.
+Next: review priority.md, then run ./run.sh $TARGET --phase 3
 EOF
 log "Done. Summary:"; cat "$OUT/02-surface/SUMMARY.txt"
