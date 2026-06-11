@@ -9,6 +9,10 @@ Started: 2026-06-11
 | 2026-06-11 | 2 | httpx probe (from Pi) — PARTIAL | peach=200(Wix), app=200(portal), wizcli=403(S3+CF) |
 | 2026-06-11 | 2 | Grafana instances httpx (from Pi) | All ports FILTERED — VPC-internal only |
 | 2026-06-11 | 2 | Active probe from cloud env BLOCKED | Anthropic egress gateway intercepts all TLS; remote env unusable for probing |
+| 2026-06-11 | 3 | win-test.wiz.io takeover CONFIRMED | DEPLOYMENT_NOT_FOUND + expired cert → valid subdomain takeover |
+| 2026-06-11 | 3 | GraphQL endpoint confirmed live | api.us1.app.wiz.io/graphql returns UNAUTHORIZED (not 403) — needs trial JWT |
+| 2026-06-11 | 3 | gh-109705.pr.test.wiz.io analyzed | PR preview loads full portal w/ apollo-client-dev build |
+| 2026-06-11 | 3 | Finding F001 drafted | findings/F001-win-test-subdomain-takeover.md — READY TO SUBMIT |
 
 ## Key Findings
 
