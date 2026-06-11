@@ -354,3 +354,39 @@ for host in \
   echo ""
 done
 ```
+[2026-06-11 16:26:42][INFO ] ══ Bug Bounty Orchestrator v2.0 ══  target=wiz.io  phases=0-0  bg=false  dry=true
+[2026-06-11 16:26:42][INFO ] Initializing new orchestrator state
+
+══════════════════════════════════════════════════════════════════════
+[2026-06-11 16:26:42][PHASE] 0 — Scope Gate & Hunt Plan
+══════════════════════════════════════════════════════════════════════[2026-06-11 16:26:42][INFO ] Scope OK: wiz.io
+[2026-06-11 16:26:42][INFO ] Created 00-plan.md
+[2026-06-11 16:26:42][INFO ] Phase 0 DONE
+[2026-06-11 16:26:42][INFO ] Intelligence re-plan after phase 0
+[2026-06-11 16:27:39][INFO ] ══ Bug Bounty Orchestrator v2.0 ══  target=wiz.io  phases=0-0  bg=false  dry=false
+[2026-06-11 16:27:39][INFO ] Initializing new orchestrator state
+
+══════════════════════════════════════════════════════════════════════
+[2026-06-11 16:27:39][PHASE] 0 — Scope Gate & Hunt Plan
+══════════════════════════════════════════════════════════════════════[2026-06-11 16:27:39][INFO ] Scope OK: wiz.io
+[2026-06-11 16:27:39][INFO ] 00-plan.md exists — resuming
+[2026-06-11 16:27:39][INFO ] Phase 0 DONE
+[2026-06-11 16:27:39][INFO ] Intelligence re-plan after phase 0
+[2026-06-11 16:27:42][INFO ] ══ Bug Bounty Orchestrator v2.0 ══  target=wiz.io  phases=0-6  bg=false  dry=false
+[2026-06-11 16:27:42][INFO ] Resuming from existing state
+[2026-06-11 16:27:49][INFO ] ══ Bug Bounty Orchestrator v2.0 ══  target=wiz.io  phases=3-3  bg=false  dry=true
+[2026-06-11 16:27:49][INFO ] Resuming from existing state
+
+══════════════════════════════════════════════════════════════════════
+[2026-06-11 16:27:49][PHASE] 3 — Vulnerability Discovery + Lead Qualification
+══════════════════════════════════════════════════════════════════════[2026-06-11 16:27:50][INFO ] Pi5 resources — CPU:12% RAM:3% TEMP:0°C
+[2026-06-11 16:27:50][INFO ] Phase 3 scanning 1 targets
+[2026-06-11 16:27:50][INFO ] Pi5 resources — CPU:3% RAM:3% TEMP:0°C
+[2026-06-11 16:27:50][INFO ] [DRY-RUN] nuclei -u https://wiz.io (would write → /home/user/Bug-Bounty-Hunting-/results/wiz.io/03-candidates/nuclei-wiz_io.txt)
+[2026-06-11 16:27:50][INFO ] Running lead qualification gate on all nuclei output
+[2026-06-11 16:27:50][INFO ] Lead gate: 0 pursuing / 0 auto-closed
+[2026-06-11 16:27:50][INFO ] Phase 3 DONE
+[2026-06-11 16:27:50][INFO ] Intelligence re-plan after phase 3
+[2026-06-11 16:27:50][DECIDE] Phase 3 result: 0
+0 pursuing (0
+0 HIGH confidence)
