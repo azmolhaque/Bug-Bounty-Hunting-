@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Task",
+      "Bash(./scripts/scope-check.sh:*)",
+      "Bash(./scripts/recon.sh:*)",
+      "Bash(./scripts/setup-pi.sh:*)",
+      "Bash(subfinder:*)",
+      "Bash(httpx:*)",
+      "Bash(dnsx:*)",
+      "Bash(naabu:*)",
+      "Bash(katana:*)",
+      "Bash(gau:*)",
+      "Bash(waybackurls:*)",
+      "Bash(assetfinder:*)",
+      "Bash(amass:*)",
+      "Bash(anew:*)",
+      "Bash(nuclei:*)",
+      "Bash(ffuf:*)",
+      "Bash(dalfox:*)",
+      "Bash(arjun:*)",
+      "Bash(jq:*)",
+      "Bash(dig:*)",
+      "Bash(whois:*)",
+      "Bash(curl:*)",
+      "Bash(sort:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [
+      "Read(./results/**/evidence/**)",
+      "Bash(rm -rf:*)",
+      "Bash(nuclei:*-tags dos*)"
+    ]
+  },
+  "env": {
+    "BBH_RESULTS_DIR": "results"
+  }
+}

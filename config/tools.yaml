@@ -1,0 +1,46 @@
+# tools.yaml — Raspberry Pi 5 (16 GB, ARM64) resource & rate tuning.
+#
+# The Pi 5 is capable but not a server. These caps keep scans stable, keep you
+# polite (and thus invited), and prevent thermal/throttling issues during long
+# hunts. Override per-program if the brief allows more (or demands less).
+
+hardware:
+  device: "Raspberry Pi 5"
+  ram_gb: 16
+  notes: "Use active cooling. Stream large outputs to disk; don't buffer in RAM."
+
+# Global politeness ceilings. scripts/recon.sh reads these as env defaults.
+limits:
+  http_rate_per_sec: 100       # httpx / nuclei request ceiling
+  threads: 25                  # general concurrency
+  naabu_rate: 300              # packets/sec for port scan
+  max_parallel_subagents: 3    # vuln-hunter fan-out cap (RAM/CPU bound on Pi)
+  nuclei_concurrency: 25
+  nuclei_rate_limit: 100
+  nuclei_bulk_size: 25
+  ffuf_rate: 50
+  ffuf_threads: 20
+
+# Long-running scans: run in background, persist to disk, survive reboots.
+execution:
+  background_long_scans: true
+  results_dir: "results"
+  checkpoint: "HUNT-LOG.md"    # per-target run log enabling resume after reset
+
+# Tool selection — all chosen for native arm64 builds and low footprint.
+toolchain:
+  asset_discovery: [subfinder, amass, assetfinder, asnmap, gau, waybackurls]
+  resolution:      [dnsx, puredns]
+  probing:         [httpx, naabu]
+  crawling:        [katana, hakrawler]
+  params:          [arjun]
+  scanning:        [nuclei]
+  fuzzing:         [ffuf]
+  xss:             [dalfox]
+  secrets:         [trufflehog, gitleaks]
+
+# nuclei template policy — high signal first; avoid noisy/destructive templates.
+nuclei:
+  severity: ["critical", "high", "medium"]
+  exclude_tags: ["dos", "fuzz", "intrusive"]
+  include_tags: ["cve", "misconfig", "exposure", "takeover", "default-login", "tech"]

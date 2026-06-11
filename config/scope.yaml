@@ -1,0 +1,41 @@
+# scope.yaml — THE AUTHORIZATION BOUNDARY. Edit before every engagement.
+#
+# This file is the single source of truth for what the agent may touch.
+# scripts/scope-check.sh enforces it (default-deny). The agent will REFUSE to
+# hunt while in_scope is empty — this is intentional. No scope, no hunt.
+#
+# Rules:
+#   - out_of_scope is checked first and ALWAYS wins on conflict.
+#   - Wildcards: "*.example.com" matches any subdomain AND the apex example.com.
+#   - Only list assets the program's brief explicitly authorizes. When unsure,
+#     leave it out — a finding outside scope is invalid and a liability.
+
+program: ""           # e.g. "Example Corp Public Program (HackerOne)"
+platform: ""          # e.g. hackerone | bugcrowd | intigriti | self-hosted
+handle: ""            # your researcher handle (used in identifying headers)
+
+# Domains / wildcards / IPs you ARE authorized to test.
+# Leave empty to keep the safety gate closed until you fill it in.
+in_scope: []
+  # - "*.example.com"
+  # - "api.example.com"
+  # - "203.0.113.0/24"
+
+# Anything you must NOT touch (subsidiaries, third-party SaaS, sensitive hosts).
+out_of_scope: []
+  # - "blog.example.com"
+  # - "status.example.com"
+  # - "*.corp.example.com"
+
+# Rules of engagement — the agent honors these.
+rules:
+  max_requests_per_second: 100      # politeness ceiling; lower if the program says so
+  identifying_header: ""            # e.g. "X-Bug-Bounty: yourhandle" — sent on active requests
+  forbidden_techniques:             # never perform these
+    - "denial of service / load testing"
+    - "automated mass exploitation"
+    - "social engineering"
+    - "physical attacks"
+    - "testing with real user data or real payments"
+  allowed_payloads: "benign, non-destructive, read-only proofs and OOB confirmation only"
+  notes: ""                         # any program-specific caveats

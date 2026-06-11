@@ -1,0 +1,45 @@
+# .gitignore for the Bug Bounty Hunting Agent
+#
+# Raw evidence, session data, and credentials must NEVER leave the Pi.
+# Only methodology, config templates, scripts, and reports (sanitized) go to git.
+
+# Raw results and evidence — keep local, never push
+results/*/01-assets/
+results/*/02-surface/
+results/*/03-candidates/evidence/
+results/*/04-verified/*/evidence/
+results/*/04-verified/*/raw/
+
+# Secrets and tokens — HARD block
+*.env
+*.token
+*.secret
+*_token.txt
+*cookies.txt
+*session.txt
+
+# Large tool outputs
+*.gz
+*.zip
+*.tar
+
+# Tool caches
+.nuclei-config/
+.config/amass/
+.config/subfinder/
+
+# Python cruft
+__pycache__/
+*.pyc
+.venv/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# But DO commit (override the above for these paths)
+!results/.gitkeep
+!results/**/findings/*.md
+!results/**/triage.md
+!results/**/HUNT-LOG.md
+!results/**/00-plan.md
