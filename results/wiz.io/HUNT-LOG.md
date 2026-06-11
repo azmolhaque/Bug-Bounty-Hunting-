@@ -92,6 +92,38 @@ curl --version | head -1 && echo "PATH OK"
 
 ---
 
+### PHASE 4 SCRIPTS (NEW — run these next)
+
+**Goal: Extract Auth0 client_id → test Chain 2 (OAuth redirect_uri bypass → Critical)**
+
+```zsh
+# Terminal 1: Phase 3 baseline (if not run yet)
+zsh ~/bug-bounty-hunting-/scripts/phase3-wiz-pi.sh 2>&1 | tee ~/phase3-output.txt
+
+# Terminal 2: Phase 4a — Auth0 client_id extraction
+zsh ~/bug-bounty-hunting-/scripts/phase4-auth0-clientid-wiz.sh 2>&1 | tee ~/phase4-auth0-output.txt
+
+# Terminal 3: Phase 4b — Trial account attacks (run AFTER registering at app.wiz.io)
+# export WIZ_JWT="eyJ..."   # paste JWT from browser DevTools
+# zsh ~/bug-bounty-hunting-/scripts/phase4-trial-account-wiz.sh
+```
+
+**Critical path to finding a confirmed High+ bug TODAY:**
+
+```
+1. Run phase4-auth0-clientid-wiz.sh
+   → If client_id found → redirect_uri bypass is auto-tested (Chain 2)
+   → If chain 2 fires → CRITICAL bug, submit immediately
+
+2. Register Wiz trial account (https://app.wiz.io free trial)
+   → Get JWT from browser DevTools
+   → Run phase4-trial-account-wiz.sh with WIZ_JWT set
+   → Webhook SSRF payload list ready in script
+   → Cross-tenant IDOR test guide in script
+```
+
+---
+
 ### ACTION A — WizCLI Binary Strings Extraction (HIGH VALUE)
 Extract internal API endpoints hardcoded in the publicly downloadable CLI binary.
 
