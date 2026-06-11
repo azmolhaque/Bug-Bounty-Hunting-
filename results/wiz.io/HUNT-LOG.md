@@ -25,6 +25,9 @@ Started: 2026-06-11
 | 2026-06-11 | 3 | evs.wiz.io | Mixpanel analytics proxy (405 + developer.mixpanel.com body) — CLOSED informational |
 | 2026-06-11 | 3 | hey.wiz.io | Full Supabase deployment (PostgREST 401, CORS *, JWKS public). Supabase project: gdujsswviqkyszcyopoh.supabase.co. Anon key NOT in any client-side bundle (server-side proxied). CLOSED — informational. |
 | 2026-06-11 | 3 | F001 re-confirmed live | DEPLOYMENT_NOT_FOUND still returned — takeover window still open |
+| 2026-06-11 | 2 | prod-us52.forensics-package.app.wiz.io | HTTP/2 401 Lambda@Edge auth (x-cache: LambdaGeneratedResponse); browser UA bypasses WAF, Lambda validates Bearer before routing; all paths 401 |
+| 2026-06-11 | 2 | events-ingestion.eu21.app.wiz.io | AWS API Gateway EU21; GET/POST all 403 ForbiddenException (application/json, empty body); requires auth token |
+| 2026-06-11 | 2 | cli-results.us1.integration.wiz.io | Amazon S3 + CloudFront; bucket listing disabled (AccessDenied XML); all path probes auth-gated |
 
 ## Key Findings
 
@@ -80,6 +83,29 @@ Started: 2026-06-11
 - `auth.app.wiz.io` — Auth service (could expose Auth0 client_id via OIDC)
 - `languageserver.app.wiz.io` — IaC language server (WebSocket LSP)
 - All confirmed AWS ELB, all return 403 from external internet
+
+### [NEW / FINGERPRINTED] forensics-package.app.wiz.io (Lambda@Edge, 401 gated)
+- `prod-us52.forensics-package.app.wiz.io` — forensics scan package result storage
+- Architecture: CloudFront WAF → bot block by default; browser UA bypasses WAF → Lambda@Edge validates `Authorization: Bearer` before routing
+- All paths return HTTP/2 **401** `Unauthorized` with `x-cache: LambdaGeneratedResponse`
+- Meaning: Lambda auth runs at edge BEFORE any backend is reached
+- **Attack hypothesis (Chain 9):** With WizCLI auth token, probe cross-tenant paths like
+  `/packages/<other-tenant-id>/<scan-id>` — if tenant ID is in path and not server-validated, IDOR → another tenant's forensic scan results
+- **Blocker:** Requires Wiz trial account → WizCLI auth flow to get valid Bearer token
+- **SSRF value:** If SSRF discovered via webhook, probe `http://forensics-package.app.wiz.io/internal/...` — Lambda@Edge not applied to internal VPC requests
+
+### [NEW / FINGERPRINTED] events-ingestion.eu21.app.wiz.io (API Gateway, 403 gated)
+- AWS API Gateway in eu21 region
+- GET root → 403 `{"message":"Forbidden"}` (ForbiddenException)
+- POST `/events` → 403 empty body; POST `/` → 403 empty body
+- **Attack hypothesis:** With tenant auth token, test if `tenant_id` in event payload can be spoofed to inject events attributable to another tenant. Also probe for unauthenticated bulk ingest paths.
+- **Blocker:** Requires auth token
+
+### [NEW / FINGERPRINTED] cli-results.us1.integration.wiz.io (S3/CloudFront, gated)
+- Amazon S3 bucket + CloudFront; listing disabled (AccessDenied XML response)
+- `?list-type=2` probe confirmed bucket exists but listing blocked
+- **Attack hypothesis:** If WizCLI scan result paths follow a guessable pattern (e.g., `/results/<tenant-id>/<uuid>.json`), try cross-tenant path traversal with a valid token
+- **Blocker:** Requires WizCLI token and known path pattern
 
 ## Decision Log
 

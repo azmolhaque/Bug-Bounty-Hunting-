@@ -165,15 +165,85 @@
 
 ---
 
+---
+
+## Chain 9 — WizCLI Token → forensics-package Cross-Tenant IDOR → High
+
+**Components:** `prod-us52.forensics-package.app.wiz.io` (Lambda@Edge auth) + WizCLI Bearer token + guessable tenant/scan ID paths
+**Probability:** Medium — forensic scan results are sensitive; path-based tenant isolation is a recurring class in CNAPP products
+**Potential severity:** High (cross-tenant forensic data read — another tenant's cloud environment scan results)
+
+**Architecture confirmed:**
+- CloudFront WAF → blocks bots (bypassed with browser UA)
+- Lambda@Edge → validates `Authorization: Bearer <token>` before routing to backend
+- Backend likely S3 or internal API serving forensic scan packages by path
+
+**How it works:**
+1. Register Wiz trial account → run a WizCLI container scan: `wizcli container scan --image ...`
+2. WizCLI authenticates to `forensics-package.app.wiz.io` to upload/retrieve scan package
+3. Capture the Bearer token and path pattern from WizCLI network traffic (`mitmproxy` or `strace`)
+4. Observe your own scan's path: likely `/packages/<your-tenant-id>/<scan-id>/result.json`
+5. Substitute another tenant's ID (enumerate via GraphQL if accessible, or via sequential UUID guess)
+6. Request cross-tenant path with your valid Bearer token:
+   `GET /packages/<other-tenant-id>/<scan-id>/result.json`
+   `Authorization: Bearer <your-valid-wiz-token>`
+7. If Lambda@Edge validates only token authenticity (not tenant scope): cross-tenant read
+
+**Key insight:** Lambda@Edge validates "is this a valid Wiz Bearer token?" but may NOT validate
+"does this token's tenant match the tenant-id in the path?" — a classic authN vs authZ split bug.
+
+**Escalation potential:**
+- Forensic scan results contain: container filesystem contents, process lists, network connections, IaC configs, secrets found by scanner
+- Cross-tenant read of another org's forensic data = Critical-level business impact even without code execution
+
+**Setup needed:**
+- Wiz trial account + WizCLI installed on Pi
+- mitmproxy or Wireshark on Pi to capture WizCLI HTTP traffic
+- A second trial account in a different tenant (friend's email) to generate a target scan
+
+**Pi test commands (after getting token):**
+```zsh
+export WIZ_TOKEN="eyJ..."
+export YOUR_TENANT_ID="<from-WizCLI-observed-path>"
+export OTHER_TENANT_ID="<second-account-tenant>"
+
+# Test your own path (baseline — should 200)
+curl -sk -H "Authorization: Bearer $WIZ_TOKEN" \
+  "https://prod-us52.forensics-package.app.wiz.io/packages/$YOUR_TENANT_ID/" | head -c 500
+
+# Cross-tenant probe (the IDOR test)
+curl -sk -H "Authorization: Bearer $WIZ_TOKEN" \
+  "https://prod-us52.forensics-package.app.wiz.io/packages/$OTHER_TENANT_ID/" | head -c 500
+```
+
+---
+
+## Chain 10 — events-ingestion Tenant Spoofing → Data Integrity / Confusion
+
+**Components:** `events-ingestion.eu21.app.wiz.io` (API Gateway) + forged event payloads
+**Probability:** Low-Medium — depends on event payload schema and server-side tenant validation
+**Potential severity:** Medium (data integrity — injecting false security events into another tenant's Wiz instance)
+
+**How it works:**
+1. With trial auth token, POST a valid event to `/events`
+2. Observe event payload schema — likely contains `tenant_id` or `org_id` field
+3. Substitute another tenant's ID in the payload
+4. If server trusts the client-supplied tenant ID without re-validating against the Bearer token: event injected into another org's security event stream
+5. False positive injection or alert suppression = security product integrity violation
+
+---
+
 ## Priority Matrix
 
 | Chain | Priority | Blocker |
 |-------|----------|---------|
 | 3 — Webhook SSRF → Grafana | P0 | Trial account needed |
 | 4 — GraphQL IDOR | P0 | Trial account needed |
+| 9 — forensics-package cross-tenant IDOR | P0 | WizCLI trial token + 2nd account |
 | 1 — F001 → CSP bypass | P1 | Pi ACTION C results |
 | 2 — F001 → OAuth hijack | P1 | Pi probe results |
 | 5 — WizCLI binary analysis | P1 | Pi ACTION A (run now) |
+| 10 — events-ingestion tenant spoof | P1 | Trial account + event schema |
 | 8 — PR preview introspection | P2 | Pi ACTION B (run now) |
 | 7 — dynamic-dns-checker SSRF | P2 | Pi probe results |
 | 6 — Ghost CMS key | P3 | Pi ACTION D (run now) |
