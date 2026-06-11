@@ -28,11 +28,11 @@ Started: 2026-06-11
 - **Report:** `findings/F001-win-test-subdomain-takeover.md` — SUBMIT NOW
 - **Chain opportunity:** If win-test.wiz.io appears in www.wiz.io CSP → CSP bypass → escalate to Critical
 
-### [INVESTIGATING] F002 — CSP Development Artifact in Production
-- `www.wiz.io` Content-Security-Policy `connect-src` contains `ws://localhost:3000`
-- Reveals dev infrastructure; potential DNS rebinding vector
-- Severity: Low/Info — draft pending
-- Status: Need full CSP dump from Pi to assess other directives
+### [DROPPED] CSP ws://localhost:3000 in production
+- `www.wiz.io` CSP `connect-src` contains `ws://localhost:3000` dev artifact
+- **Dropped:** No exploitation path; fails Hard Rejection List (CSP weakness, no
+  actual content injection or data exfiltration). Google VRP = Informational/won't fix.
+- If ACTION C (Pi) reveals win-test.wiz.io IN the CSP → revisit as Critical chain.
 
 ### [INVESTIGATING] WizCLI Binary — Internal Endpoint Discovery
 - `downloads.wiz.io/v1/wizcli/latest/wizcli-linux-arm64` → 247MB, no auth

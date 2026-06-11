@@ -1,12 +1,12 @@
 # The Methodology — An Intelligent, Agentic Bug Bounty Hunting Playbook
 
-> "Amateurs scan. Professionals map. Elites *understand* the target, then strike
-> where understanding reveals weakness." 
+> "The difference between a $500 report and a $15,000 report is not the bug class.
+> It is the quality of the impact story and the discipline to only write reports
+> that triagers immediately recognize as real."
 
 This document is the brain of the system. It defines **how to think**, **what to
 do in each phase**, **which tool to reach for**, and **how the agent reasons**
-about what it finds. It is written to be executed by an autonomous Claude Code
-agent on a Raspberry Pi 5, but it reads as a human playbook too.
+about what it finds. Read CLAUDE.md Section 3 (Hard Rejection List) before Phase 3.
 
 ---
 
@@ -18,242 +18,356 @@ Three ideas separate elite hunters from scanner-runners:
    what you have not discovered, and you cannot prioritize what you do not
    understand. Recon maximizes *what exists*; understanding maximizes *what
    matters*.
-2. **Automation is for breadth; cognition is for depth.** Let tools enumerate
-   thousands of hosts and fire templated checks. Reserve human/agent reasoning
-   for business logic, access control, state machines, and **chaining** — the
-   classes of bugs no scanner will ever find.
-3. **A bug is a hypothesis until it is reproduced.** Treat every signal as a lead
-   to be verified, minimized, and impact-proven before it earns the word "bug."
 
-The agent's job is to run breadth automatically, then apply cognition to the
-output: *which 2% of this surface is worth a human-grade look, and why?*
+2. **Automation is for breadth; cognition is for depth.** Let tools enumerate
+   thousands of hosts and fire templated checks. Reserve reasoning for business
+   logic, access control, state machines, and chaining — the classes of bugs no
+   scanner will ever find.
+
+3. **A bug is a hypothesis until it is reproduced AND impact is confirmed.**
+   A scanner hit earns 5 minutes of investigation. A confirmed impact earns a
+   report. Nothing in between earns a submission.
 
 ---
 
 ## Phase 0 — Scope, Authorization & Recon Planning
 
-**Goal:** Establish an unambiguous legal boundary and a hunting plan.
+**Goal:** Establish an unambiguous legal boundary and a hunting thesis.
 
 **Do:**
-- Parse the program brief into `config/scope.yaml`:
-  - `in_scope`: domains, wildcards, IP ranges, apps, mobile, API hosts.
-  - `out_of_scope`: explicitly excluded assets and **forbidden test types**.
-  - `rules`: rate limits, required headers, allowed payload classes, disclosure.
-- Classify the target archetype — this steers everything downstream:
-  - *Wildcard / large-surface* (`*.example.com`) → recon-heavy, asset sprawl.
-  - *Single web app* → depth-heavy, logic/authz focus.
-  - *API program* → schema discovery, object-level authorization (BOLA/IDOR).
+- Parse `config/scope.yaml`: in_scope, out_of_scope, rules, reward tiers.
+- Classify target archetype — steers everything downstream:
+  - *Wildcard / large-surface* (`*.example.com`) → recon-heavy, asset sprawl,
+    subdomain takeovers, forgotten test environments.
+  - *Single web app* → depth-heavy, logic/authz focus, IDOR.
+  - *API-first program* → schema discovery, object-level authorization (BOLA).
+  - *Multi-tenant SaaS* → cross-tenant isolation, IDOR, GraphQL schema.
+  - *CNAPP / security product* → SSRF via integrations/webhooks, connector abuse,
+    cloud metadata, cross-tenant cloud asset access.
   - *Mobile + backend* → static analysis of the app, then its API.
-- Write a one-paragraph **hunt thesis**: where do you *expect* the bugs to be,
-  and why? (e.g. "Recent acquisition → integration seams → SSO/authz gaps.")
+- Write a **hunt thesis** in `results/<target>/00-plan.md`:
+  - Where do you expect the bugs? Why?
+  - What is the #1 attack chain hypothesis?
+  - What is the fastest path to a High/Critical finding?
 
-**Agent reasoning:** Refuse to proceed if scope is empty/ambiguous. Pick the
-archetype and write the thesis to `results/<target>/00-plan.md`.
+**Agent reasoning:** Refuse to proceed if scope is empty/ambiguous. Write the
+thesis. The thesis is a living document — update it when new assets or behaviors
+reshape your expectations.
 
 ---
 
-## Phase 1 — Asset Discovery (find everything they own)
+## Phase 1 — Asset Discovery
 
 **Goal:** Enumerate the full footprint. Most criticals live on assets the target
 forgot they had.
 
-**Techniques & tools (all ARM64-native):**
-- **Seed expansion:** root domains → ASN lookup (`amass intel`, `asnmap`) → CIDR
-  ranges → reverse-DNS.
-- **Subdomain enumeration (passive):** `subfinder`, `amass enum -passive`,
-  `github-subdomains`, certificate transparency (`crt.sh`), `gau`/`waybackurls`
-  for historical hosts.
-- **Subdomain enumeration (active):** `dnsx` resolution, `puredns`/`shuffledns`
-  bruteforce with a quality wordlist, permutation (`gotator`/`altdns`).
-- **Cloud & SaaS:** S3/GCS/Azure bucket discovery, exposed dashboards, leaked
-  credentials in public repos (`trufflehog`, `gitleaks` on org repos *if in
-  scope*).
-- **Acquisitions & related orgs:** map corporate structure; new acquisitions are
-  goldmines (unintegrated security posture).
+**Techniques & tools (ARM64-native):**
+- **Passive subdomain enum:** `subfinder`, `amass enum -passive`, `github-subdomains`,
+  certificate transparency (`crt.sh`), `gau`/`waybackurls` for historical hosts.
+- **Active DNS resolution:** `dnsx`, `puredns`/`shuffledns` bruteforce with a
+  quality wordlist, permutation (`gotator`/`altdns`).
+- **ASN & cloud:** `asnmap` → CIDR ranges → reverse-DNS; S3/GCS/Azure bucket
+  discovery; `trufflehog`/`gitleaks` on org repos if in scope.
+- **Acquisitions:** new acquisitions are goldmines — unintegrated security posture.
 
-**Output:** `results/<target>/01-assets/` → `subdomains.txt`, `resolved.txt`,
-`cidrs.txt`, `cloud.txt`.
+**Output:** `results/<target>/01-assets/` → `subdomains.txt`, `resolved.txt`.
 
-**Agent reasoning:** Dedup, resolve, and **classify**. Flag the *anomalous*:
-`dev-`, `staging-`, `internal-`, `legacy-`, `old-`, `test-`, `vpn-`, `admin-`,
-`jenkins-`, `git-`, `api-` prefixes. These get priority in Phase 3.
+**Agent reasoning:** Classify every subdomain. Flags to prioritize immediately:
+`dev-`, `test-`, `staging-`, `internal-`, `legacy-`, `admin-`, `api-`, `rde-`,
+`grafana`, `jenkins`, `kibana`, `dashboard`. These are the 2% worth deep-diving.
+
+**Subdomain takeover screen (do this early):**
+For every subdomain with a CNAME to a cloud service:
+1. Check if the CNAME target is a recognized takeover-vulnerable fingerprint
+2. Confirm with `DEPLOYMENT_NOT_FOUND` / `NoSuchBucket` / etc.
+3. **Immediately evaluate impact:** are cookies shared with the parent domain?
+   Does the subdomain appear in any OAuth redirect_uri allowlist? Does it receive
+   real user traffic? If any yes: this is a valid High finding. File it NOW.
+4. If none of the above: log as Low candidate, do not write a report until a
+   chain is confirmed.
 
 ---
 
-## Phase 2 — Attack-Surface Mapping (find every input & endpoint)
+## Phase 2 — Attack-Surface Mapping
 
-**Goal:** Turn a list of hosts into a map of *interactable surface*: live
-services, technologies, endpoints, parameters, and APIs.
+**Goal:** Turn a list of hosts into a map of interactable attack surface.
 
 **Techniques & tools:**
 - **Probing:** `httpx` — status, title, tech (`-td`), CDN, TLS, response hash.
-  Cluster by response similarity to find the unique apps among thousands of hosts.
-- **Port & service scan:** `naabu` (top ports, then full on interesting hosts) →
-  service ID. Be rate-aware on the Pi.
-- **Tech fingerprinting:** `httpx -td` + Wappalyzer signatures → map to known CVEs
-  and default-cred opportunities.
-- **Content discovery:** `ffuf`/`feroxbuster` with smart wordlists (raft, target-
-  specific). Discover admin panels, backups (`.bak`, `.old`, `.zip`), VCS dirs
-  (`.git`, `.svn`), config files, API docs (`/swagger`, `/openapi.json`,
-  `/graphql`).
-- **Crawling & JS analysis:** `katana`/`hakrawler` for endpoints; extract JS,
-  then mine it with `linkfinder`/regex for hidden routes, API keys, internal
-  hostnames, and feature flags. **JS is where modern apps leak their attack
-  surface.**
-- **Parameter discovery:** `arjun`/`x8` + historical params from `gau`. Build the
-  parameter inventory that fuzzing will target.
+  Cluster by response similarity to find unique apps.
+- **Content discovery:** `ffuf`/`feroxbuster` with smart wordlists. Discover admin
+  panels, backups (`.bak`, `.old`, `.zip`), VCS dirs, config files, API docs
+  (`/swagger`, `/openapi.json`, `/graphql`).
+- **Crawling & JS analysis:** `katana`/`hakrawler`; mine JS with `linkfinder`/regex
+  for hidden routes, API keys, internal hostnames. **JS is where modern apps leak
+  their attack surface.**
+- **Parameter discovery:** `arjun`/`x8` + historical params from `gau`.
 - **API discovery:** OpenAPI/Swagger/GraphQL introspection; reconstruct the API
-  model (objects, IDs, verbs) — the foundation for IDOR/BOLA hunting.
+  model (objects, IDs, verbs) — the foundation for IDOR hunting.
 
-**Output:** `results/<target>/02-surface/` → `live.txt`, `tech.json`,
-`endpoints.txt`, `params.json`, `js-findings.md`, `apis.md`.
+**Output:** `results/<target>/02-surface/` → `live.txt`, `endpoints.txt`,
+`apis.md`, `priority.md`.
 
-**Agent reasoning:** This is the first big cognition step. From the map, produce a
-**ranked target list** (`02-surface/priority.md`) answering: *which endpoints
-handle auth, money, files, user data, or admin functions?* Those rank highest.
+**Priority.md must answer:**
+- Which endpoints handle auth, tokens, money, files, user data, or admin actions?
+- Which hosts are non-production (test/staging/dev)? These get first attention.
+- What tech is confirmed (framework, auth system, cloud provider)? Maps to
+  highest-probability bug classes.
 
 ---
 
-## Phase 3 — Vulnerability Discovery (generate candidate bugs)
+## Phase 3 — Vulnerability Discovery
 
-**Goal:** Produce a prioritized list of *candidate* vulnerabilities. Breadth via
-automation; depth via reasoning.
+**Goal:** Produce a prioritized list of **confirmed candidates** — not maybes.
+Kill noise fast. Pursue depth only on leads that can realistically yield Medium+.
 
-### 3a. Automated breadth
-- **`nuclei`** with curated templates (CVEs, misconfigs, exposures, default
-  creds, takeovers). Tune severity and rate for the Pi. This catches the
-  low-hanging and the known-CVE fruit fast.
+### The Lead Qualification Gate
+
+Before spending more than 5 minutes on any signal, answer three questions:
+
+> **Q1 — What does the attacker concretely gain?**
+> Not "information" — specifically: whose data, which account, what capability?
+> If the answer is vague, drop it.
+
+> **Q2 — Is this the intended behavior?**
+> Check API docs, public changelog, program known-issues, and common sense.
+> If it is plausibly intentional product design, drop it.
+
+> **Q3 — Would the vendor fix this?**
+> If the fix is trivially "add a header" and no exploit path exists, the triager
+> will close as informational. Drop it.
+
+Only leads that pass all three questions proceed to testing.
+
+### 3a. Automated Breadth
+
+- **`nuclei`** with curated templates (CVEs, misconfigs, exposures, default creds,
+  takeovers). Tune severity and rate for the Pi.
 - **Subdomain takeover:** `nuclei` takeover templates + `subjack`/`dnsx` CNAME
-  checks against dangling cloud resources.
-- **Secrets/exposures:** exposed `.env`, `.git`, backups, directory listings,
-  debug endpoints, stack traces.
+  checks. Apply the takeover impact screen above before logging as a finding.
+- **Secrets/exposures:** `.env`, `.git`, backups, directory listings, debug
+  endpoints, stack traces. Only report if the secret is active and enables access.
 
-### 3b. Manual/agentic depth (where the real bounties are)
-Walk each high-priority target through the bug-class checklist:
+### 3b. Manual / Agentic Depth (where the real bounties are)
 
-- **Broken Access Control / IDOR / BOLA** — the #1 source of high-value bounties.
-  Enumerate object IDs, swap them across accounts, test horizontal & vertical
-  privilege escalation, force-browse admin routes, tamper with roles/tenant IDs.
-- **Authentication & session** — weak reset flows, JWT flaws (`alg:none`, weak
-  secret, `kid` injection), OAuth misconfig (redirect_uri, state, account
-  linking), MFA bypass, session fixation.
-- **Injection** — SQLi, NoSQLi, command, template (SSTI), LDAP, header injection.
-  Use OOB confirmation where blind.
-- **SSRF** — cloud-metadata reach (169.254.169.254), internal port scanning,
-  webhook/URL features, PDF/image renderers, "fetch from URL" anywhere.
-- **Business logic** — race conditions (coupon/refund/transfer), price/quantity
-  tampering, workflow step-skipping, mass assignment, insufficient
-  rate-limiting on sensitive actions.
-- **XSS / client-side** — reflected/stored/DOM, postMessage abuse, prototype
-  pollution, CSPi gaps. Prioritize stored & those that reach authenticated/admin
-  context.
-- **CSRF / CORS** — state-changing requests without protection, permissive ACAO
-  with credentials.
-- **File handling** — unrestricted upload, path traversal, XXE, ZIP-slip,
-  image/PDF processing bugs.
-- **Misconfig & exposure** — verbose errors, debug modes, default creds, exposed
-  admin/CI/monitoring (Jenkins, Grafana, Kibana, Actuator).
+For each high-priority target, pick the **2-3 most plausible bug classes** based
+on the tech and behavior — do not shotgun every class at every endpoint.
 
-**Output:** `results/<target>/03-candidates/candidates.jsonl` — one record per
-lead with `{target, class, evidence, confidence, why_it_matters}`.
+**Bug classes by probability × payout (highest first):**
 
-**Agent reasoning:** For each high-priority endpoint, the agent picks the 2–3
-*most plausible* bug classes given the tech/behavior and tests those first.
-Don't shotgun every class at every endpoint — **hypothesize, then test**.
+| Class | Signals that raise probability | Minimum impact to report |
+|-------|-------------------------------|--------------------------|
+| **Broken Access Control / IDOR / BOLA** | Multi-tenant app, object IDs in URLs/params, GraphQL with object IDs, user-scoped resources | Read/write another user's data OR cross-tenant access |
+| **SSRF** | Webhook config, URL-fetch features, connectors, PDF/image renderers, "import from URL" | Reach internal metadata (169.254.169.254) OR internal service with sensitive data |
+| **Auth/OAuth/JWT** | SSO, third-party login, JWT in cookies/headers, "remember me", OAuth apps | Account takeover or privilege escalation |
+| **Injection** | Search, filters, templates, exports, XML input, headers with special chars | Data exfil, RCE, or auth bypass |
+| **Business Logic** | Checkout, quotas, roles, multi-step workflows, numeric quantities | Financial loss or unauthorized capability |
+| **Stored XSS** | User-content rendered to other users, especially admins | Admin session/data compromise |
+| **Subdomain Takeover** | Dangling CNAME to cloud provider | Cookie/OAuth sharing with parent domain confirmed |
+| **Secrets in JS/repos** | JS bundles, source maps, public repos, CI logs | Active credential, token, or key |
+| **Default Creds / Exposed Admin** | Grafana, Jenkins, Kibana, Actuator, phpmyadmin — test/staging | Authenticated access to sensitive data |
+
+**For CNAPP / security product targets specifically:**
+1. Webhook/connector SSRF → internal metadata → cloud creds (chain all three)
+2. GraphQL cross-tenant IDOR → another tenant's cloud asset data
+3. CLI binary strings → internal endpoint discovery → unauthenticated access
+4. OAuth/SSO flows → redirect_uri bypass → account takeover
+5. Developer RDE environments → relaxed auth → internal API exposure
+
+### 3c. Explicitly Skip
+
+Do not spend time on signals that fall into CLAUDE.md Section 3 unless you have
+already identified a confirmed chain link to Medium+ impact. Log a one-line note
+("Dropped: CSP dev artifact — no exploitation path") and move on.
+
+**Output:** `results/<target>/03-vulns/candidates.jsonl`
+```json
+{
+  "id": "C001",
+  "target": "webhook.us1.app.wiz.io",
+  "class": "SSRF",
+  "evidence": "POST /api/webhook accepts arbitrary URL; server-side request confirmed via OOB DNS",
+  "confidence": "HIGH",
+  "impact": "Server makes request to attacker URL; testing metadata endpoint next",
+  "chain_with": null,
+  "status": "PURSUING"
+}
+```
 
 ---
 
 ## Phase 4 — Verification, PoC & Chaining
 
-**Goal:** Convert candidates into **proven** vulnerabilities with minimal,
-safe PoCs.
+**Goal:** Convert candidates to **proven** vulnerabilities with minimal, safe PoCs.
 
 **Do:**
-- Reproduce from a clean state (fresh session/account) to rule out
-  scanner-induced false positives.
+- Reproduce from a clean state (fresh session/account/IP).
 - **Minimize the PoC** — the smallest request/steps that demonstrate the bug.
-- **Prove impact safely** — read-only proof, OOB interaction, your-own-account
-  data only. No destruction, no real-user data, no mass exploitation.
-- **Chain** — ask of every confirmed bug: *what does this unlock?* Combine
-  info-leaks + IDOR + weak authz into a single high/critical narrative.
-- Score impact: CVSS 3.1 vector + business context (what data/funds/control is
-  at risk).
+- **Prove impact safely** — read-only proof, OOB interaction, your own test
+  account data only. No destruction, no real-user data, no mass exploitation.
+- **Chain** — ask of every confirmed bug: *what does this unlock?*
+  - Confirmed SSRF → probe cloud metadata → extract credentials → confirm active
+  - Confirmed IDOR → demonstrate reading data that belongs to another tenant
+  - Confirmed subdomain takeover → verify cookie domain sharing OR OAuth chain
+- **Score impact:** CVSS 3.1 vector + business context.
+
+**Verification standard:**
+- Reproduced at least twice from a clean state.
+- If you cannot reproduce it twice, it is **not verified** — downgrade to
+  candidate and re-investigate.
+- Every claim in the impact section must be backed by a specific artifact
+  (request/response, screenshot, DNS/HTTP interaction log).
 
 **Output:** `results/<target>/04-verified/` → one folder per confirmed bug with
-PoC, request/response evidence (sanitized), and impact note.
-
-**Agent reasoning:** Be skeptical of your own hits. If you cannot reproduce it
-twice, it is not verified. Downgrade honestly.
+PoC, sanitized evidence, CVSS vector, and impact note.
 
 ---
 
-## Phase 5 — Triage, Severity & Deduplication
+## Phase 5 — Triage, Severity & Pre-Submission Gate
 
-**Goal:** Decide what is worth reporting and in what order.
+**Goal:** Decide what is worth reporting. Apply the submission gate ruthlessly.
 
-**Do:**
-- **Severity:** CVSS 3.1 base + temporal/business adjustment. Map to the
-  program's reward tiers.
-- **Dedup:**
-  - Against the program's known-issues / out-of-scope-known list.
-  - Against your own `results/` history (don't re-report).
-  - Against public CVEs/changelogs (is this a known, already-patched-elsewhere
-    issue?).
-- **Prioritize:** report highest-impact + cleanest-PoC first. Speed matters for
-  duplicates — first valid report wins.
+### Severity Scoring
 
-**Output:** `results/<target>/05-triage/triage.md` — ranked table with
-severity, dedup status, and report-readiness.
+CVSS 3.1 base score + business context adjustment:
+
+| Score | Label | Report? |
+|-------|-------|---------|
+| 9.0-10.0 | Critical | Yes — immediately |
+| 7.0-8.9 | High | Yes — immediately |
+| 4.0-6.9 | Medium | Yes — if impact story is strong |
+| 2.0-3.9 | Low | Only if confirmed chain to Medium+ |
+| 0.1-1.9 | Informational | **Never standalone** |
+
+### Pre-Submission Gate (all must pass)
+
+Before writing the report:
+
+- [ ] Attacker gain is **concrete and specific** (not "could potentially...")
+- [ ] Behavior is **not documented as intended** (checked docs + changelog)
+- [ ] Vendor would **actually fix this** (requires a code/config change)
+- [ ] Not in CLAUDE.md Section 3 Hard Rejection List (or fully chained past it)
+- [ ] CVSS ≥ 4.0 OR confirmed chain to CVSS ≥ 4.0
+- [ ] Not a known duplicate (checked program known-issues + own results/)
+- [ ] Reproducible from clean state, PoC exists
+- [ ] Google VRP tier is confirmed for the target host
+
+If any box is unchecked: **do not write the report**. Either fix the gap or
+drop the finding.
+
+### Deduplication
+
+1. Check the program's known-issues / Hall of Fame for the same class + target.
+2. Check your own `results/<target>/findings/` for overlapping class/endpoint.
+3. Search public CVEs and advisories for the same root cause.
+4. Search HackerOne/Bugcrowd disclosed reports for this target.
+
+**Speed rule:** If your finding passes all gates, submit **today**. In competitive
+programs, first valid report wins. Do not wait for a "better" PoC if the current
+one clearly demonstrates impact.
 
 ---
 
 ## Phase 6 — Reporting
 
-**Goal:** Communicate the bug so a triager can reproduce and reward it in minutes.
+**Goal:** A report that a triager rewards in under 5 minutes.
 
-**A great report has:**
-1. **Title** — bug class + impact + location, one line.
-2. **Summary** — what, where, why it matters, in 2–3 sentences.
-3. **Severity** — CVSS vector + business impact.
-4. **Steps to reproduce** — numbered, copy-pasteable, from a clean state.
-5. **Proof** — minimal request/response or screenshots (sanitized).
-6. **Impact** — concrete attacker capability and affected users/data.
-7. **Remediation** — specific, actionable fix tied to root cause.
-8. **References** — CWE, OWASP, relevant docs.
+**Anatomy of a winning report:**
 
-Use `templates/report.md`. Generate via `/report`.
+1. **Title:** `[Class] [Impact] via [Location]` — one line, specific.
+   - Good: `Cross-Tenant Cloud Asset Access via Unauthenticated GraphQL projects() Query`
+   - Bad: `Security Issue in API`
 
-**Agent reasoning:** Write for a busy triager. Clarity and reproducibility are
-worth more than length. Never include unsanitized secrets/PII.
+2. **Summary:** 2-3 sentences. What, where, why it matters.
+
+3. **Severity:** CVSS 3.1 vector + string + business impact sentence.
+
+4. **Steps to reproduce:** Numbered, copy-pasteable, from a clean state.
+   Every step must be executable by someone who has never seen the app.
+
+5. **Proof:** Minimal request/response or screenshot. Sanitize any real user PII.
+
+6. **Impact:** Concrete attacker capability. "An attacker can read any customer's
+   cloud asset inventory" is concrete. "An attacker could potentially access
+   sensitive information" is not.
+
+7. **Remediation:** Specific fix tied to root cause. One sentence minimum.
+
+8. **References:** CWE, OWASP, relevant CVEs.
+
+**Report anti-patterns that get downgraded:**
+- Overstating severity ("This is Critical because it *could* be chained with...")
+  when the chain is unconfirmed.
+- Vague impact ("sensitive information could be accessed").
+- Missing reproduction steps or evidence.
+- Reporting a behavior the vendor documented as intentional.
+- Attaching overly large files, unrelated screenshots, or raw tool output.
 
 ---
 
-## The Intelligence Loop (what makes this *agentic*)
+## The Intelligence Loop
 
 ```
-            ┌─────────────────────────────────────────────┐
-            │  observe → hypothesize → test → learn → adapt │
-            └─────────────────────────────────────────────┘
+observe → hypothesize → qualify (kill/pursue) → test → verify → chain → report
+              ↑                                                          |
+              └──────────── re-plan if new surface discovered ──────────┘
 ```
 
-After each phase the agent **re-plans**: new assets reshape the surface map; a
-leaked internal hostname reopens recon; a confirmed IDOR suggests testing the
-same pattern across every object type. The hunt is not linear — it is a loop that
-tightens around the most promising lead. The agent maintains a living
-`results/<target>/HUNT-LOG.md` recording every decision, so the loop survives
-context resets and Pi reboots.
+After each phase, re-plan: new assets reshape the surface; a leaked hostname
+reopens recon; a confirmed IDOR suggests testing the same pattern across every
+object type. Maintain `results/<target>/HUNT-LOG.md` for every decision.
 
 ---
 
-## Bug-Class Quick Reference (priority-ordered by typical bounty value)
+## Bug-Class Quick Reference (payout-weighted)
 
-| Class | Where to look | Why it pays |
-|-------|---------------|-------------|
-| Broken Access Control / IDOR / BOLA | Any object-id endpoint, multi-tenant apps | Direct data access, high severity, scanner-blind |
-| SSRF | URL-fetch features, webhooks, renderers | Cloud metadata → full compromise |
-| Auth/OAuth/JWT flaws | Login, reset, SSO, token handling | Account takeover |
-| Injection (SQLi/SSTI/cmd) | Search, filters, templates, exports | RCE / data exfil |
-| Business logic & race conditions | Checkout, refund, transfer, quotas | Financial impact, scanner-blind |
-| Subdomain takeover | Dangling DNS → cloud | Easy, clean, common |
-| Stored XSS (to admin/authn ctx) | User-content rendered to staff | Session/admin compromise |
-| Secrets & exposures | `.git`, `.env`, JS, backups, CI | Direct keys → lateral movement |
+| Class | Where to look | Minimum to report |
+|-------|---------------|-------------------|
+| IDOR / BOLA / broken access | Object IDs, multi-tenant APIs, GraphQL | Another user's data confirmed read/write |
+| SSRF | Webhooks, connectors, URL fetch, renderers | Metadata or internal service reached |
+| Auth / OAuth / JWT | Login, reset, SSO, token endpoints | Account takeover or privilege escalation |
+| Injection (SQL/SSTI/cmd) | Search, filters, templates, exports | Data exfil or RCE demonstrated |
+| Business logic | Checkout, transfer, quota, workflow | Financial loss or unauth capability |
+| Stored XSS | User content → other users / admin | Session compromise in sensitive context |
+| Subdomain takeover | Dangling CNAME | Shared cookie domain OR OAuth redirect confirmed |
+| Secrets exposure | JS, git, CI, backups | Active credential enabling access |
+| Default creds / exposed admin | Grafana, Jenkins, staging dashboards | Authenticated access to sensitive data |
+| Path traversal / file read | Upload, download, archive | Sensitive file confirmed read |
+
+---
+
+## Google VRP — Specific Known Rejection Patterns
+
+These are **consistently rejected or downgraded** by Google VRP triagers:
+
+| Finding | Typical disposition |
+|---------|---------------------|
+| Missing HSTS / X-Frame-Options | Informational — won't fix |
+| CSP weakness with no exploit path | Informational — won't fix |
+| SPF/DMARC missing on subdomain | Informational |
+| TLS 1.0/1.1 support | Informational unless downgrade proven |
+| CORS on endpoint with no sensitive data | Informational |
+| Self-XSS | N/A — not a vulnerability |
+| CSRF on logout | Won't fix |
+| Open redirect to owned domain | Won't fix |
+| Rate limit absent on non-sensitive endpoint | Won't fix |
+| Stack trace / error message | Informational unless exploitable data |
+| Subdomain takeover on dead host (no cookies, no OAuth) | Low / won't fix |
+| Clickjacking on non-sensitive page | Won't fix |
+| Password complexity policy | By design |
+| No 2FA requirement | By design |
+| Punycode / homograph phishing | By design |
+| HTTP methods allowed (OPTIONS, TRACE) | By design |
+| Publicly readable Swagger with no secrets | By design |
+
+**What Google VRP consistently pays for:**
+- Cross-tenant data access in acquired products (IDOR/BOLA)
+- SSRF reaching cloud metadata or internal services
+- Authentication bypass / account takeover
+- RCE or command injection
+- SQL injection with data exfil
+- OAuth flow vulnerabilities leading to token theft
+- Stored XSS reaching admin/authenticated-privileged context
+- Subdomain takeover with confirmed cookie sharing or OAuth redirect
+- Active credential leaks (API keys, JWT secrets, cloud access keys)
+- Broken authorization on sensitive admin/billing/security functions

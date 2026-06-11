@@ -4,16 +4,21 @@
 
 ## Chain 1 — Subdomain Takeover → CSP Bypass → Critical (PENDING PI OUTPUT)
 
-**Components:** F001 (win-test.wiz.io takeover) + CSP misconfiguration
-**Probability:** Medium-High — CSP commonly references own subdomains
+**Components:** F001 (win-test.wiz.io takeover) + CSP allowlist entry for win-test
+**Probability:** Medium — CSP commonly references own subdomains; win-test is a
+  specific named host that could appear in a test/demo CSP entry
 **Potential severity:** Critical (9.3+)
+**Submission gate:** Do NOT report CSP weakness alone. Report ONLY if:
+  - `win-test.wiz.io` (exact match) appears in `script-src`, `connect-src`,
+    `frame-src`, or `default-src` of www.wiz.io OR app.wiz.io
+  - This then unlocks: JS injection from attacker-controlled origin into
+    portal context → session token theft → account takeover chain
 
 **How it works:**
 1. Attacker claims win-test.wiz.io via Vercel (F001, already confirmed exploitable)
-2. If win-test.wiz.io or `*.wiz.io` appears in www.wiz.io / app.wiz.io CSP `script-src`
+2. win-test.wiz.io appears in www.wiz.io / app.wiz.io CSP `script-src`
 3. Attacker serves malicious JS at win-test.wiz.io
-4. www.wiz.io/app.wiz.io loads and executes that JS in origin context
-5. Steal session cookies, capture keystrokes, exfiltrate tokens
+4. Portal loads and executes that JS → steal session tokens / capture credentials
 
 **Validation step:** Run ACTION C on Pi → check CSP output in `results/03-vulns/csp-audit.txt`
 **Script:** `scripts/phase3-wiz-pi.sh` (ACTION C)
