@@ -21,7 +21,7 @@
 #   --status      print status summary and exit
 #
 # State: results/<target>/.orchestrator-state.json
-# Log:   results/<target>/HUNT-LOG.md
+# Log:   results/<target>/orchestrator.log  (Pi-local, gitignored)
 
 set -uo pipefail
 
@@ -84,7 +84,7 @@ done
 # ══════════════════════════════════════════════════════════════════════════════
 RESULTS="$REPO_ROOT/results/$TARGET"
 STATE="$RESULTS/.orchestrator-state.json"
-LOG="$RESULTS/HUNT-LOG.md"
+LOG="$RESULTS/orchestrator.log"
 CANDIDATES="$RESULTS/03-candidates/candidates.jsonl"
 
 mkdir -p "$RESULTS"/{01-assets,02-surface,"03-candidates/evidence",04-verified,05-triage,findings}

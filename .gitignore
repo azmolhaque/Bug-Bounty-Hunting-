@@ -54,3 +54,4 @@ results/**/candidates.jsonl
 !results/**/HUNT-LOG.md
 !results/**/00-plan.md
 results/**/recon.log
+results/**/orchestrator.log
