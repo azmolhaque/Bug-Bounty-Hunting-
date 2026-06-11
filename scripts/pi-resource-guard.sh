@@ -61,16 +61,21 @@ get_ram_pct() {
 }
 
 get_cpu_pct() {
-  # Two-sample delta is most accurate, but we do a simple 1s top sample
-  local idle
-  idle=$(top -bn1 2>/dev/null | awk '
-    /^(%?)Cpu|^Cpu/ {
-      for(i=1;i<=NF;i++) {
-        if ($i ~ /id,?$/ || $(i+1) ~ /^id/) { val=$i; gsub(/[^0-9.]/,"",val); print val; exit }
-      }
-    }
-  ' | head -1 || echo "50")
-  local used=$((100 - ${idle%.*}))
+  # /proc/stat delta — avoids top's stray terminal output on Pi OS
+  local line1 line2
+  read -r line1 < /proc/stat 2>/dev/null || { echo "0"; return; }
+  sleep 0.3
+  read -r line2 < /proc/stat 2>/dev/null || { echo "0"; return; }
+  local used
+  used=$(awk -v l1="$line1" -v l2="$line2" 'BEGIN {
+    n = split(l1, a); split(l2, b)
+    idle1 = a[5]; idle2 = b[5]
+    total1=0; total2=0
+    for (i=2;i<=n;i++) { total1+=a[i]; total2+=b[i] }
+    td = total2 - total1; id = idle2 - idle1
+    if (td > 0) print int((td - id) * 100 / td); else print 0
+  }')
+  local used=$((used + 0))
   echo "$used"
 }
 

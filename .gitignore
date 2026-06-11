@@ -37,6 +37,12 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Orchestrator state is Pi-local (machine-specific paths, ephemeral)
+results/**/.orchestrator-state.json
+
+# Chain graph is Pi-local (rebuilt each hunt session)
+results/**/chain-graph.json
+
 # But DO commit (override the above for these paths)
 !results/.gitkeep
 !results/**/findings/*.md

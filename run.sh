@@ -31,7 +31,7 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lo
 # Colors (if terminal supports it)
 # ─────────────────────────────────────────────────────────────────────────────
 if [ -t 1 ]; then
-  RED='\033[0;31m'; YLW='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'; RST='\033[0m'
+  RED=$'\033[0;31m'; YLW=$'\033[0;33m'; GRN=$'\033[0;32m'; BLU=$'\033[0;34m'; RST=$'\033[0m'
 else
   RED=''; YLW=''; GRN=''; BLU=''; RST=''
 fi
