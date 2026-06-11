@@ -53,3 +53,4 @@ results/**/candidates.jsonl
 !results/**/triage.md
 !results/**/HUNT-LOG.md
 !results/**/00-plan.md
+results/**/recon.log

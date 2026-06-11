@@ -1,5 +1,5 @@
 # Hunt Plan — wiz.io
-# Generated: 2026-06-11T16:26:42Z
+# Generated: 2026-06-11T18:04:09Z
 
 ## Target Classification
 - Root domain: wiz.io
@@ -24,4 +24,4 @@
 ## Phase History
 | Phase | Status | Timestamp |
 |-------|--------|-----------|
-| 0 | DONE | 2026-06-11T16:26:42Z |
+| 0 | DONE | 2026-06-11T18:04:09Z |
