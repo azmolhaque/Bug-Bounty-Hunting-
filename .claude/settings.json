@@ -37,8 +37,7 @@
     ],
     "deny": [
       "Read(./results/**/evidence/**)",
-      "Bash(rm -rf:*)",
-      "Bash(nuclei:*-tags dos*)"
+      "Bash(rm -rf:*)"
     ]
   },
   "env": {
