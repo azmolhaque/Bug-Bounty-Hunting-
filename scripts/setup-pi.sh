@@ -75,9 +75,13 @@ install_go_tools() {
 }
 
 install_python_tools() {
-  log "Installing Python helpers (arjun, trufflehog via pipx-ish venv)…"
-  python3 -m pip install --user --quiet --upgrade pip 2>/dev/null || true
-  python3 -m pip install --user --quiet arjun 2>/dev/null || warn "arjun pip install failed"
+  log "Installing Python helpers (arjun via pipx — works on Debian trixie/PEP-668)…"
+  if ! command -v pipx >/dev/null 2>&1; then
+    sudo apt-get install -y --no-install-recommends pipx >/dev/null
+  fi
+  if command -v arjun >/dev/null 2>&1; then log "  arjun ✓ (already installed)"; return; fi
+  pipx install arjun 2>/dev/null || warn "  arjun pipx install failed — run: pipx install arjun"
+  pipx ensurepath 2>/dev/null || true
 }
 
 install_wordlists() {
@@ -95,7 +99,7 @@ update_nuclei_templates() {
 
 check() {
   log "Toolchain check:"
-  for b in go subfinder httpx dnsx naabu nuclei katana gau ffuf amass anew dalfox nmap jq; do
+  for b in go subfinder httpx dnsx naabu nuclei katana gau ffuf amass anew dalfox nmap jq arjun; do
     if command -v "$b" >/dev/null 2>&1; then echo -e "  ${GREEN}✓${NC} $b"; else echo -e "  ${RED}✗${NC} $b"; fi
   done
 }
@@ -107,7 +111,7 @@ main() {
     all|*)
       install_base; install_go; install_go_tools; install_python_tools
       install_wordlists; update_nuclei_templates; check
-      log "Done. Run 'source ~/.bashrc' (or re-login) so PATH picks up the tools."
+      log "Done. Run 'source ~/.zshrc' (zsh) or 'source ~/.bashrc' (bash), or re-login."
       warn "Reminder: populate config/scope.yaml before hunting. No scope, no hunt." ;;
   esac
 }
