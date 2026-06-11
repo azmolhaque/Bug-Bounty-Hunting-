@@ -68,6 +68,10 @@
 - `http://us1.grafana.wiz.io/api/health`
 - `http://us1.grafana.wiz.io/api/datasources` (Grafana datasource list = DB/cloud creds)
 - `http://us1.grafana.wiz.io/api/dashboards/home`
+- `http://auth.app.wiz.io/` (VPC-internal auth service — confirmed AWS ELB behind internal ALB)
+- `http://auth.app.wiz.io/.well-known/openid-configuration` (may expose Auth0 client_id!)
+- `http://languageserver.app.wiz.io/` (VPC-internal language server — may exec code or read files)
+- `http://languageserver.app.wiz.io/health`
 
 **Setup needed:** Wiz trial account + interactsh listener
 **Script:** `scripts/phase3-wiz-pi.sh` (ACTION F)
