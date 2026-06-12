@@ -123,6 +123,8 @@ in_scope:
   - "gwebhook.svc.cameyo.com"
 
   # Photomath (acquired 2022) — TIER0; multiple internal/admin subdomains
+  # photomath.net apex used as recon anchor; active testing only on listed subdomains
+  - "photomath.net"              # recon anchor — scope gate passes for subdomain enumeration
   - "dpcapi-admin.photomath.com"
   - "internal.photomath.com"
   - "dpcapi-admin.photomath.net"

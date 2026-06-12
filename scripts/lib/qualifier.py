@@ -101,8 +101,8 @@ def nuclei_to_class(template: str, severity: str) -> str:
     for pattern, cls in _CLASS_PATTERNS:
         if pattern.search(t):
             return cls
-    if severity in ("critical", "high"):
-        return template   # preserve original name for important unknowns
+    if severity in ("critical", "high", "medium"):
+        return template   # preserve template ID for medium+ unknowns — aids triage
     return f"unknown-{severity}"
 
 
