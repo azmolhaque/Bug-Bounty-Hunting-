@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S bash -c 'exec "$(dirname "$0")/../.venv/bin/python3" "$0" "$@" 2>/dev/null || exec python3 "$0" "$@"'
+# ↑ auto-selects .venv/bin/python3 if present, falls back to system python3
 """
 orchestrate.py — Python-native bug bounty orchestrator (v2.0)
 

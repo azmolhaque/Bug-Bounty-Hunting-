@@ -27,6 +27,10 @@ cd "$REPO_ROOT"
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:$HOME/go/bin:$HOME/.local/bin:$PATH
 
+# Use project venv Python if present (created by: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt)
+PYTHON="${REPO_ROOT}/.venv/bin/python3"
+[ -x "$PYTHON" ] || PYTHON="python3"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Colors (if terminal supports it)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -157,10 +161,11 @@ status_dashboard() {
 # ─────────────────────────────────────────────────────────────────────────────
 check_python() {
   printf "  Python deps:  "
-  if python3 -c "import anthropic, yaml, requests" 2>/dev/null; then
-    echo "${GRN}anthropic yaml requests OK${RST}"
+  if "$PYTHON" -c "import anthropic, yaml, requests" 2>/dev/null; then
+    echo "${GRN}anthropic yaml requests OK (${PYTHON})${RST}"
   else
-    echo "${YLW}some deps missing — run: pip3 install -r requirements.txt${RST}"
+    echo "${YLW}some deps missing${RST}"
+    echo "    Run: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
   fi
 }
 
@@ -198,5 +203,5 @@ echo ""
 if [ "${ORCHESTRATOR:-python}" = "bash" ]; then
   exec ./scripts/agent-orchestrate.sh "$TARGET" "$@"
 else
-  exec python3 scripts/orchestrate.py "$TARGET" "$@"
+  exec "$PYTHON" scripts/orchestrate.py "$TARGET" "$@"
 fi
