@@ -35,6 +35,10 @@ Started: 2026-06-11
 | 2026-06-12 | 2 | netscanner-results.us23.app.wiz.io | S3 + CloudFront; 403 AccessDenied; netscanner results bucket |
 | 2026-06-12 | 2 | prod-us106.sensor-forensics.app.wiz.io | CloudFront HTML 403; WAF bot block (same pattern as forensics-package) |
 | 2026-06-12 | 2 | prod-eu32-sensor.app.wiz.io | AWS API Gateway; 403 "Missing Authentication Token" |
+| 2026-06-12 | 2 | no-cdn-version-backup.wiz.io | Global Accelerator IPs (75.2.70.75, 99.83.190.102) → nginx origin; HTTP 301 → HTTPS on all paths; HTTPS port 443 unreachable (000); DEAD END — VPC-internal origin only accessible through CloudFront |
+| 2026-06-12 | 2 | diskanalyzer-results-source.me-south-1.{app,e2e}.wiz.io | CloudFront 504 Gateway Timeout via CCU50-P5 (Kolkata PoP) to me-south-1 origin; generic error body — no S3 bucket name leaked; direct S3 bucket guesses timed out; PARKED — origin unknown |
+| 2026-06-12 | 2 | a2a.eu1.test.wiz.io | Direct AWS ELB (awselb/2.0, no CloudFront); blanket 403 on all 17 paths probed (/, /health, /api, /v1, /graphql, /admin, /livez, etc.); needs auth token to proceed; PARKED |
+| 2026-06-12 | 2 | a2a.test.wiz.io | 403 from AWS ELB via CloudFront (x-cache: Error from cloudfront); same pattern as eu1 variant |
 
 ## Key Findings
 
@@ -114,6 +118,28 @@ Started: 2026-06-11
 - **Attack hypothesis:** If WizCLI scan result paths follow a guessable pattern (e.g., `/results/<tenant-id>/<uuid>.json`), try cross-tenant path traversal with a valid token
 - **Blocker:** Requires WizCLI token and known path pattern
 
+### [NEW BATCH 2 — 2026-06-12] no-cdn-version-backup / diskanalyzer / a2a — INVESTIGATED
+
+**no-cdn-version-backup.wiz.io** — DEAD END
+- DNS → AWS Global Accelerator IPs (75.2.70.75, 99.83.190.102)
+- Port 80: nginx 301 redirect to HTTPS on every path
+- Port 443: connection refused (000) — TLS listener not configured
+- Conclusion: VPC-internal nginx origin, only accessible through CloudFront; "no-cdn" means it IS the origin behind the CDN, not a public bypass
+
+**diskanalyzer-results-source.me-south-1.{app,e2e}.wiz.io** — PARKED
+- CloudFront 504 Gateway Timeout — origin unreachable
+- Response headers: `via: 1.1 b2449cb00a927a35244993c45d8637d4.cloudfront.net`, PoP CCU50-P5 (Kolkata)
+- Error body is generic CloudFront page — no S3 bucket name revealed
+- S3 bucket name guesses (diskanalyzer-results-source, diskanalyzer-results-source-me-south-1) — connection timeout to me-south-1 from Pi
+- Cannot progress without knowing exact bucket name; PARKED
+
+**a2a.eu1.test.wiz.io** — PARKED (confirmed architecture: direct ELB, no WAF)
+- httpx: `[403] [403 Forbidden] [awselb/2.0] [Amazon ELB, Amazon Web Services]`
+- 17 paths probed — all 403 from ELB itself (no listener rule matches, not app-level)
+- "a2a" = agent-to-agent, "eu1.test" = test environment EU region 1
+- Direct ELB without CloudFront/WAF confirmed (no x-cache header)
+- PARKED — needs valid auth token or mTLS client cert to proceed
+
 ### [NEW BATCH — 2026-06-12] 8 more subdomains fingerprinted
 
 **S3 + CloudFront buckets (all 403 AccessDenied, listing disabled):**
@@ -148,6 +174,10 @@ All follow the same auth pattern: valid Wiz tenant token required. The cross-ten
 - api.digitaltrust.*.wiz.io — confirmed S3 static buckets, not real APIs; closed
 - downloads.wiz.io root = S3 403; /v1/wizcli/* = public binary; no bucket listing
 - Webhook SSRF (H1) remains #1 priority — needs trial account
+- no-cdn-version-backup.wiz.io — confirmed DEAD END (VPC-internal origin, port 443 closed externally)
+- diskanalyzer-results-source — PARKED (504, can't determine S3 origin without AWS console access)
+- a2a.eu1.test.wiz.io — PARKED (blanket ELB 403, interesting no-WAF target but needs auth)
+- All new host investigations bottlenecked on trial account / Wiz JWT
 
 ## Environment Constraint (IMPORTANT)
 The cloud execution environment (where this Claude session runs) routes ALL outbound
