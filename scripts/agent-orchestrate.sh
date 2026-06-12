@@ -489,13 +489,17 @@ nuclei_to_class() {
     *idor*|*bola*|*broken-access*) echo "IDOR" ;;
     *sqli*|*sql-injection*) echo "SQLi" ;;
     *ssti*) echo "SSTI" ;;
-    *xss*) echo "XSS-reflected" ;;
     *stored-xss*) echo "XSS-stored" ;;
-    *rce*|*command-injection*) echo "RCE" ;;
+    *xss*) echo "XSS-reflected" ;;
+    # IMPORTANT: missing-header patterns BEFORE *rce* — "cross-origin-resource-policy"
+    # contains the substring "rce" inside "resource" and would be misclassified as RCE
+    *missing-security-header*|*missing-header*|*http-missing*) echo "missing-header" ;;
+    *header*|*hsts*|*x-frame*|*csp-*|*cross-origin*|*permissions-policy*|*referrer-policy*) echo "missing-header" ;;
+    # RCE: require -rce suffix/prefix to avoid substring matches (e.g. "resource", "procedure")
+    *-rce|*-rce-*|rce-*|*command-injection*|*code-execution*|*code-inject*) echo "RCE" ;;
     *default-login*|*default-creds*|*default-password*) echo "default-creds" ;;
     *exposure*|*exposed-cred*|*api-key*) echo "credential-exposure" ;;
     *cors*) echo "CORS-sensitive-data" ;;
-    *header*|*hsts*|*x-frame*|*csp-*|*missing-header*) echo "missing-header" ;;
     *open-redirect*) echo "open-redirect" ;;
     *path-traversal*|*lfi*|*directory-traversal*) echo "path-traversal" ;;
     *jwt*) echo "JWT-attack" ;;
