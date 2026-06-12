@@ -64,25 +64,21 @@ def _python_scope_check(target: str) -> tuple[bool, str]:
     if not scope:
         return False, "scope.yaml missing or unreadable — cannot determine scope"
 
-    programs = scope.get("programs", [])
-    if not programs:
-        return False, "No programs defined in scope.yaml"
+    # Our scope.yaml uses flat in_scope/out_of_scope lists (not a programs array)
+    in_scope  = scope.get("in_scope",  [])
+    out_scope = scope.get("out_of_scope", [])
+    program   = scope.get("program", "unknown")
 
-    for prog in programs:
-        in_scope = prog.get("in_scope", [])
-        out_scope = prog.get("out_of_scope", [])
+    # out_of_scope always wins
+    for pattern in out_scope:
+        if _matches(target, str(pattern)):
+            return False, f"OUT-OF-SCOPE: matches out_of_scope pattern '{pattern}'"
 
-        # Check out-of-scope first
-        for pattern in out_scope:
-            if _matches(target, str(pattern)):
-                return False, f"OUT-OF-SCOPE: matches out_of_scope pattern '{pattern}'"
+    for pattern in in_scope:
+        if _matches(target, str(pattern)):
+            return True, f"IN-SCOPE: matches '{pattern}' (program: {program})"
 
-        # Check in-scope
-        for pattern in in_scope:
-            if _matches(target, str(pattern)):
-                return True, f"IN-SCOPE: matches '{pattern}' in program '{prog.get('name', 'unknown')}'"
-
-    return False, f"OUT-OF-SCOPE: '{target}' not matched in any program"
+    return False, f"{target} matches no in_scope entry (default-deny)"
 
 
 def _matches(host: str, pattern: str) -> bool:

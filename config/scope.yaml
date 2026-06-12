@@ -89,9 +89,12 @@ in_scope:
   # ==========================================================================
 
   # AppSheet (acquired 2020) — PROVEN SSRF + RCE; any new URL-intake = first test
+  # Recon discovered: gcp-staging.appsheet.com, solutions-test.appsheet.com
+  # VERIFY at bughunters.google.com that *.appsheet.com is in scope before running.
   - "api.appsheet.com"
   - "eu.appsheet.com"
   - "www.appsheet.com"
+  - "*.appsheet.com"               # VERIFY: covers gcp-staging, solutions-test etc.
 
   # Looker (acquired 2019 — $2.6B) — cross-tenant SQLi cluster (LeakyLooker 2026)
   - "de.looker.com"
@@ -232,7 +235,12 @@ in_scope:
   - "devops-survey.com"
 
   # Mandiant Advantage (TIER1) — complex multi-org B2B; minimal prior research
+  # Recon discovered: asm-api-dev, asm-api-staging, asm-dev, asm-staging, asm-gcp,
+  # featflgs-ath/evt/sdk/str/tel — all subdomains of advantage.mandiant.com.
+  # VERIFY at bughunters.google.com that *.advantage.mandiant.com is in scope
+  # before running Phase 3 against the entries below.
   - "advantage.mandiant.com"
+  - "*.advantage.mandiant.com"     # VERIFY: ASM dev/staging + feature-flag cluster
   - "api.advantage.mandiant.com"
   - "advantage-api.mandiant.com"
   - "intel.mandiant.com"
