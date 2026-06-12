@@ -68,6 +68,8 @@ def parse_args() -> argparse.Namespace:
     pg.add_argument("--force", action="store_true", help="Re-run already-completed phases")
     pg.add_argument("--background", action="store_true", help="Run Phase 1+2 recon in background")
     pg.add_argument("--passive-only", action="store_true", help="Passive recon only")
+    pg.add_argument("--max-targets", type=int, default=300,
+                    help="Cap Phase 3 target list after service-deduplication (default: 300)")
 
     # Mode
     p.add_argument("--dry-run", action="store_true", help="Plan without executing anything")
@@ -109,8 +111,9 @@ class Orchestrator:
         self.phase_end   = args.phase_end
         self.dry_run     = args.dry_run
         self.force       = args.force
-        self.background  = args.background
-        self.passive     = args.passive_only
+        self.background    = args.background
+        self.passive       = args.passive_only
+        self.max_targets   = getattr(args, "max_targets", 300)
 
         self.results_dir = ROOT / "results" / self.target
         self.results_dir.mkdir(parents=True, exist_ok=True)
@@ -294,7 +297,7 @@ Generated: {now}
         self.hunt_state.mark_phase_start(3)
         self._save_state()
 
-        targets = recon.load_targets(self.results_dir, self.target)
+        targets = recon.load_targets(self.results_dir, self.target, max_targets=self.max_targets)
         self.log.info("Phase 3: %d targets", len(targets))
 
         # Resource check

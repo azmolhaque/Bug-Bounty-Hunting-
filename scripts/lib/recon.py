@@ -114,17 +114,23 @@ def is_recon_running(results_dir: Path) -> Optional[int]:
         return None
 
 
-def load_targets(results_dir: Path, target: str) -> list[str]:
+def load_targets(results_dir: Path, target: str, max_targets: int = 300) -> list[str]:
     """
     Load priority targets from priority.md for Phase 3.
 
-    Parses the markdown table robustly — no brittle regex.
-    Returns list of hostnames (without scheme) in priority order.
+    Applies two passes:
+      1. Priority ordering: P0 (dev/staging/admin/api) → P1 (integration/webhook) → P2 (rest)
+      2. Service deduplication: agent-ai.ap.ap1, ap2, ap3... → keep only 2 per service prefix
+         (same microservice deployed in N regions = scan 2 representative instances)
+
+    Caps at max_targets (default 300) to keep nuclei runtime under ~2 hours on Pi.
     """
     priority_md = results_dir / "02-surface" / "priority.md"
     live_txt    = results_dir / "02-surface" / "live.txt"
 
-    targets: list[str] = []
+    p0: list[str] = []  # dev/staging/internal/admin/api
+    p1: list[str] = []  # integration/webhook/forensics
+    p2: list[str] = []  # everything else
 
     if priority_md.exists():
         for line in priority_md.read_text().splitlines():
@@ -132,30 +138,81 @@ def load_targets(results_dir: Path, target: str) -> list[str]:
             if not line.startswith("|") or "Target" in line or "---" in line:
                 continue
             cols = [c.strip() for c in line.split("|") if c.strip()]
-            if cols:
-                host = cols[0].strip("`").strip()
-                if "." in host and not host.startswith("#"):
-                    targets.append(host)
+            if not cols:
+                continue
+            host = cols[0].strip("`").strip()
+            if not host or "." not in host or host.startswith("#"):
+                continue
+            priority = cols[2].strip() if len(cols) > 2 else "P2"
+            if "P0" in priority:
+                p0.append(host)
+            elif "P1" in priority:
+                p1.append(host)
+            else:
+                p2.append(host)
 
-    if not targets and live_txt.exists():
+    if not p0 and not p1 and not p2 and live_txt.exists():
         for line in live_txt.read_text().splitlines():
             url = line.strip()
             if url:
                 host = url.replace("https://", "").replace("http://", "").split("/")[0]
-                targets.append(host)
+                p2.append(host)
 
-    if not targets:
-        targets = [target]
+    if not p0 and not p1 and not p2:
+        return [target]
 
-    # Deduplicate while preserving order
+    # Service deduplication: group by "service prefix" — the part before
+    # numeric/region suffixes. e.g. "agent-ai.ap.ap1" and "agent-ai.ap.ap2"
+    # both map to prefix "agent-ai.ap" — keep at most MAX_PER_SERVICE.
+    MAX_PER_SERVICE = 2
+
+    def dedup_by_service(hosts: list[str]) -> list[str]:
+        import re
+        seen_prefixes: dict[str, int] = {}
+        result: list[str] = []
+        for host in hosts:
+            # Strip trailing numeric/region component to get service key
+            # e.g. "agent-ai.ap.eu10.app.wiz.io" → key "agent-ai.ap.*.app.wiz.io"
+            #      "prod-us52.forensics-package.app.wiz.io" → key "*.forensics-package.app.wiz.io"
+            parts = host.split(".")
+            # Remove purely numeric or short region labels (us1, eu2, ap3, ca1, etc.)
+            normalized = [
+                "*" if re.fullmatch(r'[a-z]{0,3}\d+[a-z]?', p) or re.fullmatch(r'prod-[a-z]{2}\d+', p)
+                else p
+                for p in parts
+            ]
+            key = ".".join(normalized)
+            count = seen_prefixes.get(key, 0)
+            if count < MAX_PER_SERVICE:
+                seen_prefixes[key] = count + 1
+                result.append(host)
+        return result
+
+    # Dedup each priority bucket then combine P0 (full) + P1 (deduped) + P2 (deduped, capped)
+    p0_deduped = dedup_by_service(p0)
+    p1_deduped = dedup_by_service(p1)
+    p2_deduped = dedup_by_service(p2)
+
+    # Always include all P0; fill remaining budget with P1 then P2
+    combined = p0_deduped[:]
+    remaining = max(0, max_targets - len(combined))
+    combined += p1_deduped[:remaining]
+    remaining = max(0, max_targets - len(combined))
+    combined += p2_deduped[:remaining]
+
+    # Final global dedup (preserve order)
     seen: set[str] = set()
     deduped: list[str] = []
-    for t in targets:
+    for t in combined:
         if t not in seen:
             seen.add(t)
             deduped.append(t)
 
-    log.info("Loaded %d targets for Phase 3", len(deduped))
+    log.info(
+        "Loaded %d targets (P0:%d P1:%d P2:%d → deduped+capped from %d raw, max=%d)",
+        len(deduped), len(p0_deduped), len(p1_deduped), len(p2_deduped),
+        len(p0) + len(p1) + len(p2), max_targets,
+    )
     return deduped
 
 
