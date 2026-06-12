@@ -1,0 +1,37 @@
+# orchestrate.yaml — Python orchestrator configuration
+# Override any value via environment variables (see ANTHROPIC_API_KEY, DISCORD_WEBHOOK_URL)
+
+claude:
+  model: "claude-sonnet-4-6"      # Claude model for intelligence features
+  qualify_borderline: true         # Call Claude for score==3 (borderline) candidates
+  replan_enabled: true             # Intelligence replan between phases
+  chain_analysis: true             # Chain elevation analysis after Phase 3
+  report_generation: true          # Claude-written reports in Phase 6
+  max_retries: 3
+  timeout_s: 30
+
+discord:
+  webhook_url: ""                  # Set via DISCORD_WEBHOOK_URL env var (preferred)
+  notify_on:
+    - finding_confirmed            # Phase 4: verified vulnerability
+    - pursue_lead                  # Phase 3: high-confidence lead (score >= 4)
+    - phase_complete               # End of each phase
+    - hunt_complete                # All phases done
+    - error_critical               # Fatal errors only
+  # Minimum lead score to send Discord alert (0-5)
+  min_pursue_score: 4
+
+resources:
+  max_temp_c: 78
+  max_ram_pct: 82
+  max_cpu_pct: 88
+  max_parallel: 3                  # concurrent nuclei scans
+  dead_end_probe_limit: 3          # failed probes before marking DEAD_END
+
+nuclei:
+  severity: "critical,high,medium"
+  tags: "cve,misconfig,exposure,takeover,default-login,tech"
+  exclude_tags: "dos,fuzz"
+  concurrency: 25
+  rate_limit: 100
+  bulk_size: 25

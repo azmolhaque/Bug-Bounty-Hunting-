@@ -153,11 +153,23 @@ status_dashboard() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Python dep check (warn, don't fail — tools may still work)
+# ─────────────────────────────────────────────────────────────────────────────
+check_python() {
+  printf "  Python deps:  "
+  if python3 -c "import anthropic, yaml, requests" 2>/dev/null; then
+    echo "${GRN}anthropic yaml requests OK${RST}"
+  else
+    echo "${YLW}some deps missing — run: pip3 install -r requirements.txt${RST}"
+  fi
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Make scripts executable
 # ─────────────────────────────────────────────────────────────────────────────
 chmod +x scripts/agent-orchestrate.sh scripts/lead-qualify.sh scripts/chain-graph.sh \
          scripts/pi-resource-guard.sh scripts/scope-check.sh scripts/recon.sh \
-         2>/dev/null || true
+         scripts/orchestrate.py 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main dispatch
@@ -167,6 +179,7 @@ banner
 # No target → dashboard
 if [ $# -eq 0 ] || [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
   preflight
+  check_python
   status_dashboard
   exit 0
 fi
@@ -175,8 +188,15 @@ fi
 TARGET="$1"; shift
 
 preflight
+check_python
 
 echo "Starting hunt: ${GRN}$TARGET${RST}"
 echo ""
 
-exec ./scripts/agent-orchestrate.sh "$TARGET" "$@"
+# Python orchestrator (default) — passes all args through unchanged.
+# Fallback: ORCHESTRATOR=bash ./run.sh <target> to use the legacy bash version.
+if [ "${ORCHESTRATOR:-python}" = "bash" ]; then
+  exec ./scripts/agent-orchestrate.sh "$TARGET" "$@"
+else
+  exec python3 scripts/orchestrate.py "$TARGET" "$@"
+fi
