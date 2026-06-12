@@ -134,21 +134,21 @@ log "Phase 2: building priority.md…"
       "$OUT/02-surface/live.txt" 2>/dev/null | head -20 | while read -r url; do
       host="${url#*://}"; host="${host%%/*}"
       echo "| $host | non-prod keyword | P0 | Dev/staging/internal — relaxed auth likely |"
-    done
+    done || true
 
     # Medium-priority: interesting subdomains (integration, cli, events, forensics, webhooks)
     grep -iE '(integration|cli|event|forensic|webhook|connect|hook|scan|result|report|ingest)\.' \
       "$OUT/02-surface/live.txt" 2>/dev/null | head -20 | while read -r url; do
       host="${url#*://}"; host="${host%%/*}"
       echo "| $host | integration keyword | P1 | May handle data ingest, webhooks, or file ops |"
-    done
+    done || true
 
     # All other live hosts (lower priority)
     grep -viE '(dev|test|staging|internal|admin|api|rde|grafana|jenkins|kibana|dashboard|debug|beta|qa|uat|integration|cli|event|forensic|webhook|connect|hook|scan|result|report|ingest)\.' \
       "$OUT/02-surface/live.txt" 2>/dev/null | head -30 | while read -r url; do
       host="${url#*://}"; host="${host%%/*}"
       echo "| $host | live | P2 | Production surface — auth and API focus |"
-    done
+    done || true
   fi
 } > "$OUT/02-surface/priority.md"
 log "  Priority map → $OUT/02-surface/priority.md"
