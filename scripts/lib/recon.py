@@ -169,7 +169,13 @@ def load_targets(results_dir: Path, target: str, max_targets: int = 300) -> list
             url = line.strip()
             if url:
                 host = url.replace("https://", "").replace("http://", "").split("/")[0]
-                p2.append(host)
+                prio = _infer_priority(host)
+                if prio == "P0":
+                    p0.append(host)
+                elif prio == "P1":
+                    p1.append(host)
+                else:
+                    p2.append(host)
 
     if not p0 and not p1 and not p2:
         return [target]

@@ -188,12 +188,14 @@ async def phase3_hunt(
             log.info("Skipping %s — %s", host, reason)
             return
 
-        # Resource throttle
-        while is_overloaded():
-            log.info("Pi overloaded — waiting 30s before starting %s", host)
-            await asyncio.sleep(30)
-
         async with sem:
+            # Resource throttle inside the semaphore — at most max_parallel tasks
+            # sample CPU simultaneously, avoiding false positives from the brief
+            # nuclei template-loading spike that all 300 tasks would otherwise catch.
+            while is_overloaded():
+                log.info("Pi overloaded — waiting 30s before starting %s", host)
+                await asyncio.sleep(30)
+
             url = host if host.startswith(("http://", "https://")) else f"https://{host}"
             safe_name = re.sub(r"[^a-z0-9._-]", "_", host.lower())
             output_path = evidence_dir / f"nuclei-{safe_name}.jsonl"

@@ -70,6 +70,6 @@ def resource_summary() -> str:
     return f"CPU:{cpu}%  RAM:{ram}%  TEMP:{temp}°C"
 
 
-def is_overloaded(cpu_limit: int = 80, ram_limit: int = 85, temp_limit: int = 75) -> bool:
+def is_overloaded(cpu_limit: int = 88, ram_limit: int = 82, temp_limit: int = 78) -> bool:
     cpu, ram, temp = get_pi_resources()
     return cpu > cpu_limit or ram > ram_limit or temp > temp_limit
