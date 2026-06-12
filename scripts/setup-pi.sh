@@ -115,17 +115,33 @@ LIMITS
 install_base() {
   section "Phase 2 — APT packages"
   sudo apt-get update -y -q
+  # chromium (not chromium-browser on Debian trixie); docker.io omitted — see below
   sudo apt-get install -y --no-install-recommends \
     git curl wget jq unzip build-essential ca-certificates \
     python3 python3-pip python3-venv pipx \
     dnsutils whois nmap masscan libpcap-dev \
-    chromium-browser \
+    chromium \
     tmux screen vim htop iotop lsof net-tools \
     ruby ruby-dev \
-    sqlite3 redis-server \
-    docker.io 2>/dev/null | grep -v "^(Reading|Get:|Hit:|Ign:)" || true
+    sqlite3 redis-server 2>/dev/null | grep -v "^(Reading|Get:|Hit:|Ign:)" || true
   sudo systemctl enable redis-server --now 2>/dev/null || true
-  sudo usermod -aG docker "${USER}" 2>/dev/null || true
+
+  # Docker: Debian's docker.io on trixie omits the CLI binary; use official CE repo
+  if ! command -v docker >/dev/null 2>&1; then
+    log "Installing Docker CE from official repo (arm64)…"
+    curl -fsSL https://download.docker.com/linux/debian/gpg \
+      | sudo gpg --dearmor -o /usr/share/keyrings/docker.gpg 2>/dev/null
+    echo "deb [arch=arm64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian trixie stable" \
+      | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    sudo apt-get update -q
+    sudo apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io 2>/dev/null \
+      || warn "Docker CE install failed — retry: sudo apt-get install docker-ce docker-ce-cli containerd.io"
+    sudo systemctl enable docker --now 2>/dev/null || true
+    sudo usermod -aG docker "${USER}" 2>/dev/null || true
+    log "Docker CE installed: $(docker --version 2>/dev/null)"
+  else
+    info "docker ✓ ($(docker --version 2>/dev/null | cut -d' ' -f3 | tr -d ,))"
+  fi
 }
 
 # ─── Phase 3: Go install ────────────────────────────────────────────────────────
