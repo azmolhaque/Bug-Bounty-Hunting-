@@ -457,38 +457,38 @@ bind -n M-Down  select-pane -D
 TMUX
   log "  .tmux.conf written"
 
-  # Shell aliases for the hunt lab
-  if ! grep -q '# bug-bounty-lab' "${HOME}/.bashrc" 2>/dev/null; then
-    cat >> "${HOME}/.bashrc" <<'BASH'
+  # Detect shell and write to the right rc file
+  local rcfile="${HOME}/.bashrc"
+  [ -n "${ZSH_VERSION:-}" ] || [ "$(basename "${SHELL:-bash}")" = "zsh" ] && rcfile="${HOME}/.zshrc"
+  [ -f "${HOME}/.zshrc" ] && rcfile="${HOME}/.zshrc"   # prefer zshrc if it exists
 
-# ── Bug bounty lab aliases ─────────────────────────────────────────
-alias bb='cd ~/bug-bounty-hunting- && ./run.sh'
-alias bbs='cd ~/bug-bounty-hunting- && ./run.sh'
-alias bbstatus='cd ~/bug-bounty-hunting- && ./run.sh'
+  if ! grep -q '# bug-bounty-lab' "$rcfile" 2>/dev/null; then
+    cat >> "$rcfile" <<'SHELLRC'
+
+# ── Bug bounty lab aliases ──────────────────────────────────────────
 alias hunt='cd ~/bug-bounty-hunting- && ./run.sh'
 alias nuclei-update='nuclei -update-templates -silent'
-alias interactsh='interactsh-client -server oast.pro'
+alias iactsh='interactsh-client -server oast.pro'
 
-# Quick target scoping
 scope-check() { bash ~/bug-bounty-hunting-/scripts/scope-check.sh "$@"; }
+picheck()     { ~/bug-bounty-hunting-/scripts/pi-resource-guard.sh --report; }
 
-# Tmux hunt session launcher
 hunt-session() {
   local target="${1:-wiz.io}"
-  tmux new-session -d -s "hunt-$target" -x 220 -y 50 2>/dev/null || true
-  tmux send-keys -t "hunt-$target" "cd ~/bug-bounty-hunting- && ./run.sh $target" Enter
-  tmux attach -t "hunt-$target"
+  tmux new-session -d -s "hunt-${target}" -x 220 -y 50 2>/dev/null || true
+  tmux send-keys -t "hunt-${target}" "cd ~/bug-bounty-hunting- && ./run.sh ${target}" Enter
+  tmux attach -t "hunt-${target}"
 }
 
-# Resource check shorthand
-picheck() { ~/bug-bounty-hunting-/scripts/pi-resource-guard.sh --report; }
-
 export GOPATH="${HOME}/go"
-export PATH="$PATH:${HOME}/go/bin:/usr/local/go/bin:${HOME}/.local/bin"
-BASH
-    log "  Shell aliases added to .bashrc"
+export PATH="${PATH}:${HOME}/go/bin:/usr/local/go/bin:${HOME}/.local/bin"
+# gf completion — only source if the file actually exists
+[ -f "${HOME}/go/pkg/mod/github.com/tomnomnom/gf"*"/gf-completion.zsh" ] && \
+  source "${HOME}/go/pkg/mod/github.com/tomnomnom/gf"*"/gf-completion.zsh" 2>/dev/null || true
+SHELLRC
+    log "  Shell aliases added to $rcfile"
   else
-    info "  Shell aliases already in .bashrc ✓"
+    info "  Shell aliases already in $rcfile ✓"
   fi
 }
 
@@ -573,10 +573,10 @@ check() {
   for b in "${tools[@]}"; do
     if command -v "$b" >/dev/null 2>&1; then
       echo -e "  ${GREEN}✓${NC} $b"
-      ((ok++))
+      ok=$(( ok + 1 ))
     else
       echo -e "  ${RED}✗${NC} $b"
-      ((missing++))
+      missing=$(( missing + 1 ))
     fi
   done
   echo ""
