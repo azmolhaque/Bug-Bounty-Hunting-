@@ -209,31 +209,40 @@ install_go_tools() {
 
 # ─── Phase 5: Python tools ─────────────────────────────────────────────────────
 install_python_tools() {
-  section "Phase 5 — Python Tools (pipx)"
+  section "Phase 5 — Python Tools"
   pipx ensurepath 2>/dev/null || true
 
-  declare -A PY_TOOLS=(
-    ["arjun"]="arjun"                                   # HTTP parameter discovery
-    ["dirsearch"]="dirsearch"                           # directory brute force
-    ["sqlmap"]="sqlmap"                                 # SQL injection (the gold standard)
-    ["jwt_tool"]="jwt_tool"                             # JWT attack toolkit
-    ["corsy"]="corsy"                                   # CORS misconfiguration scanner
-    ["wfuzz"]="wfuzz"                                   # advanced web fuzzer
-  )
-
-  for name in "${!PY_TOOLS[@]}"; do
+  # Tools available on PyPI — install via pipx (each gets its own venv, PEP 668 safe)
+  local pipx_tools=( arjun dirsearch sqlmap corsy wfuzz )
+  for name in "${pipx_tools[@]}"; do
     if command -v "$name" >/dev/null 2>&1; then
       info "  $name ✓"
       continue
     fi
-    log "  pipx install ${PY_TOOLS[$name]}…"
-    pipx install "${PY_TOOLS[$name]}" 2>/dev/null || warn "  $name failed"
+    log "  pipx install $name…"
+    pipx install "$name" 2>/dev/null || warn "  $name failed"
   done
+
+  # jwt_tool — NOT on PyPI; clone + venv + wrapper
+  if ! command -v jwt_tool >/dev/null 2>&1; then
+    log "  jwt_tool (from git)…"
+    local jt_dir="${HOME}/tools/jwt_tool"
+    [ -d "$jt_dir" ] || git clone --depth 1 https://github.com/ticarpi/jwt_tool.git "$jt_dir" 2>/dev/null
+    python3 -m venv "$jt_dir/venv" 2>/dev/null
+    "$jt_dir/venv/bin/pip" install -q -r "$jt_dir/requirements.txt" 2>/dev/null || true
+    mkdir -p "${HOME}/.local/bin"
+    printf '#!/bin/bash\nexec "%s/venv/bin/python" "%s/jwt_tool.py" "$@"\n' \
+      "$jt_dir" "$jt_dir" > "${HOME}/.local/bin/jwt_tool"
+    chmod +x "${HOME}/.local/bin/jwt_tool"
+    command -v jwt_tool >/dev/null 2>&1 && log "  jwt_tool ✓" || warn "  jwt_tool — add ~/.local/bin to PATH"
+  else
+    info "  jwt_tool ✓"
+  fi
 
   # Install truffleHog via pip if go version fails (it's big)
   command -v trufflehog >/dev/null 2>&1 || {
     log "  trufflehog (pip fallback)…"
-    pip3 install trufflehog 2>/dev/null || warn "  trufflehog pip failed"
+    pipx install trufflehog 2>/dev/null || warn "  trufflehog pip failed"
   }
 
   # Project venv — keep in sync with requirements.txt
@@ -567,7 +576,7 @@ check() {
     ffuf dalfox crlfuzz puredns shuffledns jsluice trufflehog gitleaks
     hakrawler gospider anew waybackurls assetfinder gau arjun dirsearch
     sqlmap jwt_tool wfuzz cariddi cdncheck tlsx asnmap mapcidr notify
-    nmap masscan jq tmux docker chromium-browser gf
+    nmap masscan jq tmux gf
   )
   local ok=0 missing=0
   for b in "${tools[@]}"; do
@@ -579,6 +588,16 @@ check() {
       missing=$(( missing + 1 ))
     fi
   done
+  # Aliases: chromium-browser may be named chromium on Debian
+  local cb_ok=false
+  command -v chromium-browser >/dev/null 2>&1 && cb_ok=true
+  command -v chromium         >/dev/null 2>&1 && cb_ok=true
+  $cb_ok && { echo -e "  ${GREEN}✓${NC} chromium"; ok=$(( ok + 1 )); } \
+         || { echo -e "  ${RED}✗${NC} chromium"; missing=$(( missing + 1 )); }
+  # Docker may need daemon start; check binary separately
+  command -v docker >/dev/null 2>&1 \
+    && { echo -e "  ${GREEN}✓${NC} docker ($(docker --version 2>/dev/null | cut -d' ' -f3 | tr -d ,))"; ok=$(( ok + 1 )); } \
+    || { echo -e "  ${YELLOW}!${NC} docker (binary present but daemon may be stopped — run: sudo systemctl start docker)"; missing=$(( missing + 1 )); }
   echo ""
   echo "  Installed: $ok / $((ok+missing))"
   echo ""
