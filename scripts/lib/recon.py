@@ -135,18 +135,31 @@ def load_targets(results_dir: Path, target: str, max_targets: int = 300) -> list
     if priority_md.exists():
         for line in priority_md.read_text().splitlines():
             line = line.strip()
-            if not line.startswith("|") or "Target" in line or "---" in line:
+            if not line.startswith("|") or "---" in line:
                 continue
             cols = [c.strip() for c in line.split("|") if c.strip()]
             if not cols:
                 continue
+            # First column is always the host/Target header
             host = cols[0].strip("`").strip()
-            if not host or "." not in host or host.startswith("#"):
+            if not host or host.lower() in ("target", "#") or "." not in host:
                 continue
-            priority = cols[2].strip() if len(cols) > 2 else "P2"
-            if "P0" in priority:
+
+            # Determine priority: try column 2 first, then fall back to hostname keywords
+            priority = "P2"
+            if len(cols) > 2:
+                col2 = cols[2].upper()
+                if "P0" in col2:
+                    priority = "P0"
+                elif "P1" in col2:
+                    priority = "P1"
+            # Fallback: infer from hostname regardless of table column format
+            if priority == "P2":
+                priority = _infer_priority(host)
+
+            if priority == "P0":
                 p0.append(host)
-            elif "P1" in priority:
+            elif priority == "P1":
                 p1.append(host)
             else:
                 p2.append(host)
@@ -214,6 +227,22 @@ def load_targets(results_dir: Path, target: str, max_targets: int = 300) -> list
         len(p0) + len(p1) + len(p2), max_targets,
     )
     return deduped
+
+
+def _infer_priority(host: str) -> str:
+    """Infer target priority from hostname keywords."""
+    import re
+    h = host.lower()
+    # Split on dots, hyphens, and underscores to isolate tokens
+    parts = re.split(r'[.\-_]', h)
+    joined = " ".join(parts)
+    P0_KEYWORDS = r"\b(dev|test|staging|internal|admin|api|rde|grafana|jenkins|kibana|dashboard|debug|beta|qa|uat|preview|canary|mgmt|management|auth|sso|login|identity|console|portal|secrets|vault)\b"
+    P1_KEYWORDS = r"\b(integration|cli|event|forensic|webhook|connect|hook|scan|result|report|ingest|outpost|sensor|relay|proxy|gateway|collect|metric|telemetry|alert|notify)\b"
+    if re.search(P0_KEYWORDS, joined):
+        return "P0"
+    if re.search(P1_KEYWORDS, joined):
+        return "P1"
+    return "P2"
 
 
 def _extract_summary(output: str) -> str:
