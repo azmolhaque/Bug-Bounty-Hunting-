@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bash -c 'exec "$(dirname "$0")/../.venv/bin/python3" "$0" "$@" 2>/dev/null || exec python3 "$0" "$@"'
 # ↑ auto-selects .venv/bin/python3 if present, falls back to system python3
 """
-orchestrate.py — Python-native bug bounty orchestrator (v2.0)
+orchestrate.py — Python-native bug bounty orchestrator (v2.1)
 
 Replaces agent-orchestrate.sh with:
   - Zero bash parsing bugs (no grep -c exit-1, no top output, no unbound vars)
@@ -12,8 +12,19 @@ Replaces agent-orchestrate.sh with:
   - Atomic state writes (tempfile + os.replace — no partial-write corruption)
   - Single source of truth for candidate status (no JSONL vs state.json divergence)
 
+v2.1 additions:
+  - Phase 2.5: Structured surface mapper — reachability + WAF detection + self-registration
+    + admin panel exposure + auth platform fingerprinting (runs in ~30s before nuclei)
+  - Phase 3 WAF gate: skip nuclei on WAF-blocked targets (no wasted scans)
+  - Persistent ManualQueue: browser/credential actions survive context resets
+  - qualify_manual() / qualify_self_registration() for hand-discovered findings
+  - --complete-action <id>: mark a manual action done from CLI
+  - --ingest <jsonl>: ingest manually discovered candidates into candidates.jsonl
+
 Usage:
   python3 scripts/orchestrate.py <target> [--phase N] [--dry-run] [--status]
+  python3 scripts/orchestrate.py <target> --complete-action Mxxxxxx
+  python3 scripts/orchestrate.py <target> --ingest path/to/manual.jsonl
   ANTHROPIC_API_KEY=... DISCORD_WEBHOOK_URL=... python3 scripts/orchestrate.py wiz.io
 """
 import argparse
@@ -32,6 +43,9 @@ ROOT        = SCRIPTS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib import claude_ai, discord_notify, hunter, recon, reporter, resources, scope, state, tools
+from lib.surface_map import run_surface_map, load_surface_map, reachable_targets, high_priority_surfaces, all_manual_actions
+from lib.manual_queue import ManualQueue, add_oauth_browser_action, add_self_registration_action
+from lib.qualifier import qualify_manual, qualify_self_registration
 
 
 # ── Logging setup ───────────────────────────────────────────────────────────
@@ -56,7 +70,7 @@ def setup_logging(log_path: Path, level: str = "INFO") -> logging.Logger:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Bug bounty orchestrator — Python v2.0",
+        description="Bug bounty orchestrator — Python v2.1",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("target", nargs="?", help="Target domain (e.g. wiz.io)")
@@ -76,6 +90,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--status", action="store_true", help="Print status and exit")
     p.add_argument("--no-claude", action="store_true", help="Disable Claude API (offline mode)")
     p.add_argument("--no-discord", action="store_true", help="Disable Discord notifications")
+
+    # Manual action management
+    mq = p.add_argument_group("Manual action management")
+    mq.add_argument("--complete-action", metavar="ACTION_ID",
+                    help="Mark a manual queue action as DONE (e.g. --complete-action Mxxxxxx)")
+    mq.add_argument("--action-result", metavar="RESULT", default="",
+                    help="Result/notes to record when completing an action")
+    mq.add_argument("--queue", action="store_true",
+                    help="Print pending manual actions and exit")
+    mq.add_argument("--ingest", metavar="JSONL_PATH",
+                    help="Ingest manually discovered candidates from a JSONL file")
 
     # Output
     p.add_argument("--log-level", default="INFO", choices=["DEBUG","INFO","WARN","ERROR"])
@@ -103,7 +128,7 @@ def parse_args() -> argparse.Namespace:
 # ── Orchestrator class ───────────────────────────────────────────────────────
 
 class Orchestrator:
-    VERSION = "2.0.0"
+    VERSION = "2.1.0"
 
     def __init__(self, args: argparse.Namespace):
         self.target      = args.target
@@ -143,6 +168,9 @@ class Orchestrator:
         self._max_parallel = self._load_int("limits.max_parallel_subagents", 3)
         self._rate         = self._load_int("limits.http_rate_per_sec", 100)
         self._threads      = self._load_int("limits.threads", 25)
+
+        # Manual action queue (persisted across runs)
+        self.manual_q = ManualQueue(self.results_dir, self.target)
 
     # ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -290,6 +318,136 @@ Generated: {now}
             "js_files":   count(self.results_dir / "02-surface" / "js-files.txt"),
         }
 
+    # ── Phase 2.5 — Structured Surface Map ──────────────────────────────────
+
+    async def phase25(self) -> None:
+        """
+        30-second structured surface probe that runs AFTER recon and BEFORE nuclei.
+
+        For each live target, detects:
+          - Reachability + WAF blocking (CloudFront, Cloudflare, etc.)
+          - Self-registration endpoints (/sign_up, /register, etc.)
+          - Exposed admin panels (Sidekiq, Grafana, Swagger, etc.)
+          - Auth platform (Auth0, Cognito, PingFederate, Okta)
+          - Open unauthenticated API endpoints
+
+        Outputs:
+          - results/<target>/02-surface/surface_map.jsonl
+          - Adds CRITICAL actions to ManualQueue for self-registration + admin panels
+          - Filters WAF-blocked targets from Phase 3 nuclei scan
+        """
+        self.log.info("══ Phase 2.5 — Structured Surface Mapping")
+
+        if self.dry_run:
+            self.log.info("[DRY-RUN] Skipping surface map")
+            return
+
+        targets = recon.load_targets(self.results_dir, self.target, max_targets=self.max_targets)
+        if not targets:
+            targets = [self.target]
+
+        records = await run_surface_map(
+            targets, self.results_dir,
+            max_parallel=min(self._max_parallel * 3, 15),  # faster than nuclei, safe to parallelize more
+            timeout=10,
+        )
+
+        # Process findings from surface map
+        candidates_path = self.results_dir / "03-candidates" / "candidates.jsonl"
+        candidates_path.parent.mkdir(parents=True, exist_ok=True)
+
+        for rec in records:
+            # Self-registration = immediate PURSUE_HIGH candidate
+            if rec.self_registration:
+                self.log.info("[SURFACE] Self-registration OPEN: %s%s", rec.host, rec.self_registration_path)
+                qr = qualify_self_registration(rec.host, rec.self_registration_path)
+                candidate = {
+                    "id": f"S{_sha6(rec.host + rec.self_registration_path)}",
+                    "target": rec.host,
+                    "url": f"https://{rec.host}{rec.self_registration_path}",
+                    "vuln_class": "self-registration",
+                    "template": "surface-map-self-registration",
+                    "severity": "high",
+                    "evidence": f"GET {rec.self_registration_path} → HTTP 200 (open self-registration)",
+                    "confidence": "HIGH",
+                    "status": "PURSUE",
+                    "score": qr.score,
+                    "chain_potential": qr.chain_potential,
+                    "next_steps": qr.next_steps,
+                    "estimated_cvss": qr.estimated_cvss,
+                    "source": "phase25-surface-map",
+                }
+                with candidates_path.open("a") as f:
+                    f.write(json.dumps(candidate) + "\n")
+                add_self_registration_action(
+                    self.manual_q, rec.host,
+                    f"https://{rec.host}{rec.self_registration_path}",
+                )
+                self.hunt_state.update_candidate(candidate["id"], status="PURSUE", score=qr.score)
+                if self.discord and self.discord.enabled:
+                    self.discord.send_pursue_lead(candidate)
+
+            # Unauthenticated admin panels = immediate PURSUE_HIGH
+            for panel in rec.admin_panels:
+                if panel["code"] == 200:
+                    self.log.info(
+                        "[SURFACE] Admin panel EXPOSED: %s%s (%s)",
+                        rec.host, panel["path"], panel["name"],
+                    )
+                    qr = qualify_manual(
+                        vuln_class="admin-panel-exposed",
+                        severity="high",
+                        evidence=f"{panel['name']} at {panel['path']} returns HTTP 200",
+                        impact=f"Unauthenticated access to {panel['name']} admin panel on {rec.host}",
+                        confidence="HIGH",
+                        estimated_cvss="AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+                    )
+                    candidate = {
+                        "id": f"S{_sha6(rec.host + panel['path'])}",
+                        "target": rec.host,
+                        "url": f"https://{rec.host}{panel['path']}",
+                        "vuln_class": "admin-panel-exposed",
+                        "template": f"surface-map-admin-{panel['name']}",
+                        "severity": "high",
+                        "evidence": f"{panel['name']} at {rec.host}{panel['path']} → HTTP 200 (no auth)",
+                        "confidence": "HIGH",
+                        "status": "PURSUE",
+                        "score": 5,
+                        "source": "phase25-surface-map",
+                    }
+                    with candidates_path.open("a") as f:
+                        f.write(json.dumps(candidate) + "\n")
+                    self.manual_q.add(
+                        host=rec.host,
+                        action_type="ADMIN_PANEL_CHECK",
+                        priority="CRITICAL",
+                        title=f"Investigate exposed {panel['name']} on {rec.host}",
+                        instruction=(
+                            f"Access https://{rec.host}{panel['path']} in browser — "
+                            f"document what is visible without auth. Screenshot immediately."
+                        ),
+                        unlocks=f"Unauthenticated admin panel access — immediate High/Critical",
+                    )
+
+            # Auth platform — queue OAuth capture action if Auth0/Cognito with OIDC
+            if rec.auth_platform in ("auth0", "cognito", "oidc-unknown") and "OIDC_DISCOVERY" in " ".join(rec.flags):
+                add_oauth_browser_action(
+                    self.manual_q,
+                    host=rec.host,
+                    login_url=f"https://{rec.host}/login",
+                    auth_url=f"https://auth.{rec.host.split('.')[-2]}.{rec.host.split('.')[-1]}",
+                )
+
+        # Summary
+        waf_blocked  = sum(1 for r in records if r.waf_blocked)
+        self_reg     = sum(1 for r in records if r.self_registration)
+        admin_open   = sum(1 for r in records if any(p["code"] == 200 for p in r.admin_panels))
+        open_api     = sum(1 for r in records if r.open_api_endpoints)
+        self.log.info(
+            "Phase 2.5 DONE — waf_blocked=%d self_reg=%d admin_exposed=%d open_api=%d",
+            waf_blocked, self_reg, admin_open, open_api,
+        )
+
     # ── Phase 3 — Vulnerability Discovery ───────────────────────────────────
 
     async def phase3(self) -> None:
@@ -297,7 +455,23 @@ Generated: {now}
         self.hunt_state.mark_phase_start(3)
         self._save_state()
 
-        targets = recon.load_targets(self.results_dir, self.target, max_targets=self.max_targets)
+        # Load all targets, then filter out WAF-blocked ones (Phase 2.5 output)
+        raw_targets = recon.load_targets(self.results_dir, self.target, max_targets=self.max_targets)
+        surface_records = load_surface_map(self.results_dir)
+        if surface_records:
+            reachable = set(reachable_targets(surface_records))
+            targets = [t for t in raw_targets if (
+                t in reachable or
+                t.replace("https://", "").replace("http://", "").split("/")[0] in reachable
+            )]
+            blocked_count = len(raw_targets) - len(targets)
+            if blocked_count > 0:
+                self.log.info(
+                    "Phase 3: %d/%d targets (skipped %d WAF-blocked from surface map)",
+                    len(targets), len(raw_targets), blocked_count,
+                )
+        else:
+            targets = raw_targets
         self.log.info("Phase 3: %d targets", len(targets))
 
         # Resource check
@@ -386,8 +560,22 @@ Generated: {now}
                 needs_manual.append(f"{c['id']} — {c['vuln_class']} on {c['url']}")
 
         if needs_manual:
-            manual_queue.write_text("\n".join(needs_manual) + "\n")
-            self.log.info("%d candidates queued for manual review", len(needs_manual))
+            for item in needs_manual:
+                parts = item.split(" — ", 1)
+                cid = parts[0]
+                desc = parts[1] if len(parts) > 1 else item
+                self.manual_q.add(
+                    host=desc.split(" on ")[-1] if " on " in desc else self.target,
+                    action_type="VERIFY_CHAIN_LINK",
+                    priority="HIGH",
+                    title=f"Manual verification: {desc}",
+                    instruction=(
+                        f"Candidate {cid} needs manual verification. "
+                        f"Reproduce from a clean session, confirm impact, minimize PoC."
+                    ),
+                    finding_id=cid,
+                )
+            self.log.info("%d candidates queued for manual review (see --queue)", len(needs_manual))
 
         stats = {
             "confirmed": len(confirmed),
@@ -586,6 +774,8 @@ Generated: {now}
         total_cands = sum(c_stats.values())
 
         cpu, ram, temp = resources.get_pi_resources()
+        mq_stats = self.manual_q.stats()
+        pending_actions = mq_stats.get("PENDING", 0)
 
         sep = "═" * 60
         print(f"\n{sep}")
@@ -594,12 +784,13 @@ Generated: {now}
         print(f"  Phase:     {s.current_phase}")
         print(f"  Candidates:{total_cands:4d}  (Pursuing:{pursuing}  Closed:{auto_closed})")
         print(f"  Findings:  {s.confirmed:4d}  (confirmed)")
+        print(f"  Actions:   {pending_actions:4d}  pending manual  (run --queue to see all)")
         print(f"  Pi5:       CPU:{cpu}%  RAM:{ram}%  Temp:{temp}°C")
         print(sep)
         print("  Phase completion:")
         for ph in range(7):
             done = "✓" if s.phase_done(ph) else "·"
-            pnames = {0:"Scope",1:"Assets",2:"Surface",3:"Hunt",4:"Verify",5:"Triage",6:"Report"}
+            pnames = {0:"Scope",1:"Assets",2:"Surface+Map",3:"Hunt",4:"Verify",5:"Triage",6:"Report"}
             print(f"    {done} Phase {ph} — {pnames.get(ph,'')}")
         print(sep)
         if s.intelligence_notes:
@@ -623,6 +814,12 @@ Generated: {now}
                 await self.phase0()
             if self._should_run(2):
                 await self.phase12()
+            # Phase 2.5 always runs between 2 and 3 when both are in range
+            if self.phase_start <= 2 and self.phase_end >= 3:
+                await self.phase25()
+            elif self._should_run(3):
+                # Also run 2.5 if phase 3 is being run standalone
+                await self.phase25()
             if self._should_run(3):
                 await self.phase3()
             if self._should_run(4):
@@ -642,6 +839,16 @@ Generated: {now}
             self._save_state()
 
         self.print_status()
+
+        # Always print manual action queue at end of run
+        pending = self.manual_q.pending()
+        if pending:
+            sep = "═" * 60
+            print(f"\n{sep}")
+            print("  MANUAL ACTIONS REQUIRED (do these on your machine)")
+            print(sep)
+            print(self.manual_q.render())
+
         return 0
 
 
@@ -649,22 +856,72 @@ Generated: {now}
 
 def main() -> int:
     args = parse_args()
+    target = args.target or "unknown"
+    results_dir = ROOT / "results" / target
 
     if args.status:
         # Fast status-only path (no phase execution)
-        target = args.target or "unknown"
-        results_dir = ROOT / "results" / target
         s = state.load_or_init(results_dir / ".orchestrator-state.json", target)
         cpu, ram, temp = resources.get_pi_resources()
-        print(f"Target: {target}")
+        mq = ManualQueue(results_dir, target)
+        print(f"Target: {target}  v2.1")
         print(f"Phase: {s.current_phase}  Findings: {s.confirmed}  Pi: CPU:{cpu}% RAM:{ram}% T:{temp}°C")
+        print(f"Manual actions pending: {len(mq.pending())}")
         for ph in range(7):
             done = "DONE" if s.phase_done(ph) else "----"
             print(f"  Phase {ph}: {done}")
         return 0
 
+    if getattr(args, "queue", False):
+        # Print manual action queue only
+        mq = ManualQueue(results_dir, target)
+        sep = "═" * 60
+        print(f"\n{sep}")
+        print(f"  Manual Action Queue — {target}")
+        print(sep)
+        print(mq.render())
+        return 0
+
+    if getattr(args, "complete_action", None):
+        # Mark an action as done
+        mq = ManualQueue(results_dir, target)
+        action_id = args.complete_action
+        result = getattr(args, "action_result", "")
+        if mq.complete(action_id, result):
+            print(f"Action {action_id} marked DONE.")
+        else:
+            print(f"Action {action_id} not found in queue.")
+        return 0
+
+    if getattr(args, "ingest", None):
+        # Ingest manually discovered candidates
+        ingest_path = Path(args.ingest)
+        if not ingest_path.exists():
+            print(f"File not found: {ingest_path}")
+            return 1
+        candidates_path = results_dir / "03-candidates" / "candidates.jsonl"
+        candidates_path.parent.mkdir(parents=True, exist_ok=True)
+        count = 0
+        with ingest_path.open() as inf, candidates_path.open("a") as outf:
+            for line in inf:
+                line = line.strip()
+                if line:
+                    try:
+                        json.loads(line)   # validate JSON
+                        outf.write(line + "\n")
+                        count += 1
+                    except json.JSONDecodeError as e:
+                        print(f"  Skipped malformed line: {e}")
+        print(f"Ingested {count} candidates from {ingest_path} → {candidates_path}")
+        return 0
+
     orch = Orchestrator(args)
     return asyncio.run(orch.run())
+
+
+def _sha6(s: str) -> str:
+    import hashlib
+    return hashlib.sha256(s.encode()).hexdigest()[:6]
 
 
 if __name__ == "__main__":

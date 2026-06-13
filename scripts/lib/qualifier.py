@@ -202,6 +202,87 @@ def qualify_fast(
     )
 
 
+def qualify_manual(
+    vuln_class: str,
+    severity: str,
+    evidence: str,
+    impact: str,
+    confidence: str = "HIGH",
+    chain_potential: str = "",
+    next_steps: Optional[list[str]] = None,
+    estimated_cvss: str = "",
+) -> QualifyResult:
+    """
+    Qualify a manually discovered finding (not from nuclei).
+
+    Use this when Phase 4 manual investigation produces a candidate —
+    e.g. subdomain takeover, self-registration access, IDOR found by hand.
+
+    Manual findings start at higher confidence than nuclei hits because a
+    human researcher already exercised judgment before calling this.
+    """
+    qr = qualify_fast(
+        vuln_class=vuln_class,
+        severity=severity,
+        template=vuln_class,   # use class as template ID for manual findings
+        evidence=f"MANUAL: {evidence} | impact: {impact}",
+        confidence=confidence,
+    )
+
+    # Manual findings with HIGH confidence and concrete impact override borderline scores
+    if confidence.upper() in ("HIGH", "CONFIRMED", "CRITICAL"):
+        if impact and any(kw in impact.lower() for kw in [
+            "account", "session", "token", "data", "bypass", "rce", "takeover",
+            "exfil", "credential", "injection", "internal", "cross-tenant",
+        ]):
+            if qr.score == 3:
+                qr.score = 4
+                qr.status = "PURSUE_HIGH"
+                if "Manual evidence upgraded" not in qr.rejection_reasons:
+                    qr.rejection_reasons.append("Manual evidence upgraded borderline to PURSUE_HIGH")
+
+    if chain_potential:
+        qr.chain_potential = chain_potential
+    if next_steps:
+        qr.next_steps = next_steps or qr.next_steps
+    if estimated_cvss:
+        qr.estimated_cvss = estimated_cvss
+
+    return qr
+
+
+def qualify_self_registration(host: str, path: str) -> QualifyResult:
+    """
+    Qualify a confirmed self-registration endpoint.
+
+    Self-registration on an enterprise security product = immediate PURSUE_HIGH:
+    - Unauthorized access to enterprise platform (Q1: account access)
+    - Not intended for public (Q2: should require invite/approval)
+    - Vendor would fix (Q3: add invitation gate or domain restriction)
+    - CVSS 7.5+ (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N) (Q4)
+    - Not hard-rejected (Q5)
+    """
+    return QualifyResult(
+        status="PURSUE_HIGH",
+        score=5,
+        q1=True, q2=True, q3=True, q4=True, q5=True,
+        rejection_reasons=[],
+        chain_potential=(
+            f"After self-registration at {host}{path}: "
+            f"enumerate /api/* for IDOR (access other tenants/users), "
+            f"test privilege escalation, look for data leakage across org boundaries."
+        ),
+        next_steps=[
+            f"Register at https://{host}{path} with a test email",
+            "After login: capture session cookie",
+            "Run: SESSION_COOKIE=<value> bash scripts/mandiant-followup-probe.sh",
+            "Enumerate /api/users, /api/orgs, /api/admin — test for IDOR",
+            "Document what data is visible immediately after registration",
+        ],
+        estimated_cvss="AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",  # 7.5 — unauthorized access
+    )
+
+
 def qualify_with_claude(candidate: dict, claude_client) -> QualifyResult:
     """
     Enhance qualification with Claude API for borderline (score==3) cases.
