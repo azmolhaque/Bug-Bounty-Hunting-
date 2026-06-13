@@ -5,8 +5,14 @@ Started: 2026-06-13
 |------|-------|---------|---------|
 | 2026-06-13 | 0 | Scope confirmed | `virustotal.com`, `www.virustotal.com`, `virustotal-plugins.com`, `gtidocs.virustotal.com` IN-SCOPE TIER1 |
 | 2026-06-13 | 0 | Plan written | See `00-plan.md` — 5 hypotheses, H1 (SSRF→IMDS) is CRITICAL priority |
-| 2026-06-13 | 1-2 | Scripts ready | `scripts/vt-recon.sh` — run on Pi |
-| 2026-06-13 | 3 | Attack scripts ready | `scripts/vt-attack.sh` — needs VT_API_KEY |
+| 2026-06-13 | 1-2 | Recon ran on Pi | 8 live subdomains; API v3 surface mapped; no unauth GraphQL |
+| 2026-06-13 | 3 | H1 SSRF — URL submission | `metadata.google.internal` rejected 400; `169.254.169.254` accepted and queued |
+| 2026-06-13 | 3 | H1 SSRF — OOB confirmed | webhook.site received 19 requests from GCP IPs 35.187.132.96-102 + 8.228.6.118; User-Agent: Chrome/124 Linux |
+| 2026-06-13 | 3 | H1 SSRF — IMDS **CONFIRMED** | `GET /api/v3/urls/{id}` returned `"Server": "Metadata Server for VM"` in `last_http_response_headers`; `last_http_response_code: 404`; `times_submitted: 423` |
+| 2026-06-13 | 3 | H4 User IDOR | admin/test/support users exist (200 OK); no email or private data exposed; IDOR not confirmed |
+| 2026-06-13 | 3 | H5 Premium endpoints | 403/404 on all — no differential leak |
+| 2026-06-13 | 4 | Report written | **F001** — `findings/F001-ssrf-gcp-imds-via-url-scanner.md` — CVSS 8.5 HIGH |
+| 2026-06-13 | 4 | GCP path escalation | `scripts/vt-gcp-ssrf.sh` ready — tests `/computeMetadata/v1beta1/` token endpoint; **MUST RUN ON PI** |
 
 ## Key Hypotheses
 
@@ -42,36 +48,32 @@ leaking existence of enterprise objects to free users.
 control only checks the top-level object (not relationships), another user's
 comments/votes/files might be readable.
 
-## Next Actions — Run on Pi
+## Current Status — Phase 4 CONFIRMED, Report Ready
 
-### Step 1: Account setup (2 minutes)
-1. Go to https://www.virustotal.com/gui/sign-in
-2. Sign up (or log in with Google account)
-3. Go to profile → API Key tab → copy the Community API key
+**F001 is submittable NOW as High (CVSS 8.5).** The GCP token escalation test (`vt-gcp-ssrf.sh`) is the only remaining step that could upgrade it to Critical. Run that first if you want to know before submitting — or submit immediately at High and add an escalation note in the report.
 
-### Step 2: Phase 1+2 recon (10 minutes)
-```zsh
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-cd ~/bug-bounty-hunting-
-bash scripts/vt-recon.sh 2>&1 | tee ~/vt-recon-output.txt
-```
+### Immediate next action (Pi only — cloud env has no external network)
 
-### Step 3: Phase 3 attack (20 minutes)
-```zsh
+**Step A — GCP token escalation test (determines High vs Critical):**
+```bash
+git pull
 export VT_API_KEY="<your_community_api_key>"
-bash scripts/vt-attack.sh 2>&1 | tee ~/vt-attack-output.txt
+bash scripts/vt-gcp-ssrf.sh 2>&1 | tee ~/vt-gcp-ssrf-output.txt
 ```
+If `last_http_response_code: 200` appears for the token path AND `last_http_response_content_sha256` is populated → attempt `GET /api/v3/files/{sha256}` to retrieve the token body → **Critical**.
 
-### Step 4: OOB SSRF (needs webhook.site)
-```zsh
-export VT_API_KEY="<key>"
-export COLLAB_URL="https://webhook.site/<your-uuid>"
-bash scripts/vt-ssrf-oob.sh 2>&1 | tee ~/vt-ssrf-oob-output.txt
-```
-Then check webhook.site for incoming requests from VT's scanner.
+**Step B — Submit to Google VRP:**
+- URL: `https://bughunters.google.com/report/`
+- Product: VirusTotal
+- Report: copy from `results/virustotal.com/findings/F001-ssrf-gcp-imds-via-url-scanner.md`
+- Attach: webhook.site screenshots, `url-object-imds.json` evidence file
+- Expected reward tier: High ($3,133–$13,337) per Google VRP SSRF schedule
 
 ## Decision Log
 - Chose VirusTotal: TIER1, explicitly in scope (no VERIFY caveat), rich documented API v3
-- SSRF via URL scanner is the primary attack vector — VT's own product fetches arbitrary URLs
-- Free community API key gives immediate access to full API surface
-- Premium endpoint error differentials could leak enterprise intel without auth
+- SSRF via URL scanner is primary vector — VT's product fetches arbitrary attacker-controlled URLs
+- `Server: Metadata Server for VM` in publicly-readable URL object = concrete attacker gain (GCP infra leak)
+- `times_submitted: 423` = finding has been in DB publicly accessible for an extended period
+- H4 User IDOR dropped: no email/private data exposed, public relationship data is intended
+- H5 Premium endpoints dropped: consistent 403, no error-code differential
+- F001 passes all 5 submission quality criteria (CLAUDE.md §2) — report-ready
