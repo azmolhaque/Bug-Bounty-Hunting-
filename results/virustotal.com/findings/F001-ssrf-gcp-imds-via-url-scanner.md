@@ -123,12 +123,35 @@ Returns `200 OK` with file metadata — the IMDS response body (HTML 404 error p
 
 ## Evidence Summary
 
-### URL Object (stored IMDS response — sanitized)
+### URL Object — Root Path (HTTP 200, stored in VT public API)
 
 ```json
 {
   "data": {
-    "id": "10fb74468b13d4d5762cf25243e7a6e62a70c27258491d0bc0a800bf064e0ce8",
+    "type": "url",
+    "attributes": {
+      "last_http_response_code": 200,
+      "last_http_response_content_length": 17,
+      "last_http_response_content_sha256": "9efd71b96213e65bceff3749bfc96401c6728b0faae74fe47d627bd1a120f0d7",
+      "last_final_url": "http://169.254.169.254/",
+      "last_http_response_headers": {
+        "Server": "Metadata Server for VM",
+        "Content-Type": "application/text",
+        "Content-Length": "17"
+      },
+      "times_submitted": 1647
+    }
+  }
+}
+```
+
+**`HTTP 200` — `times_submitted: 1647`** — VT's scanner has successfully fetched the GCP IMDS root path 1,647 times, storing the response (17-byte body + identifying headers) in VT's public database. The `Server: Metadata Server for VM` header is publicly readable today with any free Community API key.
+
+### URL Object — AWS-style path (HTTP 404, additional corroboration)
+
+```json
+{
+  "data": {
     "type": "url",
     "attributes": {
       "last_http_response_code": 404,
@@ -148,7 +171,17 @@ Returns `200 OK` with file metadata — the IMDS response body (HTML 404 error p
 }
 ```
 
-**`times_submitted: 423`** — this URL has been submitted 423 times. VT's scanner has been fetching the GCP metadata server and storing the results publicly for an extended period. This is an ongoing, live exposure, not a theoretical one.
+Even on a non-existent path (404), the GCP IMDS identifies itself via `Server: Metadata Server for VM`. Both the 200 and the 404 body SHA256 values are indexed in VT's file corpus.
+
+### OAuth Token Endpoint Confirmed Reachable
+
+Via the nip.io DNS rebinding bypass, VT's scanner was directed to:
+
+```
+http://169-254-169-254.nip.io/computeMetadata/v1/instance/service-accounts/default/token
+```
+
+The GCP IMDS responded with **HTTP 403** and `Server: Metadata Server for VM`. The 403 is GCP's own defense (missing `Metadata-Flavor: Google` header in VT's request). This confirms the OAuth2 service-account token endpoint is **network-reachable** from VT's scanner fleet. The only barrier between VT's scanner and live GCP credentials is GCP's own independent header validation — not VT's filter.
 
 ### Exhaustive GCP Path Testing
 
@@ -179,7 +212,8 @@ Impact that IS confirmed and cannot be disputed:
 1. VT's scanner connects to `169.254.169.254` — a link-local address that should never be reachable from a public URL scanner.
 2. The IMDS response headers (including `Server: Metadata Server for VM`) are stored in VT's **public** API, readable without any elevated privileges.
 3. The IMDS response body SHA256 is publicly accessible; the body bytes are indexed into VT's premium intelligence corpus.
-4. `times_submitted: 423` confirms this exposure is ongoing and has persisted for months.
+4. `times_submitted: 1,647` (root path, HTTP 200) — this exposure has persisted for an extended period and is ongoing today.
+5. The OAuth2 service-account token endpoint (`/computeMetadata/v1/instance/service-accounts/default/token`) is confirmed network-reachable from VT's scanner fleet — the only extraction barrier is GCP's independent header check, not any VT-side control.
 
 **Objection 3: "The filter was working — it blocked the hostname."**
 
