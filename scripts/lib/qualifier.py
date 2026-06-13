@@ -241,6 +241,28 @@ def qualify_manual(
                 if "Manual evidence upgraded" not in qr.rejection_reasons:
                     qr.rejection_reasons.append("Manual evidence upgraded borderline to PURSUE_HIGH")
 
+    # Special override: CORS on an endpoint that returns user-specific/auth data
+    # is NOT a generic CORS report — it's a data exfil path (High).
+    # The hard-rejection for CORS-sensitive-data applies only to empty/non-sensitive responses.
+    if qr.status == "AUTO_CLOSE" and vuln_class == "CORS-sensitive-data":
+        sensitive_impact_kws = ["user", "account", "token", "auth", "session", "api key", "credential", "profile", "email"]
+        if impact and any(kw in impact.lower() for kw in sensitive_impact_kws):
+            qr.status = "PURSUE_HIGH"
+            qr.score = 4
+            qr.q1 = True  # attacker can exfiltrate user data cross-origin
+            qr.q2 = True
+            qr.q3 = True
+            qr.q4 = True
+            qr.q5 = True
+            qr.rejection_reasons = ["CORS override: endpoint returns sensitive user data — not a generic CORS finding"]
+            qr.next_steps = [
+                "Confirm CORS header: Access-Control-Allow-Origin: <attacker origin>",
+                "Confirm credentials mode: Access-Control-Allow-Credentials: true",
+                "Write PoC JS that reads /api/me cross-origin and exfiltrates email/token",
+                "Report as: CORS misconfiguration enables cross-origin theft of authenticated user data",
+            ]
+            qr.estimated_cvss = "AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:N"
+
     if chain_potential:
         qr.chain_potential = chain_potential
     if next_steps:

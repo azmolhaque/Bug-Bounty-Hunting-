@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bash -c 'exec "$(dirname "$0")/../.venv/bin/python3" "$0" "$@" 2>/dev/null || exec python3 "$0" "$@"'
 # ↑ auto-selects .venv/bin/python3 if present, falls back to system python3
 """
-orchestrate.py — Python-native bug bounty orchestrator (v2.1)
+orchestrate.py — Python-native bug bounty orchestrator (v2.2)
 
 Replaces agent-orchestrate.sh with:
   - Zero bash parsing bugs (no grep -c exit-1, no top output, no unbound vars)
@@ -11,6 +11,14 @@ Replaces agent-orchestrate.sh with:
   - asyncio concurrency with Semaphore cap (no bash & race conditions)
   - Atomic state writes (tempfile + os.replace — no partial-write corruption)
   - Single source of truth for candidate status (no JSONL vs state.json divergence)
+
+v2.2 additions:
+  - Hypothesis Engine (lib/hypothesis.py): tech-stack aware ranked bug test hypotheses.
+    Auth0 → OAuth confusion. Cognito → Identity Pool unauth. PingFederate → dynamic reg.
+    GraphQL → introspection + IDOR + batch alias. Rails → mass assignment + debug endpoints.
+    JWT → alg=none + RS256/HS256 confusion. Open APIs → IDOR + CORS data exfil.
+    Results written to 02-surface/hypotheses.md and seeded as Phase 3 candidates.
+  - CORS fix: CORS on authenticated data endpoints no longer auto-closed (upgraded to High).
 
 v2.1 additions:
   - Phase 2.5: Structured surface mapper — reachability + WAF detection + self-registration
@@ -46,6 +54,7 @@ from lib import claude_ai, discord_notify, hunter, recon, reporter, resources, s
 from lib.surface_map import run_surface_map, load_surface_map, reachable_targets, high_priority_surfaces, all_manual_actions
 from lib.manual_queue import ManualQueue, add_oauth_browser_action, add_self_registration_action
 from lib.qualifier import qualify_manual, qualify_self_registration
+from lib.hypothesis import generate as generate_hypotheses
 
 
 # ── Logging setup ───────────────────────────────────────────────────────────
@@ -128,7 +137,7 @@ def parse_args() -> argparse.Namespace:
 # ── Orchestrator class ───────────────────────────────────────────────────────
 
 class Orchestrator:
-    VERSION = "2.1.0"
+    VERSION = "2.2.0"
 
     def __init__(self, args: argparse.Namespace):
         self.target      = args.target
@@ -438,14 +447,69 @@ Generated: {now}
                     auth_url=f"https://auth.{rec.host.split('.')[-2]}.{rec.host.split('.')[-1]}",
                 )
 
+        # ── Hypothesis Engine: generate targeted bug hypotheses per host ────
+        hyp_dir = self.results_dir / "02-surface"
+        hyp_path = hyp_dir / "hypotheses.md"
+        hyp_lines = ["# Bug Hypotheses — Phase 2.5 Output\n"]
+        total_pursue = 0
+        for rec in records:
+            if not rec.reachable or rec.waf_blocked:
+                continue
+            try:
+                hrep = generate_hypotheses(rec)
+                pursue = hrep.pursue()
+                if pursue:
+                    total_pursue += len(pursue)
+                    hyp_lines.append(hrep.render_markdown())
+                    hyp_lines.append("")
+                    # Add pursue-worthy hypotheses as candidates
+                    for hyp in pursue:
+                        if hyp.manual_required:
+                            # Queue as manual action instead of automated candidate
+                            self.manual_q.add(
+                                host=rec.host,
+                                action_type="VERIFY_CHAIN_LINK",
+                                priority=hyp.impact,
+                                title=hyp.title,
+                                instruction=hyp.rationale + " — " + (hyp.chain_link or ""),
+                                commands=hyp.test_commands[:3],
+                                expected_output=hyp.estimated_cvss,
+                                unlocks=hyp.chain_link,
+                            )
+                        else:
+                            # Automated — add as candidate for Phase 3 follow-up
+                            candidate = {
+                                "id": f"H{_sha6(hyp.id)}",
+                                "target": rec.host,
+                                "url": f"https://{rec.host}",
+                                "vuln_class": hyp.vuln_class,
+                                "template": f"hypothesis-{hyp.vuln_class}",
+                                "severity": hyp.impact.lower(),
+                                "evidence": hyp.rationale,
+                                "confidence": hyp.confidence,
+                                "status": "PURSUE",
+                                "score": 4 if hyp.impact == "CRITICAL" else 3,
+                                "chain_potential": hyp.chain_link,
+                                "next_steps": hyp.test_commands,
+                                "estimated_cvss": hyp.estimated_cvss,
+                                "source": "phase25-hypothesis-engine",
+                            }
+                            with candidates_path.open("a") as f:
+                                f.write(json.dumps(candidate) + "\n")
+            except Exception as e:
+                self.log.debug("Hypothesis generation error for %s: %s", rec.host, e)
+
+        hyp_path.write_text("\n".join(hyp_lines))
+        self.log.info("Hypothesis engine: %d pursue-worthy hypotheses written to %s", total_pursue, hyp_path)
+
         # Summary
         waf_blocked  = sum(1 for r in records if r.waf_blocked)
         self_reg     = sum(1 for r in records if r.self_registration)
         admin_open   = sum(1 for r in records if any(p["code"] == 200 for p in r.admin_panels))
         open_api     = sum(1 for r in records if r.open_api_endpoints)
         self.log.info(
-            "Phase 2.5 DONE — waf_blocked=%d self_reg=%d admin_exposed=%d open_api=%d",
-            waf_blocked, self_reg, admin_open, open_api,
+            "Phase 2.5 DONE — waf_blocked=%d self_reg=%d admin_exposed=%d open_api=%d hypotheses=%d",
+            waf_blocked, self_reg, admin_open, open_api, total_pursue,
         )
 
     # ── Phase 3 — Vulnerability Discovery ───────────────────────────────────
