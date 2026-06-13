@@ -2,9 +2,13 @@
 
 ## Summary
 
-VirusTotal's URL scanning API (`POST /api/v3/urls`) applies a hostname-based blocklist that correctly rejects `http://metadata.google.internal/...` submissions (`400 InvalidArgumentError`), but **does not block the equivalent bare IP address** `http://169.254.169.254/...`. Submitting the raw link-local IP bypasses this filter entirely: VT's GCP-hosted scanner nodes (IPs `35.187.132.0/24`) connect to the GCP Instance Metadata Service (IMDS), and the IMDS response — including `Server: Metadata Server for VM` in the HTTP headers and the full response body SHA256 — is stored in VT's database and returned to **any user with a free Community API key**.
+VirusTotal's URL scanning API (`POST /api/v3/urls`) applies a hostname-based blocklist that correctly rejects `http://metadata.google.internal/...` submissions (`400 InvalidArgumentError`), but **does not block the equivalent bare IP address** `http://169.254.169.254/...`. Submitting the raw link-local IP bypasses this filter entirely: VT's GCP-hosted scanner nodes (IPs `35.187.132.0/24`) connect to the GCP Instance Metadata Service (IMDS).
 
-The existence of the hostname blocklist proves this access is not intended behavior — VT's engineering team explicitly tried to block metadata server access but failed to cover the IP-literal form of the same address. This is a **Security Filter Bypass** that constitutes an exploitable SSRF vulnerability on a TIER1 asset.
+The IMDS response data is then stored across two tiers of VT's platform:
+- **Public (free Community API):** Response headers (`Server: Metadata Server for VM`), HTTP status code, content length, and body SHA256 are exposed via `GET /api/v3/urls/{id}` to any free account holder.
+- **Intelligence corpus (premium-gated):** The raw response body bytes are indexed into VT's threat intelligence product (`GET /api/v3/files/{sha256}/download` returns 403 for Community keys), meaning Google's internal metadata server responses are being permanently ingested into VT's commercial intelligence corpus.
+
+The existence of the hostname blocklist proves this access is **not intended behavior** — VT's engineering team explicitly tried to block metadata server access but failed to cover the IP-literal form of the same address. This is a **Security Filter Bypass** and exploitable SSRF on a TIER1 asset.
 
 ## Severity
 
@@ -145,11 +149,13 @@ These same `35.187.132.x` nodes produced the `Server: Metadata Server for VM` re
 
 **Confirmed (Medium–High):**
 
-1. **Security filter bypass:** VT explicitly blocks `metadata.google.internal` by hostname but fails to block `169.254.169.254` by IP — demonstrating an intentional security control that is bypassable.
+1. **Security filter bypass:** VT explicitly blocks `metadata.google.internal` by hostname but fails to block `169.254.169.254` by IP — demonstrating an intentional security control that is bypassable. This is the primary vulnerability.
 
-2. **Public information disclosure:** `Server: Metadata Server for VM` and other IMDS response headers are stored in VT's public API (`GET /api/v3/urls/{id}`), readable by any free Community account holder. The IMDS response body SHA256 is stored and the body itself is accessible via `GET /api/v3/files/{sha256}`. `times_submitted: 423` confirms this data has been publicly accessible for an extended period.
+2. **Public information disclosure (free tier):** `Server: Metadata Server for VM` and other IMDS response headers, HTTP status codes, content lengths, and body SHA256 hashes are stored in VT's public URL API (`GET /api/v3/urls/{id}`), readable by any free Community account holder. `times_submitted: 423` on the `/latest/meta-data/` path confirms this data has been in VT's public database for an extended period.
 
-3. **Infrastructure fingerprinting:** Any VT user can confirm that VT's scanner fleet runs on GCE VMs, enumerate GCP IP ranges in use, and retrieve the internal metadata server's response content.
+3. **Intelligence corpus ingestion (premium-gated disclosure):** Raw IMDS response body bytes are indexed into VT's paid threat intelligence corpus. Confirmed: the root `http://169.254.169.254/` returns a **17-byte text response** (likely the GCP metadata API path listing, e.g. `"computeMetadata/"`) — this content is stored under sha256 `9efd71b96213e65bceff3749bfc96401c6728b0faae74fe47d627bd1a120f0d7` and available to premium Intelligence subscribers. VT's commercial intelligence product is permanently ingesting responses from Google's internal metadata infrastructure.
+
+4. **Infrastructure fingerprinting:** Any VT Community user can confirm VT's scanner fleet runs on GCE VMs, map the active GCP IP ranges, and obtain the exact `Server` header identity of the GCP metadata server. This data is available without authentication beyond a free account registration.
 
 **Why the 403 on `/computeMetadata/v1/` does not invalidate this report:**
 GCP's `Metadata-Flavor: Google` header requirement is GCP's own last-resort protection against SSRF attacks from standard HTTP clients. It is not a VT mitigation. VT's correct fix is to block outbound connections to `169.254.0.0/16` at the VPC egress layer — which is not done. If Google ever changes the header requirement, or if a redirect-chain attack can inject the header, VT's unfiltered IP access becomes the entry point for full credential extraction.
