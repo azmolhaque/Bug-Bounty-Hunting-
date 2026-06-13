@@ -237,6 +237,8 @@ info "These are retrievable immediately by any free Community account."
 sep
 
 CONFIRMED_IMDS=0
+MAX_TIMES_SUBMITTED=0
+TOKEN_ENDPOINT_HIT=0
 
 KNOWN_TARGETS=(
   "http://169.254.169.254/"
@@ -277,10 +279,15 @@ for url in "${KNOWN_TARGETS[@]}"; do
   [[ -n "$BODY_SIZE" ]]    && printf "  │ %-16s │ %-38s│\n" "Body Size" "${BODY_SIZE} bytes"
   [[ -n "$LAST_CRAWLED" ]] && printf "  │ %-16s │ %-38s│\n" "Last Crawled" "${LAST_CRAWLED}"
 
-  if [[ -n "$TIMES_SUBMITTED" ]] && [[ "$TIMES_SUBMITTED" =~ ^[0-9]+$ ]] && [[ "$TIMES_SUBMITTED" -gt 5 ]]; then
-    printf "  │ ${Y}${B}%-16s${X} │ ${Y}${B}%-38s${X}│\n" "Times Submitted" "${TIMES_SUBMITTED}  ← ongoing live exposure"
-  elif [[ -n "$TIMES_SUBMITTED" ]]; then
-    printf "  │ %-16s │ %-38s│\n" "Times Submitted" "$TIMES_SUBMITTED"
+  if [[ -n "$TIMES_SUBMITTED" ]] && [[ "$TIMES_SUBMITTED" =~ ^[0-9]+$ ]]; then
+    if [[ "$TIMES_SUBMITTED" -gt 5 ]]; then
+      printf "  │ ${Y}${B}%-16s${X} │ ${Y}${B}%-38s${X}│\n" "Times Submitted" "${TIMES_SUBMITTED}  ← ongoing live exposure"
+    else
+      printf "  │ %-16s │ %-38s│\n" "Times Submitted" "$TIMES_SUBMITTED"
+    fi
+    if [[ "$TIMES_SUBMITTED" -gt "$MAX_TIMES_SUBMITTED" ]]; then
+      MAX_TIMES_SUBMITTED="$TIMES_SUBMITTED"
+    fi
   fi
 
   if [[ -n "$SHA256" ]]; then
@@ -289,6 +296,18 @@ for url in "${KNOWN_TARGETS[@]}"; do
   fi
 
   printf "  └──────────────────┴────────────────────────────────────────┘\n"
+
+  # Special callout: VT's scanner attempted to reach the OAuth token endpoint
+  if [[ "$url" == *"service-accounts/default/token"* ]] && [[ "$SERVER" == *"Metadata"* ]]; then
+    printf "\n"
+    crit "ESCALATION SIGNAL: VT's scanner requested the GCP OAuth2 service-account token endpoint."
+    crit "  GCP's IMDS responded (HTTP ${HTTP_CODE}) — the server is reachable."
+    info  "  HTTP 403 = GCP blocked extraction (Metadata-Flavor header missing from VT's request)."
+    info  "  This proves the token endpoint is network-reachable from VT's scanner fleet."
+    info  "  Any future path that bypasses GCP's header requirement would yield live OAuth tokens."
+    TOKEN_ENDPOINT_HIT=1
+    printf "\n"
+  fi
 done
 
 printf "\n"
@@ -488,7 +507,7 @@ REPORT="${EVIDENCE_DIR}/EVIDENCE-REPORT.txt"
   printf "GET /api/v3/urls/{id} returns:\n"
   printf '  last_http_response_headers.Server = "Metadata Server for VM"\n'
   printf "  last_http_response_content_sha256 = <indexed in VT file corpus>\n"
-  printf "  times_submitted = 423 (ongoing, not historical)\n"
+  printf "  times_submitted = %s (ongoing, not historical)\n" "${MAX_TIMES_SUBMITTED}"
   printf "\n"
   printf "Readable by any free Community account.\n"
   printf "\n"
@@ -532,8 +551,12 @@ fi
 
 if [[ "${CONFIRMED_IMDS:-0}" -eq 1 ]]; then
   printf "║  ✓ Server: Metadata Server for VM  in VT public API          ║\n"
-  printf "║  ✓ times_submitted: 423 — exposure is ongoing, not past      ║\n"
+  printf "║  ✓ times_submitted: %-5s — exposure is ongoing, not past   ║\n" "${MAX_TIMES_SUBMITTED}"
   printf "║  ✓ Any free Community account can retrieve this today        ║\n"
+fi
+
+if [[ "${TOKEN_ENDPOINT_HIT:-0}" -eq 1 ]]; then
+  printf "║  ✓ Token endpoint reachable — GCP IMDS responded to /token   ║\n"
 fi
 
 if [[ "${CRAWL_GOT_RESULT:-0}" -eq 1 ]]; then
