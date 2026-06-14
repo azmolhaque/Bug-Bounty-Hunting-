@@ -1,6 +1,6 @@
 # Attack Chains — wiz.io
 # Status: hypotheses ranked by probability × impact
-# Updated: 2026-06-11
+# Updated: 2026-06-14
 
 ## Chain 1 — Subdomain Takeover → CSP Bypass → Critical (PENDING PI OUTPUT)
 
@@ -318,17 +318,76 @@ gql_query '{ connectors(first: 10, filterBy: { type: [GITHUB, GITLAB, BITBUCKET]
 
 ---
 
+---
+
+## Chain 12 — Cognito + Auth0 Dual Auth → JWT Audience Confusion (NEW — from HTML config)
+
+**Source:** `app.wiz.io` SPA HTML `environment-variables-config` block
+**Components:** `VITE_APP_COGNITO_AUDIENCE: "wiz-api"` + Auth0 login flow
+**Probability:** Low-Medium — dual auth systems are a well-known attack surface; depends on whether backend accepts both issuers
+**Potential severity:** Critical (auth bypass → unauthenticated GraphQL API access)
+**Added:** 2026-06-14
+
+### What was found
+
+The Wiz portal HTML embeds this production config at every path (SPA pattern):
+```json
+"VITE_APP_COGNITO_AUDIENCE": "wiz-api"
+```
+Alongside `VITE_APP_AUTH_URL: "https://auth.app.wiz.io"` which resolves to an AWS ELB.
+
+The login UI presents an email challenge flow (not a standard Auth0 OIDC redirect), suggesting a custom auth layer. The backend API (`api.*.app.wiz.io/graphql`) validates JWT tokens with `aud: wiz-api`. If the backend validates ONLY the audience claim and NOT the issuer (`iss`), a self-signed JWT or a Cognito JWT from a different user pool claiming `aud: wiz-api` might be accepted.
+
+### Also extracted from config
+
+| Asset | Value | Action |
+|-------|-------|--------|
+| `wizio-public.s3.amazonaws.com` | Public S3 bucket | Check listing → `curl https://wizio-public.s3.amazonaws.com/` |
+| CloudFormation template | `s3://wizio-public/deployment-v2/aws/wiz-aws-standard-org.json` | Fetch → analyze IAM permissions |
+| LaunchDarkly client ID | `5f2bbaa730af0f08855ad7e9` | Enumerate all feature flags (hidden features) |
+| Sentry DSN | `https://09635e866c684...@o454224.ingest.sentry.io/5443862` | Client-side, informational |
+| Datadog RUM token | `pub4e58628c5a89e58041122368f7acc277` | Client-side, informational |
+| App version | `4553dc648e2ab5a5a90cd26d4fd2eabe2209f0c2` | Live git commit hash |
+
+### LaunchDarkly feature flag enumeration
+
+```bash
+# From Pi — enumerate all flags with LD client ID
+curl -s "https://clientsdk.launchdarkly.com/sdk/evalx/5f2bbaa730af0f08855ad7e9/users/eyJrZXkiOiJ0ZXN0In0=" \
+  | python3 -m json.tool 2>/dev/null
+```
+
+Flags of interest: any flag named `*admin*`, `*internal*`, `*debug*`, `*bypass*`, `*dev*`, `*beta*` that is `false` in production — may have different value in test/fedRAMP environment, revealing gated features with potentially weaker auth.
+
+### S3 bucket analysis
+
+```bash
+# Check public bucket listing
+curl -s "https://wizio-public.s3.amazonaws.com/" | python3 -c "import sys; [print(l) for l in sys.stdin if 'Key' in l or 'Contents' in l or 'Error' in l]"
+
+# Fetch CloudFormation template — analyze IAM permissions Wiz requests
+curl -s "https://wizio-public.s3.amazonaws.com/deployment-v2/aws/wiz-aws-standard-org.json" \
+  | python3 -m json.tool | grep -A3 '"Action"' | head -80
+```
+
+If CloudFormation template contains `"Action": "*"` or overly permissive `iam:*` → reportable misconfiguration.
+
+---
+
 ## Priority Matrix (updated 2026-06-14)
 
 | Chain | Priority | Blocker | Source |
 |-------|----------|---------|--------|
 | **11 — AI Remediation cross-tenant PR injection** | **P0** | Trial account + VCS connector | WizCLI binary ACTION A |
+| **12 — JWT audience confusion (Cognito vs Auth0)** | **P0** | Trial JWT to test | HTML config leak |
 | 3 — Webhook SSRF → Grafana | P0 | Trial account | Prior recon |
 | 4 — GraphQL cross-tenant IDOR | P0 | Trial account | Prior recon |
 | 9 — forensics-package cross-tenant IDOR | P0 | WizCLI trial token + 2nd account | Prior recon |
 | 1 — F001 → CSP bypass | P1 | Pi ACTION C results | Prior recon |
-| 2 — F001 → OAuth hijack | P1 | Pi probe results | Prior recon |
+| 2 — F001 → OAuth hijack (FedRAMP too) | P1 | Pi probe + FedRAMP Auth0 | Prior recon + FedRAMP env |
 | 10 — events-ingestion tenant spoof | P1 | Trial account + event schema | Prior recon |
+| LD flag enum → hidden feature auth | P2 | Run from Pi (no account needed) | HTML config |
+| S3 wizio-public listing / IAM review | P2 | Run from Pi (no account needed) | HTML config |
 | 7 — dynamic-dns-checker SSRF | P2 | Pi probe results | Prior recon |
 | 8 — PR preview introspection | P2 | Pi ACTION B (run now) | Prior recon |
 | 6 — Ghost CMS key | P3 | Pi ACTION D (run now) | Prior recon |
