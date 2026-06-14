@@ -13,6 +13,8 @@ Started: 2026-06-13
 | 2026-06-13 | 3 | H5 Premium endpoints | 403/404 on all — no differential leak |
 | 2026-06-13 | 4 | Report written | **F001** — `findings/F001-ssrf-gcp-imds-via-url-scanner.md` — CVSS 8.5 HIGH |
 | 2026-06-13 | 4 | GCP path escalation | `scripts/vt-gcp-ssrf.sh` ready — tests `/computeMetadata/v1beta1/` token endpoint; **MUST RUN ON PI** |
+| 2026-06-14 | 5 | Triage complete | CVSS `AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N` = 5.0 Medium; VRP internal tier expected High; submission text finalized in `findings/submission/` |
+| 2026-06-14 | 6 | **SUBMITTED to Google VRP** | Issue **#523823039** — Status: New; awaiting human triage; vulnerability type: Sensitive data exposure; attachments: 6 files (E01-E06) |
 
 ## Key Hypotheses
 
@@ -48,26 +50,11 @@ leaking existence of enterprise objects to free users.
 control only checks the top-level object (not relationships), another user's
 comments/votes/files might be readable.
 
-## Current Status — Phase 4 CONFIRMED, Report Ready
+## Current Status — SUBMITTED ✓
 
-**F001 is submittable NOW as High (CVSS 8.5).** The GCP token escalation test (`vt-gcp-ssrf.sh`) is the only remaining step that could upgrade it to Critical. Run that first if you want to know before submitting — or submit immediately at High and add an escalation note in the report.
+**F001 submitted 2026-06-14 to Google VRP as Issue #523823039.** Status: New — awaiting human triage. Final CVSS 5.0 Medium (`AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N`); VRP internal tier expected High. Three independent proof vectors (IP literal bypass, wildcard DNS alias bypass, OOB GCP scanner IPs), 6 attachments filed.
 
-### Immediate next action (Pi only — cloud env has no external network)
-
-**Step A — GCP token escalation test (determines High vs Critical):**
-```bash
-git pull
-export VT_API_KEY="<your_community_api_key>"
-bash scripts/vt-gcp-ssrf.sh 2>&1 | tee ~/vt-gcp-ssrf-output.txt
-```
-If `last_http_response_code: 200` appears for the token path AND `last_http_response_content_sha256` is populated → attempt `GET /api/v3/files/{sha256}` to retrieve the token body → **Critical**.
-
-**Step B — Submit to Google VRP:**
-- URL: `https://bughunters.google.com/report/`
-- Product: VirusTotal
-- Report: copy from `results/virustotal.com/findings/F001-ssrf-gcp-imds-via-url-scanner.md`
-- Attach: webhook.site screenshots, `url-object-imds.json` evidence file
-- Expected reward tier: High ($3,133–$13,337) per Google VRP SSRF schedule
+**No further action needed on this target** unless VRP responds requesting more information or escalation evidence.
 
 ## Decision Log
 - Chose VirusTotal: TIER1, explicitly in scope (no VERIFY caveat), rich documented API v3

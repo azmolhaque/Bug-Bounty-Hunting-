@@ -1,5 +1,22 @@
 # Hunt Log — wiz.io (Google VRP TIER1)
-Started: 2026-06-11
+Started: 2026-06-11 | Last updated: 2026-06-14
+
+## CURRENT STATUS (2026-06-14)
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ VERIFIED — SUBMIT NOW |
+| 2 | Chain 1+2 (F001 → CSP/OAuth escalation) | ⏳ Pending Pi ACTION C |
+| 3 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
+| 4 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
+| 5 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
+| 6 | ACTION A (WizCLI binary strings) | ⏳ Run on Pi |
+| 7 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
+| 8 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
+
+**Submission texts for F001 ready at:** `findings/submission/F001-problem-description.md`
+
+---
 
 | Time | Phase | Action | Finding |
 |------|-------|---------|---------|
@@ -39,6 +56,9 @@ Started: 2026-06-11
 | 2026-06-12 | 2 | diskanalyzer-results-source.me-south-1.{app,e2e}.wiz.io | CloudFront 504 Gateway Timeout via CCU50-P5 (Kolkata PoP) to me-south-1 origin; generic error body — no S3 bucket name leaked; direct S3 bucket guesses timed out; PARKED — origin unknown |
 | 2026-06-12 | 2 | a2a.eu1.test.wiz.io | Direct AWS ELB (awselb/2.0, no CloudFront); blanket 403 on all 17 paths probed (/, /health, /api, /v1, /graphql, /admin, /livez, etc.); needs auth token to proceed; PARKED |
 | 2026-06-12 | 2 | a2a.test.wiz.io | 403 from AWS ELB via CloudFront (x-cache: Error from cloudfront); same pattern as eu1 variant |
+| 2026-06-14 | 4 | F001 Phase 4 verified | win-test.wiz.io CNAME still live; DEPLOYMENT_NOT_FOUND confirmed; report + submission texts written |
+| 2026-06-14 | 5 | F001 triaged | CVSS 8.2 High; passes all CLAUDE.md §2 gates; ready to submit |
+| 2026-06-14 | 6 | Workflow cleaned | 00-plan.md updated; orchestrator state corrected; Chain 9+10 probes added to phase4 script |
 
 ## Key Findings
 

