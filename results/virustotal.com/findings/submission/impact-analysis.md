@@ -41,6 +41,7 @@ Retrieval endpoint (any Community key): `GET /api/v3/urls/aHR0cDovLzE2OS4yNTQuMT
 VT's scanner has confirmed direct network access to the token endpoint. The only barrier between VT's scanner and live GCP service-account credentials is GCP's independent `Metadata-Flavor: Google` header validation — a control VT does not own, does not enforce, and cannot guarantee.
 
 **Any of the following escalates this to credential extraction:**
+
 - A redirect chain through a VT-scanned URL that injects `Metadata-Flavor: Google`
 - Any VT scanner configuration change that adds the required header
 - Any future change to GCP's independent header enforcement
@@ -51,7 +52,7 @@ This is a confirmed reachable endpoint with a confirmed active service behind it
 
 ## Ongoing and Systemic
 
-**`times_submitted: 1,647`** — VT's scanner has fetched Google's own production metadata server 1,647 times and stored every response. This is not a one-time discovery; it is an unpatched, continuously active exposure that predates this report.
+`times_submitted: 1,647` — VT's scanner has fetched Google's own production metadata server 1,647 times and stored every response. This is not a one-time discovery; it is an unpatched, continuously active exposure that predates this report.
 
 The flaw is architectural. Pre-DNS hostname string-matching cannot be patched by blocking one more hostname or one more IP. The same bypass works with `sslip.io`, attacker-controlled DNS, or split-horizon DNS. The attack surface at the application layer is unbounded without a network-layer fix (VPC egress deny on `169.254.0.0/16`).
 
@@ -68,7 +69,7 @@ The flaw is architectural. Pre-DNS hostname string-matching cannot be patched by
 | Privileges Required | Low | Free Community account, instantly registrable |
 | User Interaction | None | Fully automated exploitation |
 | Scope | **Changed** | VT scanner (vulnerable component) impacts GCP IMDS (separate component, different authorization boundary) |
-| Confidentiality | **Low** | IMDS headers and SHA256 publicly disclosed; credentials not extracted due to downstream GCP control VT does not own |
+| Confidentiality | Low | IMDS headers and SHA256 publicly disclosed; credentials not extracted due to downstream GCP control VT does not own |
 | Integrity | None | No write capability demonstrated |
 | Availability | None | No denial-of-service capability demonstrated |
 

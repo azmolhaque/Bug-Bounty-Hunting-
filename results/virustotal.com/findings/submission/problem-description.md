@@ -83,10 +83,8 @@ Pre-DNS hostname string-matching. The filter validates the hostname the user **s
 
 ---
 
-## This Is a Bypass, Not an Absent Control
+## This Is a Filter Bypass, Not an Absent Control
 
-The blocklist (`metadata.google.internal` → `400`) proves VT **intentionally implemented SSRF protection** for the GCP metadata endpoint. A control bypassable by two trivially equivalent representations of the blocked address is a **broken control** — not a working one.
+Because the application explicitly throws a `400 InvalidArgumentError` for the hostname, the security filter's design intent is clearly established. The ability to bypass this intended restriction via IP literals and wildcard DNS aliasing demonstrates a definitive failure of this control, classifying it as a filter bypass vulnerability rather than an intended application behavior.
 
-"Intended behavior" is not a defensible triager response when the intended behavior is a functioning SSRF filter and two independent techniques demonstrate it is not functioning.
-
-Full reproduction steps, evidence bundle (raw API JSON responses), and automated PoC script are attached.
+Full reproduction steps, evidence bundle (raw API JSON responses), and PoC terminal output are attached.
