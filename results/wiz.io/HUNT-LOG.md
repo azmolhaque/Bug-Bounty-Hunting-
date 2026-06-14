@@ -61,6 +61,7 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 2026-06-14 | 5 | F001 triaged | CVSS 8.2 High; passes all CLAUDE.md §2 gates; ready to submit |
 | 2026-06-14 | 6 | Workflow cleaned | 00-plan.md updated; orchestrator state corrected; Chain 9+10 probes added to phase4 script |
 | 2026-06-14 | 3 | **Chain 11 DISCOVERED** | WizCLI binary strings → embedded `github.com/wiz-sec/wiz/grpclib/rpc/ai` proto reveals AI Remediation gRPC service: `RequestCustomPullRequest(repositoryId, scanId, patches)` + `RunResponseAction(inputJson)` → cross-tenant PR injection candidate (Critical) |
+| 2026-06-14 | 1 | FedRAMP/GovCloud envs confirmed | `app.wiz.io` login "Another environment" dropdown shows: **Wiz for Gov (FedRAMP)** → `app.gov.wiz.io`; **Commercial on GovCloud** → `govcloud.wiz.io` (est.) — separate Auth0 tenants; Chain 2 OAuth scope expanded |
 
 ## Key Findings
 

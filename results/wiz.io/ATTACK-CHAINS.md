@@ -44,7 +44,10 @@
 2. Run `scripts/oauth-redirect-probe-wiz.sh`: test redirect_uri manipulation
 3. Check Auth0 OIDC discovery: `https://auth0.demo.wiz.io/.well-known/openid-configuration`
 
-**Note:** Even if Auth0 strict — check community.wiz.io, app.wiz.io, gh-109705.pr.test.wiz.io OAuth endpoints
+**Note:** Even if Auth0 strict on commercial — also check:
+- FedRAMP Auth0 tenant: `auth0.gov.wiz.io` (likely separate, possibly more relaxed allowlist)
+- GovCloud Auth0 tenant: `auth0.govcloud.wiz.io` (est.)
+- Login page "Another environment" dropdown → "Wiz for Gov (FedRAMP)" and "Commercial on GovCloud" = separate Auth0 tenants confirmed from `app.wiz.io` UI (discovered 2026-06-14)
 
 ---
 
