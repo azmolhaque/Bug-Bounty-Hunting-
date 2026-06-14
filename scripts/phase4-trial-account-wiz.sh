@@ -256,7 +256,75 @@ EOF
 sep
 
 # ----------------------------------------------------------------
-# G. Chain 9 — forensics-package.app.wiz.io cross-tenant IDOR
+# G. Chain 11 — AI Remediation cross-tenant PR injection (NEW — from WizCLI binary)
+# ----------------------------------------------------------------
+log "G. Chain 11 — AI Remediation cross-tenant PR injection"
+log "  Source: WizCLI binary embedded proto package github.com/wiz-sec/wiz/grpclib/rpc/ai"
+
+{
+  echo "=== Find AI remediation mutations in schema ==="
+  gql_query '{"query":"{ __schema { mutationType { fields { name description args { name type { name kind ofType { name kind } } } } } } }"}' \
+    | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  fields=d['data']['__schema']['mutationType']['fields']
+  keywords=['remedi','action','pullrequest','pull_request','pr','vcs','ai','patch','response']
+  for f in fields:
+    name_lower=f['name'].lower()
+    desc_lower=(f.get('description') or '').lower()
+    if any(k in name_lower or k in desc_lower for k in keywords):
+      args=[a['name'] for a in f.get('args',[])]
+      print(f\"{f['name']}({', '.join(args)})\")
+      print(f\"  desc: {f.get('description','')}\")
+except Exception as e: print(f'error: {e}')
+" 2>/dev/null | head -60
+  echo ""
+
+  echo "=== RequestCustomPullRequest input type schema ==="
+  gql_query '{"query":"{ __type(name: \"RequestCustomPullRequestInput\") { fields { name type { name kind ofType { name kind } } description } } }"}' \
+    | python3 -m json.tool 2>/dev/null | head -30
+  echo ""
+
+  echo "=== RunResponseAction input type schema ==="
+  gql_query '{"query":"{ __type(name: \"RunResponseActionInput\") { fields { name type { name kind ofType { name kind } } description } } }"}' \
+    | python3 -m json.tool 2>/dev/null | head -30
+  echo ""
+
+  echo "=== IssueRemediation input type schema ==="
+  gql_query '{"query":"{ __type(name: \"IssueRemediationInput\") { fields { name type { name kind } description } } }"}' \
+    | python3 -m json.tool 2>/dev/null | head -30
+  echo ""
+
+  echo "=== VCS repository list (get repositoryId format for cross-tenant test) ==="
+  gql_query '{"query":"{ vcsRepositories(first: 5) { nodes { id name url } } }"}' \
+    | python3 -m json.tool 2>/dev/null | head -30
+  echo ""
+
+  echo "=== GitHub/GitLab connectors (VCS integration IDs) ==="
+  gql_query '{"query":"{ connectors(first: 10) { nodes { id name type status } } }"}' \
+    | python3 -m json.tool 2>/dev/null | head -40
+  echo ""
+
+  echo "=== All mutation names containing 'remedi' or 'action' or 'pull' ==="
+  gql_query '{"query":"{ __schema { mutationType { fields { name } } } }"}' \
+    | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  fields=d['data']['__schema']['mutationType']['fields']
+  for f in fields:
+    if any(k in f['name'].lower() for k in ['remedi','action','pull','patch','vcs','ai']):
+      print(f['name'])
+except: pass
+" 2>/dev/null | head -40
+
+} | tee "$RESULTS/chain11-ai-remediation.txt"
+log "Chain 11 results → $RESULTS/chain11-ai-remediation.txt"
+sep
+
+# ----------------------------------------------------------------
+# H. Chain 9 — forensics-package.app.wiz.io cross-tenant IDOR
 # ----------------------------------------------------------------
 log "G. Chain 9 — forensics-package cross-tenant IDOR probe"
 

@@ -233,17 +233,99 @@ curl -sk -H "Authorization: Bearer $WIZ_TOKEN" \
 
 ---
 
-## Priority Matrix
+## Chain 11 — AI Remediation Cross-Tenant PR Injection / Action Runner (CRITICAL CANDIDATE)
 
-| Chain | Priority | Blocker |
-|-------|----------|---------|
-| 3 — Webhook SSRF → Grafana | P0 | Trial account needed |
-| 4 — GraphQL IDOR | P0 | Trial account needed |
-| 9 — forensics-package cross-tenant IDOR | P0 | WizCLI trial token + 2nd account |
-| 1 — F001 → CSP bypass | P1 | Pi ACTION C results |
-| 2 — F001 → OAuth hijack | P1 | Pi probe results |
-| 5 — WizCLI binary analysis | P1 | Pi ACTION A (run now) |
-| 10 — events-ingestion tenant spoof | P1 | Trial account + event schema |
-| 8 — PR preview introspection | P2 | Pi ACTION B (run now) |
-| 7 — dynamic-dns-checker SSRF | P2 | Pi probe results |
-| 6 — Ghost CMS key | P3 | Pi ACTION D (run now) |
+**Source:** WizCLI binary strings extraction — embedded Go proto symbols from `github.com/wiz-sec/wiz/grpclib/rpc/ai` package (publicly downloadable binary)
+**Components:** Wiz AI Remediation feature (gRPC `IssueRemediationResult`) + GitHub/GitLab connector + trial account
+**Probability:** Medium-High — `repositoryId` + `scanId` + `patches` pattern is a classic cross-tenant IDOR; `inputJson` on `RunResponseAction` is a potential injection vector
+**Potential severity:** Critical (cross-tenant code injection into victim's VCS repo via Wiz integration)
+**Added:** 2026-06-14 (from WizCLI binary strings ACTION A output)
+
+### What the binary reveals
+
+The WizCLI binary embeds reflection data for these proto types at package `github.com/wiz-sec/wiz/grpclib/rpc/ai`:
+
+```
+IssueRemediationResult
+  RemediationStep
+    Action (one-of):
+      CreateVcsRemediationIssue   (label, inputJson)
+      RequestCustomPullRequest    (repositoryId, scanId, patches, inputJson)  ← HIGH VALUE
+      RequestRemediationPullRequest (inputJson)
+      RunResponseAction           (label, inputJson)                          ← INJECTION CANDIDATE
+      UpdateIssue                 (label, inputJson)
+      UpdateIssuesAssignee        (label, inputJson)
+  Severity   (enum: GetReasoning, GetRecommendedSeverity, GetVerdict)
+  Verdict    (enum)
+
+PostureIssueRemediationResult
+  FindingsCoverage (coveredFindings, totalFindingsCount)
+  ConfidenceLevel (enum)
+```
+
+### Attack vector A — Cross-tenant PR injection via `RequestCustomPullRequest`
+
+1. Register Wiz trial → connect your own GitHub repo → trigger AI remediation on a Wiz issue
+2. Observe the GraphQL mutation that creates a remediation PR (capture with DevTools)
+3. Extract `repositoryId` structure (likely a Wiz-internal UUID referencing a VCS integration)
+4. Register second Wiz trial account (different tenant) → connect their GitHub repo
+5. Using Account A's JWT, call the mutation with Account B's `repositoryId` + Account B's `scanId`
+6. If Wiz validates JWT authenticity but NOT `repositoryId` tenant ownership → PR injected into Account B's repo with Account A's patches
+
+**Why this matters:** Wiz has deep GitHub integration (full repo read+write for IaC remediation). A cross-tenant `repositoryId` bypass means an attacker can inject arbitrary code PRs into any Wiz customer's connected GitHub repo — supply chain attack at scale.
+
+### Attack vector B — `RunResponseAction` inputJson injection
+
+`RunResponseAction(label, inputJson)` takes raw JSON as input to execute arbitrary "response actions". If this JSON feeds into:
+- A template engine → SSTI
+- A subprocess call → command injection
+- A GitHub API call → parameter injection into API payloads
+
+Test: supply `{"action": "...", "param": "{{7*7}}"}` and `{"action": "'; sleep 5 #"}` to check for SSTI/injection.
+
+### GraphQL probes (run with trial JWT)
+
+```bash
+# 1. Find AI remediation mutations in schema
+gql_query '{ __schema { mutationType { fields { name description args { name type { name kind ofType { name kind } } } } } } }' \
+  | python3 -c "import json,sys; fields=json.load(sys.stdin)['data']['__schema']['mutationType']['fields']; [print(f['name'],f.get('description','')) for f in fields if any(k in f['name'].lower() for k in ['remedi','action','pullrequest','pr','vcs','ai'])]"
+
+# 2. Probe AI remediation query type
+gql_query '{ __type(name: "RequestCustomPullRequestInput") { fields { name type { name kind } description } } }'
+gql_query '{ __type(name: "RunResponseActionInput") { fields { name type { name kind } description } } }'
+gql_query '{ __type(name: "IssueRemediationInput") { fields { name type { name kind } description } } }'
+
+# 3. List your own VCS integrations (to get repositoryId format)
+gql_query '{ vcsRepositories(first: 5) { nodes { id name url integration { id } } } }'
+gql_query '{ connectors(first: 10, filterBy: { type: [GITHUB, GITLAB, BITBUCKET] }) { nodes { id name type } } }'
+```
+
+### Setup needed
+
+- Wiz trial account + GitHub repo connected for IaC scanning
+- Second trial account (different tenant, different GitHub repo)
+- Capture `repositoryId` values from DevTools Network tab when AI remediation triggers
+
+### Also: Package path disclosure
+
+`github.com/wiz-sec/wiz/grpclib/rpc/ai` embedded in public binary confirms:
+- Wiz monorepo lives at `github.com/wiz-sec/wiz` (private, out of scope to access)
+- gRPC is used for internal AI service communication
+- This is informational value (confirms architecture) but not itself reportable
+
+---
+
+## Priority Matrix (updated 2026-06-14)
+
+| Chain | Priority | Blocker | Source |
+|-------|----------|---------|--------|
+| **11 — AI Remediation cross-tenant PR injection** | **P0** | Trial account + VCS connector | WizCLI binary ACTION A |
+| 3 — Webhook SSRF → Grafana | P0 | Trial account | Prior recon |
+| 4 — GraphQL cross-tenant IDOR | P0 | Trial account | Prior recon |
+| 9 — forensics-package cross-tenant IDOR | P0 | WizCLI trial token + 2nd account | Prior recon |
+| 1 — F001 → CSP bypass | P1 | Pi ACTION C results | Prior recon |
+| 2 — F001 → OAuth hijack | P1 | Pi probe results | Prior recon |
+| 10 — events-ingestion tenant spoof | P1 | Trial account + event schema | Prior recon |
+| 7 — dynamic-dns-checker SSRF | P2 | Pi probe results | Prior recon |
+| 8 — PR preview introspection | P2 | Pi ACTION B (run now) | Prior recon |
+| 6 — Ghost CMS key | P3 | Pi ACTION D (run now) | Prior recon |

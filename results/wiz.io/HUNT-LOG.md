@@ -6,13 +6,14 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | # | Item | Status |
 |---|------|--------|
 | 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ VERIFIED — SUBMIT NOW |
-| 2 | Chain 1+2 (F001 → CSP/OAuth escalation) | ⏳ Pending Pi ACTION C |
-| 3 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
-| 4 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
-| 5 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
-| 6 | ACTION A (WizCLI binary strings) | ⏳ Run on Pi |
-| 7 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
-| 8 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
+| 2 | ACTION A (WizCLI binary strings) | ✅ DONE — revealed Chain 11 |
+| 3 | **Chain 11 (AI Remediation cross-tenant PR injection)** | 🔥 NEW CRITICAL CANDIDATE — needs trial account |
+| 4 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
+| 5 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
+| 6 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
+| 7 | Chain 1+2 (F001 → CSP/OAuth escalation) | ⏳ Pending Pi ACTION C |
+| 8 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
+| 9 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
 
 **Submission texts for F001 ready at:** `findings/submission/F001-problem-description.md`
 
@@ -59,6 +60,7 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 2026-06-14 | 4 | F001 Phase 4 verified | win-test.wiz.io CNAME still live; DEPLOYMENT_NOT_FOUND confirmed; report + submission texts written |
 | 2026-06-14 | 5 | F001 triaged | CVSS 8.2 High; passes all CLAUDE.md §2 gates; ready to submit |
 | 2026-06-14 | 6 | Workflow cleaned | 00-plan.md updated; orchestrator state corrected; Chain 9+10 probes added to phase4 script |
+| 2026-06-14 | 3 | **Chain 11 DISCOVERED** | WizCLI binary strings → embedded `github.com/wiz-sec/wiz/grpclib/rpc/ai` proto reveals AI Remediation gRPC service: `RequestCustomPullRequest(repositoryId, scanId, patches)` + `RunResponseAction(inputJson)` → cross-tenant PR injection candidate (Critical) |
 
 ## Key Findings
 
