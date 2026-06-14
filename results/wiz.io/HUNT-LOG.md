@@ -63,6 +63,7 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 2026-06-14 | 3 | **Chain 11 DISCOVERED** | WizCLI binary strings → embedded `github.com/wiz-sec/wiz/grpclib/rpc/ai` proto reveals AI Remediation gRPC service: `RequestCustomPullRequest(repositoryId, scanId, patches)` + `RunResponseAction(inputJson)` → cross-tenant PR injection candidate (Critical) |
 | 2026-06-14 | 1 | FedRAMP/GovCloud envs confirmed | `app.wiz.io` login "Another environment" dropdown shows: **Wiz for Gov (FedRAMP)** → `app.gov.wiz.io`; **Commercial on GovCloud** → `govcloud.wiz.io` (est.) — separate Auth0 tenants; Chain 2 OAuth scope expanded |
 | 2026-06-14 | 2 | **HTML config block extracted** | SPA serves full prod config at every path; extracted: `VITE_APP_COGNITO_AUDIENCE=wiz-api` (JWT confusion candidate Chain 12), LD client ID `5f2bbaa730af0f08855ad7e9`, S3 bucket `wizio-public.s3.amazonaws.com`, CloudFormation template path, git commit `4553dc648e2ab5a5a90cd26d4fd2eabe2209f0c2` |
+| 2026-06-14 | 2 | **graphqlTypes bundle extracted** | `graphqlTypes-N1XN-ltn.js` (222KB) downloaded from browser; 250+ mutations found including: **Chain 13** `CopyResourceForensicsToExternalAccount` (Critical IDOR candidate), **Chain 14** `CreateMemberTenantRequest` (MSSP unauthorized access), `RequestRemediationPullRequest`+`FindingPullRequestRemediation` (Chain 11 confirmed), `RunResponseActionFix(inputJson)` (injection), `WebhookIntegrationParams` (Chain 3) |
 
 ## Key Findings
 

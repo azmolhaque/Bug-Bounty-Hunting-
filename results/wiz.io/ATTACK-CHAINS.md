@@ -374,20 +374,64 @@ If CloudFormation template contains `"Action": "*"` or overly permissive `iam:*`
 
 ---
 
-## Priority Matrix (updated 2026-06-14)
+## Chain 13 — CopyResourceForensicsToExternalAccount → Cross-Tenant Forensic Data Exfil (CRITICAL)
 
-| Chain | Priority | Blocker | Source |
-|-------|----------|---------|--------|
-| **11 — AI Remediation cross-tenant PR injection** | **P0** | Trial account + VCS connector | WizCLI binary ACTION A |
-| **12 — JWT audience confusion (Cognito vs Auth0)** | **P0** | Trial JWT to test | HTML config leak |
-| 3 — Webhook SSRF → Grafana | P0 | Trial account | Prior recon |
-| 4 — GraphQL cross-tenant IDOR | P0 | Trial account | Prior recon |
-| 9 — forensics-package cross-tenant IDOR | P0 | WizCLI trial token + 2nd account | Prior recon |
-| 1 — F001 → CSP bypass | P1 | Pi ACTION C results | Prior recon |
-| 2 — F001 → OAuth hijack (FedRAMP too) | P1 | Pi probe + FedRAMP Auth0 | Prior recon + FedRAMP env |
-| 10 — events-ingestion tenant spoof | P1 | Trial account + event schema | Prior recon |
-| LD flag enum → hidden feature auth | P2 | Run from Pi (no account needed) | HTML config |
-| S3 wizio-public listing / IAM review | P2 | Run from Pi (no account needed) | HTML config |
-| 7 — dynamic-dns-checker SSRF | P2 | Pi probe results | Prior recon |
-| 8 — PR preview introspection | P2 | Pi ACTION B (run now) | Prior recon |
-| 6 — Ghost CMS key | P3 | Pi ACTION D (run now) | Prior recon |
+**Source:** `graphqlTypes-N1XN-ltn.js` production bundle (line 28335) — confirmed in live schema
+**Mutation:** `mutation CopyResourceForensicsToExternalAccount($input: CopyResourceForensicsToExternalAccountInput!)`
+**Probability:** High — the mutation explicitly copies data cross-account; IDOR likely if `resourceId` not tenant-scoped
+**Potential severity:** Critical (cross-tenant forensic data → attacker external account)
+**Added:** 2026-06-14
+
+### What this does
+
+Copies forensic scan data (container filesystems, process lists, network connections, IaC configs, secrets found by scanner) from a cloud resource to an external account supplied by the caller. Designed for customers to export their own forensics. **IDOR risk:** if `resourceId` is not validated against the calling JWT's tenant, attacker copies another tenant's data.
+
+```bash
+# Probe input fields
+gql_query '{"query":"{ __type(name: \"CopyResourceForensicsToExternalAccountInput\") { inputFields { name type { name kind } } } }"}'
+# List your resources (baseline)
+gql_query '{"query":"{ cloudResources(first: 5) { nodes { id name type } } }"}'
+# Then substitute other tenant resourceId with your JWT → Critical if 200
+```
+
+---
+
+## Chain 14 — CreateMemberTenantRequest → Unauthorized MSSP Tenant Access
+
+**Source:** `graphqlTypes-N1XN-ltn.js` — `mutation CreateMemberTenantRequest` + `fragment MemberTenantRequestFields`
+**Probability:** Medium — depends on whether target tenant auto-approves or must accept
+**Potential severity:** Critical (unauthorized access to another customer's Wiz admin panel)
+**Added:** 2026-06-14
+
+### What this does
+
+Wiz has an MSSP (Managed Service Provider) feature. `CreateMemberTenantRequest` sends a request to become the manager of another Wiz tenant. Fields: `id`, `name`, `location`, `dataCenter`, `status`.
+
+**Attack:** Does the target tenant need to explicitly approve? If not (auto-accept) or if approval notification is spoofable → attacker gains admin visibility into any Wiz customer's cloud environment.
+
+```bash
+gql_query '{"query":"{ __type(name: \"CreateMemberTenantRequestInput\") { inputFields { name type { name } } } }"}'
+```
+
+---
+
+## Priority Matrix (updated 2026-06-14 — graphqlTypes bundle confirmed)
+
+| Chain | Priority | Mutation Confirmed | Blocker |
+|-------|----------|--------------------|---------|
+| **13 — CopyResourceForensics cross-tenant exfil** | **P0** | `CopyResourceForensicsToExternalAccount` | Trial + 2nd account |
+| **14 — CreateMemberTenantRequest MSSP access** | **P0** | `CreateMemberTenantRequest` | Trial account |
+| **11 — AI Remediation cross-tenant PR injection** | **P0** | `RequestRemediationPullRequest`, `FindingPullRequestRemediation` | Trial + VCS + 2nd account |
+| **12 — JWT audience confusion (Cognito vs Auth0)** | **P0** | all mutations | Trial JWT to test |
+| 3 — Webhook SSRF → Grafana | P0 | `WebhookIntegrationParams` confirmed | Trial account |
+| 4 — GraphQL cross-tenant IDOR | P0 | `issueId`/`scanId`/`resourceId` params | Trial + 2nd account |
+| 9 — forensics-package cross-tenant IDOR | P0 | HTTP-level (not GraphQL) | WizCLI token + 2nd account |
+| RunResponseAction injection | P1 | `RunResponseActionFix` (`inputJson`) | Trial account |
+| 1 — F001 → CSP bypass | P1 | — | Pi ACTION C |
+| 2 — F001 → OAuth hijack (FedRAMP) | P1 | — | Pi probe |
+| 10 — events-ingestion tenant spoof | P1 | — | Trial account |
+| LD flag → hidden API feature access | P2 | — | No account needed |
+| S3 wizio-public / CloudFormation IAM | P2 | — | No account needed |
+| 7 — dynamic-dns-checker SSRF | P2 | — | Pi probe |
+| 8 — PR preview introspection | P2 | — | Pi ACTION B |
+| 6 — Ghost CMS key | P3 | — | Pi ACTION D |
