@@ -370,15 +370,22 @@ version 3, Chrome Web Store):
 LT = `wiz-app`
 ```
 
-### Evidence 5 — Domain=.wiz.io Scope (from Wiz Chrome Extension source)
-```javascript
-// Apollo link in background.js — builds Cookie header for GraphQL API calls:
-.filter(e => !!(
-    e.domain === r ||
-    e.domain.startsWith(`.`) && r.endsWith(e.domain.slice(1))
-))
-// This filter handles Domain=.wiz.io cookies — proves they exist
+### Evidence 5 — Domain=.wiz.io Scope (from Wiz Chrome Extension v1.0.19)
+
+Extracted live from Chrome Web Store CRX, 2026-06-15:
+```bash
+grep -oE 'cookies\.getAll.{150}' background.js | head -1
 ```
+Output:
+```
+cookies.getAll({domain:r})).filter(e=>!!(e.domain===r||e.domain.startsWith(`.`)
+&&r.endsWith(e.domain.slice(1)))).map(e=>`${e.name}=${e.value}`).join(`; `)
+```
+
+This is the Apollo GraphQL link in background.js that builds the `Cookie:` header
+for all Wiz API calls. The filter branch `e.domain.startsWith('.')&&r.endsWith(e.domain.slice(1))`
+handles exactly one case: `e.domain=".wiz.io"` matched against `r="app.wiz.io"`.
+Confirmed in extension v1.0.19 — the current published version.
 
 ### Evidence 6 — Extension External Messaging (from Wiz Chrome Extension manifest + source)
 ```json
