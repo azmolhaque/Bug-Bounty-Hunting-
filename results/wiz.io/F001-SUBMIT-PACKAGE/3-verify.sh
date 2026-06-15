@@ -62,8 +62,7 @@ echo ""
 echo -e "${BOLD}[3/3] TLS certificate expiry check${NC}"
 CERT_OUTPUT=$(echo | openssl s_client \
     -connect "${TARGET}:443" \
-    -servername "$TARGET" \
-    -timeout 10 2>/dev/null)
+    -servername "$TARGET" 2>/dev/null)
 
 SERIAL=$(echo "$CERT_OUTPUT" | openssl x509 -noout -serial 2>/dev/null | cut -d= -f2)
 NOT_BEFORE=$(echo "$CERT_OUTPUT" | openssl x509 -noout -startdate 2>/dev/null | cut -d= -f2-)
