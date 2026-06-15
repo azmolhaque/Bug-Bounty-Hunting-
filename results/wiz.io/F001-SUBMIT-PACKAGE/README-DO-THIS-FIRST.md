@@ -8,13 +8,13 @@
 
 ```
 F001-SUBMIT-PACKAGE/
-├── README-DO-THIS-FIRST.md     ← You are here
-├── 1-REPORT.md                 ← Paste this into the Google VRP form
-├── 2-POC.md                    ← Attach this OR paste key sections
-├── 3-verify.sh                 ← Run from Termux to confirm bug is still live
-├── 4-extension-proof.sh        ← Run from Pi/Termux to download Wiz CRX + extract proof
-├── 5-cookie-server.py          ← Attacker cookie capture server (for triager reference)
-└── 6-attacker-page.html        ← Attacker phishing payload (for triager reference)
+├── README-DO-THIS-FIRST.md                       ← You are here
+├── 1-REPORT.md                                   ← Paste this into the Google VRP form
+├── F001-POC-subdomain-takeover-win-test-wiz-io.md ← Attach this as the PoC document
+├── 3-verify.sh                                   ← Run from Termux to confirm bug is still live
+├── 4-extension-proof.sh                          ← Run from Pi/Termux to download Wiz CRX + extract proof
+├── 5-cookie-server.py                            ← Attacker cookie capture server (for triager reference)
+└── 6-attacker-page.html                          ← Attacker phishing payload (for triager reference)
 ```
 
 **Cert file (NOT in this package — stays local per security policy):**
@@ -66,7 +66,7 @@ https://bughunters.google.com/report
 
 Attach these files:
 1. `wintest.wiz.io.crt` (from your Pi — the expired TLS certificate PEM)
-2. `2-POC.md` (the full PoC document)
+2. `F001-POC-subdomain-takeover-win-test-wiz-io.md` (the full PoC document)
 
 If the form only allows images, take screenshots of:
 - `dig CNAME win-test.wiz.io +short` output
