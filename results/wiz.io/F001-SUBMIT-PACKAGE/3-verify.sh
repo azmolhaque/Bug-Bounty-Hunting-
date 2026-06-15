@@ -6,15 +6,15 @@
 # Termux setup (first time only):
 #   pkg install dnsutils openssl-tool curl
 
-set -euo pipefail
+set -uo pipefail
 
 TARGET="win-test.wiz.io"
 EXPECTED_CNAME="37e7f43d8158e70f.vercel-dns-013.com."
 BOLD='\033[1m'; RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
 PASS=0; FAIL=0
 
-pass() { echo -e "${GREEN}[PASS]${NC} $1"; ((PASS++)); }
-fail() { echo -e "${RED}[FAIL]${NC} $1"; ((FAIL++)); }
+pass() { echo -e "${GREEN}[PASS]${NC} $1"; PASS=$((PASS+1)); }
+fail() { echo -e "${RED}[FAIL]${NC} $1"; FAIL=$((FAIL+1)); }
 info() { echo -e "${YELLOW}[INFO]${NC} $1"; }
 
 echo ""
