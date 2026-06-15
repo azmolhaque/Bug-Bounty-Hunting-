@@ -55,9 +55,17 @@ An attacker does not need to touch the `wiz.io` DNS zone. The steps are:
    Vercel infrastructure — it does. Verification passes immediately.
 4. Deploy arbitrary HTML, JavaScript, or a phishing page to the project.
 5. `https://win-test.wiz.io/` now serves attacker-controlled content under the
-   `wiz.io` brand with a valid TLS certificate issued to `win-test.wiz.io`.
+   `wiz.io` brand with a **new, valid TLS certificate** automatically provisioned
+   by Vercel (DigiCert/Let's Encrypt). The currently-expired certificate is an
+   artifact of the deleted project; Vercel issues fresh TLS upon claim.
 
 No interaction with Wiz is required after step 1. No Wiz credentials needed.
+
+**Note on the expired TLS certificate:** The current `openssl` output shows an
+expired Let's Encrypt cert (expired 2025-12-16). This does NOT protect against
+exploitation — it is only present because no active project is responding.
+Any attacker who completes step 2-3 above immediately receives a new, valid cert
+from Vercel's infrastructure, removing the browser warning entirely.
 
 ---
 

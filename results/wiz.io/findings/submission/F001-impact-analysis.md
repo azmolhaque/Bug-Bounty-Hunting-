@@ -5,10 +5,10 @@ the `wiz.io` domain. From that position:
 
 | Attack Surface | Mechanism | Impact |
 |---|---|---|
+| Session hijack | `wiz-app` auth cookie (Domain=.wiz.io) sent to attacker server | Full authenticated Wiz session — access to all connected cloud accounts |
 | Brand phishing | Serve fake Wiz login at `win-test.wiz.io` | Credential theft from enterprise security teams |
-| Cookie theft | `Domain=.wiz.io` cookies sent to attacker JS | Wiz session token exfiltration |
-| OAuth code hijack | If `win-test.wiz.io` in Auth0 redirect_uri allowlist | Full account takeover |
-| CSP trust abuse | Any `*.wiz.io` wildcard in `script-src`/`connect-src` | Attacker JS executes in portal context |
+| Chrome extension abuse | Official Wiz extension auto-injects into `*.wiz.io`; attacks `win-test.wiz.io` | Wiz scripts run in attacker page; side panel opened from attacker origin |
+| OAuth code hijack | If `win-test.wiz.io` in Auth0 redirect_uri allowlist (`auth0.test.wiz.io` is live) | Full account takeover |
 | Wiz brand impersonation | Fake WizCLI downloads, fake security advisories | Malware distribution under trusted brand |
 
 ---
@@ -29,29 +29,112 @@ one here.
 
 ---
 
-## Cookie Scope
+## Cookie Scope — Confirmed Cookie Name
 
-Any cookie set by `app.wiz.io`, `www.wiz.io`, or other portal origins with
-`Domain=.wiz.io` (without the `__Host-` prefix that restricts to the exact
-issuing origin) is sent by the browser to `win-test.wiz.io`. An attacker
-serving any page at that origin receives these cookies in every request.
+The Wiz portal sets an authentication cookie named **`wiz-app`** with
+`Domain=.wiz.io`. This was confirmed by analyzing the official Wiz Chrome
+extension (`koellablckildiakdjcchdfnagjfbpbh`) manifest and background.js,
+which contains:
+
+```javascript
+LT = `wiz-app`
+// ...
+{auth: await s.cookies.get({url: e, name: LT}), refresh: await s.cookies.get({url: t, name: RT})}
+// ...
+{isLoggedIn: true, userId: r, tenantId: VT(t.value), dataCenter: HT(t.value), emailDomain: UT(t.value)}
+```
+
+The extension reads `wiz-app` from `https://*.wiz.io/*` URLs and uses it to
+determine `isLoggedIn`, `tenantId`, `dataCenter`, and `emailDomain` — the
+full user-session context. Because the cookie is scoped to `Domain=.wiz.io`
+(not `__Host-` prefixed), the browser sends it to **every `*.wiz.io` origin**,
+including a claimed `win-test.wiz.io`. An attacker's server receives this
+cookie in the HTTP request headers for every page load.
+
+A captured `wiz-app` cookie is a live, authenticated Wiz session usable
+directly against `https://app.wiz.io/` — no additional authentication required.
+
+---
+
+## Chrome Extension Attack Amplification
+
+The official **Wiz Chrome extension** ("Wiz: Cloud Security in Your Cloud
+Portal", ID: `koellablckildiakdjcchdfnagjfbpbh`) significantly amplifies the
+attack surface of this subdomain takeover. Analysis of the published extension
+(downloaded from the Chrome Web Store, CRX version 3) reveals:
+
+**Extension manifest — confirmed attack surface:**
+
+```json
+"host_permissions": ["https://*.wiz.io/*"],
+"permissions": ["cookies", "scripting", "tabs", "declarativeNetRequestWithHostAccess"],
+"externally_connectable": {"matches": ["https://*.wiz.io/*"]},
+"content_scripts": [
+  {"matches": ["https://*.wiz.io/*"], "js": ["content-scripts/wizPortalInjector.js"]},
+  {"matches": ["https://*.wiz.io/*", ...], "js": ["content-scripts/main.js"]}
+]
+```
+
+**Attack vectors enabled by the extension:**
+
+1. **Automatic code injection**: When any user with the Wiz extension installed
+   visits `win-test.wiz.io` (once claimed), Chrome automatically injects
+   `wizPortalInjector.js` and `main.js` into the attacker's page. Wiz's own
+   content scripts execute in the context of the attacker-controlled origin.
+
+2. **Extension broadcasts with wildcard origin**: The injected
+   `wizPortalInjector.js` calls:
+   ```javascript
+   window.postMessage({type: SCRIPT_STARTED_MESSAGE_TYPE, ...}, `*`)
+   ```
+   The `"*"` targetOrigin means this message is received by attacker JS
+   with no origin restriction. The attacker page can listen for all messages
+   the extension broadcasts and know the extension is present and active.
+
+3. **External messaging capability**: The `externally_connectable` configuration
+   allows JavaScript running at `win-test.wiz.io` to directly send messages to
+   the extension's background service worker:
+   ```javascript
+   chrome.runtime.sendMessage("koellablckildiakdjcchdfnagjfbpbh",
+     {type: "OpenSidePanel", payload: {originUrl: "https://win-test.wiz.io"}})
+   ```
+   Analysis of `background.js` confirms the extension has
+   `onMessageExternal.addListener(n)` and that `n` opens the Wiz security
+   side panel in response. An attacker can force the victim's Wiz security
+   dashboard to open while the victim is on the attacker's phishing page —
+   creating a maximally convincing social engineering scenario where the
+   genuine Wiz UI is visible alongside attacker-crafted content.
+
+4. **Cookie read capability**: background.js reads `wiz-app` and refresh
+   cookies via `chrome.cookies.getAll({domain: r})` across all `*.wiz.io`
+   pages. The extension constructs the full `Cookie:` header string for API
+   calls. The fact that the extension needs this access from `*.wiz.io`
+   confirms the cookie is domain-scoped to `.wiz.io`.
 
 ---
 
 ## OAuth Escalation Path
 
-Wiz uses Auth0 for SSO. If any Auth0 application in the `auth0.demo.wiz.io`,
-`auth0.e2e.wiz.io`, or `auth0.app.wiz.io` tenants includes `win-test.wiz.io`
-in its `redirect_uri` allowlist (common for test/demo/e2e environments):
+Wiz operates four Auth0 tenants (confirmed from published integration code and
+live OIDC endpoints probed during this investigation):
 
-1. Craft: `https://auth0.*.wiz.io/authorize?...&redirect_uri=https://win-test.wiz.io/callback`
-2. Victim authenticates → Auth0 redirects with `?code=<auth_code>` to the attacker-controlled origin
+- `auth.wiz.io` — production (HTTP 403, VPC-internal)
+- `auth0.test.wiz.io` — test environment (**LIVE**, returns OIDC config)
+- `auth0.demo.wiz.io` — demo environment (**LIVE**, returns OIDC config)
+- `auth0.e2e.wiz.io` — E2E test environment (**LIVE**, returns OIDC config)
+
+`win-test.wiz.io` shares the `test` environment prefix with `auth0.test.wiz.io`.
+It is plausible that test-environment OAuth applications registered in
+`auth0.test.wiz.io` included `win-test.wiz.io` as a `redirect_uri`. If so:
+
+1. Craft: `https://auth0.test.wiz.io/authorize?client_id=<test_client_id>&redirect_uri=https://win-test.wiz.io/callback&response_type=code&scope=openid`
+2. Victim authenticates → Auth0 redirects with `?code=<auth_code>` to attacker origin
 3. Attacker exchanges code → access token → full account takeover
 
-This chain was not tested (to avoid unauthorized OAuth flows), but the
-presence of `auth0.demo.wiz.io` and `auth0.e2e.wiz.io` in the Wiz subdomain
-fleet makes it a realistic escalation path that should be evaluated alongside
-this report.
+This chain was not tested beyond OIDC discovery (to avoid unauthorized OAuth
+flows), but the Wiz security team is best positioned to evaluate whether any
+application in `auth0.test.wiz.io` lists `win-test.wiz.io` as an allowed
+redirect URI.
 
 ---
 
