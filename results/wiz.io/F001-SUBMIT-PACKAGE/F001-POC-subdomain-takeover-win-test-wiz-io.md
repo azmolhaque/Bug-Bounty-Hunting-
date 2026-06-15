@@ -2,7 +2,7 @@
 # F001 — Subdomain Takeover: win-test.wiz.io via Dangling Vercel CNAME
 # Target: wiz.io (Google-acquired CNAPP)
 # Severity: High | CVSS 3.1: AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N = 8.2
-# Reporter: zahinshahriar3@gmail.com | Date: 2026-06-15
+# Reporter: azmolhaque95@gmail.com | Date: 2026-06-15
 
 ---
 

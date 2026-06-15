@@ -430,7 +430,7 @@ done
 Unlocks: GraphQL API JWT, webhook SSRF test (H1), connector SSRF, OAuth flow analysis.
 
 1. Go to `https://app.wiz.io` → "Start Free Trial" (or "Get a demo" → request sandbox)
-2. Use email: zahinshahriar3@gmail.com
+2. Use email: azmolhaque95@gmail.com
 3. Once logged in → open browser DevTools → Network → capture any XHR/fetch request
 4. Copy the `Authorization: Bearer <JWT>` header value → save it
 5. Then run SSRF test:

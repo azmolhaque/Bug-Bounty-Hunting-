@@ -1,6 +1,6 @@
 # F001 — Google VRP Submission Guide
 # win-test.wiz.io Subdomain Takeover
-# Reporter: zahinshahriar3@gmail.com
+# Reporter: azmolhaque95@gmail.com
 
 ---
 
