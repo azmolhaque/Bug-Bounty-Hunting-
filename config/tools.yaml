@@ -29,15 +29,22 @@ execution:
 
 # Tool selection — all chosen for native arm64 builds and low footprint.
 toolchain:
-  asset_discovery: [subfinder, amass, assetfinder, asnmap, gau, waybackurls]
-  resolution:      [dnsx, puredns]
-  probing:         [httpx, naabu]
-  crawling:        [katana, hakrawler]
-  params:          [arjun]
+  asset_discovery: [subfinder, amass, assetfinder, asnmap, gau, waybackurls, github-subdomains, uncover]
+  resolution:      [dnsx, puredns, massdns]
+  probing:         [httpx, naabu, tlsx, cdncheck]
+  crawling:        [katana, hakrawler, gospider, cariddi]
+  js_analysis:     [jsluice, linkfinder]              # use js-hunter agent to orchestrate
+  params:          [arjun, paramspider, x8]
   scanning:        [nuclei]
-  fuzzing:         [ffuf]
+  fuzzing:         [ffuf, feroxbuster]
   xss:             [dalfox]
+  sqli:            [sqlmap]
+  jwt:             [jwt_tool]
   secrets:         [trufflehog, gitleaks]
+  takeover:        [subzy, dnsx]                      # subzy has better fingerprint DB than subjack
+  cloud:           [cloud_enum, s3scanner, cloudbrute]
+  oob:             [interactsh-client]                # always start before SSRF tests
+  notify:          [telegram, discord_webhook]        # alert on hits during long scans
 
 # nuclei template policy — high signal first; avoid noisy/destructive templates.
 nuclei:

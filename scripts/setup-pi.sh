@@ -210,6 +210,16 @@ install_go_tools() {
     ["s3scanner"]="github.com/sa7mon/s3scanner@latest"
     # Parameter discovery helper
     ["x8"]="github.com/ffffffff0x1/x8@latest"
+    # Subdomain takeover (better fingerprint DB than subjack)
+    ["subzy"]="github.com/PentestPad/subzy@latest"
+    # GitHub subdomain discovery
+    ["github-subdomains"]="github.com/gwen001/github-subdomains@latest"
+    # DNS bruteforce (ultra-fast massdns wrapper)
+    ["puredns"]="github.com/d3mondev/puredns/v2@latest"
+    # Shodan/Censys/FOFA aggregator (feeds into uncover for recon)
+    ["uncover"]="github.com/projectdiscovery/uncover/cmd/uncover@latest"
+    # Cloud/infra discovery
+    ["cloudbrute"]="github.com/m0nad/cloudbrute@latest"
   )
 
   for name in "${!TOOLS[@]}"; do
@@ -238,6 +248,82 @@ install_python_tools() {
     log "  pipx install $name…"
     pipx install "$name" 2>/dev/null || warn "  $name failed"
   done
+
+  # linkfinder — JS endpoint extractor (Python, git)
+  if ! command -v linkfinder.py >/dev/null 2>&1 && [ ! -f "${HOME}/tools/LinkFinder/linkfinder.py" ]; then
+    log "  linkfinder (from git)…"
+    local lf_dir="${HOME}/tools/LinkFinder"
+    [ -d "$lf_dir" ] || git clone --depth 1 https://github.com/GerbenJavado/LinkFinder.git "$lf_dir" 2>/dev/null
+    python3 -m venv "$lf_dir/venv" 2>/dev/null
+    "$lf_dir/venv/bin/pip" install -q -r "$lf_dir/requirements.txt" 2>/dev/null || true
+    mkdir -p "${HOME}/.local/bin"
+    printf '#!/bin/bash\nexec "%s/venv/bin/python" "%s/linkfinder.py" "$@"\n' \
+      "$lf_dir" "$lf_dir" > "${HOME}/.local/bin/linkfinder"
+    chmod +x "${HOME}/.local/bin/linkfinder"
+    log "  linkfinder ✓"
+  else
+    info "  linkfinder ✓"
+  fi
+
+  # paramspider — historical parameter discovery (Python, git)
+  if ! command -v paramspider >/dev/null 2>&1; then
+    log "  paramspider (from git)…"
+    local ps_dir="${HOME}/tools/ParamSpider"
+    [ -d "$ps_dir" ] || git clone --depth 1 https://github.com/devanshbatham/ParamSpider.git "$ps_dir" 2>/dev/null
+    python3 -m venv "$ps_dir/venv" 2>/dev/null
+    "$ps_dir/venv/bin/pip" install -q -r "$ps_dir/requirements.txt" 2>/dev/null || true
+    mkdir -p "${HOME}/.local/bin"
+    printf '#!/bin/bash\nexec "%s/venv/bin/python" "%s/paramspider.py" "$@"\n' \
+      "$ps_dir" "$ps_dir" > "${HOME}/.local/bin/paramspider"
+    chmod +x "${HOME}/.local/bin/paramspider"
+    log "  paramspider ✓"
+  else
+    info "  paramspider ✓"
+  fi
+
+  # feroxbuster — Rust-based recursive content discovery (binary download)
+  if ! command -v feroxbuster >/dev/null 2>&1; then
+    log "  feroxbuster (binary, arm64)…"
+    local fb_ver
+    fb_ver=$(curl -sfL https://api.github.com/repos/epi052/feroxbuster/releases/latest \
+      | jq -r '.tag_name' 2>/dev/null || echo "v2.10.3")
+    curl -sfL "https://github.com/epi052/feroxbuster/releases/download/${fb_ver}/feroxbuster-linux-aarch64.tar.gz" \
+      -o /tmp/ferox.tar.gz 2>/dev/null \
+      && sudo tar -xzf /tmp/ferox.tar.gz -C /usr/local/bin feroxbuster 2>/dev/null \
+      && sudo chmod +x /usr/local/bin/feroxbuster \
+      && rm /tmp/ferox.tar.gz \
+      && log "  feroxbuster ✓" \
+      || warn "  feroxbuster binary download failed — try manually"
+  else
+    info "  feroxbuster ✓"
+  fi
+
+  # massdns — ultra-fast DNS resolver for large wordlist bruteforce
+  if ! command -v massdns >/dev/null 2>&1; then
+    log "  massdns (from git, compile)…"
+    local md_dir="${HOME}/tools/massdns"
+    [ -d "$md_dir" ] || git clone --depth 1 https://github.com/blechschmidt/massdns.git "$md_dir" 2>/dev/null
+    make -C "$md_dir" -j4 2>/dev/null && sudo cp "$md_dir/bin/massdns" /usr/local/bin/ \
+      && log "  massdns ✓" || warn "  massdns build failed"
+  else
+    info "  massdns ✓"
+  fi
+
+  # cloud_enum — cloud bucket/resource enumeration (Python)
+  if ! command -v cloud_enum >/dev/null 2>&1; then
+    log "  cloud_enum (from git)…"
+    local ce_dir="${HOME}/tools/cloud_enum"
+    [ -d "$ce_dir" ] || git clone --depth 1 https://github.com/initstring/cloud_enum.git "$ce_dir" 2>/dev/null
+    python3 -m venv "$ce_dir/venv" 2>/dev/null
+    "$ce_dir/venv/bin/pip" install -q -r "$ce_dir/requirements.txt" 2>/dev/null || true
+    mkdir -p "${HOME}/.local/bin"
+    printf '#!/bin/bash\nexec "%s/venv/bin/python" "%s/cloud_enum.py" "$@"\n' \
+      "$ce_dir" "$ce_dir" > "${HOME}/.local/bin/cloud_enum"
+    chmod +x "${HOME}/.local/bin/cloud_enum"
+    log "  cloud_enum ✓"
+  else
+    info "  cloud_enum ✓"
+  fi
 
   # jwt_tool — NOT on PyPI; clone + venv + wrapper
   if ! command -v jwt_tool >/dev/null 2>&1; then
@@ -520,6 +606,19 @@ SHELLRC
 # ─── Phase 9: API key config prompts ──────────────────────────────────────────
 configure_api_keys() {
   section "Phase 9 — API Key Configuration"
+  info "Configure Telegram bot for hunt notifications (optional but highly recommended):"
+  echo ""
+  echo "  Telegram setup (get pinged when nuclei/subzy finds something on the Pi):"
+  echo "  1. Message @BotFather on Telegram → /newbot → copy token"
+  echo "  2. Message your bot once, then get chat ID:"
+  echo "     curl https://api.telegram.org/bot<TOKEN>/getUpdates | jq '.result[0].message.chat.id'"
+  echo "  3. Add to ~/.bashrc:"
+  echo "     export TELEGRAM_BOT_TOKEN=<your-token>"
+  echo "     export TELEGRAM_CHAT_ID=<your-chat-id>"
+  echo ""
+  echo "  Test: curl -sfL \"https://api.telegram.org/bot\${TELEGRAM_BOT_TOKEN}/sendMessage\""
+  echo "        -d \"chat_id=\${TELEGRAM_CHAT_ID}&text=Pi+online\""
+  echo ""
   info "The following APIs amplify recon massively (optional but recommended):"
   echo ""
   echo "  Tool           Free Tier   Where to get"
@@ -589,10 +688,10 @@ check() {
   section "Toolchain Status"
   local tools=(
     go subfinder httpx dnsx naabu nuclei katana interactsh-client uncover
-    ffuf dalfox crlfuzz puredns shuffledns jsluice trufflehog gitleaks
-    hakrawler gospider anew waybackurls assetfinder gau arjun dirsearch
+    ffuf feroxbuster dalfox crlfuzz puredns shuffledns jsluice trufflehog gitleaks
+    hakrawler gospider anew waybackurls assetfinder gau arjun paramspider dirsearch
     sqlmap jwt_tool wfuzz cariddi cdncheck tlsx asnmap mapcidr notify
-    nmap masscan jq tmux gf
+    nmap masscan massdns jq tmux gf subzy github-subdomains cloud_enum linkfinder
   )
   local ok=0 missing=0
   for b in "${tools[@]}"; do

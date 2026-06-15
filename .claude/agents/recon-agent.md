@@ -19,12 +19,28 @@ owns and every input it exposes, then hand back a prioritized map.
 ## Procedure (per `methodology/METHODOLOGY.md` Phases 1-2)
 1. Asset discovery: `subfinder`, `amass -passive`, CT logs, `gau`/`waybackurls`,
    ASN→CIDR expansion, cloud/bucket discovery. Resolve with `dnsx`.
+   **Also run:**
+   - `github-subdomains -d $TARGET -t $GITHUB_TOKEN` — finds hosts in public code
+   - `curl -sfL 'https://crt.sh/?q=%25.$TARGET&output=json' | jq -r '.[].name_value'` — CT real-time
+   - `uncover -shodan -censys -q $TARGET` — internet scanner coverage (if API keys set)
+   - `cloud_enum -k $TARGET` — S3/GCS/Azure bucket enumeration
 2. Surface mapping: `httpx` (status/title/tech/TLS/hash), `naabu` ports on
-   interesting hosts, `katana`/`hakrawler` crawl, JS mining (endpoints, keys,
-   internal hosts), param discovery (`arjun` + historical), API discovery
-   (Swagger/GraphQL).
-3. Classify: flag anomalous hosts (`dev/staging/internal/legacy/admin/api/git`).
-   Identify endpoints touching auth, money, files, user-data, admin.
+   interesting hosts, `katana`/`hakrawler` crawl, JS mining via **js-hunter agent**
+   (endpoints, keys, GraphQL schemas, source maps), param discovery (`arjun` + `paramspider`
+   + historical `gau`), API discovery (Swagger/GraphQL introspection nuclei template).
+3. Classify: flag anomalous hosts (`dev/staging/internal/legacy/admin/api/git/rde`).
+   Identify endpoints touching auth, money, files, user-data, admin, webhooks.
+   **Immediately run subdomain takeover screen** on every CNAME-bearing host:
+   `subzy run --targets cname-hosts.txt --hide-fails` — any hit → evaluate cookie/OAuth chain NOW.
+4. Cloud bucket discovery:
+   ```bash
+   # Check common bucket naming patterns
+   for pattern in "$TARGET" "${TARGET//./-}" "assets-$TARGET" "backup-$TARGET" "dev-$TARGET"; do
+     aws s3 ls "s3://$pattern" --no-sign-request 2>/dev/null && echo "PUBLIC BUCKET: $pattern"
+     curl -sf "https://storage.googleapis.com/$pattern" -o /dev/null -w "%{http_code}" | grep -q 200 \
+       && echo "PUBLIC GCS BUCKET: $pattern"
+   done
+   ```
 
 ## Output (write to `results/<target>/`)
 - `01-assets/`: `subdomains.txt`, `resolved.txt`, `cidrs.txt`, `cloud.txt`
