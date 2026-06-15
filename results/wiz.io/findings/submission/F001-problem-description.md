@@ -19,7 +19,13 @@ All three confirm in under 30 seconds. No account required.
 **Certificate timeline (confirms real project, not historic stale record):**
 - Cert issued: **Sep 17, 2025** — Vercel project was live and actively serving content
 - Cert expired: **Dec 16, 2025** — project decommissioned but DNS record never cleaned up
+- **DNS zone updated: Mar 14, 2026** — wiz.io DNS was actively edited 3 months after cert expiry, yet this CNAME was not removed (WHOIS last-updated timestamp)
 - As of report date (**Jun 15, 2026**): CNAME still live, takeover window open 6+ months
+
+**DNSSEC note:** wiz.io uses DNSSEC (`signedDelegation`, nameservers: AWS Route53). DNSSEC
+does not prevent subdomain takeover — it signs and validates the dangling CNAME as
+legitimate, which makes the attacker-controlled origin appear more trustworthy to resolvers
+and security tooling that checks DNSSEC validity.
 
 ---
 
