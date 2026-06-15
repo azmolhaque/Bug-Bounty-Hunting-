@@ -139,16 +139,21 @@ https://win-test.wiz.io/ now serves attacker content with:
 
 ### Primary Impact: Session Cookie Theft (Proven — Not Speculative)
 
-**Cookie name confirmed:** Analysis of the official Wiz Chrome extension
-(`background.js`, downloaded from the Chrome Web Store) confirms:
+**Cookie names confirmed:** Analysis of the official Wiz Chrome extension
+(`background.js`, downloaded from the Chrome Web Store) confirms both tokens:
 
 ```javascript
-LT = `wiz-app`  // The Wiz authentication cookie name
+LT = `wiz-app`       // Session cookie name
+RT = `wiz-app-refr`  // Refresh token cookie name
 
 {auth: await s.cookies.get({url: wizUrl, name: LT}),
  refresh: await s.cookies.get({url: t, name: RT})}
 // → returns {isLoggedIn: true, userId, tenantId, dataCenter, emailDomain}
 ```
+
+An attacker who captures both `wiz-app` and `wiz-app-refr` from server logs
+holds a persistent session — the refresh token survives session expiry and
+can silently re-issue new access tokens.
 
 **Domain scope confirmed — from Wiz's own production code:**
 
@@ -192,11 +197,20 @@ The official **"Wiz: Cloud Security in Your Cloud Portal"** Chrome extension
 (ID: `koellablckildiakdjcchdfnagjfbpbh`, published on Chrome Web Store)
 amplifies this attack through four independently confirmed vectors:
 
-**Extension manifest (CRX v3, downloaded from Chrome Web Store):**
+**Extension manifest (CRX v3, extracted live 2026-06-15):**
 ```json
-"host_permissions": ["https://*.wiz.io/*"],
-"permissions": ["cookies", "scripting", "tabs", "declarativeNetRequestWithHostAccess"],
-"externally_connectable": {"matches": ["https://*.wiz.io/*"]},
+"host_permissions": [
+  "https://*.wiz.io/*",
+  "https://*.wiz.us/*",
+  "https://*.console.aws.amazon.com/*",
+  "https://portal.azure.com/*",
+  "https://console.cloud.google.com/*",
+  "https://github.com/*",
+  "https://gitlab.com/*"
+],
+"permissions": ["activeTab", "cookies", "contextMenus", "declarativeNetRequestWithHostAccess",
+                "sidePanel", "tabs", "storage", "scripting"],
+"externally_connectable": {"matches": ["https://*.wiz.io/*", "https://*.wiz.us/*"]},
 "content_scripts": [
   {"matches": ["https://*.wiz.io/*"], "js": ["content-scripts/wizPortalInjector.js"]},
   {"matches": ["https://*.wiz.io/*", ...], "js": ["content-scripts/main.js"]}
@@ -225,15 +239,23 @@ chrome.runtime.sendMessage("koellablckildiakdjcchdfnagjfbpbh",
 ```
 Confirmed from `background.js`: `s.runtime.onMessageExternal.addListener(n)`.
 Handler `n` opens the user's live Wiz security dashboard (side panel) while
-the victim is on the attacker's phishing page — creating an unconditionally
-convincing social engineering scenario: the real Wiz UI appears while
-attacker-crafted content is presented.
+the victim is on the attacker's phishing page.
 
-**Vector 4 — Extension cookie collection scope:**
-The extension has `cookies` permission + `host_permissions: "*.wiz.io"` and
-reads `wiz-app` across all `*.wiz.io` pages. The extension's Apollo link
-(code shown above in Primary Impact section) collects all `.wiz.io`-scoped
-cookies to make authenticated API calls.
+**Vector 4 — Cloud console script injection path (Critical escalation risk):**
+The extension holds `scripting` permission with `host_permissions` over
+**AWS Console, Azure Portal, GCP Console, GitHub, and GitLab**. Because
+`win-test.wiz.io` is trusted by `externally_connectable`, attacker JS can
+send arbitrary messages to the extension background. If the `onMessageExternal`
+handler passes any payload to `chrome.scripting.executeScript`, an attacker
+can inject code into the victim's active AWS/Azure/GCP sessions. The Wiz
+security team should audit whether handler `n` in background.js dispatches
+scripting API calls based on externally-supplied message content.
+
+**Vector 5 — Session and refresh token collection:**
+The extension reads both `wiz-app` (session) and `wiz-app-refr` (refresh token)
+from cookies across all `*.wiz.io` pages. An attacker server at `win-test.wiz.io`
+receives both tokens automatically — capturing the refresh token enables
+persistent access that survives session expiry.
 
 ---
 
