@@ -52,24 +52,31 @@ attack paths through first-party Wiz source code:
 Run from any machine to confirm the vulnerability is live:
 
 ```bash
-# 1. Dangling CNAME — should point to Vercel
+# 1. Dangling CNAME — confirms target points to Vercel infrastructure
 dig CNAME win-test.wiz.io +short
 # → 37e7f43d8158e70f.vercel-dns-013.com.
 
-# 2. No project behind the CNAME — Vercel project was deleted
-curl -sk https://win-test.wiz.io/
-# → {"error":{"code":"DEPLOYMENT_NOT_FOUND",...}}
+# 2. Vercel project deleted — machine-readable HTTP header proof
+curl -sI https://win-test.wiz.io/ | grep -i 'x-vercel-error\|HTTP/'
+# → HTTP/2 404
+# → x-vercel-error: DEPLOYMENT_NOT_FOUND
 
-# 3. TLS certificate — expired, confirms project was abandoned
+# 3. Vercel project deleted — response body confirmation
+curl -sk https://win-test.wiz.io/
+# → The deployment could not be found on Vercel.
+# → DEPLOYMENT_NOT_FOUND
+
+# 4. TLS certificate — expired, confirms project was abandoned
 echo | openssl s_client -connect win-test.wiz.io:443 -servername win-test.wiz.io 2>/dev/null \
-  | openssl x509 -noout -dates
+  | openssl x509 -noout -dates -serial
 # → notBefore=Sep 17 11:19:37 2025 GMT
 # → notAfter=Dec 16 11:19:36 2025 GMT  ← EXPIRED
+# → serial=06D355B91521BADCB06BBEB409F290FC5094
 ```
 
-All three confirm in under 30 seconds. The expired certificate is an artifact
-of the deleted project — an attacker who claims the domain via Vercel receives
-a fresh TLS certificate automatically.
+All four confirm in under 30 seconds with no account required. The expired
+certificate is an artifact of the deleted project — an attacker who claims the
+domain via Vercel receives a fresh TLS certificate automatically.
 
 ---
 
@@ -274,6 +281,26 @@ security team is best positioned to verify whether any application in
 
 ## PROOF OF CONCEPT
 
+### Verified Live Run — 2026-06-15 11:36 UTC (Motorola Android / Termux)
+
+```
+[PASS] dig CNAME win-test.wiz.io +short
+       → 37e7f43d8158e70f.vercel-dns-013.com.
+
+[PASS] curl -sk https://win-test.wiz.io/
+       → The deployment could not be found on Vercel.
+         DEPLOYMENT_NOT_FOUND
+         bom1::jspnh-1781523390490-64776c420096
+
+[PASS] openssl x509 -noout -dates -serial -issuer
+       → notBefore=Sep 17 11:19:37 2025 GMT
+       → notAfter=Dec 16 11:19:36 2025 GMT
+       → serial=06D355B91521BADCB06BBEB409F290FC5094
+       → issuer=C=US, O=Let's Encrypt, CN=R13
+```
+
+---
+
 ### Evidence 1 — Live CNAME (verified Jun 15, 2026)
 ```
 $ dig CNAME win-test.wiz.io +short
@@ -284,20 +311,35 @@ $ dig A win-test.wiz.io +short
 64.239.123.193    ← Vercel/Fastly edge
 ```
 
-### Evidence 2 — Vercel Project Deleted
+### Evidence 2 — Vercel Project Deleted (HTTP header + body)
 ```
-$ curl -sk https://win-test.wiz.io/ | head -1
-{"error":{"code":"DEPLOYMENT_NOT_FOUND",...}}
-```
+$ curl -sI https://win-test.wiz.io/ | grep -i 'x-vercel-error\|HTTP/'
+HTTP/2 404
+x-vercel-error: DEPLOYMENT_NOT_FOUND
 
-### Evidence 3 — TLS Certificate (PEM attached; serial 06:D3:55:B9:15:21:BA:DC:B0:6B:BE:B4:09:F2:90:FC:50:94)
+$ curl -sk https://win-test.wiz.io/
+The deployment could not be found on Vercel.
+
+DEPLOYMENT_NOT_FOUND
+
+bom1::jspnh-1781523390490-64776c420096
 ```
-Issued:  Sep 17, 2025 11:19:37 UTC  (Let's Encrypt R13)
-Expired: Dec 16, 2025 11:19:36 UTC  ← Vercel project abandoned
-CN: win-test.wiz.io
+The `x-vercel-error: DEPLOYMENT_NOT_FOUND` response header is Vercel's canonical
+machine-readable signal that a CNAME points to Vercel but no project has claimed it.
+
+### Evidence 3 — TLS Certificate (PEM attached; serial 06D355B91521BADCB06BBEB409F290FC5094)
 ```
-Note: A fresh TLS cert is issued automatically when any Vercel account claims
-this domain. The expired cert is only visible because no project exists yet.
+$ echo | openssl s_client -connect win-test.wiz.io:443 -servername win-test.wiz.io 2>/dev/null \
+  | openssl x509 -noout -subject -dates -serial -issuer
+subject=CN=win-test.wiz.io
+notBefore=Sep 17 11:19:37 2025 GMT
+notAfter=Dec 16 11:19:36 2025 GMT
+serial=06D355B91521BADCB06BBEB409F290FC5094
+issuer=C=US, O=Let's Encrypt, CN=R13
+```
+Certificate PEM is attached as `wintest.wiz.io.crt`. A fresh cert is issued
+automatically when any Vercel account claims this domain — the expired cert is
+only visible because no project exists yet.
 
 ### Evidence 4 — `wiz-app` Cookie Name (from Wiz Chrome Extension source)
 File: `background.js` (extracted from `koellablckildiakdjcchdfnagjfbpbh.crx`, 

