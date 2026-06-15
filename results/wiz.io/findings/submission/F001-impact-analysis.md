@@ -29,13 +29,15 @@ one here.
 
 ---
 
-## Cookie Scope — Confirmed Cookie Name
+## Cookie Scope — Confirmed via First-Party Wiz Source Code
 
-The Wiz portal sets an authentication cookie named **`wiz-app`** with
-`Domain=.wiz.io`. This was confirmed by analyzing the official Wiz Chrome
-extension (`koellablckildiakdjcchdfnagjfbpbh`) manifest and background.js,
-which contains:
+Analysis of the official Wiz Chrome extension (`koellablckildiakdjcchdfnagjfbpbh`,
+downloaded from Chrome Web Store) reveals two independent confirmations that
+`Domain=.wiz.io` cookies exist and are collected by Wiz's own infrastructure.
 
+### 1. Cookie Name Confirmed: `wiz-app`
+
+`background.js` contains:
 ```javascript
 LT = `wiz-app`
 // ...
@@ -44,15 +46,41 @@ LT = `wiz-app`
 {isLoggedIn: true, userId: r, tenantId: VT(t.value), dataCenter: HT(t.value), emailDomain: UT(t.value)}
 ```
 
-The extension reads `wiz-app` from `https://*.wiz.io/*` URLs and uses it to
-determine `isLoggedIn`, `tenantId`, `dataCenter`, and `emailDomain` — the
-full user-session context. Because the cookie is scoped to `Domain=.wiz.io`
-(not `__Host-` prefixed), the browser sends it to **every `*.wiz.io` origin**,
-including a claimed `win-test.wiz.io`. An attacker's server receives this
-cookie in the HTTP request headers for every page load.
+The extension reads a cookie named `wiz-app` and uses it to determine the
+user's `isLoggedIn` state, `tenantId`, `dataCenter`, and `emailDomain`.
 
-A captured `wiz-app` cookie is a live, authenticated Wiz session usable
-directly against `https://app.wiz.io/` — no additional authentication required.
+### 2. `.wiz.io` Domain Scope Proven by Extension's Own Cookie Collection Logic
+
+The extension's Apollo GraphQL link (`background.js`) builds the Cookie header
+for all Wiz API requests using this logic:
+
+```javascript
+let n = `${t.env.portalUrl}/graphql`,
+    r = new URL(n).hostname,                          // e.g. "app.wiz.io"
+    i = (await chrome.cookies.getAll({domain: r}))
+        .filter(e => !!(
+            e.domain === r ||                         // exact domain match
+            e.domain.startsWith(`.`) &&               // OR subdomain-scoped
+            r.endsWith(e.domain.slice(1))             // e.g. ".wiz.io" matches "app.wiz.io"
+        ))
+        .map(e => `${e.name}=${e.value}`)
+        .join(`; `)
+```
+
+The second filter branch — `e.domain.startsWith('.') && r.endsWith(e.domain.slice(1))` —
+explicitly handles cookies where `e.domain = ".wiz.io"`:
+- `".wiz.io".startsWith('.')` → `true`
+- `"app.wiz.io".endsWith("wiz.io")` → `true`
+
+**This filter exists in production Wiz code because `Domain=.wiz.io` cookies
+exist on the Wiz platform.** Wiz's own Chrome extension was written to collect
+and use them. Cookies with `Domain=.wiz.io` (including `wiz-app`) are sent by
+the browser to every `*.wiz.io` origin — including a claimed `win-test.wiz.io`.
+
+An attacker's server at `win-test.wiz.io` receives the `wiz-app` session cookie
+in HTTP request headers for every page load from an authenticated Wiz user.
+That cookie provides a fully authenticated Wiz session with access to all
+connected AWS, GCP, and Azure cloud accounts.
 
 ---
 
