@@ -16,6 +16,11 @@ Run these from any machine:
 
 All three confirm in under 30 seconds. No account required.
 
+**Certificate timeline (confirms real project, not historic stale record):**
+- Cert issued: **Sep 17, 2025** — Vercel project was live and actively serving content
+- Cert expired: **Dec 16, 2025** — project decommissioned but DNS record never cleaned up
+- As of report date (**Jun 15, 2026**): CNAME still live, takeover window open 6+ months
+
 ---
 
 ## The Vulnerability
