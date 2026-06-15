@@ -2,52 +2,38 @@
 # Status: hypotheses ranked by probability × impact
 # Updated: 2026-06-14
 
-## Chain 1 — Subdomain Takeover → CSP Bypass → Critical (PENDING PI OUTPUT)
+## Chain 1 — Subdomain Takeover → CSP Bypass → Critical ✗ CLOSED
+
+**Status:** CLOSED 2026-06-15
+**Reason:** app.wiz.io `script-src` = `'self' 'sha384-...'` only — no `*.wiz.io`
+  wildcard. www.wiz.io `script-src` = `'self' 'unsafe-inline' 'unsafe-eval'` +
+  CDN domains only. win-test.wiz.io is NOT in any script-src or connect-src.
+  Frame-src includes `*.wiz.io` (win-test CAN be framed) but framing alone ≠
+  code execution.
 
 **Components:** F001 (win-test.wiz.io takeover) + CSP allowlist entry for win-test
-**Probability:** Medium — CSP commonly references own subdomains; win-test is a
-  specific named host that could appear in a test/demo CSP entry
-**Potential severity:** Critical (9.3+)
-**Submission gate:** Do NOT report CSP weakness alone. Report ONLY if:
-  - `win-test.wiz.io` (exact match) appears in `script-src`, `connect-src`,
-    `frame-src`, or `default-src` of www.wiz.io OR app.wiz.io
-  - This then unlocks: JS injection from attacker-controlled origin into
-    portal context → session token theft → account takeover chain
-
-**How it works:**
-1. Attacker claims win-test.wiz.io via Vercel (F001, already confirmed exploitable)
-2. win-test.wiz.io appears in www.wiz.io / app.wiz.io CSP `script-src`
-3. Attacker serves malicious JS at win-test.wiz.io
-4. Portal loads and executes that JS → steal session tokens / capture credentials
-
-**Validation step:** Run ACTION C on Pi → check CSP output in `results/03-vulns/csp-audit.txt`
-**Script:** `scripts/phase3-wiz-pi.sh` (ACTION C)
+**Probability:** ZERO — confirmed by Pi ACTION C 2026-06-15
+**Potential severity:** N/A
 
 ---
 
-## Chain 2 — Subdomain Takeover → OAuth redirect_uri Hijack → Critical
+## Chain 2 — Subdomain Takeover → OAuth redirect_uri Hijack → Critical ✗ INCONCLUSIVE/CLOSED
+
+**Status:** INCONCLUSIVE → treated as CLOSED for F001 submission 2026-06-15
+**Reason:** Auth0 validates `client_id` before `redirect_uri`. Probe with FAKE_PROBE_TEST
+  returned "Oops!" HTML error page (unknown client_id) on both auth0.demo.wiz.io and
+  auth0.e2e.wiz.io — cannot determine redirect_uri allowlist without a valid client_id
+  registered in these tenants. Cannot safely probe further without actual demo/e2e account.
+  auth.app.wiz.io (production Auth0) returns HTTP 403 from awselb/2.0 (VPC-internal, not
+  publicly accessible).
+**Side note:** Auth0 error page references `https://test.wiz.io/static/assets/wiz_auth0_logo.png`
+  → `test.wiz.io` is a live subdomain worth adding to recon list.
 
 **Components:** F001 (win-test.wiz.io) + Auth0 OAuth misconfiguration
-**Probability:** Low-Medium — Auth0 typically validates redirect_uri strictly, but test envs often don't
-**Potential severity:** Critical (account takeover)
-
-**How it works:**
-1. Attacker claims win-test.wiz.io
-2. Wiz uses Auth0 (`auth0.demo.wiz.io`, `auth0.e2e.wiz.io`) for SSO across portal + community
-3. If `win-test.wiz.io` appears in any application's redirect_uri allowlist in Auth0
-4. Craft OAuth link: `https://auth0.*.wiz.io/authorize?...&redirect_uri=https://win-test.wiz.io/callback`
-5. Victim clicks link → Auth0 redirects with `?code=<auth_code>` to win-test.wiz.io
-6. Attacker exchanges code for access token → full account takeover
-
-**Validation steps:**
-1. Run ACTION C: check if win-test.wiz.io in OAuth callback lists
-2. Run `scripts/oauth-redirect-probe-wiz.sh`: test redirect_uri manipulation
-3. Check Auth0 OIDC discovery: `https://auth0.demo.wiz.io/.well-known/openid-configuration`
-
-**Note:** Even if Auth0 strict on commercial — also check:
-- FedRAMP Auth0 tenant: `auth0.gov.wiz.io` (likely separate, possibly more relaxed allowlist)
-- GovCloud Auth0 tenant: `auth0.govcloud.wiz.io` (est.)
-- Login page "Another environment" dropdown → "Wiz for Gov (FedRAMP)" and "Commercial on GovCloud" = separate Auth0 tenants confirmed from `app.wiz.io` UI (discovered 2026-06-14)
+**Probability:** UNKNOWN — cannot probe without valid client_id
+**Potential severity:** Critical (account takeover) — IF redirect_uri allowlist contains win-test
+**Included in F001 report:** YES — documented as unconfirmed escalation path for triager to
+  evaluate with internal Auth0 tenant knowledge.
 
 ---
 

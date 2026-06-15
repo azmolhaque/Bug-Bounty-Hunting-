@@ -1,21 +1,25 @@
 # Hunt Log — wiz.io (Google VRP TIER1)
 Started: 2026-06-11 | Last updated: 2026-06-14
 
-## CURRENT STATUS (2026-06-14)
+## CURRENT STATUS (2026-06-15)
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ VERIFIED — SUBMIT NOW |
-| 2 | ACTION A (WizCLI binary strings) | ✅ DONE — revealed Chain 11 |
-| 3 | **Chain 11 (AI Remediation cross-tenant PR injection)** | 🔥 NEW CRITICAL CANDIDATE — needs trial account |
-| 4 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
-| 5 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
-| 6 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
-| 7 | Chain 1+2 (F001 → CSP/OAuth escalation) | ⏳ Pending Pi ACTION C |
-| 8 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
-| 9 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
+| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ VERIFIED — **SUBMIT NOW (standalone High 8.2)** |
+| 2 | Chain 1 (F001 → CSP bypass) | ❌ CLOSED — no win-test in script-src on app.wiz.io or www.wiz.io |
+| 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first; cannot probe allowlist without valid client_id; mentioned in report as unconfirmed escalation path |
+| 4 | ACTION A (WizCLI binary strings) | ✅ DONE — revealed Chain 11 |
+| 5 | **Chain 11 (AI Remediation cross-tenant PR injection)** | 🔥 CRITICAL CANDIDATE — needs trial account |
+| 6 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
+| 7 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
+| 8 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
+| 9 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
+| 10 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
+| 11 | test.wiz.io | 🆕 Live subdomain — referenced in Auth0 error page logo; add to recon |
 
-**Submission texts for F001 ready at:** `findings/submission/F001-problem-description.md`
+**NEXT ACTION:** Submit F001 to Google/Wiz bug bounty program. Submission texts at:
+- `findings/submission/F001-problem-description.md` — paste into "Problem description"
+- `findings/submission/F001-impact-analysis.md` — paste into "Impact" field
 
 ---
 
@@ -64,6 +68,9 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 2026-06-14 | 1 | FedRAMP/GovCloud envs confirmed | `app.wiz.io` login "Another environment" dropdown shows: **Wiz for Gov (FedRAMP)** → `app.gov.wiz.io`; **Commercial on GovCloud** → `govcloud.wiz.io` (est.) — separate Auth0 tenants; Chain 2 OAuth scope expanded |
 | 2026-06-14 | 2 | **HTML config block extracted** | SPA serves full prod config at every path; extracted: `VITE_APP_COGNITO_AUDIENCE=wiz-api` (JWT confusion candidate Chain 12), LD client ID `5f2bbaa730af0f08855ad7e9`, S3 bucket `wizio-public.s3.amazonaws.com`, CloudFormation template path, git commit `4553dc648e2ab5a5a90cd26d4fd2eabe2209f0c2` |
 | 2026-06-14 | 2 | **graphqlTypes bundle extracted** | `graphqlTypes-N1XN-ltn.js` (222KB) downloaded from browser; 250+ mutations found including: **Chain 13** `CopyResourceForensicsToExternalAccount` (Critical IDOR candidate), **Chain 14** `CreateMemberTenantRequest` (MSSP unauthorized access), `RequestRemediationPullRequest`+`FindingPullRequestRemediation` (Chain 11 confirmed), `RunResponseActionFix(inputJson)` (injection), `WebhookIntegrationParams` (Chain 3) |
+| 2026-06-15 | 4 | Chain 1 CLOSED | Pi confirms: app.wiz.io `script-src` = `'self' sha384` only; www.wiz.io `script-src` = `'self' unsafe-inline` + CDN; win-test NOT in any script-src/connect-src |
+| 2026-06-15 | 4 | Chain 2 CLOSED (inconclusive) | auth0.demo.wiz.io + auth0.e2e.wiz.io LIVE OIDC tenants; redirect_uri probe: Auth0 validates client_id first → "Oops!" page → cannot determine allowlist; auth.app.wiz.io production Auth0 = VPC-internal (403 from awselb/2.0); side-note: test.wiz.io live (found in Auth0 error page logo URL) |
+| 2026-06-15 | 6 | F001 SUBMISSION DECISION | Submit standalone High 8.2 — all chain paths closed or inconclusive. Submission texts in findings/submission/. |
 
 ## Key Findings
 
@@ -71,14 +78,15 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 - `win-test.wiz.io CNAME 37e7f43d8158e70f.vercel-dns-013.com` — Vercel project deleted
 - Confirmed: `DEPLOYMENT_NOT_FOUND` body + expired LE cert (expired 2025-12-16)
 - CVSS 3.1: 8.2 (High) — AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N
-- **Report:** `findings/F001-win-test-subdomain-takeover.md` — SUBMIT NOW
-- **Chain opportunity:** If win-test.wiz.io appears in www.wiz.io CSP → CSP bypass → escalate to Critical
+- **Report:** `findings/F001-win-test-subdomain-takeover.md`
+- **Chain 1 CLOSED (2026-06-15):** app.wiz.io `script-src` = `'self' sha384` only; no *.wiz.io wildcard
+- **Chain 2 INCONCLUSIVE/CLOSED (2026-06-15):** auth0.demo.wiz.io + auth0.e2e.wiz.io LIVE but
+  redirect_uri allowlist unprobeable without valid client_id; mentioned in report as potential escalation
+- **Submit standalone High 8.2 — no further chain work needed for F001**
 
 ### [DROPPED] CSP ws://localhost:3000 in production
 - `www.wiz.io` CSP `connect-src` contains `ws://localhost:3000` dev artifact
-- **Dropped:** No exploitation path; fails Hard Rejection List (CSP weakness, no
-  actual content injection or data exfiltration). Google VRP = Informational/won't fix.
-- If ACTION C (Pi) reveals win-test.wiz.io IN the CSP → revisit as Critical chain.
+- **Dropped:** No exploitation path; fails Hard Rejection List. Google VRP = Informational/won't fix.
 
 ### [INVESTIGATING] WizCLI Binary — Internal Endpoint Discovery
 - `downloads.wiz.io/v1/wizcli/latest/wizcli-linux-arm64` → 247MB, no auth
