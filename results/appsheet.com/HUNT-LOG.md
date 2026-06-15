@@ -150,4 +150,69 @@ curl -si "https://api.gcp-staging.appsheet.com/api/v2/apps/UUID/tables/Table1/da
 
 ---
 
-Last updated: 2026-06-15
+---
+
+## Session 2 Results (2026-06-15 evening)
+
+### F002 — SSRF Deep Investigation
+
+**OData v4 (Microsoft.OData.Client):**
+- Server-side HTTP request confirmed from GCP IP `35.203.182.241` ✓
+- Full request headers captured (Authorization: Basic forwarded, Traceparent leaked) ✓
+- `https://169.254.169.254` → "SSL connection could not be established" (TCP to IMDS attempted) ✓
+- `https://metadata.google.internal/` → same SSL error (resolves to IMDS inside GCP) ✓
+- `http://169.254.169.254/` → client-side block "must use HTTPS" ✓
+- 302 redirect HTTPS→HTTP → "OData web request error (Found)" — cross-scheme redirect BLOCKED ✗
+
+**OData v2 (Microsoft.Data.Services.Client):**
+- Also makes server-side requests: 6 hits on `/$metadata` confirmed ✓
+- 302 redirect HTTPS→HTTP → also "OData web request error (Found)" — SAME BLOCK ✗
+- Both OData v2 and v4 use .NET HttpClient which blocks cross-scheme (HTTPS→HTTP) redirects
+
+**Valid OData metadata served → AppSheet connection attempt:**
+- Server upgraded to return valid OData v4 XML for `/$metadata`
+- Data requests (`/Rows`) redirect to IMDS → to be tested next session ← INCOMPLETE
+
+### Barrier Analysis
+```
+HTTPS URL required (client-side) 
+  → IMDS has no TLS cert (169.254.169.254:443 TCP connects but TLS fails)
+  → Redirect HTTPS→HTTP blocked by .NET HttpClient
+  → Need: HTTPS endpoint on IMDS OR .NET to follow cross-scheme redirect
+```
+
+### Next Session Priorities
+1. **Path 3**: Serve valid OData metadata → AppSheet connects → add source to app → data fetch hits redirect
+   - Script: `./scripts/appsheet-ssrf-probe.sh --setup`
+   - Hypothesis: data fetch code path may differ from metadata code path
+   
+2. **Internal port probing**: Redirect to `http://127.0.0.1:8080/`, `http://localhost:3000/` etc.
+   - Same scripts, different --target values
+
+3. **Staging UUID hunt**: Run `./scripts/staging-uuid-hunt.sh` to find valid staging App UUIDs
+   - Escalates F001 from Medium 6.5 → Critical 9.1
+   
+4. **IDOR cross-tenant**: Create second Google account → test `./scripts/appsheet-ssrf-probe.sh --idor`
+
+5. **Submit F001**: Ready now, no further testing needed
+
+### Scripts for next session
+```bash
+# Full SSRF setup (one command):
+./scripts/appsheet-ssrf-probe.sh --setup
+
+# With different targets:
+./scripts/appsheet-ssrf-probe.sh --setup --target localhost_8080
+./scripts/appsheet-ssrf-probe.sh --setup --target k8s_secrets
+
+# Verify F001 still alive:
+./scripts/appsheet-ssrf-probe.sh --staging
+
+# Hunt for staging UUIDs (F001 Critical escalation):
+./scripts/staging-uuid-hunt.sh
+
+# IDOR test (need second Gmail account first):
+./scripts/appsheet-ssrf-probe.sh --idor --app-id <UUID> --token-b <API_KEY_B>
+```
+
+Last updated: 2026-06-15 (end of Session 2)
