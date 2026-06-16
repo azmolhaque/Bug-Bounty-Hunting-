@@ -237,7 +237,10 @@ even without confirmed IMDS credential read. Internal service reachability is co
 
 ## References
 
-- CVE-2023-4212: Prior AppSheet SSRF (confirms SSRF history in AppSheet API layer)
+- NOTE: An earlier draft cited "CVE-2023-4212" as a prior AppSheet SSRF. That is
+  incorrect — CVE-2023-4212 is an unrelated OS command-injection in Trane thermostats
+  (CISA ICSA-23-234-02). This finding is NOT a duplicate of it.
+  See submission/F002-odata-ssrf/dedup-CVE-2023-4212.md.
 - GCP IMDS documentation: https://cloud.google.com/compute/docs/metadata/overview
 - OOB interaction timestamp: 2026-06-15 20:03:15 UTC
 - Source GCP IP: 35.203.182.241 (GCP anycast / AppSheet backend)
