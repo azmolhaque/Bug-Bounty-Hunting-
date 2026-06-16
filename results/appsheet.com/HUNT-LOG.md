@@ -308,3 +308,59 @@ but prints REST API connector UI steps instead of OData steps. Verified with
 `bash -n` and a live `--help`/scope-check dry run in this sandbox (scope-check
 passed; no actual request sent to appsheet.com). Ready to run as-is on the Pi:
 `./scripts/appsheet-ssrf-probe.sh --rest-connector --target imds_token`.
+
+---
+
+## Session 6 — Branch Reconciliation (2026-06-16)
+
+A second, independent Claude Code session ran in parallel on the user's Pi
+(branch `claude/appsheet-vrp-submission-lu1l7c`, real network access) while this
+sandbox session (branch `...-vq80t5`) had none. That session did real, valuable
+work this sandbox couldn't:
+
+- **Live re-verification of F001 → retracted.** Re-tested prod vs. staging from
+  a clean state across `GET /tables`, `POST /Action`, `POST /data`. Both hosts
+  now return identical `"App ... not found"` (HTTP 400); production never
+  returned `"ApplicationAccessKey is missing"` on re-test. The original
+  prod-vs-staging differential this finding was built on does not reproduce.
+  **F001 is withdrawn, not submitted.** Full disproof in
+  `findings/F001-RETRACTION.md`. This is the correct call per CLAUDE.md's
+  "verify before you believe" — a non-reproducible differential is not a finding.
+- **Independent re-confirmation of F002**, ~24h after the original capture, from
+  a different GCP backend fleet IP (`35.247.115.29` vs. the original
+  `35.203.182.241`) — strengthens F002 from a one-off capture to a stable,
+  twice-reproduced bug.
+- **A CVSS arithmetic error in their own F002 draft, caught here.** Their draft
+  scored the reported vector (`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N`) as 7.7.
+  Hand-recomputation against the official CVSS 3.1 Roundup formula — using the
+  Scope-Changed `PR:L` weight of 0.68 (not the Scope-Unchanged 0.62) — gives
+  **7.2**, matching this session's original calculation. Their secondary
+  "conservative floor" vector was also miscomputed (claimed 5.0; actual 4.6).
+  Both corrected during merge.
+- New OSINT find not previously known to this session: a 2022 AppSheet
+  Automation Bot deserialization RCE ($10,000, Google Bug Hunters report
+  `oCeVFaaoi`) — unrelated bug class (CWE-502, not SSRF) but useful subsystem
+  context, now noted in F002's dedup section.
+- A substantially more thorough multi-surface testing runbook
+  (`runbooks/PI-RUNBOOK-multiconnector-egress-gap.md`, T1-T7) covering OData,
+  Apigee/REST connector, image/file URL columns, PDF/email templates, other
+  connector types, and webhook regression — with explicit hard stops (no IMDS
+  token reads, no internal-range redirect chaining, no port scanning). This
+  supersedes this session's simpler `--rest-connector` script flag as the
+  primary next-action plan.
+
+**Reconciliation performed:** merged `origin/...-lu1l7c` into `...-vq80t5`.
+`F001-google-vrp-report.md` resolved to the WITHDRAWN version. `F002-google-vrp-report.md`
+manually merged — kept this session's structure (Apigee-connector dedup
+reference, full remediation list) plus their independent re-verification
+evidence, attack-scenario framing, and impact table; corrected CVSS to 7.2/4.6
+throughout. All of `lu1l7c`'s unique files (`F001-RETRACTION.md`,
+`F002-dedup-CVE-2023-4212.md`, `OSINT-prior-art-and-leads.md`,
+`PI-RUNBOOK-multiconnector-egress-gap.md`, updated `README-SUBMIT-GUIDE.md`)
+adopted as-is. Merged result pushed to `...-vq80t5` only, per the active branch
+rule — `lu1l7c` was never pushed to.
+
+**Status: F002 is the sole report-ready finding (CVSS 7.2 High, confirmed twice).
+F001 is permanently retired. Next action: run the T1-T7 runbook on the Pi
+(`runbooks/PI-RUNBOOK-multiconnector-egress-gap.md`), not the older
+`--rest-connector` script flag — the runbook supersedes it.**
