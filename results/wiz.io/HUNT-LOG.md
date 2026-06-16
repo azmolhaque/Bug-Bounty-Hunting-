@@ -1,11 +1,11 @@
 # Hunt Log — wiz.io (Google VRP TIER1)
-Started: 2026-06-11 | Last updated: 2026-06-14
+Started: 2026-06-11 | Last updated: 2026-06-16
 
-## CURRENT STATUS (2026-06-15)
+## CURRENT STATUS (2026-06-16)
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ VERIFIED — **SUBMIT NOW (standalone High 8.2)** |
+| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ **SUBMITTED** — Issue #524181553 — Status: New (P4/S4 auto-triage, awaiting human review) |
 | 2 | Chain 1 (F001 → CSP bypass) | ❌ CLOSED — no win-test in script-src on app.wiz.io or www.wiz.io |
 | 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first; cannot probe allowlist without valid client_id; mentioned in report as unconfirmed escalation path |
 | 4 | ACTION A (WizCLI binary strings) | ✅ DONE — revealed Chain 11 |
@@ -17,9 +17,8 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 10 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
 | 11 | test.wiz.io | 🆕 Live subdomain — referenced in Auth0 error page logo; add to recon |
 
-**NEXT ACTION:** Submit F001 to Google/Wiz bug bounty program. Submission texts at:
-- `findings/submission/F001-problem-description.md` — paste into "Problem description"
-- `findings/submission/F001-impact-analysis.md` — paste into "Impact" field
+**SUBMITTED 2026-06-15:** Issue **#524181553** — Wiz.io subdomain takeover; Status: New; awaiting human triage.
+**NEXT ACTION:** Monitor Issue #524181553 for triage decision. If confirmed valid: watch for P1/S1 upgrade (subdomain takeover with proven cookie theft usually lands High in VRP). If closed as informational/WAI: investigate whether Wiz has since deleted the CNAME (takeover window may have been patched before triage).
 
 ---
 
@@ -71,6 +70,7 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 2026-06-15 | 4 | Chain 1 CLOSED | Pi confirms: app.wiz.io `script-src` = `'self' sha384` only; www.wiz.io `script-src` = `'self' unsafe-inline` + CDN; win-test NOT in any script-src/connect-src |
 | 2026-06-15 | 4 | Chain 2 CLOSED (inconclusive) | auth0.demo.wiz.io + auth0.e2e.wiz.io LIVE OIDC tenants; redirect_uri probe: Auth0 validates client_id first → "Oops!" page → cannot determine allowlist; auth.app.wiz.io production Auth0 = VPC-internal (403 from awselb/2.0); side-note: test.wiz.io live (found in Auth0 error page logo URL) |
 | 2026-06-15 | 6 | F001 SUBMISSION DECISION | Submit standalone High 8.2 — all chain paths closed or inconclusive. Submission texts in findings/submission/. |
+| 2026-06-15 | 6 | **F001 SUBMITTED** | Google VRP Issue **#524181553** — "Subdomain Takeover on win-test.wiz.io via Dangling Vercel CNAME — Proven Session Cookie Theft + Chrome Extension Abuse Vector"; Status: New (P4/S4 auto-triage); awaiting human review |
 
 ## Key Findings
 
