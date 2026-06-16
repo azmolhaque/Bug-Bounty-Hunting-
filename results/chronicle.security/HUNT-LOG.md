@@ -16,12 +16,23 @@
 - Created PI-RUNBOOK-chronicle-recon.md with exact Phase 0-4 commands
 - Web research running (agent) to map known attack surface, connectors, tech stack
 
+**OSINT findings (web research, no live access):**
+- Backend: Python (SOAR actions/connectors), GCP-native (SIEM); Swagger at `{tenant}.siemplify-soar.com/swagger/index.html` — still live post-migration
+- Primary SSRF surface: **Feed Management HTTP(S) source** — Google backend fetches user-supplied URL per official docs, no documented IP blocklist
+- Secondary SSRF: 300+ integration connectors each with API URL fields
+- New attack surface: TIN Agent + Agentic Automation (Public Preview, Nov 2025–2026) — AI reads alert content → prompt injection
+- IDOR: SOAR legacy REST API case/integration IDs in URL paths
+- Zero prior public CVEs for Siemplify/Chronicle — low-competition target
+- Tenant URL: `{customer}.backstory.chronicle.security`, legacy `{tenant}.siemplify-soar.com`
+
 **Pending (next Pi session):**
-- Run Phase 1 asset discovery (subfinder + dnsx + httpx)
-- Create free/trial chronicle.security account
-- Navigate to Integrations/Marketplace — enumerate connector types
-- Run SSRF probe on first 5 connector URL fields with interactsh OOB
-- Run nuclei exposures/tech-detect scan
+- Pull: `git pull` to get runbook
+- Create free/trial chronicle.security account at cloud.google.com/security/products/security-operations
+- Phase 1: subfinder + dnsx + httpx against chronicle.security
+- Phase 3A: Feed Management SSRF test (OOB listener → HTTP(S) feed source)
+- Phase 3B: Integration connector URL field tests (Jira, ServiceNow, PagerDuty, Slack)
+- Phase 3C: Open Swagger at `{tenant}.siemplify-soar.com/swagger/index.html` — enumerate endpoints, test IDOR
+- Phase 3D: TIN Agent prompt injection (if available on free tier)
 
 **Status:** SETUP — ready for Pi execution
 
