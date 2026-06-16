@@ -37,10 +37,51 @@ hunt targeting `$ARGUMENTS`. Drive the pipeline end-to-end.
 Delegate to **recon-agent** subagent (or `./scripts/recon.sh` directly on Pi).
 Output: `01-assets/`, `02-surface/`, `02-surface/priority.md` (ranked target list).
 
+Kick off **subdomain-monitor** in parallel (background) on the root target —
+it establishes the baseline on first run and, on every subsequent `/workflow`
+invocation for the same target, surfaces new subdomains and CNAME takeover
+candidates before the rest of the pipeline starts. New/changed assets feed
+straight back into `02-surface/priority.md`.
+
+For every host `priority.md` marks live and worth depth (not just breadth),
+delegate to **js-hunter** before Phase 3 starts. JS bundles routinely expose
+API routes, GraphQL operations, internal hostnames, and connector/feature
+config that never appear in an httpx/katana crawl alone — this is attack
+surface Phase 3 cannot hypothesize about until it exists in `02-surface/js/`.
+Merge `js-findings.md` discoveries into `02-surface/priority.md` and
+`02-surface/endpoints.md` before fanning out vuln-hunters.
+
 After completion, run the **intelligence re-plan**:
 - Update hunt thesis in `00-plan.md` with discovered assets
 - Identify: dev/staging/RDE hosts, GraphQL/webhook endpoints, dangling CNAMEs
 - These reshape Phase 3 priorities
+
+### Recurring-Pattern Lens (run before Phase 3 prioritization)
+
+Before picking Phase 3 bug classes, check whether this target (or its product
+family) has a **confirmed history** of a bug class recurring across multiple
+independent components — this is the highest-signal prior available, stronger
+than a fresh hypothesis:
+
+1. Grep `results/<target>/HUNT-LOG.md` and `results/<target>/findings/` for
+   every confirmed class to date.
+2. Search public disclosures (Google Bug Hunters writeups, blogspot/twitter
+   writeups, `awesome-google-vrp-writeups`) for the same product/acquisition
+   for the same class on a *different* component.
+3. If a class recurs ≥2 times across different components of the same
+   product (e.g. AppSheet's connector framework: Workflows webhook SSRF (2021,
+   fixed) → Apigee account-source connector SSRF (fixed, separate report) →
+   OData connector SSRF (this engagement, F002) — three independently
+   vulnerable HTTP clients, no shared SSRF-safe library across connector
+   types), treat every *other* untested instance of that component type as a
+   **priority hypothesis, not a fresh guess.** For AppSheet specifically:
+   every remaining data-source/connector type (REST API, Salesforce, Box,
+   Dropbox, MySQL/Postgres/CloudSQL, BigQuery, Smartsheet, Google
+   Sheets-external, etc.) is an unreviewed instance of the same systemic root
+   cause until proven otherwise.
+4. Log the pattern and the prioritized instance list in `00-plan.md` before
+   Phase 3 fan-out — this is what separates "shotgunning every class" (banned
+   by CLAUDE.md §6) from "testing the one class most likely to pay out."
 
 ### Phase 3 — Vulnerability Discovery → `vuln-hunter` fan-out
 
@@ -102,10 +143,17 @@ discover → qualify → verify → chain → submit
 ```
 
 After each phase, re-plan:
-- New asset found → expand recon (scope-check first)
-- Confirmed SSRF → immediately probe IMDS + internal services (Chain 3)
+- New asset found (via recon-agent or a fresh subdomain-monitor diff) → expand
+  recon (scope-check first)
+- Confirmed SSRF → immediately probe IMDS + internal services (Chain 3), AND
+  check the Recurring-Pattern Lens: does this product have other connector/
+  data-source types implementing their own outbound HTTP client?
 - Confirmed IDOR pattern → test ALL object types (connector, issue, project)
 - Confirmed subdomain takeover → test CSP + OAuth redirect chain immediately
+- A confirmed finding on one component → re-run subdomain-monitor + js-hunter
+  on sibling components of the same product before moving to a new target;
+  the cheapest next bug is usually the same root cause in a neighboring
+  feature, not a new attack surface
 
 ## Pi Resource Management
 

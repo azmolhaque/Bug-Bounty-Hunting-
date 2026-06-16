@@ -102,9 +102,18 @@ Then: attempt IMDS access; if response contains `iam/security-credentials/<role>
 
 ## Dedup Check
 
-- AppSheet CVE history: CVE-2023-4212 (SSRF in import) — check if fully patched across all connector types
+- ~~AppSheet CVE history: CVE-2023-4212~~ — **correction (Session 3):** verified
+  unrelated to AppSheet/Google Cloud (it's a Trane thermostat command-injection
+  CVE). Dropped.
 - Google VRP known issues: none listed for appsheet.com
-- Prior disclosures: no public HackerOne/Bugcrowd reports found for appsheet.com
+- Prior disclosures (confirmed via research, Session 4): **two** prior rewarded
+  AppSheet connector-framework SSRF reports exist, both for *different*
+  connector implementations than F002:
+  1. David Nechuta, Dec 2021 — Workflows/Bots "Run a webhook" → IMDS token theft
+     (fixed). https://nechudav.blogspot.com/2021/12/ssrf-vulnerability-in-appsheet-google.html
+  2. "SSRF in Adding apigee account sources in appsheet.com" — Apigee
+     account-source connector accepts arbitrary URL, makes server-side request
+     (fixed, separate report). https://bughunters.google.com/reports/vrp/PnwRwydmr
 
 ## Fastest Path to a High/Critical
 
@@ -115,3 +124,57 @@ Then: attempt IMDS access; if response contains `iam/security-credentials/<role>
 5. If DNS hit → submit SSRF (OOB, Medium) while chaining IMDS
 
 **Total time to first valid submission: ~20 minutes if SSRF is present.**
+
+---
+
+## Session 4 — Recurring-Pattern Finding & Next-Target Decision (2026-06-16)
+
+### The pattern is now confirmed, not hypothesized
+
+Three independent AppSheet connector/automation features have now each had
+their own SSRF-capable outbound HTTP client, found and fixed (or, for F002,
+pending submission) **separately**:
+
+| # | Component | HTTP client | Status |
+|---|-----------|-------------|--------|
+| 1 | Workflows/Bots "Run a webhook" | webhook executor | Fixed (Nechuta, 2021) |
+| 2 | Apigee account-source connector | Apigee connector client | Fixed (separate VRP report) |
+| 3 | OData data connector | `Microsoft.OData.Client` | F002, this engagement, submission-ready |
+
+Google has fixed each instance individually rather than centralizing outbound
+HTTP through one SSRF-safe client. That means **every other AppSheet
+connector/data-source type is, by default, an unreviewed instance of the same
+root cause** — not a fresh hypothesis, a near-certain pattern continuation.
+
+### Recommendation: PRIMARY target = continue AppSheet (same engagement, new connector surface)
+
+Lowest friction, highest signal option available right now:
+- Already have a live free account, working OOB tooling, scope confirmed,
+  and 2 submission-ready reports proving the methodology works on this target.
+- Remaining untested connector/data-source types on a free AppSheet plan:
+  **REST API connector** (flagged as next priority since Session 1/2, not yet
+  attempted), Google Sheets-external/Smartsheet, Box/Dropbox, MySQL/Postgres,
+  Salesforce. Each is a 5-10 minute test using the same pattern as F002
+  (`scripts/appsheet-ssrf-probe.sh` generalizes directly).
+- Secondary priority on the same target: the cross-tenant IDOR test
+  (`./scripts/appsheet-ssrf-probe.sh --idor`) and the staging-UUID hunt
+  (`./scripts/staging-uuid-hunt.sh`) to escalate F001 from Medium → Critical —
+  both already scripted from prior sessions, neither executed yet.
+
+### Backup target: Siemplify SOAR (TIER1, *.siemplify.co — already in scope.yaml)
+
+`config/scope.yaml` flags Siemplify (Google-acquired SOAR platform, Jan 2022)
+with the note "hundreds of SSRF connectors" — structurally the same
+connector-proliferation thesis that just paid off on AppSheet, but on a
+genuinely fresh, lightly-researched target. Higher cost: needs Phase 0-2
+recon from zero (no existing account, no asset map). Hold in reserve if
+AppSheet's remaining connector types are exhausted without a new finding.
+
+### Ruled out this round (researched, low signal or high friction)
+Looker (heavy recent professional/Tenable scrutiny, patched, high competition),
+Mandiant Advantage (no exploitable-surface signal found), Cameyo/Photomath (no
+signal), Pring (Japan-only regulatory/regional friction).
+
+**Next session action:** run `./scripts/appsheet-ssrf-probe.sh --setup
+--target rest_api_connector` (or the equivalent REST API connector flow
+through the AppSheet UI if the script needs generalizing) on the Pi.

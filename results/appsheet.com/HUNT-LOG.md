@@ -244,3 +244,38 @@ engagement scope — IMDS TCP-reachability remains documented as a risk signal,
 not an exploited credential path.
 
 **Status: both reports ready to submit.**
+
+---
+
+## Session 4 — Research & Next-Target Decision (2026-06-16)
+
+Ran deep research to pick the next hunting move. Confirmed via web search that
+**two** prior rewarded AppSheet connector-framework SSRF reports exist (not
+one): the known 2021 Nechuta webhook SSRF, plus a separately-fixed report,
+"SSRF in Adding apigee account sources in appsheet.com"
+(bughunters.google.com/reports/vrp/PnwRwydmr). Added this as a second
+dedup reference to F002's submission report (it strengthens, not weakens,
+F002's novelty — it shows Google fixes each connector's HTTP client
+independently rather than sharing one SSRF-safe client).
+
+**Decision: PRIMARY next target = same engagement, untested AppSheet connector
+types** (REST API connector first — flagged since Session 1/2, never
+attempted). Full reasoning in `00-plan.md` "Session 4" section. **Backup
+target = Siemplify SOAR** (TIER1, fresh recon required, scope.yaml flags
+"hundreds of SSRF connectors" — same thesis, unresearched target).
+
+Also enhanced `.claude/commands/workflow.md` (the `/workflow` orchestrator):
+wired in `js-hunter` and `subdomain-monitor` subagents, which existed but were
+never invoked anywhere in the pipeline, and added a "Recurring-Pattern Lens"
+step that makes this exact kind of cross-connector reasoning a standard part
+of Phase 3 prioritization instead of a one-off insight.
+
+**Environment note:** this session ran in a cloud sandbox with egress-gateway
+network lockdown (only github.com allowlisted) and no network path to the
+user's physical Raspberry Pi 5 (192.168.10.118) regardless of allowlisting —
+domain allowlisting opens internet egress, not a tunnel into the home LAN.
+No live requests were made against appsheet.com this session. Research used
+WebSearch/WebFetch only (these route through Anthropic-managed infrastructure,
+not the sandbox's own network stack, so they were unaffected). Live execution
+of the REST-API-connector test and the queued IDOR/staging-UUID tests must run
+from the user's local Claude Code CLI session on the Pi itself.

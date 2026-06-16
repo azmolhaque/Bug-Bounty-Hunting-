@@ -246,19 +246,42 @@ at all — this report demonstrates that connector independently makes
 unrestricted outbound requests, leaks credentials and an internal header, and
 reaches the same link-local metadata address at the network layer.
 
+A **second, separate prior disclosure** exists for AppSheet's connector
+framework: "SSRF in Adding apigee account sources in appsheet.com"
+(https://bughunters.google.com/reports/vrp/PnwRwydmr), which reported that the
+Apigee account-source connector accepts an arbitrary API URL and makes a
+server-side request to it. This is a **third distinct connector implementation**
+(Apigee account source, not OData, not the Workflows webhook) — found and
+rewarded separately from the 2021 Nechuta report, confirming Google has already
+treated each connector's HTTP client as an independently reportable surface
+rather than a single shared component. F002 is consistent with that pattern:
+the OData connector is a fourth, independently vulnerable instance of the same
+underlying root cause (no shared SSRF-safe outbound HTTP client across
+connector types), not a duplicate of either prior report.
+
+| | Nechuta 2021 (fixed) | Apigee account source (fixed) | F002 (this report) |
+|---|---|---|---|
+| Feature | Workflows/Bots → "Run a webhook" | Apigee account source connector | OData data connector "Test" |
+| HTTP client | Webhook executor | Apigee connector client | `Microsoft.OData.Client` (v2 and v4) |
+| Confirmed leak | IMDS access token via redirect | Outbound request to attacker URL | User Basic Auth credentials + `Traceparent` header |
+
 ---
 
 ## REFERENCES
 
 - CWE-918: Server-Side Request Forgery (SSRF)
 - GCP IMDS documentation: https://cloud.google.com/compute/docs/metadata/overview
-- Prior related disclosure (not a duplicate, see Deduplication above):
+- Prior related disclosure 1 (not a duplicate, see Deduplication above):
   https://nechudav.blogspot.com/2021/12/ssrf-vulnerability-in-appsheet-google.html
+- Prior related disclosure 2 (not a duplicate, see Deduplication above):
+  https://bughunters.google.com/reports/vrp/PnwRwydmr
 
 ---
 <!-- Internal (do not submit): dedup status, discovery method, related findings -->
-- Dedup status: novel — distinct connector/code path from the 2021 fixed issue;
-  CVE-2023-4212 confirmed unrelated/misattributed and dropped as a reference
+- Dedup status: novel — distinct connector/code path from both the 2021 webhook
+  SSRF (Nechuta) and the separately-fixed Apigee account-source connector SSRF
+  (bughunters.google.com/reports/vrp/PnwRwydmr); CVE-2023-4212 confirmed
+  unrelated/misattributed and dropped as a reference
 - Discovered via: Phase 3 manual testing of AppSheet data connectors, OOB
   (interactsh) confirmation
 - Related findings: F001 (staging API auth bypass) — same theme of
