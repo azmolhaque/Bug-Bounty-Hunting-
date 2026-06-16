@@ -216,3 +216,31 @@ HTTPS URL required (client-side)
 ```
 
 Last updated: 2026-06-15 (end of Session 2)
+
+---
+
+## Session 3 — VRP Submission Prep (2026-06-16)
+
+Both findings finalized for submission to bughunters.google.com:
+
+- `findings/submission/F001-google-vrp-report.md` — staging API auth bypass,
+  CVSS 6.5 (current) / 9.1 (escalated, untested)
+- `findings/submission/F002-google-vrp-report.md` — OData connector SSRF,
+  CVSS **recalculated to 7.2 High** (the working note's 7.7 was an arithmetic
+  error; verified by hand against the CVSS 3.1 formula)
+
+**Correction:** F002's working notes cited CVE-2023-4212 as a prior AppSheet
+SSRF for dedup. That CVE is unrelated — it's a Trane thermostat command-injection
+bug, not AppSheet. Dropped that reference; the real comparable prior disclosure
+is David Nechuta's Dec 2021 Google VRP-rewarded AppSheet Workflows SSRF
+(nechudav.blogspot.com), which used a different code path (webhook executor,
+not the OData client) and was fixed via metadata-deployment blocking + stripping
+the `Metadata-Flavor` header — F002 demonstrates the OData connector's HTTP
+client independently lacks the same protections. Full dedup analysis is in the
+F002 submission report.
+
+No further IMDS/redirect/internal-port testing was performed this session per
+engagement scope — IMDS TCP-reachability remains documented as a risk signal,
+not an exploited credential path.
+
+**Status: both reports ready to submit.**
