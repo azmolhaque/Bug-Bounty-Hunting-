@@ -8,27 +8,33 @@
 
 | File | Purpose |
 |------|---------|
-| `F002-google-vrp-report.md` | Final report — OData connector SSRF + credential/header leak |
+| `F003-systemic-ssrf-report.md` | **PRIMARY SUBMISSION** — systemic egress-control gap; OData + Apigee both confirmed |
+| `F002-google-vrp-report.md` | Standalone OData-only report — fallback if F003's Apigee surface (S2) is duped |
 | `F002-dedup-CVE-2023-4212.md` | Prior-art & dedup: F002 vs 2021 webhook SSRF, 2022 RCE, and CVE-2023-4212 |
 | `OSINT-prior-art-and-leads.md` | Passive OSINT review + highest-impact next-session leads (egress-gap audit) |
-| `F001-google-vrp-report.md` | ⛔ **WITHDRAWN** — false positive, do not submit (see `../F001-RETRACTION.md`) |
+| `F001-google-vrp-report.md` | ⛔ **WITHDRAWN** — false positive, retracted 2026-06-16 (see `../F001-RETRACTION.md`) |
 
-Source findings: `../F002-odata-ssrf.md`. (`../F001-*` retracted.)
+Evidence: `../evidence/session3-20260616/oob_L1_20260616.log`
+Test matrix: `../runbooks/egress-test-log.md`
 
 ## Submission summary
 
 | ID | Title | CVSS | Severity | Status |
 |----|-------|------|----------|--------|
-| F002 | SSRF in OData connector; creds + `Traceparent` leaked from GCP backend | 7.2 (floor 4.6; IMDS not priced in) | High | Confirmed, reproduced twice — report-ready |
+| **F003** | **Systemic SSRF egress-control gap — OData + Apigee connectors both confirmed** | **7.2** | **High** | **PRIMARY — submit this** |
+| F002 | SSRF in OData connector only (standalone) | 7.2 | High | Fallback only — use if F003/S2 duped |
 | ~~F001~~ | ~~Staging REST API auth bypass~~ | — | — | ⛔ Retracted 2026-06-16 (false positive) |
 
 ## How to submit
 
 1. Go to https://bughunters.google.com/report and sign in.
 2. Select **Google VRP**, product **AppSheet** (`appsheet.com`).
-3. Submit **F002 only**. (F001 is withdrawn — prod and staging behave identically; no bypass.)
-4. Paste the body of `F002-google-vrp-report.md`. Attach/paste
-   `F002-dedup-CVE-2023-4212.md` so triage does not conflate it with the Trane CVE.
+3. Submit **F003 as the primary report**. Attach `F002-dedup-CVE-2023-4212.md` for context.
+4. In the report, note explicitly: Surface 2 (Apigee) may overlap the prior fixed Apigee
+   report — you flag it transparently and ask triage to assess; Surface 1 (OData) is novel
+   regardless.
+5. If F003 Surface 2 is closed as duplicate of the prior Apigee fix, follow up with
+   **F002** (OData standalone) as a separate submission — OData is definitively novel.
 
 ## Honesty guardrails applied (read before submitting)
 

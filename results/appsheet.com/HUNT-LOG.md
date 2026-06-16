@@ -215,7 +215,7 @@ HTTPS URL required (client-side)
 ./scripts/appsheet-ssrf-probe.sh --idor --app-id <UUID> --token-b <API_KEY_B>
 ```
 
-Last updated: 2026-06-15 (end of Session 2)
+Last updated: 2026-06-16 (Session 7 — systemic finding confirmed)
 
 ---
 
@@ -364,3 +364,41 @@ rule — `lu1l7c` was never pushed to.
 F001 is permanently retired. Next action: run the T1-T7 runbook on the Pi
 (`runbooks/PI-RUNBOOK-multiconnector-egress-gap.md`), not the older
 `--rest-connector` script flag — the runbook supersedes it.**
+
+---
+
+## Session 7 — T1+T2 Confirmed, Systemic Finding (2026-06-16 evening)
+
+Ran T1 (OData) and T2 (Apigee) from the PI-RUNBOOK egress-gap checklist. Both surfaces
+confirmed EGRESS-GAP in a single session on the same OOB listener:
+
+**T1 — OData connector (F002 baseline, 3rd independent confirmation):**
+- 35.203.182.241 (GCP) → `GET /$metadata`, `Authorization: Basic Y2FuYXJ5OmNhbmFyeQ==`
+  (canary:canary), `Traceparent: 00-0c8e50f9...`, at 2026-06-16 20:56:44 UTC
+- Same behavior as original F002 and prior re-verification. Positive control confirmed.
+
+**T2 — Apigee API connector (NEW, second surface):**
+- Account → Add Apigee API connection information → OpenAPI Spec tab → OpenAPI Spec URL → Validate
+- 35.233.152.59 (GCP, different fleet IP) → `GET /`, `X-Apikey: Ahsisjsshsgyssuwhehdidieuwwysu`
+  (the API key entered in the form, forwarded verbatim), `Traceparent: 00-1d9706...`,
+  `Cache-Control: no-cache`, at 2026-06-16 20:59:14 UTC
+- Different HTTP client than OData (no `Microsoft.OData.Client` headers, fetches `/` not
+  `/$metadata`, carries `X-Apikey` not `Authorization: Basic`)
+- UI error reflected HTML body from OOB server (OpenAPI spec parse error)
+
+**Decision matrix result:** ≥2 surfaces EGRESS-GAP → consolidated systemic report.
+
+**Dedup note for T2:** a prior VRP report exists for "SSRF in Adding apigee account
+sources in appsheet.com" (bughunters.google.com/reports/vrp/PnwRwydmr, fixed). The T2
+finding uses the OpenAPI Spec URL field — a different input than what that report likely
+covered. Most probable explanation: the prior fix covered the Apigee connector's API
+endpoint URL code path but not the OpenAPI Spec URL validation code path. Either way
+(new code path or regression), T2 is currently live and forwarding credentials.
+
+**New artifacts created:**
+- `findings/submission/F003-systemic-ssrf-report.md` — primary consolidated submission
+- `runbooks/egress-test-log.md` — evidence matrix for T1/T2
+- Raw OOB log: `evidence/session3-20260616/oob_L1_20260616.log`
+
+**Current status: F003 (systemic) is PRIMARY submission. F002 (OData standalone) is
+fallback. Submit F003 to bughunters.google.com immediately.**
