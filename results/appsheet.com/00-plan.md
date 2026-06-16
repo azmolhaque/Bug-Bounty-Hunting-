@@ -175,6 +175,12 @@ Looker (heavy recent professional/Tenable scrutiny, patched, high competition),
 Mandiant Advantage (no exploitable-surface signal found), Cameyo/Photomath (no
 signal), Pring (Japan-only regulatory/regional friction).
 
-**Next session action:** run `./scripts/appsheet-ssrf-probe.sh --setup
---target rest_api_connector` (or the equivalent REST API connector flow
-through the AppSheet UI if the script needs generalizing) on the Pi.
+**Next session action (script is ready, no generalizing needed — done
+Session 4):** run `./scripts/appsheet-ssrf-probe.sh --rest-connector
+--target imds_token` on the Pi. This reuses F002's proven server/tunnel/
+logging machinery (`odata-ssrf-server.py`) but prints the REST API connector
+UI flow (App Editor → Data → Add Data Source → REST API) instead of the
+OData flow — the untested sibling connector. If `*** GCP BACKEND HIT ***`
+appears, the pattern has a 4th confirmed instance; immediately re-run with
+each `--target` value (`imds_token`, `imds_all`, `localhost_8080`, etc.) to
+repeat F002's reachability checks on this client.

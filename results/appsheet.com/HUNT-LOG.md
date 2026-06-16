@@ -279,3 +279,32 @@ WebSearch/WebFetch only (these route through Anthropic-managed infrastructure,
 not the sandbox's own network stack, so they were unaffected). Live execution
 of the REST-API-connector test and the queued IDOR/staging-UUID tests must run
 from the user's local Claude Code CLI session on the Pi itself.
+
+---
+
+## Session 5 — Scope Cross-Check + Turnkey REST Connector Script (2026-06-16)
+
+Cloned `github.com/google/bughunters` fresh (github.com is the one host this
+sandbox's egress gateway allows) and diffed it against this repo's local copies:
+`config/google_domains_tiers.asciipb` and `config/acquisitions_domains_tiers.asciipb`
+are byte-identical to the canonical `domain-tiers/external_domains_*.asciipb`
+files — no scope drift, target tier classifications still accurate.
+`cloud_tiers/cloud-tiers.asciipb` (Cloud VRP service-impact tiers, separate
+from the consumer domain tiers) was not previously mirrored locally; reviewed,
+not directly relevant to the AppSheet connector thesis.
+
+Re-verified the egress lockdown is still in effect: `curl` to appsheet.com,
+api.appsheet.com, api.gcp-staging.appsheet.com, www.appsheet.com, and
+siemplify.co all return the egress-gateway's own 403 block page, not an app
+response. The earlier "Allowlist appsheet.com domains" selection has not
+taken effect in this sandbox session — still only github.com reachable by
+direct network call. No live target requests possible from here; confirmed
+again rather than assumed.
+
+Made the next action genuinely turnkey instead of hypothetical: generalized
+`scripts/appsheet-ssrf-probe.sh` with a new `--rest-connector` mode that
+reuses the proven `odata-ssrf-server.py` server/tunnel/logging path from F002
+but prints REST API connector UI steps instead of OData steps. Verified with
+`bash -n` and a live `--help`/scope-check dry run in this sandbox (scope-check
+passed; no actual request sent to appsheet.com). Ready to run as-is on the Pi:
+`./scripts/appsheet-ssrf-probe.sh --rest-connector --target imds_token`.
