@@ -1,3 +1,12 @@
+> # ⛔ RETRACTED — FALSE POSITIVE (2026-06-16)
+> This finding is **invalid and withdrawn**. See `F001-RETRACTION.md` for the disproving
+> evidence. Summary: production and staging behave **identically** for unauthenticated
+> requests (both return `"App … not found"` across GET/POST endpoints); production never
+> returns `"ApplicationAccessKey is missing"`. The auth-bypass differential does not
+> reproduce. Do not submit. Text below is preserved for the audit trail only.
+
+---
+
 # F001 — Missing Authentication on Publicly Accessible AppSheet Staging REST API
 
 **Target:** api.gcp-staging.appsheet.com  

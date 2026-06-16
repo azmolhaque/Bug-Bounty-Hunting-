@@ -1,3 +1,15 @@
+> # ⛔ WITHDRAWN — DO NOT SUBMIT (false positive, retracted 2026-06-16)
+> Live re-verification from the Pi showed **production and staging behave identically**:
+> across `GET /tables`, `POST /Action`, and `POST /data`, *both* hosts return
+> `"App with id … not found"` (HTTP 400) for an unauthenticated request. Production
+> **never** returns `"ApplicationAccessKey is missing"`. The prod-vs-staging differential
+> this report was built on does not exist — the API does app-lookup before key-check on
+> both environments, which is normal behavior, not an auth bypass. There is no
+> demonstrable access gain. This finding is retired. Evidence of disproof:
+> `results/appsheet.com/findings/F001-RETRACTION.md`.
+
+---
+
 # Google VRP Submission — F001
 
 ## TITLE
