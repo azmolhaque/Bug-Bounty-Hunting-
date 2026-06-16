@@ -10,7 +10,8 @@
 |------|---------|
 | `F001-google-vrp-report.md` | Final report — staging REST API auth bypass (`api.gcp-staging.appsheet.com`) |
 | `F002-google-vrp-report.md` | Final report — OData connector SSRF + credential/header leak |
-| `F002-dedup-CVE-2023-4212.md` | Dedup analysis showing F002 ≠ CVE-2023-4212 |
+| `F002-dedup-CVE-2023-4212.md` | Prior-art & dedup: F002 vs 2021 webhook SSRF, 2022 RCE, and CVE-2023-4212 |
+| `OSINT-prior-art-and-leads.md` | Passive OSINT review + highest-impact next-session leads (egress-gap audit) |
 
 Source findings: `../F001-staging-api-auth-bypass.md`, `../F002-odata-ssrf.md`.
 
@@ -34,8 +35,10 @@ Source findings: `../F001-staging-api-auth-bypass.md`, `../F002-odata-ssrf.md`.
 - **F002 IMDS** is framed as **TCP-reachability only** — a documented risk. No metadata
   token was retrieved; the HTTPS→HTTP redirect needed to reach IMDS was tested and is
   **blocked** by the .NET HTTP client. Do not claim credential retrieval.
-- **CVE-2023-4212 is unrelated** (Trane thermostat command injection, physical USB). The
-  earlier "prior AppSheet SSRF" label was wrong and has been removed from all files.
+- **F002 prior art** is the **2021 AppSheet *webhook* SSRF** (different subsystem, fixed there).
+  F002 is the **OData connector** and is net-new — the 2021 fix was never generalized to an
+  IP-level egress control. **CVE-2023-4212 is unrelated** (Trane thermostat, physical USB);
+  the earlier "prior AppSheet SSRF" label was wrong and has been removed from all files.
 - **F001 escalation to Critical** is contingent on obtaining a valid staging App UUID,
   which was **not** done; today's confirmed severity is Medium (auth control fully bypassed).
 - No customer data was read or modified; only attacker-owned servers/credentials were used.

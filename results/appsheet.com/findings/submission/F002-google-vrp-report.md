@@ -222,17 +222,29 @@ not an exploited path (the required HTTPS→HTTP redirect is currently blocked, 
 
 ---
 
-## DEDUPLICATION — NOT A DUPLICATE OF CVE-2023-4212
+## DEDUPLICATION — NET-NEW, DISTINCT FROM PRIOR AppSheet SSRF
 
-This is **not** related to CVE-2023-4212. CVE-2023-4212 is a **command-injection
-vulnerability in Trane XL824/XL850/XL1050/Pivot smart thermostats** (arbitrary commands as
-root via a crafted filename, requiring **physical USB access**; CVSS 6.8) — a different
-vendor, product, attack vector, and vulnerability class with no relationship to AppSheet or
-to SSRF. See the dedicated analysis: [`F002-dedup-CVE-2023-4212.md`](./F002-dedup-CVE-2023-4212.md).
+Full analysis: [`F002-dedup-CVE-2023-4212.md`](./F002-dedup-CVE-2023-4212.md).
 
-*(The original working notes mislabeled CVE-2023-4212 as a "prior AppSheet SSRF"; that
-attribution is incorrect and has been corrected. No known public CVE describes this
-AppSheet OData SSRF.)*
+**Closest prior art — 2021 AppSheet webhook SSRF (Google VRP, ~$6,267):** that report
+abused the **webhook automation** feature, where the webhook HTTP client *followed* a
+cross-scheme redirect (POST→GET) into `169.254.169.254` and retrieved a GCP metadata
+**token**. It was point-fixed in the **webhook** code path (legacy metadata endpoint +
+`Metadata-Flavor` / `X-Google-Metadata-Request` headers).
+
+F002 is a **different component** — the **OData data connector** — using a different backend
+client (.NET `Microsoft.OData.Client`) that, unlike the 2021 webhook client, **does not
+follow HTTPS→HTTP redirects** (tested, §4). Critically, F002 shows that **no centralized
+IP-level egress control was ever added**: in 2026 the OData connector backend still reaches
+`169.254.169.254` at the TCP layer, gated only by the .NET client's incidental redirect
+behavior — not a deliberate SSRF defense. F002 also adds a **novel** credential/`Traceparent`
+forwarding primitive absent from the 2021 report. This is a distinct vulnerability in a
+distinct subsystem and demonstrates the earlier fix was not generalized.
+
+The 2022 AppSheet deserialization RCE ($10k) is in the **Automation Bot** subsystem
+(deserialization → RCE), unrelated to this SSRF. **CVE-2023-4212 is unrelated entirely** — a
+Trane thermostat command-injection bug (physical USB) that earlier notes mislabeled as a
+"prior AppSheet SSRF"; that citation has been corrected.
 
 ---
 
