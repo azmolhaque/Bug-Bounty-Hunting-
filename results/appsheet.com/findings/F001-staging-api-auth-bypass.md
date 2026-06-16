@@ -173,5 +173,7 @@ to internal Google networks via IAP or VPC Service Controls.
 ## References
 
 - AppSheet REST API documentation: https://support.google.com/appsheet/answer/10106434
-- CVE-2023-4212: Prior AppSheet SSRF (confirms history of security gaps in AppSheet API layer)
+- NOTE: An earlier draft cited "CVE-2023-4212" as a prior AppSheet SSRF. That is
+  incorrect — CVE-2023-4212 is an unrelated OS command-injection in Trane thermostats.
+  See submission/F002-odata-ssrf/dedup-CVE-2023-4212.md. Reference removed.
 - Production vs staging response diff: see evidence section above
