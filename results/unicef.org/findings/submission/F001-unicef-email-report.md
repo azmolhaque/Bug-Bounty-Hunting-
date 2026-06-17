@@ -99,9 +99,38 @@ The JSON:API schema endpoint (`/en/jsonapi`) is also publicly accessible and exp
 - `config_pages--api_modules` — API module configuration
 - `node--documents` — Internal documents
 
-I have not enumerated the content of these endpoints beyond confirming they are listed
-in the unauthenticated schema. The platform team should audit each endpoint for
-unintended credential or configuration exposure.
+**OAuth2 Client UUID Disclosure (confirmed):** When probing
+`/en/jsonapi/oauth2_server_client/oauth2_server_client` unauthenticated, the server
+returns HTTP 200 with `data: []` but Drupal's partial-result mechanism leaks the
+internal UUID of each OAuth2 client in the `meta.omitted` links section. Confirmed
+leaked OAuth2 client UUID: `8cf614c1-7422-477b-952b-bcf1642439c5`.
+
+```
+GET /en/jsonapi/oauth2_server_client/oauth2_server_client HTTP/1.1
+Host: ram.unicef.org
+Accept: application/vnd.api+json
+
+HTTP/1.1 200 OK
+
+{
+  "data": [],
+  "meta": {
+    "omitted": {
+      "detail": "Some resources have been omitted because of insufficient authorization.",
+      "links": {
+        "item--5PGyAhH": {
+          "href": "http://ram.unicef.org/en/jsonapi/oauth2_server_client/oauth2_server_client/8cf614c1-7422-477b-952b-bcf1642439c5"
+        }
+      }
+    }
+  }
+}
+```
+
+Client secrets are not returned, but the UUIDs of all registered OAuth2 clients are
+disclosed. I did not probe the OAuth2 token endpoint beyond confirming its presence in
+the schema. The platform team should audit all entity endpoints for similar omission-based
+UUID leakage.
 
 ---
 
