@@ -14,7 +14,7 @@
 |---|------|--------|
 | 1 | **argocd-dwh-eu-dev.photomath.net** — 403 not via IAP; auth bypass candidate | 🎯 PURSUE — highest priority |
 | 2 | **portal.photomath.net** — IDOR on quiz/user integer IDs | 🎯 PURSUE — requires expert account |
-| 3 | **dpcapi-admin.photomath.com** — WAF bypassed (404 on /); need API path probe | 🎯 PURSUE — probe admin API paths |
+| 3 | **dpcapi-admin.photomath.com** — only `/healthz` exposed externally; API is internal-only | ❌ CLOSED — de-prioritized |
 | 4 | **portal.photomath.net** — horizontal privilege escalation | 🎯 PURSUE — secondary |
 | 5 | **idp.photomath.net** — Identity Provider; type unknown | ⏳ PENDING — identify IDP type, check CVEs |
 | 6 | **glooker.photomath.net** — Looker instance (in-scope via `looker.com` TIER1) | ⏳ PENDING — LeakyLooker / cross-tenant SQLi |
@@ -160,7 +160,7 @@ All quiz IDs (1, 2, 5, 10, 50, 100, 147, 200, 500, 1000) → 000 (TCP refused fr
 |----|-------|----------|--------|
 | — | — | — | No confirmed findings yet — active testing in progress |
 | L001 | `argocd-dwh-eu-dev.photomath.net` — 403 without IAP (auth bypass candidate) | TBD | Lead — needs manual probe |
-| L002 | `dpcapi-admin.photomath.com/healthz` — unauthenticated endpoint returns `alive` | Info→? | Confirmed reachable backend; need to find API paths |
-| L003 | `dpcapi-admin.photomath.com` — WAF bypass via X-Forwarded-For; 9/10 paths GCLB-404 | TBD | Lead — path enum running on Pi (scan-dpcapi-admin.sh) |
+| L002 | `dpcapi-admin.photomath.com/healthz` — only `/healthz` has GCLB routing rule | Info | CLOSED — health check only, no sensitive data, no chain |
+| L003 | `dpcapi-admin.photomath.com` — 80+ paths all GCLB routing-miss 404 | — | CLOSED — actual admin API is internal-only (GKE service mesh) |
 | L004 | `/api/quiz/grade-quizzes/user/273638` — integer user ID in URL | TBD | Lead — needs authenticated IDOR test |
 | [Ref] | Reflected XSS on portal.photomath.net | — | Prior disclosed — not ours |
