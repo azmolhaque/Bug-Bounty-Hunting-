@@ -12,22 +12,20 @@
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | **argocd-dwh-eu-dev.photomath.net** — 403 not via IAP; auth bypass candidate | 🎯 PURSUE — highest priority |
-| 2 | **portal.photomath.net** — IDOR on quiz/user integer IDs | 🎯 PURSUE — requires expert account |
-| 3 | **dpcapi-admin.photomath.com** — only `/healthz` exposed externally; API is internal-only | ❌ CLOSED — de-prioritized |
-| 4 | **portal.photomath.net** — horizontal privilege escalation | 🎯 PURSUE — secondary |
-| 5 | **idp.photomath.net** — Identity Provider; type unknown | ⏳ PENDING — identify IDP type, check CVEs |
-| 6 | **glooker.photomath.net** — Looker instance (in-scope via `looker.com` TIER1) | ⏳ PENDING — LeakyLooker / cross-tenant SQLi |
-| 7 | **github.com/photomath** — secrets scan | ⏳ PENDING (Pi) |
-| 8 | **metabase.photomath.net** — CVE-2023-38646 | ❌ DEAD — NXDOMAIN, record removed |
-| 9 | **internal.photomath.com** — 302 → sites.google.com intranet | ❌ CLOSED — Google Workspace SSO, intended |
+| 1 | **portal.photomath.net** — IDOR on quiz/user integer IDs (user 273638 in URL) | 🎯 PURSUE — **needs desktop Burp + expert account** |
+| 2 | **portal.photomath.net** — horizontal privilege escalation | 🎯 PURSUE — secondary (same session) |
+| 3 | **argocd-dwh-eu-dev.photomath.net** — Google Cloud Armor blocks Pi IP | ❌ CLOSED — needs non-Pi IP or different approach |
+| 4 | **dpcapi-admin.photomath.com** — only `/healthz` exposed externally | ❌ CLOSED — API is GKE-internal only |
+| 5 | **lapi.photomath.net** — same pattern: `/healthz` only | ❌ CLOSED — GKE-internal only |
+| 6 | **tlapi.photomath.net** — same pattern: `/healthz` only | ❌ CLOSED — GKE-internal only |
+| 7 | **idp.photomath.net** / **glooker.photomath.net** / **cms.photomath.net** | ❌ CLOSED — VPN-only (TCP 000) |
+| 8 | **github.com/photomath** — 0 public repos | ❌ CLOSED — all repos private post-acquisition |
+| 9 | **metabase.photomath.net** — CVE-2023-38646 | ❌ CLOSED — NXDOMAIN |
+| 10 | **internal.photomath.com** — 302 → Google Sites intranet | ❌ CLOSED — intended design |
 
-**NEXT ACTIONS (Pi):**
-1. Run ArgoCD auth probe on `argocd-dwh-eu-dev.photomath.net` (see runbook)
-2. Probe `dpcapi-admin.photomath.com` specific API paths with WAF bypass headers
-3. Register expert account at portal.photomath.net → Burp IDOR test
-4. Identify `idp.photomath.net` IDP type
-5. Probe `glooker.photomath.net` for Looker cross-tenant SQLi (LeakyLooker pattern)
+**Pi scanning COMPLETE. All microservices expose only `/healthz`. External attack surface = zero from Pi.**
+
+**NEXT: Desktop session — register expert account at portal.photomath.net → Burp IDOR test**
 
 ---
 
@@ -142,15 +140,29 @@ All quiz IDs (1, 2, 5, 10, 50, 100, 147, 200, 500, 1000) → 000 (TCP refused fr
 
 ---
 
+## Photomath GCP Architecture — Confirmed Pattern
+
+All external-facing microservices follow the same pattern (confirmed on dpcapi-admin, lapi, tlapi):
+- GCLB routing rule: **`/healthz → health-check backend`** (unauthenticated, returns `"alive"`)
+- All actual API paths: **GKE-internal only** (no GCLB routing rule → GCLB routing-miss 404)
+- This is correct GCP/GKE architecture — GCLB health probes need `/healthz`; API traffic routes internally
+
+This means **zero exploitable external surface on any microservice**. The only externally accessible surface is `portal.photomath.net` (the frontend BFF), which is blocked at TCP/TLS level from Pi and mobile IPs.
+
 ## Decision Log
 
 | Date | Item | Decision | Rationale |
 |------|------|----------|-----------|
-| 2026-06-17 | `internal.photomath.com` | CLOSED | 302 → Google Sites intranet; intended design; Google SSO gated |
-| 2026-06-17 | `argocd-gke-app-*-prod` | LOW PRIORITY | Google IAP protects prod; requires Google account in allowlist |
-| 2026-06-17 | `argocd-dwh-eu-dev` | HIGH PRIORITY | 403 without IAP redirect = different auth; worth probing |
-| 2026-06-17 | `dpcapi-admin.photomath.com` | PURSUE | WAF bypassed (404 on /); need to find live API paths |
+| 2026-06-17 | `internal.photomath.com` | CLOSED | 302 → Google Sites intranet; intended; Google SSO gated |
+| 2026-06-17 | `argocd-gke-app-*-prod` | CLOSED | Google IAP protects prod |
+| 2026-06-17 | `argocd-dwh-eu-dev` | CLOSED | Google Cloud Armor (GFE 403); not accessible from Pi or mobile |
+| 2026-06-17 | `dpcapi-admin.photomath.com` | CLOSED | /healthz only; API is GKE-internal |
+| 2026-06-17 | `lapi.photomath.net` | CLOSED | Same pattern: /healthz only |
+| 2026-06-17 | `tlapi.photomath.net` | CLOSED | Same pattern: /healthz only |
+| 2026-06-17 | `idp / glooker / cms` | CLOSED | TCP 000 = VPN-only |
+| 2026-06-17 | `github.com/photomath` | CLOSED | 0 public repos; all private post-acquisition |
 | 2026-06-17 | `metabase.photomath.net` | CLOSED | NXDOMAIN; CVE-2023-38646 dead |
+| 2026-06-17 | Pi scanning | COMPLETE | All Pi-reachable surfaces exhausted; pivot to desktop |
 
 ---
 
