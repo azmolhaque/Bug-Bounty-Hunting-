@@ -1,17 +1,12 @@
 # F001 — Ready-to-Send Email Report
 # Send to: infosecurity@unicef.org
-# Subject: Vulnerability Report: Unauthenticated User Enumeration via Drupal JSON:API on ram.unicef.org
-#
-# UPDATE PLACEHOLDERS before sending:
-#   [TOTAL_USER_COUNT] → from poc-user-count.txt
-#   [OAUTH2_STATUS]    → HTTP status from poc-oauth2-client.txt
-#   If OAuth2 returns credentials: add Section 4b and upgrade severity to High
+# Subject: Vulnerability Report: Unauthenticated Bulk Disclosure of 13,112 Staff Email Addresses via Drupal JSON:API on ram.unicef.org
 # -------------------------------------------------------------------------------
 
 ---
 
 **To:** infosecurity@unicef.org  
-**Subject:** Vulnerability Report: Unauthenticated User Enumeration via Drupal JSON:API on ram.unicef.org
+**Subject:** Vulnerability Report: Unauthenticated Bulk Disclosure of 13,112 Staff Email Addresses via Drupal JSON:API on ram.unicef.org
 
 ---
 
@@ -29,17 +24,30 @@ submitted in accordance with UNICEF's responsible disclosure policy.
 
 ## 1. Vulnerability Summary
 
-The UNICEF RAM 3.0 platform (`ram.unicef.org`) has the Drupal 8 JSON:API module
-configured without authentication controls. Any unauthenticated HTTP request to the
-`/en/jsonapi/user/user` endpoint returns a paginated list of UNICEF staff user accounts,
-including real `@unicef.org` email addresses and internal user UUIDs.
+The `ram.unicef.org` Drupal 8 platform exposes **13,112 real `@unicef.org` staff email
+addresses** to any unauthenticated internet visitor. This is not generic username
+enumeration — it is bulk disclosure of email addresses caused by two compounding
+misconfigurations.
+
+**Root cause (two independent issues):**
+
+1. **Usernames set to email addresses.** UNICEF configured accounts on this platform
+   so that each user's Drupal username equals their `@unicef.org` email address.
+   Drupal's `display_name` field — which the JSON:API returns publicly by design —
+   therefore resolves to a real staff email inbox, not a non-PII handle.
+
+2. **JSON:API `/user/user` collection unauthenticated and unrate-limited.** The user
+   collection endpoint requires no credentials and imposes no rate limiting, making
+   the full 13,112-account directory downloadable in a single scripted session.
+
+Neither issue alone would reach this severity. Together they produce unauthenticated
+bulk export of the platform's entire staff email directory.
 
 **Endpoint:** `https://ram.unicef.org/en/jsonapi/user/user`  
 **Authentication required:** None  
-**HTTP status:** 200 OK  
-**Rate limiting:** None observed  
-**Total accounts exposed: 13,112** (paginated, fully enumerable — confirmed)  
-**Data returned:** Staff email addresses (as `display_name`), internal UUIDs
+**Rate limiting:** None  
+**Total accounts confirmed:** 13,112 (across 263 paginated pages)  
+**Field exposed:** `display_name` = `@unicef.org` email address
 
 ---
 
@@ -71,6 +79,14 @@ Accept: application/vnd.api+json
 Pagination was confirmed through all 263 pages (50 records each, final page 12 records)
 yielding **13,112 total accounts**. I stopped at the count and did not retain the full
 dataset beyond the first-page sample above.
+
+**Note on Drupal's standing policy re: username exposure:** The Drupal security team has
+previously stated that usernames and user IDs returned via JSON:API are not considered a
+vulnerability, because usernames are typically non-sensitive public handles. That policy
+does not apply here: the `display_name` field on this platform resolves to each user's
+`@unicef.org` email address — not a public handle. The disclosure of 13,112 staff email
+addresses is the outcome Drupal's own hardening guidance explicitly identifies as the
+risk to prevent (see: https://www.drupal.org/docs/core-modules-and-themes/core-modules/jsonapi-module/security-considerations).
 
 ---
 
@@ -175,37 +191,42 @@ restriction — all records in the impacted component are readable by any unauth
 
 ## 7. Recommended Remediation
 
-**Immediate:**
+Two independent fixes are needed — patching only one leaves the other exposure path open:
 
-Apply authentication requirement to all JSON:API routes. The fastest fix is to add
-access control in Drupal's `services.yml` or via the `jsonapi_access` contributed module:
+**Fix 1 — Stop resolving display_name to email for anonymous users.**  
+Implement `hook_user_format_name_alter` to return a non-PII identifier (e.g., initials or
+opaque handle) for anonymous/unprivileged requests, or enable the
+`username_enumeration_prevention` module. This ensures even if JSON:API remains accessible,
+it cannot be used to harvest email addresses.
 
+**Fix 2 — Restrict the JSON:API user collection endpoint to authenticated users.**  
+The fastest approach via contributed module:
 ```bash
-drush en jsonapi_access -y
-drush config-set jsonapi_access.settings require_auth 1 -y
+drush en jsonapi_extras -y
 drush cr
+# Then configure /admin/config/services/jsonapi/extras:
+# Disable the user--user resource type, or restrict it to authenticated roles only.
 ```
-
-Alternatively, restrict the `user--user` resource specifically by disabling it in
-`jsonapi.resource_types` configuration.
+Alternatively, restrict via Drupal's routing access check or a custom
+`EventSubscriber` that returns 403 for anonymous requests to `/jsonapi/user/user`.
 
 **Short-term:**
-
 - Migrate from Drupal 8 (EOL) to Drupal 10 or 11
-- Upgrade PHP to 8.2+
-- Review all 60+ JSON:API entity endpoints for additional unintended exposure
-- Specifically audit: `oauth2_server_client`, `oauth2_server_token`, `config_pages/api_config`
+- Upgrade PHP to 8.2+ (7.4 receives no security patches)
+- Audit all 60+ JSON:API entity endpoints for unintended anonymous access
+- Specifically review: `oauth2_server_client`, `oauth2_server_token`, `config_pages/api_config`
 
-**Reference:**  
-Drupal JSON:API security hardening: https://www.drupal.org/docs/core-modules-and-themes/core-modules/jsonapi-module/security
+**References:**
+- Drupal JSON:API security considerations: https://www.drupal.org/docs/core-modules-and-themes/core-modules/jsonapi-module/security-considerations
+- Preventing enumeration attacks: https://www.hashbangcode.com/article/drupal-9-preventing-enumeration-attacks
 
 ---
 
 ## 8. Researcher Notes
 
 - I am not affiliated with any threat actor or competing organization.
-- I stopped enumeration after confirming the vulnerability with a minimal sample (4 email
-  addresses) and did not collect, store, or transmit the full user list.
+- I confirmed the total count (13,112) via pagination counting only. I retained only the
+  first-page sample (10 addresses) as proof. The full list was not stored or transmitted.
 - I did not attempt to authenticate to any UNICEF system using the exposed credentials.
 - I did not test any OAuth2 or API endpoints beyond confirming their presence in the schema.
 - Disclosure timeline: I am reporting immediately upon confirmation (same day).

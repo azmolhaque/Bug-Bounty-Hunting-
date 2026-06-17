@@ -1,4 +1,4 @@
-# F001 — Unauthenticated User Enumeration & Sensitive Data Exposure via Drupal JSON:API on ram.unicef.org
+# F001 — Unauthenticated Bulk Disclosure of 13,112 Staff Email Addresses via Drupal JSON:API on ram.unicef.org
 
 **Target:** ram.unicef.org  
 **Severity:** HIGH (CVSS 3.1: AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N = 7.5)  
@@ -8,45 +8,59 @@
 **Scope gate:** PASS — `ram.unicef.org` matches `*.unicef.org` (in_scope)  
 **Program:** UNICEF Responsible Vulnerability Disclosure  
 **Submit to:** infosecurity@unicef.org  
-**Subject:** Vulnerability Report: Unauthenticated User Enumeration via Drupal JSON:API on ram.unicef.org
+**Subject:** Vulnerability Report: Unauthenticated Bulk Disclosure of 13,112 Staff Email Addresses via Drupal JSON:API on ram.unicef.org
 
 ---
 
 ## Summary
 
-The UNICEF RAM 3.0 platform (`ram.unicef.org`) runs Drupal 8 with the JSON:API module
-enabled and accessible without authentication. Any unauthenticated network request to
-`/en/jsonapi/user/user` returns a paginated list of UNICEF staff accounts including
-**real `@unicef.org` email addresses and user UUIDs**. The JSON:API schema endpoint
-(`/en/jsonapi`) additionally exposes 60+ internal entity types — including OAuth2 server
-clients, tokens, and scopes — without requiring any credentials.
+The `ram.unicef.org` Drupal 8 platform exposes **13,112 real `@unicef.org` staff email
+addresses** to any unauthenticated internet visitor via the JSON:API `/user/user`
+endpoint. This is not generic username enumeration (which Drupal treats as WAI) — it is
+bulk disclosure of email addresses, which Drupal explicitly does not expose to anonymous
+users by default.
 
-**Scale confirmed: 13,112 staff accounts enumerated across 263 pages — the complete
-global UNICEF staff directory — via a single unauthenticated API with no rate limiting.**
+The misconfiguration has two compounding components:
+1. UNICEF set staff **usernames equal to email addresses** on this platform, so
+   `display_name` — a field that Drupal's security model does allow returning publicly —
+   resolves to the staff member's email inbox.
+2. The JSON:API `/user/user` collection endpoint is accessible without authentication,
+   with no rate limiting, returning all 13,112 accounts across 263 paginated pages.
 
-Confirmed staff emails observed (first page sample): `fmelese@unicef.org`,
-`yara@unicef.org`, `apopa@unicef.org`, `fawde@unicef.org`, `aosorio@unicef.org`.
+The result is unauthenticated bulk export of the platform's entire user email directory.
+This is PII disclosure at organizational scale, not a design feature.
+
+Sample from first page (of 263): `fmelese@unicef.org`, `yara@unicef.org`,
+`apopa@unicef.org`, `fawde@unicef.org`, `aosorio@unicef.org`.
 
 ---
 
 ## Root Cause
 
-Drupal 8 ships with the JSON:API module enabled by default. The `ram.unicef.org` instance
-has not applied the recommended hardening:
+Two independent misconfigurations combine to produce email PII disclosure:
 
-1. The `jsonapi.settings.yml` `read_only: false` restriction (or access policy) is absent.
-2. The `json_api_extras` module permission "Access JSON:API" is not restricted to
-   authenticated users.
-3. The site has not applied the Drupal `jsonapi_access` contributed module to require
-   authentication on all endpoints.
+**Misconfiguration 1 — Username set to email address.**  
+UNICEF configured user accounts on this platform so that the Drupal username (and
+therefore `display_name`) equals the user's `@unicef.org` email address. Drupal's own
+security documentation and the Drupal security team's standing policy state that
+*usernames and user IDs are not considered sensitive* and may be returned by JSON:API
+to anonymous users. That policy exists because usernames are typically non-sensitive
+handles. When usernames are email addresses, the same mechanism produces PII disclosure —
+an outcome the policy was never designed to permit.
 
-As a result, Drupal's default entity access check does not prevent unauthenticated listing
-of user accounts, which bypasses the normal `admin/people` access control.
+**Misconfiguration 2 — JSON:API `/user/user` collection unauthenticated, unrate-limited.**  
+The `ram.unicef.org` instance does not restrict the user collection endpoint to
+authenticated users. The Drupal JSON:API documentation explicitly calls this out as a
+configuration that must be hardened, and recommends the `jsonapi_extras` or
+`jsonapi_access` modules for this purpose. Neither has been applied.
 
-**Platform EOL context (amplifies risk):**
-- Drupal 8 — end-of-life November 2021 (no security patches)
-- PHP 7.4.33 — end-of-life December 2022 (no security patches)
-- Apache 2.4.54 — superseded (current: 2.4.62+)
+Neither misconfiguration alone is the vulnerability. Together they allow any
+unauthenticated actor to bulk-export the full staff email directory in a single session.
+
+**Platform EOL context (no backport patches available):**
+- Drupal 8 — end-of-life November 2021
+- PHP 7.4.33 — end-of-life December 2022
+- Apache 2.4.54 — superseded
 
 ---
 
@@ -255,18 +269,27 @@ All three components are past end-of-life and receive no security patches.
 
 ## Remediation
 
-**Immediate (hours):**
-1. Restrict JSON:API to authenticated users:
-   - In `sites/default/services.yml`, set `json_api.settings: read_only: true` (blocks writes)
-   - Install and configure `jsonapi_access` module to require authentication:
-     ```
-     drush en jsonapi_access -y
-     drush config-set jsonapi_access.settings require_auth 1 -y
-     ```
-   - OR add route access check in a custom module: `_access: 'TRUE'` → `_user_is_logged_in: 'TRUE'`
+**Immediate (hours) — two independent fixes, both required:**
 
-2. Apply per-entity access restrictions — even with auth required, `user/user` should
-   be restricted to administrators only.
+1. **Stop exposing email as display_name to anonymous users.** Use a
+   `hook_user_format_name_alter` implementation or the `username_enumeration_prevention`
+   module to return a non-PII display name (e.g., initials or a random handle) to
+   anonymous requests. This severs the username=email link for unauthenticated contexts
+   without changing how logged-in users see each other.
+
+2. **Restrict JSON:API `/user/user` collection to authenticated users.** Install and
+   enable the `jsonapi_access` or `jsonapi_extras` module:
+   ```bash
+   drush en jsonapi_extras -y
+   # Then in Drupal admin: /admin/config/services/jsonapi/extras
+   # Disable or require auth on the user--user resource type
+   ```
+   Alternatively, block the route directly in `sites/default/services.yml` or via a
+   custom access check. At minimum, require `_user_is_logged_in: 'TRUE'` on the
+   `/jsonapi/user/user` route.
+
+3. Apply per-entity field-level restrictions — even after requiring auth, `user/user`
+   should be restricted to `administer users` permission, not all authenticated users.
 
 **Short-term (days):**
 3. Upgrade platform stack:
