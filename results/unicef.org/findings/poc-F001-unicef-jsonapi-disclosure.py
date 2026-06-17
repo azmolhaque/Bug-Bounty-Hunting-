@@ -288,10 +288,11 @@ def test_additional_endpoints():
             "direct_records": len(direct),
             "omitted_uuids":  uuids,
             "finding": (
-                "DATA_RETURNED"    if direct else
-                "UUID_LEAKED"      if uuids  else
-                "SERVER_ERROR"     if status == 500 else
-                "ACCESSIBLE_EMPTY" if status == 200 else
+                "DATA_RETURNED"    if direct         else
+                "UUID_LEAKED"      if uuids          else
+                "SERVER_ERROR"     if status == 500  else
+                "ACCESSIBLE_EMPTY" if status == 200  else
+                "CONN_ERROR"       if status == 0    else
                 "BLOCKED"
             )
         })
@@ -300,17 +301,20 @@ def test_additional_endpoints():
 
 # ── Output formatters ──────────────────────────────────────────────────────────
 
-def print_banner():
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+def print_banner(sample_only=False):
+    ts   = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    mode = ("Sample-only  (first page; run without --sample-only for full 13,112 count)"
+            if sample_only else
+            "Full count   (paginating all records — this takes ~4 minutes)")
     print(f"""
 {BOLD}{CYAN}╔══════════════════════════════════════════════════════════════════════╗
 ║  Drupal JSON:API Staff Email Disclosure — PoC                       ║
 ║  Finding F001 · UNICEF Responsible Vulnerability Disclosure Program ║
 ╚══════════════════════════════════════════════════════════════════════╝{RESET}
-  Target   : {TARGET}
+  Target    : {TARGET}
   Researcher: azmolhaque95@gmail.com
   Timestamp : {ts}
-  Mode      : Responsible Disclosure (sample only, count-not-collect)
+  Mode      : {mode}
 """)
 
 
@@ -390,10 +394,12 @@ def print_test4(results):
         "UUID_LEAKED":      YELLOW,
         "SERVER_ERROR":     RED,
         "ACCESSIBLE_EMPTY": CYAN,
+        "CONN_ERROR":       DIM,
         "BLOCKED":          GREEN,
     }
     notes = {
         "SERVER_ERROR": " ← unhandled exception; endpoint reachable unauthenticated",
+        "CONN_ERROR":   " ← connection refused or endpoint not reachable",
     }
     print(f"  {'Endpoint':<30}  {'HTTP':<5}  {'Finding'}")
     print(f"  {DIM}{'─'*30}  {'─'*5}  {'─'*55}{RESET}")
@@ -478,7 +484,7 @@ def main():
     args = parser.parse_args()
 
     if not args.json:
-        print_banner()
+        print_banner(sample_only=args.sample_only)
 
     # Run all tests
     r1, schema_links = test_schema()
