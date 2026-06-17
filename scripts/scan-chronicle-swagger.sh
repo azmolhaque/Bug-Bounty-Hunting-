@@ -150,7 +150,7 @@ echo "[5] Probing select endpoints without auth..."
 
 probe_unauth() {
     local METHOD="$1"
-    local PATH="$2"
+    local BPATH="$2"
     local DESC="$3"
     local RESP
     RESP=$(curl -sk --max-time 15 \
@@ -158,14 +158,14 @@ probe_unauth() {
         -H "User-Agent: ${UA}" \
         -H "Accept: application/json" \
         -w "\n__CODE__%{http_code}" \
-        "https://${TARGET}${PATH}" 2>/dev/null)
+        "https://${TARGET}${BPATH}" 2>/dev/null)
     local CODE="${RESP##*__CODE__}"
     local BODY="${RESP%__CODE__*}"
-    echo "[5][${CODE}] ${METHOD} ${PATH} — ${DESC}"
+    echo "[5][${CODE}] ${METHOD} ${BPATH} — ${DESC}"
     # Print body for non-401/000 responses
     if [ "${CODE}" != "401" ] && [ "${CODE}" != "000" ] && [ "${CODE}" != "403" ]; then
-        echo "    BODY: $(echo "${BODY}" | head -3 | tr '\n' ' ')"
-        echo "${METHOD} ${PATH} [${CODE}]: ${BODY}" >> "${OUT}/unauth-hits.txt"
+        echo "    BODY: ${BODY}" | head -4
+        printf '%s %s [%s]: %s\n' "${METHOD}" "${BPATH}" "${CODE}" "${BODY}" >> "${OUT}/unauth-hits.txt"
     fi
 }
 

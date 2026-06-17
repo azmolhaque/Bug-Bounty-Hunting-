@@ -7,6 +7,95 @@
 
 ---
 
+## Session 4 — 2026-06-17 (Pi 5 — Swagger full enumeration)
+
+### scan-chronicle-swagger.sh output (20260617-0934)
+
+| Metric | Count |
+|--------|-------|
+| Swagger v1 endpoints | **448** |
+| Swagger v2/v3 paths | 0 (specs return empty — v1 only) |
+| IDOR candidate paths | **106** |
+| SSRF-relevant params | 3 (LegacyControllerBaseUrl, WebhookIdentifier, Resource) |
+| Unauth hits | **29 false positives** — bug: `local PATH="$2"` in probe_unauth() overwrites shell PATH, curl fails; all 29 empty responses pass `!= "401"` check |
+
+**Script bug fixed:** `probe_unauth()` renamed `PATH` param to `BPATH` in scan-chronicle-swagger.sh and scan-chronicle-idor.sh. Re-run needed.
+
+### Critical Findings from Swagger Analysis
+
+**1. {tenantId} directly in URL paths — cross-tenant scope:**
+```
+GET  /api/external/v1/configuration-items/{tenantId}
+PUT  /api/external/v1/configuration-items/{tenantId}
+POST /api/external/v1/{tenantId}/configuration-items:batchUpdate
+POST /api/external/v1/{tenantId}/pubsub-backfill:trigger
+```
+If `tenantId` is a predictable integer (sequential or small), this is direct cross-tenant access. Test: get your own tenantId from `GetEnvironments`, then probe tenantId±1.
+
+**2. Integration instance settings store API keys (IDOR → credential theft):**
+```
+GET /api/external/v1/integrations/GetIntegrationInstanceSettings/{integrationInstanceId}
+```
+Description: "Returns the settings of an integration instance." Integration instances store configured API keys, passwords, and tokens for 300+ connected tools (Jira, Splunk, CrowdStrike, ServiceNow, etc.). If `integrationInstanceId` is a sequential integer and auth only checks "is authenticated" (not "is this YOUR integration"), IDOR = steal another tenant's third-party API credentials. = **CRITICAL**
+
+**3. SSRF via TestProxySettings:**
+```
+POST /api/external/v1/settings/TestProxySettings
+Schema: ProxySettings { username, password, proxyServerAddressXml, targetAddressXml, ignoreAddressXml }
+```
+Server makes an outbound connection to test the proxy. If `proxyServerAddressXml` or `targetAddressXml` accepts arbitrary URLs, this is SSRF from GCP infrastructure. = **HIGH/CRITICAL**
+
+**4. SSRF via TestAdvancedReportsSettings + SaveAdvancedReportsSettings:**
+```
+POST /api/external/v1/settings/SaveAdvancedReportsSettings
+GET  /api/external/v1/settings/TestAdvancedReportsSettings
+Schema: AdvancedReportsSettings { advancedReportsUrl, advancedReportsUsername, advancedReportsPassword, advancedReportsDatabaseServer, advancedReportsDatabaseServerPassword }
+```
+Save a malicious BI URL, then Test → server fetches the URL. Credentials stored in plaintext visible in responses. = **SSRF + Info Disclosure**
+
+**5. Credentials in response schemas (returned by API):**
+- `AdvancedReportsSettings`: `advancedReportsPassword`, `advancedReportsDatabaseServerPassword`
+- `ProxySettings`: `username`, `password`
+- `EmailSettings`: `username`, `password`
+- `ApiWebhookUpdateRequest`: `apiKey`
+- `ApiWebhookResponse`: `postfix` (webhook secret)
+
+**6. TestIntegration endpoint (SSRF via integration connectivity test):**
+```
+GET /api/external/v1/store/TestIntegration/{integrationInstanceId}
+```
+Runs a "Test" action against the configured integration. If integrationInstanceId is another tenant's instance with a URL-based integration (HTTP Utilities, webhook-based), this causes server-side outbound fetch to that integration's URL. Combines IDOR + SSRF.
+
+### Updated Leads
+
+| ID | Title | Severity | Status |
+|----|-------|----------|--------|
+| L002a | `GetIntegrationInstanceSettings/{integrationInstanceId}` — IDOR → cross-tenant API credential theft | **Critical** | PURSUE — test with trial account, adjacent integer IDs |
+| L002b | `configuration-items/{tenantId}` — direct cross-tenant config access by tenantId | **Critical** | PURSUE — enumerate tenantId=1,2,3 after getting own ID |
+| L002c | `TestProxySettings` — SSRF via proxy URL submission | **High** | PURSUE — set OOB URL as proxyServerAddressXml, call endpoint |
+| L002d | `TestAdvancedReportsSettings` + `SaveAdvancedReportsSettings` — SSRF via BI report URL | **High** | PURSUE — save OOB URL, call test endpoint |
+| L002e | `TestIntegration/{integrationInstanceId}` — IDOR+SSRF combo | **High** | PURSUE — adjacent IDs + OOB-configured integration |
+
+### Next Action (requires trial account)
+```bash
+# 1. Sign up: cloud.google.com/security/products/security-operations
+# 2. Get AppKey token from DevTools → Network → any /api/external/ request
+# 3. Get your tenantId and resource IDs:
+export SOAR_TOKEN="<your-appkey>"
+export SOAR_TENANT="<your-tenant-subdomain>"
+export MY_CASE_ID=<your-first-case-id>
+export MY_INTEGRATION_ID=<your-first-integration-id>
+export OOB_URL="https://<interactsh-id>.oast.pro"
+
+# 4. Start OOB listener first:
+interactsh-client -server oast.pro -v &
+
+# 5. Run targeted IDOR/SSRF scan:
+bash scripts/scan-chronicle-idor.sh
+```
+
+---
+
 ## Session 3 — 2026-06-17 (Mobile browser — live target probing)
 
 ### Key Probe Results (mobile browser, 3:08–3:13 local)
@@ -144,7 +233,12 @@ Next actions for desktop session:
 | ID | Title | Severity | Status |
 |----|-------|----------|--------|
 | L001 | `backstory.googleapis.com/v1/feeds` → 401 — Feed Management API reachable, needs auth | TBD | LEAD — SSRF target; test with trial account (Phase 3A in runbook) |
-| L002 | `app.siemplify-soar.com/swagger/index.html` → **200 unauthenticated** — full Chronicle SOAR API (v1/v2/v3) schema exposed | TBD | **HOT** — fetch Swagger JSON, enumerate all endpoints, test unauth endpoints + IDOR |
+| L002 | `app.siemplify-soar.com/swagger/index.html` → **200 unauthenticated** — 448-endpoint Chronicle SOAR API schema exposed | Info | DONE — Swagger fetched; critical IDOR/SSRF surfaces mapped (see L002a–e above) |
+| L002a | `GetIntegrationInstanceSettings/{integrationInstanceId}` — API keys stored per integration; sequential integer IDs | **Critical** | PURSUE — needs trial token; test adjacent IDs |
+| L002b | `configuration-items/{tenantId}` + `{tenantId}/pubsub-backfill:trigger` — tenantId directly in URL | **Critical** | PURSUE — needs trial token; enum tenantId=1,2,3 |
+| L002c | `TestProxySettings` — SSRF; server fetches proxyServerAddressXml URL | **High** | PURSUE — needs trial token + OOB listener |
+| L002d | `SaveAdvancedReportsSettings` + `TestAdvancedReportsSettings` — SSRF via BI report URL | **High** | PURSUE — needs trial token + OOB listener |
+| L002e | `TestIntegration/{integrationInstanceId}` — IDOR+SSRF; tests connectivity to arbitrary integration URL | **High** | PURSUE — needs trial token |
 | L003 | `looker.chronicle.security` → Google 400 — domain resolves and hits Google | TBD | LEAD — probe Looker API paths (`/api/4.0/user`, `/login`, etc.) |
 | L004 | 12,674 live tenant subdomains on `siemplify-soar.com` — real enterprise tenants | Info | LEAD — confirms large multi-tenant surface; IDOR between tenants is in scope |
 | L005 | `backstory-staging.chronicle.security` → Google 404 — domain resolves, apex not routed | TBD | LEAD — staging may have looser auth; probe actual API paths with trial token |
