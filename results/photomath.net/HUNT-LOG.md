@@ -94,18 +94,36 @@ GCP (GCLB + GKE) • React/TypeScript frontend • Node.js/C++/Python backend �
   - **Critical distinction**: ArgoCD unauth typically returns 401 or redirects to `/auth/login`, NOT 403. 403 = WAF or IP block
   - **Action**: From Pi, probe `/auth/login` (ArgoCD login page), `/auth/callback` (OIDC callback), check response headers for auth clues
 
-### WAF Bypass Results
+### WAF Bypass Results (Pi)
 
 | Host | Result |
 |------|--------|
-| `dpcapi-admin.photomath.com` | **404 with bypass headers** (WAF BYPASSED — server responding, paths not found) |
+| `dpcapi-admin.photomath.com` | **GCLB 404 with bypass headers** (WAF bypassed — real GCLB routing response) |
 | `internal.photomath.com` | 302 → `sites.google.com/photomath.com/internal-plus-access` |
 | `lapi.photomath.net` | Response varies with bypass headers |
 | `tlapi.photomath.net` | Response varies with bypass headers |
 | `portal.photomath.net` | TCP 000 (connection refused from Pi IP) |
 | `cuvar.photomath.net` | TCP 000 (connection refused from Pi IP) |
 
-**dpcapi-admin analysis**: `X-Forwarded-For: 127.0.0.1` header returns 404 instead of 403 = WAF is bypassed, underlying server responds. Root path `/` → 404. Need to probe specific admin API paths.
+### Mobile Browser Results (2026-06-17, no bypass headers needed)
+
+| Path | Response |
+|------|----------|
+| `dpcapi-admin.photomath.com/` | GCLB 404 (`service rules for the path non-existent`) |
+| `dpcapi-admin.photomath.com/api/v1` | GCLB 404 |
+| `dpcapi-admin.photomath.com/api/v2` | GCLB 404 |
+| `dpcapi-admin.photomath.com/health` | GCLB 404 |
+| `dpcapi-admin.photomath.com/healthz` | **`alive`** ← CONFIRMED LIVE BACKEND |
+| `dpcapi-admin.photomath.com/admin` | GCLB 404 |
+| `dpcapi-admin.photomath.com/swagger` | GCLB 404 |
+| `dpcapi-admin.photomath.com/metrics` | GCLB 404 |
+| `dpcapi-admin.photomath.com/v1` | GCLB 404 |
+| `dpcapi-admin.photomath.com/dpc` | GCLB 404 |
+| `argocd-dwh-eu-dev.photomath.net/` | `ERR_EMPTY_RESPONSE` |
+| `portal.photomath.net/` | `ERR_EMPTY_RESPONSE` |
+| `portal.photomath.net/api/quiz/grade-quizzes/user/273638` | `ERR_EMPTY_RESPONSE` |
+
+**Analysis:** `/healthz` → `alive` confirms the backend service is live and responding without authentication. `/health` (note: no `z`) returns GCLB 404 — precise path routing. The service is likely Go or Kubernetes-native (uses `/healthz` convention). GCLB routing rules are very specific — need to find which other paths have configured backends.
 
 ### URL Mining (portal.photomath.net)
 
@@ -142,6 +160,7 @@ All quiz IDs (1, 2, 5, 10, 50, 100, 147, 200, 500, 1000) → 000 (TCP refused fr
 |----|-------|----------|--------|
 | — | — | — | No confirmed findings yet — active testing in progress |
 | L001 | `argocd-dwh-eu-dev.photomath.net` — 403 without IAP (auth bypass candidate) | TBD | Lead — needs manual probe |
-| L002 | `dpcapi-admin.photomath.com` — WAF bypass via X-Forwarded-For (returns 404) | TBD | Lead — need API path discovery |
-| L003 | `/api/quiz/grade-quizzes/user/273638` — integer user ID in URL | TBD | Lead — needs authenticated IDOR test |
+| L002 | `dpcapi-admin.photomath.com/healthz` — unauthenticated endpoint returns `alive` | Info→? | Confirmed reachable backend; need to find API paths |
+| L003 | `dpcapi-admin.photomath.com` — WAF bypass via X-Forwarded-For; 9/10 paths GCLB-404 | TBD | Lead — path enum running on Pi (scan-dpcapi-admin.sh) |
+| L004 | `/api/quiz/grade-quizzes/user/273638` — integer user ID in URL | TBD | Lead — needs authenticated IDOR test |
 | [Ref] | Reflected XSS on portal.photomath.net | — | Prior disclosed — not ours |
