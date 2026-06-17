@@ -7,6 +7,64 @@
 
 ---
 
+## Session 2 — 2026-06-17 (Pi 5 — Phase 1-2 passive recon)
+
+### Scale
+
+| Metric | Count |
+|--------|-------|
+| Subdomains discovered (subfinder + crt.sh on 3 domains) | 53,802 |
+| Hosts resolving via dnsx | 12,674 |
+| Live HTTP hosts from httpx (Pi IP blocked) | 0 |
+| URLs mined via gau + waybackurls | 31,534 |
+
+### Key Probe Results
+
+| Target | Status | Notes |
+|--------|--------|-------|
+| `chronicle.security` (/, /login, /auth, /api, /docs, /swagger, /health) | **200** | Google Cloud UX SPA — all paths serve same React app, no real API endpoints |
+| `chronicle.security/healthz` | 404 | Google 404 page |
+| `app.siemplify-soar.com` | **200** | "Google SecOps" — accessible SOAR instance |
+| `siemplify-soar.com/swagger/index.html` | 502 Bad Gateway | Apex domain; need `{tenant}.siemplify-soar.com` — try `app.siemplify-soar.com/swagger/index.html` |
+| `backstory.googleapis.com/v2/detect/rules` | **401** | Real API endpoint — needs OAuth (scope `chronicle-backstory`) |
+| `backstory.googleapis.com/v1/feeds` | **401** | Feed Management API — SSRF surface confirmed reachable, needs trial auth |
+| `backstory.googleapis.com/v1/partners` | 401 | |
+| `iafwsjwcmh.com` | 000 | TCP refused |
+| `uberproxy-san.chronicle.security` | CNAME → `uberproxy.l.google.com` | Internal Google UberProxy |
+
+### Interesting Assets Found in URL Mining
+
+| Host | Significance |
+|------|-------------|
+| `backstory-dev.chronicle.security` | Dev/staging environment |
+| `backstory-preprod.chronicle.security` | Pre-prod environment |
+| `backstory-staging.chronicle.security` | Staging environment |
+| `looker.chronicle.security` | Looker BI — probe for LeakyLooker-style paths |
+| `looker-staging.chronicle.security` | Staging Looker |
+| `performence-webhook.siemplify-soar.com` | Live webhook endpoint (note: typo "performence") |
+| 12,674 tenant subdomains on `siemplify-soar.com` | Real enterprise tenants: schwab, optum, pearson, ralphlauren, nubank, pandora, etc. |
+
+### SSRF-Relevant URL Patterns Found
+
+- `{tenant}.backstory-staging.chronicle.security` URLs with `initAuth` and `issueCookie` endpoints visible
+- Integration/connector URL patterns in gau output
+- Feed Management paths visible at `backstory.googleapis.com/v1/feeds`
+
+### Current Status
+
+**Phase 1-2 COMPLETE.** PI IP blocked from httpx full scan but key endpoints probed manually.
+**Phase 3 BLOCKED until free Google SecOps trial account registered.**
+
+Next actions for desktop session:
+1. **Register free Google SecOps trial** at `cloud.google.com/security/products/security-operations`
+2. **Probe `app.siemplify-soar.com/swagger/index.html`** — likely the most accessible SOAR Swagger (app tenant is the demo/community instance)
+3. **Probe `looker.chronicle.security`** — Looker API paths (`/api/4.0/user`, `/api/4.0/connections`, `/api/4.0/look/1`, `/login`)
+4. **Feed Management SSRF** (F-01): Set OOB interactsh URL as HTTPS feed source → watch for GCP fetch
+5. **Integration connector tests** (F-03 through F-08): Jira, ServiceNow, Slack with OOB URLs
+6. **Backstory staging/dev** — probe `backstory-staging.chronicle.security` for looser auth
+
+---
+
 ## Session 1 — 2026-06-16 (Remote — setup only)
 
 **Actions:**
@@ -38,8 +96,13 @@
 
 ---
 
-## Findings
+## Findings / Leads
 
 | ID | Title | Severity | Status |
 |----|-------|----------|--------|
-| — | — | — | No findings yet — recon not started |
+| L001 | `backstory.googleapis.com/v1/feeds` → 401 — Feed Management API reachable, needs auth | TBD | LEAD — SSRF target; test with trial account (Phase 3A in runbook) |
+| L002 | `app.siemplify-soar.com` → 200 "Google SecOps" — accessible SOAR instance | TBD | LEAD — probe Swagger at `/swagger/index.html`, test IDOR |
+| L003 | `looker.chronicle.security` — Looker BI instance found in URL mining | TBD | LEAD — probe Looker API paths for unauth access or cross-tenant data |
+| L004 | 12,674 live tenant subdomains on `siemplify-soar.com` — real enterprise tenants | Info | LEAD — confirms large multi-tenant surface; IDOR between tenants is in scope |
+| L005 | `backstory-staging.chronicle.security` + dev/preprod — staging environments found | TBD | LEAD — staging may have looser auth; probe with trial token |
+| L006 | `performence-webhook.siemplify-soar.com` — live webhook endpoint | TBD | LEAD — probe for unauthenticated webhook acceptance or SSRF |

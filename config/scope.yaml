@@ -313,7 +313,12 @@ in_scope:
   - "homegraph.googleapis.com"
 
   # Chronicle Security / Google SecOps (TIER1)
+  # Pi scan 2026-06-17: 53,802 subs, 12,674 resolving; app.siemplify-soar.com → 200;
+  # backstory.googleapis.com/v1/feeds → 401 (real SSRF target); looker.chronicle.security found
   - "chronicle.security"
+  - "*.chronicle.security"           # covers backstory, secops, looker, auth, staging, dev subdomains
+  - "siemplify-soar.com"
+  - "*.siemplify-soar.com"           # covers 12,674 live tenant subdomains (e.g. app.siemplify-soar.com)
   - "backstory.googleapis.com"
   - "secops.googleapis.com"
   - "iafwsjwcmh.com"
@@ -332,10 +337,10 @@ in_scope:
   - "opensky.wing.com"
 
   # Siemplify SOAR (acquired Jan 2022) — TIER1/2; hundreds of SSRF connectors
+  # siemplify-soar.com + *.siemplify-soar.com covered above in Chronicle section
   - "siemplifycloud.com"
   - "siemplify.co"
   - "passbolt.siemplify.co"
-  - "siemplify-soar.com"
 
   # Dropcam / Nest Labs (TIER1)
   - "dropcam.com"
