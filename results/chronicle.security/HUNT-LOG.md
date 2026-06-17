@@ -7,6 +7,49 @@
 
 ---
 
+## Session 3 — 2026-06-17 (Mobile browser — live target probing)
+
+### Key Probe Results (mobile browser, 3:08–3:13 local)
+
+| Target | Status | Finding |
+|--------|--------|---------|
+| `app.siemplify-soar.com/swagger/index.html` | **200** | **Full Chronicle SOAR API Swagger UI — unauthenticated** |
+| `app.siemplify-soar.com` (API v selector) | **200** | v1, v2, v3 all exposed |
+| `backstory.googleapis.com/v1/feeds` | 401 | Method: `chronicle.backstory.v1.FeedsService.ListFeeds` — needs OAuth |
+| `looker.chronicle.security` | Google 400 | Domain resolves to Google; apex needs auth redirect / specific path |
+| `backstory-staging.chronicle.security` | Google 404 | Apex `/` not routed; domain resolves; probe actual API paths |
+| `backstory-dev.chronicle.security` | **ÜberProxy DNS fail** | Internal-only domain (ÜberProxy error: not resolvable from external) |
+
+### CRITICAL LEAD — Unauthenticated Swagger UI
+
+**`app.siemplify-soar.com/swagger/index.html`** returns the full Chronicle SOAR API documentation without any authentication. Three API versions exposed (v1, v2, v3).
+
+API categories visible in Swagger:
+- Agents, Approval Links, Case Management, Cloud Logging, CommandCenter
+- ConfigurationItemsManagement, **Connectors**, Dashboards, EntitySearch, Federation
+- Homepage, IdpMappingManagement, **Integrations**, Jobs, Marketplace
+- Notifications, Ontology, Permissions, **Playbooks**, PubSubBackfill
+- Reports, Resources, Retention, Search, Settings, SOC Roles, **Webhooks**
+
+**Significance:** Swagger UI being unauthenticated (no login wall before Swagger loads) means:
+1. Full API schema is publicly documented — every endpoint, parameter, and expected response
+2. Need to test: which endpoints respond to unauthenticated requests? (webhooks, health, OOB callbacks)
+3. If `app` tenant has real trial user data: IDOR between trial accounts on case/integration IDs = cross-tenant isolation break (Critical)
+4. **Connectors + Integrations + Webhooks** endpoints are the SSRF surface — need Swagger JSON to extract all URL-parameter fields
+
+**Immediate action:** Fetch `https://app.siemplify-soar.com/swagger/v1/swagger.json` (and v2, v3) to get all endpoint paths and parameter names. Then test each endpoint unauthenticated.
+
+### Analysis
+
+| Host | Verdict |
+|------|---------|
+| `backstory-dev.chronicle.security` | CLOSED — ÜberProxy (internal DNS, not resolvable externally) |
+| `backstory-staging.chronicle.security` | OPEN — resolves; probe `/v1/feeds`, `/v2/detect/rules` with trial token |
+| `looker.chronicle.security` | OPEN — resolves; Google 400 = needs auth redirect, probe API paths |
+| `app.siemplify-soar.com/swagger` | **HOT LEAD** — full API schema exposed, test endpoints |
+
+---
+
 ## Session 2 — 2026-06-17 (Pi 5 — Phase 1-2 passive recon)
 
 ### Scale
@@ -101,8 +144,9 @@ Next actions for desktop session:
 | ID | Title | Severity | Status |
 |----|-------|----------|--------|
 | L001 | `backstory.googleapis.com/v1/feeds` → 401 — Feed Management API reachable, needs auth | TBD | LEAD — SSRF target; test with trial account (Phase 3A in runbook) |
-| L002 | `app.siemplify-soar.com` → 200 "Google SecOps" — accessible SOAR instance | TBD | LEAD — probe Swagger at `/swagger/index.html`, test IDOR |
-| L003 | `looker.chronicle.security` — Looker BI instance found in URL mining | TBD | LEAD — probe Looker API paths for unauth access or cross-tenant data |
+| L002 | `app.siemplify-soar.com/swagger/index.html` → **200 unauthenticated** — full Chronicle SOAR API (v1/v2/v3) schema exposed | TBD | **HOT** — fetch Swagger JSON, enumerate all endpoints, test unauth endpoints + IDOR |
+| L003 | `looker.chronicle.security` → Google 400 — domain resolves and hits Google | TBD | LEAD — probe Looker API paths (`/api/4.0/user`, `/login`, etc.) |
 | L004 | 12,674 live tenant subdomains on `siemplify-soar.com` — real enterprise tenants | Info | LEAD — confirms large multi-tenant surface; IDOR between tenants is in scope |
-| L005 | `backstory-staging.chronicle.security` + dev/preprod — staging environments found | TBD | LEAD — staging may have looser auth; probe with trial token |
+| L005 | `backstory-staging.chronicle.security` → Google 404 — domain resolves, apex not routed | TBD | LEAD — staging may have looser auth; probe actual API paths with trial token |
 | L006 | `performence-webhook.siemplify-soar.com` — live webhook endpoint | TBD | LEAD — probe for unauthenticated webhook acceptance or SSRF |
+| L007 | `backstory-dev.chronicle.security` → ÜberProxy DNS fail | Info | CLOSED — internal-only domain, not resolvable externally |
