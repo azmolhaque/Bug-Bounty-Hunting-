@@ -124,9 +124,10 @@ in_scope:
 
   # Photomath (acquired 2022) — TIER0; multiple internal/admin subdomains
   # photomath.net apex used as recon anchor; active testing only on listed subdomains
+  # VERIFY any subdomain marked [VERIFY] at bughunters.google.com before active testing
   - "photomath.net"              # recon anchor — scope gate passes for subdomain enumeration
   - "portal.photomath.net"      # expert marketplace — confirmed prior XSS (vrp/weBR95rVi); IDOR target
-  - "dpcapi-admin.photomath.com"
+  - "dpcapi-admin.photomath.com"  # WAF returns 404 with bypass headers (bypassed)
   - "internal.photomath.com"
   - "dpcapi-admin.photomath.net"
   - "internal.photomath.net"
@@ -136,10 +137,18 @@ in_scope:
   - "dpcapi.photomath.net"
   - "lapi.photomath.net"
   - "mankey.photomath.net"
-  - "metabase.photomath.net"
+  - "metabase.photomath.net"    # NXDOMAIN — CVE-2023-38646 dead
   - "taportal.photomath.net"
   - "tlapi.photomath.net"
   - "zuja.photomath.net"
+  # Discovered in Session 2 scan (2026-06-17) — [VERIFY] scope before active testing
+  - "argocd-gke-app-eu-prod.photomath.net"   # ArgoCD prod EU — Google IAP protected
+  - "argocd-gke-app-us-prod.photomath.net"   # ArgoCD prod US — Google IAP protected
+  - "argocd-dwh-eu-dev.photomath.net"        # ArgoCD DWH dev EU — 403 NOT via IAP; highest priority
+  - "idp.photomath.net"                       # Identity Provider — type unknown; [VERIFY]
+  - "glooker.photomath.net"                   # Looker BI instance — [VERIFY]
+  - "cms.photomath.net"                       # CMS — type unknown; [VERIFY]
+  - "photomath.com"                           # .com apex for subdomain anchor
 
   # Pring (acquired ~2022) — TIER0 payment app (Japan)
   - "admin.pring.app"
