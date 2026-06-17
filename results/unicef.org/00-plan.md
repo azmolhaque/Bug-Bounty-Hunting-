@@ -113,8 +113,21 @@ Extranet / partner portal (e.g., supply.unicef.org, agora.unicef.org)
 
 ---
 
+## Phase Checklist (Updated)
+
+- [x] Phase 1: Subdomain enumeration complete — 263 subdomains, 190+ live hosts
+- [x] Phase 2: httpx live hosts probed; 11 Drupal instances identified; ram.unicef.org JSON:API = 200
+- [x] Phase 3: JSON:API user enumeration confirmed — staff emails exposed; takeover scan = 0 hits
+- [ ] Phase 4: Full PoC pending (OAuth2 probe + user count on Pi — see F001 Section 6)
+- [x] Phase 5: Triage complete — F001 Medium/High; no duplicates found
+- [ ] Phase 6: Report drafted; submission pending Pi verification
+
+---
+
 ## Session Log
 
 | Date | Phase | Summary |
 |---|---|---|
 | 2026-06-17 | 0 | Plan written. Scope: unicef.org + all subdomains. |
+| 2026-06-17 | 1-3 | Recon complete. 263 subdomains, 190+ live. Confirmed F001: ram.unicef.org JSON:API user enum. Takeover: 0 hits. |
+| 2026-06-17 | 5-6 | F001 triaged (Medium 5.3 / High 7.5). Report drafted. Pending: OAuth2 probe on Pi before submit. |
