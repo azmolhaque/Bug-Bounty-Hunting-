@@ -342,7 +342,7 @@ a different bug class (CWE-502), not SSRF — noted as context only.
 
 ---
 
-*Reporter: zahinshahriar3@gmail.com*
+*Reporter: azmolhaque95@gmail.com*
 *Report date: 2026-06-17 (original discovery 2026-06-16; re-verified 2026-06-17 pre-submission)*
 *Submit at: https://bughunters.google.com/report → Google VRP → AppSheet (`appsheet.com`)*
 

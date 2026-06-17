@@ -1,7 +1,7 @@
 # Hunt Plan — UNICEF (unicef.org)
 # Program: UNICEF Responsible Vulnerability Disclosure
 # Contact: infosecurity@unicef.org
-# Researcher: zahinshahriar3@gmail.com
+# Researcher: azmolhaque95@gmail.com
 # Started: 2026-06-17
 
 ---

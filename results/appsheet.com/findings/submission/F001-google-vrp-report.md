@@ -174,6 +174,6 @@ VPC Service Controls, IP allowlist) is in place.
 
 ---
 
-*Reporter: zahinshahriar3@gmail.com*
+*Reporter: azmolhaque95@gmail.com*
 *Report date: 2026-06-16*
 *Submit at: https://bughunters.google.com/report → Google VRP → AppSheet (`appsheet.com`)*

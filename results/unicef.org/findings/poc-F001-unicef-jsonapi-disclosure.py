@@ -6,7 +6,7 @@ Target:     ram.unicef.org
 Finding:    F001
 Program:    UNICEF Responsible Vulnerability Disclosure
 Contact:    infosecurity@unicef.org
-Researcher: zahinshahriar3@gmail.com
+Researcher: azmolhaque95@gmail.com
 Date:       2026-06-17
 
 RESPONSIBLE DISCLOSURE — This script is designed for safe PoC demonstration:
@@ -42,7 +42,7 @@ TIMEOUT     = 15      # HTTP timeout
 
 HEADERS = {
     "Accept":     "application/vnd.api+json",
-    "User-Agent": "Security-Research/1.0 (responsible-disclosure; zahinshahriar3@gmail.com)",
+    "User-Agent": "Security-Research/1.0 (responsible-disclosure; azmolhaque95@gmail.com)",
 }
 
 # Sensitive entity types to look for in the schema
@@ -295,7 +295,7 @@ def print_banner():
 ║  Finding F001 · UNICEF Responsible Vulnerability Disclosure Program ║
 ╚══════════════════════════════════════════════════════════════════════╝{RESET}
   Target   : {TARGET}
-  Researcher: zahinshahriar3@gmail.com
+  Researcher: azmolhaque95@gmail.com
   Timestamp : {ts}
   Mode      : Responsible Disclosure (sample only, count-not-collect)
 """)

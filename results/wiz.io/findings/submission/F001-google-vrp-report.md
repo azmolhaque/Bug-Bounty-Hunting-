@@ -470,4 +470,4 @@ severity escalates to Critical: `AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N` = 9.3*
 ---
 
 *Reported: June 15, 2026*  
-*Reporter: zahinshahriar3@gmail.com*
+*Reporter: azmolhaque95@gmail.com*

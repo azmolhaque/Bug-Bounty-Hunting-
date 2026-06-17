@@ -385,7 +385,7 @@ in [`F002-dedup-CVE-2023-4212.md`](./F002-dedup-CVE-2023-4212.md).
 
 ---
 
-*Reporter: zahinshahriar3@gmail.com*
+*Reporter: azmolhaque95@gmail.com*
 *Report date: 2026-06-16*
 *Submit at: https://bughunters.google.com/report → Google VRP → AppSheet (`appsheet.com`)*
 

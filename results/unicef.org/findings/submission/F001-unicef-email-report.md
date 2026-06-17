@@ -17,7 +17,7 @@ security research on the UNICEF Responsible Vulnerability Disclosure scope
 (*.unicef.org). This report is submitted in accordance with your disclosed
 policy. I am reporting immediately upon confirmation.
 
-  Researcher   : zahinshahriar3@gmail.com
+  Researcher   : azmolhaque95@gmail.com
   Discovery    : 2026-06-17
   Severity     : High — CVSS 3.1 Base Score 7.5
                  AV:N / AC:L / PR:N / UI:N / S:U / C:H / I:N / A:N
@@ -292,6 +292,6 @@ or answer questions. If UNICEF wishes to acknowledge this finding, a Hall of
 Fame credit would be appreciated.
 
 Sincerely,
-zahinshahriar3@gmail.com
+azmolhaque95@gmail.com
 
 ===========================================================================

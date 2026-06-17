@@ -177,7 +177,7 @@ Requires: two expert accounts + Burp Suite. Use browser (Pi IP blocked at TCP le
 ```
 1. Open https://portal.photomath.net/login in browser
 2. Click "Sign in with Google" 
-3. Register with zahinshahriar3@gmail.com → Account A (primary)
+3. Register with azmolhaque95@gmail.com → Account A (primary)
 4. Register second expert account with alternative Gmail → Account B
 5. Complete onboarding for both accounts to reach the qualification quiz
 6. Note your quiz ID in the URL: https://portal.photomath.net/expert-training/qualification-quiz/N

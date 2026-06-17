@@ -4,7 +4,7 @@
 **Severity:** HIGH (CVSS 3.1: AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N = 7.5)  
 **Status:** Confirmed — ready to submit  
 **Date:** 2026-06-17  
-**Researcher:** zahinshahriar3@gmail.com  
+**Researcher:** azmolhaque95@gmail.com  
 **Scope gate:** PASS — `ram.unicef.org` matches `*.unicef.org` (in_scope)  
 **Program:** UNICEF Responsible Vulnerability Disclosure  
 **Submit to:** infosecurity@unicef.org  
