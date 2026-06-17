@@ -144,22 +144,17 @@ poc-F001-unicef-jsonapi-disclosure.py. It can be reproduced manually with:
 4. ADDITIONAL EXPOSURE SURFACE
 ────────────────────────────────────────────────────────────────────────────
 
-The unauthenticated schema endpoint (/en/jsonapi) lists 60+ entity resource types,
-including several that should not be accessible anonymously:
+The unauthenticated schema endpoint (/en/jsonapi) lists 70 entity resource types.
+Beyond the user email disclosure, the following sensitive endpoints were confirmed
+accessible or leaking internal identifiers without authentication:
 
-  /en/jsonapi/oauth2_server_client/oauth2_server_client
-  /en/jsonapi/oauth2_server_token/oauth2_server_token
-  /en/jsonapi/oauth2_server_scope/oauth2_server_scope
-  /en/jsonapi/consumer/consumer
-  /en/jsonapi/config_pages/api_config
-  /en/jsonapi/config_pages/api_modules
+  4a. OAuth2 Client UUID — HTTP 200, meta.omitted UUID leak (confirmed)
+  ────────────────────────────────────────────────────────────────────
+  /en/jsonapi/oauth2_server_client/oauth2_server_client returns HTTP 200.
+  Although data is withheld, Drupal's partial-result mechanism discloses the UUID
+  of each registered OAuth2 client in the meta.omitted.links section.
 
-OAuth2 client UUID disclosure (confirmed):
-
-  When the oauth2_server_client endpoint is probed anonymously, the server returns
-  HTTP 200 with an empty data array but leaks the internal UUID of each registered
-  OAuth2 client in the meta.omitted section — a Drupal partial-result mechanism
-  that discloses the existence and UUID of resources that cannot be read directly.
+  Confirmed leaked UUID: 8cf614c1-7422-477b-952b-bcf1642439c5
 
   Response excerpt:
   ─────────────────────────────────────────────────────────────
@@ -169,7 +164,6 @@ OAuth2 client UUID disclosure (confirmed):
     "data": [],
     "meta": {
       "omitted": {
-        "detail": "Some resources have been omitted because of insufficient authorization.",
         "links": {
           "item--5PGyAhH": {
             "href": "http://ram.unicef.org/en/jsonapi/oauth2_server_client/
@@ -185,11 +179,49 @@ OAuth2 client UUID disclosure (confirmed):
   }
   ─────────────────────────────────────────────────────────────
 
-  Confirmed leaked OAuth2 client UUID: 8cf614c1-7422-477b-952b-bcf1642439c5
+  4b. OAuth2 Scopes — HTTP 200, 4 scope UUIDs leaked (confirmed)
+  ──────────────────────────────────────────────────────────────
+  /en/jsonapi/oauth2_server_scope/oauth2_server_scope returns HTTP 200 with
+  4 OAuth2 scope UUIDs disclosed via meta.omitted:
+    b4dd4a7a-a5f2-4f40-b442-7dc1b30ca194
+    5bc0b265-3b6e-49ca-ad3c-4b0b0cc8eed2
+    ae382055-405e-417f-aafc-eac994b3c927
+    75999ada-2bdb-4302-acb2-9eb6845746e7
 
-  The oauth2_server_token and config_pages endpoints were confirmed present in
-  the schema. Their content was not probed beyond presence — the platform team
-  should audit these as a priority given the OAuth2 client UUID disclosure above.
+  4c. OAuth2 Bearer Tokens — HTTP 500 (unhandled server exception)
+  ──────────────────────────────────────────────────────────────────
+  /en/jsonapi/oauth2_server_token/oauth2_server_token returns HTTP 500. The
+  endpoint is reachable without authentication but triggers an unhandled server
+  exception, suggesting a code-level error when anonymous users access the
+  OAuth2 token entity type. This warrants investigation — an exception handler
+  may be leaking internal state in server logs or to upstream proxies.
+
+  4d. API Consumers — HTTP 200, 3 consumer UUIDs leaked (confirmed)
+  ──────────────────────────────────────────────────────────────────
+  /en/jsonapi/consumer/consumer returns HTTP 200 with 3 API consumer UUIDs
+  disclosed via meta.omitted:
+    37d2f9e9-cf14-4f3b-9620-c6cc571d7123
+    8c3505b3-169e-44cb-b988-cb5814474231
+    c49b2180-a05a-4406-8409-5bc947aa227a
+
+  4e. API Configuration — HTTP 200, configuration UUID leaked (confirmed)
+  ────────────────────────────────────────────────────────────────────────
+  /en/jsonapi/config_pages/api_config and /en/jsonapi/config_pages/api_modules
+  both return HTTP 200 with internal configuration UUIDs disclosed:
+    api_config   : 750e5a68-e618-4606-a5e9-bdca15cab565
+    api_modules  : c5fca404-07c2-4f02-acf4-be6ce5756328
+
+  Summary of UUID leakage across all probed endpoints:
+
+  | Endpoint                  | HTTP | Leaked UUIDs |
+  |---------------------------|------|--------------|
+  | oauth2_server_client      |  200 | 1            |
+  | oauth2_server_scope       |  200 | 4            |
+  | oauth2_server_token       |  500 | N/A (error)  |
+  | consumer                  |  200 | 3            |
+  | config_pages/api_config   |  200 | 1            |
+  | config_pages/api_modules  |  200 | 1            |
+  | Total                     |      | 10 UUIDs     |
 
 
 ────────────────────────────────────────────────────────────────────────────
