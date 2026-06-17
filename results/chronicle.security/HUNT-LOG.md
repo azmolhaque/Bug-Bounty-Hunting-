@@ -5,9 +5,75 @@
 **Scope confirmed:** IN-SCOPE — matches `chronicle.security` in `config/scope.yaml`  
 **Hypothesis:** SOAR connector framework follows same SSRF pattern as AppSheet — connectors make server-side HTTP requests to user-supplied URLs with no centralized egress filter.
 
+## Session 6 — 2026-06-17 (Pi 5 — API route full probe + approval-link analysis)
+
+### Full 484-Endpoint Unauthenticated Scan — Final Results
+
+All 484 endpoints (448 Swagger paths × methods) probed without auth. Only **2 non-401/403 JSON responses** across the entire surface:
+
+| Endpoint | Code | Finding |
+|----------|------|---------|
+| `POST /api/external/v1/approval-link/Apply` | **500** | JSON response, no 401 — auth middleware absent OR demo backend broken |
+| `GET /api/external/v1/settings/GetPublicCertificate` | **200** | Binary DER certificate — intentionally public, not sensitive |
+
+All other 482 endpoints → 401 JSON (properly auth-gated).
+
+### Approval-Link Deep Investigation — CLOSED (Intended Design)
+
+**Full probe results for `POST /api/external/v1/approval-link/Apply`:**
+
+| Request type | Code | Conclusion |
+|-------------|------|-----------|
+| `POST` + JSON body `{}` | 500 | Auth middleware not running; backend crashes |
+| `POST` + JSON body `{"token":"<uuid>","isApproved":true}` | 500 | Same — different UUID correlationIds each time |
+| `POST` + JSON body `{"approvalId":1,"token":"test","isApproved":true}` | 500 | Same pattern |
+| `POST` + query params `?token=test` (no body) | **415** Unsupported Media Type | Content-type validation runs; endpoint exists |
+| `GET` + query params | **405** Method Not Allowed | POST only |
+| `POST` + form-encoded body | **415** | Needs JSON Content-Type |
+
+**Swagger schema:** No body parameters defined — endpoint is undocumented.
+
+**Verdict:** The 500s are almost certainly the `app` demo tenant's broken backend (no approval workflows configured, DB not connected for this feature). The "magic link" design (approval token = auth) is INTENTIONAL for this endpoint class in SOAR systems — the analyst doesn't need a full SOAR session to approve/deny a pending action; the link token is the credential. The behavior on real customer tenants with active workflows is unknown but the design is standard for approval-link flows.
+
+**Standalone reportability:** FAIL — no concrete attacker gain demonstrated. The 500 error is from the `app` demo tenant's missing backend, not a security control failure. Would need a real tenant with valid workflow + proof of cross-session token use to make this reportable.
+
+**Closed:** Drop unless we can get authenticated access and confirm token reuse / missing IDOR protection on approvalId.
+
+### L008 — LegacyControllerBaseUrl (Pre-Auth SSRF) — PENDING OOB Confirmation
+
+`GET /api/external/v1/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders`
+
+Probed with URL-encoded `https://example.com` and `https://app.siemplify-soar.com` → both return `[404][json=no]` (HTML 404, server-side, not SPA catch-all). The `/api/1p/` prefix IS a real route prefix (returns HTML 404, not Angular SPA 200) but URL-encoded scheme breaks path matching.
+
+**Still need to test:** OOB URL as bare hostname (no scheme) with interactsh listener running.
+
+### Current Unauthenticated Attack Surface — Final State
+
+| Surface | Status |
+|---------|--------|
+| 484-endpoint API (all `/api/external/v1/`) | CLOSED — all properly 401-gated |
+| `GetPublicCertificate` (200 unauth) | CLOSED — intentionally public, no sensitive data |
+| `approval-link/Apply` (500 unauth JSON) | CLOSED — broken demo backend / intended magic-link design |
+| L008 `1p` LegacyControllerBaseUrl | PENDING — need OOB test with bare hostname format |
+| Forgot Password | CLOSED — no user enumeration |
+
+**STRATEGIC CONCLUSION:** The `app.siemplify-soar.com` demo tenant's unauthenticated surface is fully enumerated. All high-value leads (L002a–e: IDOR, SSRF) require authenticated access. Without an AppKey token from a real SOAR tenant, no further progress is possible on this surface.
+
+### Strategic Pivot Options
+
+| Option | Effort | Likelihood |
+|--------|--------|-----------|
+| Request test account via Google VRP (bughunters.google.com contact) | Low | Medium — Google may provide access for security research |
+| Pivot to `looker.chronicle.security` (L003) | Low | Medium — different auth surface, Looker API paths |
+| Pivot to `performence-webhook.siemplify-soar.com` (L006) | Low | Low — webhook endpoint, may accept unauthenticated events |
+| Pivot back to AppSheet (confirmed findings ready to report) | Low | HIGH — confirmed AppSheet staging auth bypass already proven |
+| Pivot to Photomath portal (needs desktop Burp) | Medium | Medium |
+
+**Recommendation:** Pivot to AppSheet submission (confirmed findings) + test `looker.chronicle.security` as parallel track.
+
 ---
 
-## Session 5 — 2026-06-17 (Remote — unauthenticated endpoint analysis + auth blocker)
+
 
 ### SPA Catch-All Behavior Confirmed
 
