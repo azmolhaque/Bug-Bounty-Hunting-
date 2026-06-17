@@ -69,7 +69,7 @@ Cache-Control: no-cache
 Traceparent: 00-47cefb617255800892017ee9a74f4798-67e8ed42535b61ab-00
 X-Apikey: vrp-canary-apikey-2026
 ```
-- Source IP: `8.231.222.130` (verify against GCP ranges — Traceparent confirms AppSheet backend)
+- Source IP: `8.231.222.130` → **GCP CONFIRMED: `8.231.128.0/17` Google Cloud us-west1**
 
 **AppSheet UI error (both tests):**
 ```
