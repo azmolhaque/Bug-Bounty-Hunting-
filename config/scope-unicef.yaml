@@ -1,0 +1,94 @@
+# scope-unicef.yaml — UNICEF Responsible Vulnerability Disclosure Program
+#
+# Program:   https://www.unicef.org/digitalimpact/unicef-information-security-hall-fame
+# Platform:  Email (no dedicated platform)
+# Contact:   infosecurity@unicef.org
+# Subject:   "Vulnerability Report: [Brief Description]"
+# Reward:    Recognition only — Hall of Fame listing (no monetary reward)
+# Response:  3 business days acknowledgment; ~90 days remediation
+#
+# Usage with existing scripts:
+#   SCOPE_FILE=config/scope-unicef.yaml bash scripts/scope-check.sh unicef.org
+#   SCOPE_FILE=config/scope-unicef.yaml bash scripts/recon.sh unicef.org
+#
+# Or use the dedicated scripts (scope file set automatically):
+#   bash scripts/unicef-recon.sh
+#   bash scripts/unicef-hunt.sh
+
+program: "UNICEF Responsible Vulnerability Disclosure"
+platform: "email"
+contact: "infosecurity@unicef.org"
+report_subject_prefix: "Vulnerability Report:"
+handle: ""   # your name or handle for the Hall of Fame listing
+
+# ---------------------------------------------------------------------------
+# IN SCOPE
+# All unicef.org subdomains, mobile apps, APIs, cloud infrastructure
+# ---------------------------------------------------------------------------
+in_scope:
+  - "unicef.org"
+  - "*.unicef.org"
+
+# ---------------------------------------------------------------------------
+# OUT OF SCOPE (program-defined)
+# ---------------------------------------------------------------------------
+out_of_scope:
+  # Third-party SaaS UNICEF uses but does not own
+  - "*.workday.com"
+  - "*.salesforce.com"
+  - "*.zendesk.com"
+  - "*.servicenow.com"
+  - "*.okta.com"
+  - "*.auth0.com"
+  - "sharethis.com"
+  - "*.sharethis.com"
+  # Cookie consent / CDN vendors
+  - "klaro.kiprotect.com"
+  - "*.cloudflare.com"
+  - "*.akamai.com"
+
+# ---------------------------------------------------------------------------
+# RULES OF ENGAGEMENT
+# ---------------------------------------------------------------------------
+rules:
+  max_requests_per_second: 20     # conservative — NGO infrastructure
+
+  identifying_header: ""          # no required identifying header
+
+  forbidden_techniques:
+    - "denial of service / load testing / service degradation"
+    - "brute force attacks on accounts or credentials"
+    - "social engineering of UNICEF staff"
+    - "physical security issues"
+    - "spam or phishing campaigns"
+    - "vulnerabilities requiring physical device access"
+    - "third-party services or applications not owned by UNICEF"
+    - "publicly accessible files with no sensitive information"
+    - "missing SSL/TLS best practices without exploit path"
+    - "automated mass account creation or enumeration without rate-limit bypass PoC"
+    - "exfiltrating real user/beneficiary data beyond minimal PoC"
+
+  allowed_techniques:
+    - "passive subdomain enumeration (subfinder, crt.sh, gau, wayback)"
+    - "active DNS resolution (dnsx)"
+    - "HTTP probing of discovered hosts (httpx, rate-capped)"
+    - "technology fingerprinting"
+    - "Drupal REST/JSON:API unauthenticated probing"
+    - "subdomain takeover verification (CNAME dangling check)"
+    - "content discovery with wordlists (ffuf, feroxbuster)"
+    - "nuclei — non-destructive CVE + exposure templates only"
+    - "OOB DNS/HTTP interaction (interactsh) for blind SSRF/injection"
+    - "IDOR testing using own test accounts only"
+    - "JavaScript mining for secrets and endpoints"
+    - "API schema discovery (OpenAPI, Swagger, GraphQL introspection)"
+
+  # UNICEF-specific notes
+  notes: >
+    Recognition-only program — Hall of Fame listing on request.
+    Primary CMS: Drupal (confirmed on www.unicef.org and digitalimpact subdomain).
+    Attack surface: 100s of country-office and campaign subdomains.
+    Priority classes: subdomain takeover, Drupal JSON:API unauth data, admin panels,
+    partner/extranet portal auth bypass, API auth issues.
+    All *.unicef.org is in scope — country office microsites, data portals, APIs.
+    Mobile apps (iOS/Android) are also in scope.
+    Keep request rate LOW — this is humanitarian infrastructure.
