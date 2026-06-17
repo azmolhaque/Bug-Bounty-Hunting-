@@ -422,4 +422,5 @@ Next actions for desktop session:
 | L005 | `backstory-staging.chronicle.security` → Google 404 — domain resolves, apex not routed | TBD | LEAD — staging may have looser auth; probe actual API paths with trial token |
 | L006 | `performence-webhook.siemplify-soar.com` — live webhook endpoint | TBD | LEAD — probe for unauthenticated webhook acceptance or SSRF |
 | L007 | `backstory-dev.chronicle.security` → ÜberProxy DNS fail | Info | CLOSED — internal-only domain, not resolvable externally |
-| L008 | `GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders` — URL-in-path, potential pre-auth SSRF | **High** | PURSUE — test with OOB URL in path segment; `1p` prefix suggests internal endpoint with looser auth |
+| L008 | `GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders` — URL-in-path SSRF | **High** | PARTIAL — bare hostname format → 401 (route exists, requires AppKey); http/https format → 404. Not pre-auth. Test SSRF with AppKey token. |
+| L009 | `looker.chronicle.security` all paths → 400 — Looker API accessible but rejecting | TBD | INVESTIGATE — 400 on all paths incl `/login`, `/api/4.0/user`; response body needed to distinguish proxy rejection vs misconfigured Looker |
