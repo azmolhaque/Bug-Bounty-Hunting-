@@ -7,6 +7,88 @@
 
 ---
 
+## Session 5 — 2026-06-17 (Remote — unauthenticated endpoint analysis + auth blocker)
+
+### SPA Catch-All Behavior Confirmed
+
+All 874 "unauth hits" from the fixed scan run are **Angular SPA false positives**.
+`app.siemplify-soar.com` serves the Angular frontend for ALL paths without the `/api/` prefix.
+Paths like `/external/v1/cases/1`, `/healthz`, `/register`, `/signup` all return HTTP 200 with:
+```html
+<!DOCTYPE html>...<title>Google SecOps</title>...<script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {"soarEnabled": true, "secopsBrandingEnabled": true}
+```
+
+**Real API endpoints** only respond at `/api/external/v1/...` prefix:
+- `[405] GET /api/external/v1/connectors` — 405 Method Not Allowed (GET is wrong; POST exists per Swagger) → **confirmed real endpoint, server recognizes it**
+- `[404] GET /api/external/v1/cases` — real 404
+- `[404] GET /api/v1/health` — real 404
+- All other `/api/external/v1/...` paths → 401 (auth required)
+
+**Implication:** No unauthenticated API data exposure on `app` tenant. Must get auth token to proceed.
+
+### Forgot Password — No User Enumeration
+
+Tested 4 emails on `app.siemplify-soar.com/forgot-password`:
+- `admin@siemplify.co` → error with random UUID
+- `admin@chronicle.security` → error with different random UUID
+- `admin@google.com` → error with different random UUID
+- `test@siemplify.co` → error with different random UUID
+
+**All return same error format with different random UUIDs.** No difference between valid/invalid emails.
+**Verdict:** No user enumeration — not reportable as standalone. Dropped.
+
+### Registration Blocked
+
+`app.siemplify-soar.com` is login-only (enterprise SSO / existing accounts only). No self-registration.
+All registration paths (`/register`, `/signup`, `/create-account`, `/auth/register`, etc.) return 200 — Angular SPA catch-alls.
+
+**BLOCKER:** All IDOR/SSRF tests require a valid AppKey token from an authenticated SOAR session.
+
+### Options to Get Authenticated Access
+
+1. **Google SecOps free trial** — `cloud.google.com/security/products/security-operations` → creates `{tenant}.backstory.chronicle.security` Chronicle tenant + SOAR; but needs enterprise onboarding (form, sales contact) — not instant
+2. **Request test account** — Contact Google VRP support or Security Operations product team via bughunters.google.com
+3. **Find a SOAR tenant with self-registration** — Check if any of the 12,674 discovered tenants accept new user registration (less ethical — only use if the trial account is the same user's data)
+4. **GitHub / partner programs** — Some Google partners offer SOAR access; check Siemplify legacy partner portal
+
+### Next Action (from Pi with browser)
+
+```bash
+# Option A: Try Google SecOps trial signup
+# URL: cloud.google.com/security/products/security-operations
+# Click "Try for free" → activate free tier → tenant created within minutes
+
+# Option B: Try SOAR tenant enumeration for open-registration tenants
+# From 12,674 discovered tenants, check demo/test/trial subdomains:
+for subdomain in demo trial test sandbox dev community; do
+    curl -sk --max-time 10 \
+        -H "User-Agent: Mozilla/5.0" \
+        "https://${subdomain}.siemplify-soar.com/api/external/v1/settings/GetSystemVersion" \
+        -w "\n%{http_code}\n" 2>/dev/null | tail -2
+done
+```
+
+### Immediate Action Available (POST endpoint without body auth check)
+
+The `[405]` on `GET /api/external/v1/connectors` suggests the server knows this endpoint.
+Per Swagger, POST `/api/external/v1/connectors` accepts a connector creation payload.
+**Try from Pi:**
+```bash
+curl -sk --max-time 15 \
+    -X POST \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125.0 Safari/537.36" \
+    -d '{}' \
+    "https://app.siemplify-soar.com/api/external/v1/connectors"
+# Expect 401 JSON (not HTML) — confirms endpoint and reveals auth error schema
+```
+
+Also probe all Swagger POST endpoints that have no `security: []` override in Swagger spec — these might inherit no-auth from a global missing security definition.
+
+---
+
 ## Session 4 — 2026-06-17 (Pi 5 — Swagger full enumeration)
 
 ### scan-chronicle-swagger.sh output (20260617-0934)
