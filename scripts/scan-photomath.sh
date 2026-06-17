@@ -19,8 +19,8 @@ LOG="${OUT}/evidence/session1-${STAMP}/scan.log"
 exec > >(tee -a "$LOG") 2>&1
 
 echo "=== PHOTOMATH DEEP SCAN — ${STAMP} ==="
-./scripts/scope-check.sh photomath.net       || { echo "SCOPE FAIL"; exit 1; }
-./scripts/scope-check.sh portal.photomath.net || { echo "SCOPE FAIL"; exit 1; }
+./scripts/scope-check.sh photomath.net        || { echo "SCOPE FAIL: photomath.net not in scope"; exit 1; }
+./scripts/scope-check.sh portal.photomath.net || { echo "SCOPE FAIL: portal.photomath.net not in scope — run git pull to get updated scope.yaml"; exit 1; }
 
 # ── Phase 1A: Subdomain enumeration ──────────────────────────────────────────
 echo "[1A] subfinder..."
