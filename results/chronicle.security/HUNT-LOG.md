@@ -69,7 +69,17 @@ Probed with URL-encoded `https://example.com` and `https://app.siemplify-soar.co
 | Pivot back to AppSheet (confirmed findings ready to report) | Low | HIGH — confirmed AppSheet staging auth bypass already proven |
 | Pivot to Photomath portal (needs desktop Burp) | Medium | Medium |
 
-**Recommendation:** Pivot to AppSheet submission (confirmed findings) + test `looker.chronicle.security` as parallel track.
+**Final conclusion: PIVOT TO APPSHEET SUBMISSION.**
+
+| Lead | Final Status |
+|------|-------------|
+| Looker (L003/L009) | CLOSED — Google SSO proxy, not public |
+| performence-webhook (L006) | CLOSED — identical SOAR SPA, auth-gated |
+| L008 (1p SSRF) | PARKED — requires AppKey, test with token when available |
+| All L002a–e (IDOR/SSRF) | PARKED — all require AppKey from real SOAR tenant |
+| Unauthenticated surface | EXHAUSTED — 484 endpoints probed, 0 exploitable |
+
+**AppSheet** has confirmed, reproducible, in-scope findings ready for submission. That is the highest-value next action.
 
 ---
 
@@ -423,4 +433,5 @@ Next actions for desktop session:
 | L006 | `performence-webhook.siemplify-soar.com` — live webhook endpoint | TBD | LEAD — probe for unauthenticated webhook acceptance or SSRF |
 | L007 | `backstory-dev.chronicle.security` → ÜberProxy DNS fail | Info | CLOSED — internal-only domain, not resolvable externally |
 | L008 | `GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders` — URL-in-path SSRF | **High** | PARTIAL — bare hostname format → 401 (route exists, requires AppKey); http/https format → 404. Not pre-auth. Test SSRF with AppKey token. |
-| L009 | `looker.chronicle.security` all paths → 400 — Looker API accessible but rejecting | TBD | INVESTIGATE — 400 on all paths incl `/login`, `/api/4.0/user`; response body needed to distinguish proxy rejection vs misconfigured Looker |
+| L009 | `looker.chronicle.security` all paths → 400 (Google SSO proxy wall) | Info | CLOSED — 400 = Google GOA/UberProxy rejecting unauthenticated request before routing to Looker. Headers: `csp.withgoogle.com`, `cross-origin-opener-policy`. Internal-only, not publicly accessible. |
+| L006 | `performence-webhook.siemplify-soar.com` → identical SOAR Angular SPA | Info | CLOSED — Same Angular SPA as `app` tenant. `/api/webhook`→404, real API at `/api/external/v1/webhooks-management/` requires AppKey. Internal Siemplify test tenant (typo in "performence"). No unauthenticated surface. |
