@@ -153,19 +153,43 @@ Only leads that pass all three questions proceed to testing.
 For each high-priority target, pick the **2-3 most plausible bug classes** based
 on the tech and behavior — do not shotgun every class at every endpoint.
 
-**Bug classes by probability × payout (highest first):**
+**Bug classes by probability × payout (highest first, 2024-2026 VRP data):**
 
-| Class | Signals that raise probability | Minimum impact to report |
-|-------|-------------------------------|--------------------------|
-| **Broken Access Control / IDOR / BOLA** | Multi-tenant app, object IDs in URLs/params, GraphQL with object IDs, user-scoped resources | Read/write another user's data OR cross-tenant access |
-| **SSRF** | Webhook config, URL-fetch features, connectors, PDF/image renderers, "import from URL" | Reach internal metadata (169.254.169.254) OR internal service with sensitive data |
-| **Auth/OAuth/JWT** | SSO, third-party login, JWT in cookies/headers, "remember me", OAuth apps | Account takeover or privilege escalation |
-| **Injection** | Search, filters, templates, exports, XML input, headers with special chars | Data exfil, RCE, or auth bypass |
-| **Business Logic** | Checkout, quotas, roles, multi-step workflows, numeric quantities | Financial loss or unauthorized capability |
-| **Stored XSS** | User-content rendered to other users, especially admins | Admin session/data compromise |
-| **Subdomain Takeover** | Dangling CNAME to cloud provider | Cookie/OAuth sharing with parent domain confirmed |
-| **Secrets in JS/repos** | JS bundles, source maps, public repos, CI logs | Active credential, token, or key |
-| **Default Creds / Exposed Admin** | Grafana, Jenkins, Kibana, Actuator, phpmyadmin — test/staging | Authenticated access to sensitive data |
+| Class | Signals that raise probability | Minimum to report | 2025 payout range |
+|-------|-------------------------------|-------------------|-------------------|
+| **BOLA / IDOR / Broken Access** | Multi-tenant SaaS, numeric/UUID IDs in URL or GraphQL, user-scoped resources | Another user's data confirmed read/write | $7,500–$101,010 |
+| **SSRF → cloud metadata** | Webhook, URL-fetch, connector, PDF renderer, "import from URL" | GCP/AWS metadata reachable OR internal service data | $6,267–$101,010 |
+| **Auth / OAuth / JWT** | SSO, redirect_uri params, JWT in cookies, PKCE, OAuth apps | Account takeover or privilege escalation | $3,133–$101,010 |
+| **AI Prompt Injection** | AI assistant, LLM-powered features, chat endpoints | System prompt exfil, cross-session data leak, rogue tool call | $5,000–$50,000 |
+| **Injection (SQL/SSTI/cmd)** | Search, filters, templates, exports, XML | Data exfil or RCE demonstrated | $3,133–$101,010 |
+| **Business Logic** | Checkout, quotas, roles, multi-step workflows | Financial loss or unauthorized capability | varies |
+| **Stored XSS** | User-content rendered to other users / admin panel | Admin session/data compromise | $3,133–$31,337 |
+| **Subdomain Takeover** | Dangling CNAME to cloud service | Cookie domain sharing OR OAuth redirect match | $3,133–$31,337 |
+| **Secrets in JS / repos** | JS bundles, source maps, CI logs, public repos | Active credential enabling access | $1,000–$31,337 |
+| **Default Creds / Exposed Admin** | Grafana, ArgoCD, Kibana, Actuator — test/staging | Authenticated access to sensitive data | $1,000–$31,337 |
+
+**SSRF → GCP metadata — the critical constraint:**
+GCP IMDS requires `Metadata-Flavor: Google` header. Classic blind SSRF alone won't
+extract tokens. Confirmed bypass paths:
+- **CRLF injection** into SSRF URL to smuggle the header
+- **Redirect-based**: app follows 302, redirect target controls response headers
+- **DNS rebinding**: domain resolves to public IP at validation, IMDS at request time
+- **IPv6 encoding**: `http://[::ffff:169.254.169.254]/computeMetadata/v1/`
+- **URL parser confusion**: `http://metadata.google.internal@trusted-host/`
+
+**OAuth/OIDC attack priority order (PKCE adoption per RFC 9700 March 2025):**
+1. `redirect_uri` path traversal: `/callback/../../../attacker-path`
+2. Subdomain wildcard + takeover chain: `*.example.com` → dangling DNS → capture auth code
+3. Prefix bypass: `https://legit.com.attacker.com` passes naive prefix check
+4. Open redirect chain: `redirect_uri=https://target.com/redir?next=https://attacker.com`
+5. PKCE downgrade: initiate flow without `code_challenge` — if server issues code, it's vulnerable
+6. State CSRF: missing/predictable `state` → force victim to link attacker's OAuth identity
+
+**BOLA automation (Hadrian-style):**
+- Extract OpenAPI/GraphQL schema from JS or path probe
+- Create two test accounts at different privilege levels
+- For every endpoint: send request A's token with B's resource ID
+- 200 with B's data = confirmed BOLA (Critical / High)
 
 **For CNAPP / security product targets specifically:**
 1. Webhook/connector SSRF → internal metadata → cloud creds (chain all three)
@@ -173,6 +197,7 @@ on the tech and behavior — do not shotgun every class at every endpoint.
 3. CLI binary strings → internal endpoint discovery → unauthenticated access
 4. OAuth/SSO flows → redirect_uri bypass → account takeover
 5. Developer RDE environments → relaxed auth → internal API exposure
+6. **AI features** → prompt injection → system prompt exfil or rogue tool calls (AI VRP)
 
 ### 3c. Explicitly Skip
 
@@ -316,6 +341,57 @@ observe → hypothesize → qualify (kill/pursue) → test → verify → chain 
 After each phase, re-plan: new assets reshape the surface; a leaked hostname
 reopens recon; a confirmed IDOR suggests testing the same pattern across every
 object type. Maintain `results/<target>/HUNT-LOG.md` for every decision.
+
+---
+
+## Automated Workflow — `deep-recon-orchestrator.py v4`
+
+The script implements this methodology end-to-end. Claude is called at two points:
+
+**1. Per-finding triage** (immediate — when score ≥ 3 detected during Phase 3):
+- Input: finding type + evidence + paths summary
+- Output: PURSUE/DROP decision + exact curl verify command
+- Candidate written to `candidates.jsonl` immediately on PURSUE/REPORT_NOW
+
+**2. Cluster synthesis** (after all hosts probed):
+- Input: all live host summaries ranked by score
+- Output: ranked finding list + top_action + dead_ends
+- REPORT_NOW findings get auto-generated triager-grade report drafts
+
+**Output files per cluster:**
+```
+results/<cluster>/
+  HUNT-LOG.md            — timestamped session decisions
+  MANUAL-VERIFY.md       — step-by-step curl commands for every PURSUE lead
+  02-surface/
+    deep-recon.md        — full recon report with Claude analysis
+    claude-analysis.json — raw Claude cluster synthesis JSON
+  03-candidates/
+    candidates.jsonl     — all PURSUE/REPORT_NOW findings (gitignored)
+    recon-raw.json       — raw per-host probe data (gitignored)
+  04-verified/
+    DRAFT-*.md           — auto-generated report drafts for REPORT_NOW
+```
+
+**Attack modules map to methodology phases:**
+
+| Module | Phase | Bug class | Min to pursue |
+|--------|-------|-----------|---------------|
+| argocd | P3 | Default creds / exposed admin | Any 200 on unauth API endpoint |
+| firebase | P3 | Active credential | `valid: true` from identitytoolkit |
+| graphql | P3 | BOLA/IDOR | Introspection open + mutations found |
+| cors | P3 | Auth bypass / data theft | `credentials: true` reflected |
+| jwt | P3 | Auth bypass | Weak secret confirmed OR alg:none |
+| takeover | P3 | Subdomain takeover | Fingerprint hit + cookie/OAuth check |
+| host_header | P3 | Cache poisoning | Evil host reflected in response |
+| ssrf_params | P3 | SSRF | URL-accepting param found → OOB test |
+| oauth | P3 | Account takeover | `redirect_uri` bypass → evil.com in Location |
+| method_ovr | P3 | Auth bypass | 200/204 on override vs base |
+| openapi | P3 | BOLA/IDOR | 200 on documented endpoint + ID probe |
+| mass_assign | P3 | Privilege escalation | Server accepts role/admin fields |
+| path_trav | P3 | LFI / file read | `root:x:0:0` in response |
+| gcs_bucket | P3 | Exposed storage | List or write access confirmed |
+| ai_injection | P3 | AI VRP | System prompt or cross-session data in response |
 
 ---
 
