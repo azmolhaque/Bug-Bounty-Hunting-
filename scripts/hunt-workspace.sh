@@ -122,10 +122,16 @@ tmux new-window -t "$SESSION" -n "monitor"
 tmux send-keys -t "$SESSION:monitor" \
   "watch -n 5 '${BB}/scripts/pi-resource-guard.sh --report && echo \"\" && echo \"── Active scans ──\" && ps aux | grep -E \"nuclei|httpx|subfinder|ffuf\" | grep -v grep | head -8'" Enter
 
-# Window 4: results (tail finding logs)
+# Window 4: results
 tmux new-window -t "$SESSION" -n "results"
 tmux send-keys -t "$SESSION:results" \
   "cd ${RESULTS_DIR}/findings && echo '[*] Watching findings directory...' && ls -la && echo '' && echo 'Run: tail -f nuclei-*.txt'" Enter
+
+# Window 5: claude — autonomous agent window
+# Claude runs from BB root so it picks up CLAUDE.md + all methodology
+tmux new-window -t "$SESSION" -n "claude"
+tmux send-keys -t "$SESSION:claude" \
+  "cd ${BB} && echo '' && echo '  Claude Code — Autonomous Bug Bounty Agent' && echo '  Target: ${TARGET}' && echo '' && echo '  Quick commands:' && echo '    /recon    — Phase 1-2 asset discovery + attack surface mapping' && echo '    /hunt     — Phase 3-4 vulnerability discovery + verification' && echo '    /triage   — Phase 5 score, dedup, prioritize findings' && echo '    /report   — Phase 6 write triager-grade VRP report' && echo '    /workflow — Full pipeline (all phases)' && echo '' && echo '  Or autonomous:' && echo '    hunt-ai ${TARGET}' && echo '' && echo 'Starting Claude...' && sleep 1 && claude --permission-mode auto" Enter
 
 # Go back to recon window
 tmux select-window -t "$SESSION:recon"

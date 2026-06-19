@@ -212,6 +212,74 @@ deepscan() {
 # autohunt <target> — AI-driven autohunt pipeline (legacy)
 autohunt() { python3 "$HOME/tools/ai-analyst/autohunt.py" "$@"; }
 
+# ─── 6b. Claude Code Integration ────────────────────────────────
+
+# hunt-ai <target> — fully autonomous Claude-driven hunt (all phases)
+# Claude reads CLAUDE.md, checks scope, runs recon → vuln discovery → triage
+hunt-ai() {
+  local target="${1:?Usage: hunt-ai <target.com>}"
+  echo "[*] Starting autonomous Claude hunt for: $target"
+  echo "[*] Claude will follow CLAUDE.md methodology (Phase 0 → 6)"
+  echo "[*] Working directory: $BB"
+  echo ""
+  cd "$BB" && claude \
+    --permission-mode auto \
+    --name "hunt-$target" \
+    -p "Target: $target
+Run the bug bounty hunting workflow per CLAUDE.md:
+1. Phase 0: Check scope.yaml — STOP if out of scope
+2. Phase 1-2: Asset discovery + attack surface mapping using subfinder, httpx, katana, gau
+3. Phase 3-4: Vulnerability discovery on the highest-priority surfaces. Use nuclei, manual testing, OOB via interactsh
+4. Phase 5: Triage all candidates — apply the Hard Rejection List from CLAUDE.md
+5. Output confirmed findings to results/$target/findings/
+6. Log all decisions to results/$target/HUNT-LOG.md
+Only report findings that pass ALL 5 criteria in CLAUDE.md Section 2."
+}
+
+# analyze — pipe any text to Claude for instant bug bounty analysis
+# Usage: cat output.txt | analyze
+#        subfinder -d target.com | analyze
+analyze() {
+  local context="${1:-recon output}"
+  local input
+  input=$(cat)
+  [ -z "$input" ] && { echo "Usage: cat file.txt | analyze  OR  command | analyze"; return 1; }
+  echo "$input" | claude -p \
+    "You are an elite bug bounty hunter. Analyze this $context for a Google VRP engagement.
+Identify: (1) highest-value attack surfaces, (2) exploitable patterns, (3) recommended next steps.
+Apply CLAUDE.md Section 3 Hard Rejection List — flag anything that would be rejected immediately.
+Input:
+$input"
+}
+
+# triage-ai [file] — score + rank findings for submission quality
+# Usage: triage-ai results/photomath.net/findings/nuclei-20260619.txt
+#        cat findings.txt | triage-ai
+triage-ai() {
+  local file="${1:-}"
+  local input
+  if [ -n "$file" ] && [ -f "$file" ]; then
+    input=$(cat "$file")
+  else
+    input=$(cat)
+  fi
+  [ -z "$input" ] && { echo "Usage: triage-ai <file>  OR  cat file | triage-ai"; return 1; }
+  echo "$input" | claude -p \
+    "Triage these bug bounty findings for Google VRP submission quality.
+For each finding:
+1. Apply CLAUDE.md Section 3 Hard Rejection List — mark REJECT if it matches any category
+2. Score 0-10 on: attacker gain, exploitability, reproduction ease
+3. Recommend: SUBMIT / CHAIN (needs elevation) / REJECT
+4. For SUBMIT findings: suggest CVSS 3.1 vector
+Output a ranked table, highest value first."
+}
+
+# claude-pipe — pipe Claude output back into the terminal (streaming)
+# Usage: claude-pipe "analyze the SSRF surface of appsheet.com"
+claude-pipe() {
+  cd "$BB" && claude -p --permission-mode auto "$@"
+}
+
 # ─── 7. Aliases ─────────────────────────────────────────────────
 
 # Shell management
