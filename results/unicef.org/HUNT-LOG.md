@@ -52,7 +52,7 @@
 
 | ID | Host | Class | Severity | Status |
 |---|---|---|---|---|
-| F001 | ram.unicef.org | Drupal JSON:API unauth user enum | High (7.5) | **SUBMITTED 2026-06-17** — awaiting UNICEF response |
+| F001 | ram.unicef.org | Drupal JSON:API unauth user enum | High (7.5) | **SUBMITTED 2026-06-17** — awaiting Hall of Fame listing |
 
 ---
 
@@ -63,13 +63,8 @@
 | 263 subdomains via subzy | Subdomain takeover | All NOT VULNERABLE — Azure blocks cross-org CNAME claim |
 | www-origin.unicef.org | - | Pi-hole local 127.0.0.1 artifact — not real |
 | www-self.unicef.org | - | Pi-hole local 127.0.0.1 artifact — not real |
+| etools-demo.unicef.org | WordPress CVEs | Blocked by Cloudflare WAF on all paths including wp-json — no access |
+| rdmapi.unicef.org | API endpoint enumeration | Intentionally public reference data — WAI |
+| prometheus.inform.unicef.org | Prometheus metrics / default creds | No response (silent) — host unreachable |
 
----
-
-## Secondary Leads (Uninvestigated)
-
-| Host | Lead | Priority |
-|---|---|---|
-| rdmapi.unicef.org | API endpoint enumeration | P1 |
-| etools-demo.unicef.org | WordPress 4.7.3 (multiple CVEs) | P1 |
-| prometheus.inform.unicef.org | Prometheus metrics endpoint, possible default creds | P1 |
+**All UNICEF secondary leads closed 2026-06-19.**
