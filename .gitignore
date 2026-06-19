@@ -6,7 +6,7 @@
 # Raw results and evidence — keep local, never push
 results/*/01-assets/
 results/*/02-surface/
-results/*/03-candidates/evidence/
+results/*/03-candidates/
 results/*/04-verified/*/evidence/
 results/*/04-verified/*/raw/
 
@@ -53,6 +53,13 @@ results/**/*.jsonl
 results/**/oob-*.log
 results/**/oob-session*.log
 
+# Raw recon logs
+results/**/recon*.log
+
+# Process ID / lock files
+results/**/.recon.pid
+results/**/*.pid
+
 # Installer packages — never commit
 *.deb
 
@@ -73,6 +80,18 @@ results/**/oob-session*.log
 /work-in-progress.diff
 /pending-work.txt
 /resume.cfg
+
+# AppSheet staging recon outputs (raw scanner artifacts)
+results/appsheet.com/staging-*.txt
+results/appsheet.com/staging-github-hits.txt
+results/appsheet.com/RECON-SUMMARY.md
+
+# Raw nuclei / per-host scan output files
+results/**/*03-candidates/nuclei-*.txt
+results/**/03-vulns/
+
+# Per-target raw recon subdirectories
+results/*/recon/
 
 # But DO commit (override the above for these paths)
 !results/.gitkeep
