@@ -142,6 +142,8 @@ X-Apikey: Ahsisjsshsgyssuwhehdidieuwwysu
 | Credential leaked | `Authorization: Basic` (OData username:password) | `X-Apikey` (Apigee API key) |
 | Traceparent leaked | Yes | Yes |
 | HTTP client | `Microsoft.OData.Client` (OData-specific Accept header) | Distinct client (Cache-Control: no-cache, no OData headers) |
+| Internal routing | Direct GCP egress | Routes via internal Squid proxy (`squid-proxy-open-api-us-west1-sqws`) |
+| Via header | Not present | `Via: 1.1 squid-proxy-open-api-us-west1-sqws (squid)` — leaks internal naming + region |
 | Response reflection | Content-type in MIME-type error | HTML body in OpenAPI spec error |
 | Time | 20:56:44 UTC | 20:59:14 UTC |
 
@@ -176,6 +178,33 @@ X-Apikey: vrp-canary-apikey-2026
 - Source IP: `35.233.152.59` (GCP — same fleet node as original 2026-06-16 test)
 - `X-Apikey: vrp-canary-apikey-2026` — API key entered in form forwarded verbatim
 - UI error reflected: `'<html><head></head><body>kz6jnphhd9sdn0b7j3sd0c8r96qo89p8d</body></html>' is not supported`
+
+### Surface 2 — Additional session: Squid internal proxy disclosure (2026-06-18)
+
+A subsequent Apigee connector test revealed that AppSheet's outbound requests route
+through an **internal named Squid proxy**, leaking infrastructure topology:
+
+```http
+GET / HTTP/1.1
+Host: <OOB>
+Accept-Encoding: gzip, deflate
+Cache-Control: no-cache
+Traceparent: 00-<internal-trace-id>
+X-Apikey: vrp-canary-apikey-2026
+Via: 1.1 squid-proxy-open-api-us-west1-sqws (squid)
+```
+
+- Source IP: **`8.231.222.130`** — GCP (via internal Squid proxy egress)
+- `Via: 1.1 squid-proxy-open-api-us-west1-sqws (squid)` — W3C Via header injected by
+  AppSheet's internal Squid proxy. This header exposes:
+  - Internal service name pattern: `squid-proxy-{service}-{region}-{id}`
+  - GCP region: **`us-west1`** (internal deployment region)
+  - Service identifier: **`open-api`** (confirms this is the OpenAPI Spec URL code path)
+  - Proxy type: Squid — allows fingerprinting the internal reverse proxy stack
+- This confirms the Apigee connector's outbound HTTP client does not make direct
+  egress — it routes through an internal proxy, which (a) still reaches attacker
+  infrastructure, and (b) leaks internal naming and routing topology to any
+  attacker-controlled server.
 
 ### Additional OData evidence from prior sessions
 
@@ -212,7 +241,8 @@ type is, by default, a fresh instance of the same SSRF root cause.
 | 6 | Attacker-server response body/content-type reflected in UI error on both surfaces | **Confirmed** |
 | 7 | No auth / rate-limit / IP restriction on either connector's Test/Validate action | **Confirmed** |
 | 8 | `169.254.169.254:443` reachable at TCP layer (OData connector, prior session) | **Confirmed — reachability only** |
-| 9 | IMDS token read / GCP service-account compromise | **NOT attempted** |
+| 9 | Internal infrastructure topology leaked via `Via` header (Surface 2) | **Confirmed — proxy name, GCP region, service id exposed** |
+| 10 | IMDS token read / GCP service-account compromise | **NOT attempted** |
 
 **Real-world impact:** any credentials a user enters into either connector form are
 forwarded to whatever URL is configured. In a phishing scenario, an attacker distributes
