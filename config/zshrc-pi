@@ -1,0 +1,259 @@
+# ═══════════════════════════════════════════════════════════════
+# ~/.zshrc — Raspberry Pi 5 Bug Bounty Lab
+# Managed via ~/bug-bounty-hunting-/config/zshrc-pi
+# Deploy: cp ~/bug-bounty-hunting-/config/zshrc-pi ~/.zshrc && source ~/.zshrc
+# ═══════════════════════════════════════════════════════════════
+# Sections:
+#   0. PATH  — single declaration, typeset -U dedup
+#   1. Oh-My-Zsh
+#   2. Environment
+#   3. Secrets  — sourced from ~/.secrets.zsh (chmod 600, NOT in git)
+#   4. Dev tools (Go, NVM, Ruby)
+#   5. Bug Bounty workflow
+#   6. AI / LLM tools
+#   7. Aliases
+#   8. Prompt extras
+# ═══════════════════════════════════════════════════════════════
+
+# ─── 0. PATH — ONE declaration, deduped by zsh ──────────────────
+export PATH=\
+"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:"\
+"/usr/local/go/bin:"\
+"$HOME/go/bin:"\
+"$HOME/.pdtm/go/bin:"\
+"$HOME/.local/bin:"\
+"$HOME/.npm-global/bin:"\
+"$PATH"
+
+typeset -U path   # remove duplicates — zsh-native, no custom precmd needed
+
+# ─── 1. Oh-My-Zsh ───────────────────────────────────────────────
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="agnoster"
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+source "$ZSH/oh-my-zsh.sh"
+
+# ─── 2. Environment ─────────────────────────────────────────────
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export EDITOR='nano'
+export GOPATH="$HOME/go"
+export BB="$HOME/bug-bounty-hunting-"    # used by all bb-* functions below
+
+# Ruby gems (only loaded if ruby is installed)
+command -v ruby &>/dev/null && \
+  export PATH="$PATH:$(ruby -e 'print Gem.user_dir' 2>/dev/null)/bin"
+
+# ─── 3. Secrets ─────────────────────────────────────────────────
+# API keys, webhook URLs, tokens — NEVER commit these to git.
+# File format: export SHODAN_API_KEY="..."  etc.
+# Create once: touch ~/.secrets.zsh && chmod 600 ~/.secrets.zsh
+if [ -f "$HOME/.secrets.zsh" ]; then
+  source "$HOME/.secrets.zsh"
+else
+  echo "[zshrc] Warning: ~/.secrets.zsh not found. Run: touch ~/.secrets.zsh && chmod 600 ~/.secrets.zsh"
+fi
+
+# ─── 4. Dev tools ───────────────────────────────────────────────
+
+# NVM (Node version manager)
+export NVM_DIR="$HOME/.config/nvm"
+[ -s "$NVM_DIR/nvm.sh" ]          && source "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"
+
+# gf pattern tab-completion (tomnomnom/gf)
+() {
+  local gf_comp
+  gf_comp=(${HOME}/go/pkg/mod/github.com/tomnomnom/gf*/gf-completion.zsh(#q[1]N))
+  [[ -f $gf_comp ]] && source "$gf_comp"
+} 2>/dev/null
+
+# ─── 5. Bug Bounty Workflow ─────────────────────────────────────
+
+# hunt <target.com> — open/attach a persistent tmux session for that target
+hunt() {
+  local target="${1:?Usage: hunt <target.com>}"
+  local session="hunt-$(echo "$target" | tr '.' '-')"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    echo "[*] Attaching to existing session: $session"
+    tmux attach -t "$session"
+  else
+    tmux new-session -d -s "$session" -x 220 -y 50
+    tmux send-keys -t "$session" "cd $BB && ./run.sh $target" Enter
+    echo "[*] Started new hunt session: $session"
+    tmux attach -t "$session"
+  fi
+}
+
+# scope <host/url> — check if a target is in scope before touching it
+scope() { bash "$BB/scripts/scope-check.sh" "$@"; }
+
+# picheck — instant Pi health snapshot
+picheck() { "$BB/scripts/pi-resource-guard.sh" --report; }
+
+# optimize [--diagnose|--clean|...] — run the Pi optimizer
+optimize() { sudo "$BB/scripts/pi-optimize.sh" "$@"; }
+
+# oob [tag] — start interactsh, print the assigned OOB URL
+oob() {
+  local tag="${1:-session-$(date +%s)}"
+  local logfile="/tmp/oob-$tag.log"
+  echo "[*] Starting interactsh OOB listener (log: $logfile)"
+  interactsh-client -server oast.pro -v 2>&1 | tee "$logfile" &
+  sleep 2
+  local url
+  url=$(grep -oE '[a-z0-9]+\.oast\.pro' "$logfile" | head -1)
+  if [ -n "$url" ]; then
+    echo "[+] OOB URL: https://$url"
+    echo "$url" > /tmp/oob-last.txt
+  else
+    echo "[-] Could not extract OOB URL — check $logfile"
+  fi
+}
+
+# lastoob — print the most recently started OOB URL
+lastoob() {
+  [ -f /tmp/oob-last.txt ] && cat /tmp/oob-last.txt || echo "No OOB URL found (run: oob)"
+}
+
+# notify [message] — send a Discord ping (needs DISCORD_WEBHOOK_URL in ~/.secrets.zsh)
+notify() {
+  local msg="${*:-$(hostname): ping}"
+  if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+    echo "[-] DISCORD_WEBHOOK_URL not set — add it to ~/.secrets.zsh"
+    return 1
+  fi
+  curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": \"[Pi5] $msg\"}" >/dev/null \
+    && echo "[+] Discord: $msg" \
+    || echo "[-] Discord notify failed"
+}
+
+# bb-status — running hunt sessions + current Pi resources
+bb-status() {
+  echo ""
+  echo "── Hunt sessions ──────────────────────────────"
+  tmux ls 2>/dev/null | grep hunt || echo "  (none)"
+  echo ""
+  echo "── Pi resources ───────────────────────────────"
+  picheck
+  echo ""
+}
+
+# bb-update — pull latest tools + templates
+bb-update() {
+  echo "[*] Updating ProjectDiscovery tools via pdtm..."
+  command -v pdtm &>/dev/null && pdtm -ua 2>/dev/null || echo "  pdtm not found"
+  echo "[*] Updating nuclei templates..."
+  command -v nuclei &>/dev/null && nuclei -update-templates -silent || echo "  nuclei not found"
+  echo "[*] Pulling repo..."
+  git -C "$BB" pull --ff-only 2>/dev/null || echo "  git pull failed"
+  echo "[+] Done."
+}
+
+# bb-clean — clear temp scan output (keeps findings/)
+bb-clean() {
+  echo "[*] Cleaning scan temp files..."
+  find /tmp -maxdepth 2 -name "*.nuclei*" -o -name "*.httpx*" \
+    -o -name "*.subfinder*" -o -name "oob-*.log" 2>/dev/null | xargs rm -f 2>/dev/null
+  pip3 cache purge 2>/dev/null || true
+  go clean -cache 2>/dev/null || true
+  echo "[+] Done. $(df -h / | awk 'NR==2{print $4" free on /"}')"
+}
+
+# shodan-ip <ip> — quick Shodan lookup (needs SHODAN_API_KEY)
+shodan-ip() {
+  local ip="${1:?Usage: shodan-ip <IP>}"
+  [ -z "${SHODAN_API_KEY:-}" ] && { echo "SHODAN_API_KEY not set"; return 1; }
+  curl -sS "https://api.shodan.io/shodan/host/$ip?key=$SHODAN_API_KEY" | python3 -m json.tool 2>/dev/null | head -60
+}
+
+# cert <domain> — fast CT log search via crt.sh
+cert() {
+  local domain="${1:?Usage: cert <domain>}"
+  curl -sS "https://crt.sh/?q=%25.$domain&output=json" 2>/dev/null | \
+    python3 -c "
+import sys, json
+try:
+  data = json.load(sys.stdin)
+  names = sorted({e['name_value'] for e in data})
+  [print(n) for n in names]
+  print(f'\n[+] {len(names)} unique entries')
+except: print('crt.sh error or rate limited')
+"
+}
+
+# ─── 6. AI / LLM tools ─────────────────────────────────────────
+# Ollama is disabled as a system service to save RAM during hunting.
+# Start it when needed: sudo systemctl start ollama && sleep 3 && ask "hello"
+export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
+
+# ask "question" — quick LLM query (starts ollama if needed)
+ask() {
+  if ! curl -sf "http://$OLLAMA_HOST/api/version" >/dev/null 2>&1; then
+    echo "[*] Ollama not running — starting..."
+    sudo systemctl start ollama && sleep 4
+  fi
+  ollama run gemma3:4b "$@"
+}
+
+# deepscan — heavy analysis model
+deepscan() {
+  if ! curl -sf "http://$OLLAMA_HOST/api/version" >/dev/null 2>&1; then
+    echo "[*] Ollama not running — starting..."
+    sudo systemctl start ollama && sleep 4
+  fi
+  ollama run gemma4-bounty "$@"
+}
+
+# autohunt <target> — AI-driven autohunt pipeline (legacy)
+autohunt() { python3 "$HOME/tools/ai-analyst/autohunt.py" "$@"; }
+
+# ─── 7. Aliases ─────────────────────────────────────────────────
+
+# Shell management
+alias reload='source ~/.zshrc'
+alias zshconfig='$EDITOR ~/.zshrc'
+alias secrets='$EDITOR ~/.secrets.zsh && chmod 600 ~/.secrets.zsh'
+
+# ls (lsd — modern ls with icons)
+alias ls='lsd'
+alias ll='lsd -l'
+alias la='lsd -la'
+alias lt='lsd --tree --depth 2'
+
+# Bug bounty
+alias bb='cd $BB'
+alias nuclei-update='nuclei -update-templates -silent'
+alias interactsh='interactsh-client -server oast.pro'
+alias iactsh='interactsh-client -server oast.pro'
+alias httpx="$HOME/go/bin/httpx"
+alias clean='~/scripts/cleanup_workspace.sh'
+
+# Git
+alias gs='git status'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline -10'
+alias gd='git diff'
+
+# Pi health
+alias temp='vcgencmd measure_temp 2>/dev/null || awk "{printf \"%.1f°C\n\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp'
+alias memfree='free -h'
+alias ports='ss -tuln'
+alias topcpu='ps aux --sort=-%cpu | head -12'
+alias topmem='ps aux --sort=-%mem | head -12'
+
+# ─── 8. Prompt extras ───────────────────────────────────────────
+
+# Show current git branch + Pi temp in right prompt
+RPROMPT='%F{240}$(vcgencmd measure_temp 2>/dev/null | tr -d "temp=")%f'
+
+# Print a quick status on new SSH sessions
+if [[ -n "$SSH_CONNECTION" ]]; then
+  echo ""
+  echo "  Pi5 Bug Bounty Lab  $(vcgencmd measure_temp 2>/dev/null)  RAM: $(free -h | awk '/Mem:/{print $3"/"$2}')"
+  echo "  Branch: $(git -C $BB rev-parse --abbrev-ref HEAD 2>/dev/null)  Sessions: $(tmux ls 2>/dev/null | wc -l)"
+  echo ""
+fi
