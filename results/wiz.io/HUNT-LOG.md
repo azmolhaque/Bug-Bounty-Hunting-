@@ -1,21 +1,23 @@
 # Hunt Log — wiz.io (Google VRP TIER1)
-Started: 2026-06-11 | Last updated: 2026-06-16
+Started: 2026-06-11 | Last updated: 2026-06-19
 
-## CURRENT STATUS (2026-06-16)
+## CURRENT STATUS (2026-06-19)
 
 | # | Item | Status |
 |---|------|--------|
 | 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ **SUBMITTED** — Issue #524181553 — Status: New (P4/S4 auto-triage, awaiting human review) |
 | 2 | Chain 1 (F001 → CSP bypass) | ❌ CLOSED — no win-test in script-src on app.wiz.io or www.wiz.io |
-| 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first; cannot probe allowlist without valid client_id; mentioned in report as unconfirmed escalation path |
-| 4 | ACTION A (WizCLI binary strings) | ✅ DONE — revealed Chain 11 |
-| 5 | **Chain 11 (AI Remediation cross-tenant PR injection)** | 🔥 CRITICAL CANDIDATE — needs trial account |
-| 6 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
-| 7 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
-| 8 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
-| 9 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
-| 10 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
-| 11 | test.wiz.io | 🆕 Live subdomain — referenced in Auth0 error page logo; add to recon |
+| 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first |
+| 4 | Chain 11 (AI Remediation cross-tenant PR injection) | ❌ DEAD — `isAIRemediationRecommendationEnabled: False` + `WIZ_SYSTEM_OPEN_REMEDIATION_PULL_REQUEST` in disabledWorkflowIntegrationActions (LD flags confirmed 2026-06-19) |
+| 5 | Chain 14 (MSSP CreateMemberTenantRequest) | ❌ DEAD — `isMsspEnabled: False` globally (LD flags confirmed 2026-06-19) |
+| 6 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 STILL LIVE — no disabling flag found; needs trial account |
+| 7 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 STILL LIVE — needs trial account |
+| 8 | Chain 13 (CopyResourceForensicsToExternalAccount IDOR) | 🔒 STILL LIVE — forensics enabled in LD flags; needs trial + 2nd account |
+| 9 | **fedramp.wiz.io** | ❌ DEAD — TLS handshake failure (FIPS ciphers, IP-restricted to US gov networks) |
+| 10 | **gov.wiz.io** | ⚠️ PARTIALLY MAPPED — login page accessible from mobile; all paths 403 from Pi |
+| 11 | **auth.gov.wiz.io** | ✅ LIVE — AWS GovCloud us-gov-west-1 ALB; custom auth service; email oracle confirmed |
+| 12 | LaunchDarkly flag enumeration | ✅ DONE — 300+ flags extracted; Chain 11/14 killed; forensics/webhook chains confirmed live |
+| 13 | S3 wizio-public CloudFormation IAM | ✅ DONE — bucket listing denied; CFN permissions scoped with conditions; not reportable |
 
 **SUBMITTED 2026-06-15:** Issue **#524181553** — Wiz.io subdomain takeover; Status: New; awaiting human triage.
 **NEXT ACTION:** Monitor Issue #524181553 for triage decision. If confirmed valid: watch for P1/S1 upgrade (subdomain takeover with proven cookie theft usually lands High in VRP). If closed as informational/WAI: investigate whether Wiz has since deleted the CNAME (takeover window may have been patched before triage).
@@ -71,6 +73,10 @@ Started: 2026-06-11 | Last updated: 2026-06-16
 | 2026-06-15 | 4 | Chain 2 CLOSED (inconclusive) | auth0.demo.wiz.io + auth0.e2e.wiz.io LIVE OIDC tenants; redirect_uri probe: Auth0 validates client_id first → "Oops!" page → cannot determine allowlist; auth.app.wiz.io production Auth0 = VPC-internal (403 from awselb/2.0); side-note: test.wiz.io live (found in Auth0 error page logo URL) |
 | 2026-06-15 | 6 | F001 SUBMISSION DECISION | Submit standalone High 8.2 — all chain paths closed or inconclusive. Submission texts in findings/submission/. |
 | 2026-06-15 | 6 | **F001 SUBMITTED** | Google VRP Issue **#524181553** — "Subdomain Takeover on win-test.wiz.io via Dangling Vercel CNAME — Proven Session Cookie Theft + Chrome Extension Abuse Vector"; Status: New (P4/S4 auto-triage); awaiting human review |
+| 2026-06-19 | 2 | LaunchDarkly flag enumeration | LD client ID `5f2bbaa730af0f08855ad7e9` — 300+ flags enumerated; key kills: Chain 11 dead (`isAIRemediationRecommendationEnabled:False`, PR action disabled), Chain 14 dead (`isMsspEnabled:False`); Chain 13 live (`dataForensics.enabled:True`), Chain 3 live (no disabling flag); `isRedAgentSafeMutationsEnabled:False` (Red Agent mutations may bypass flag server-side) |
+| 2026-06-19 | 2 | fedramp.wiz.io probe | Resolves 4 CloudFront IPs (3.164.36.x); ERR_SSL_VERSION_OR_CIPHER_MISMATCH in browser; TLS handshake failure even with FIPS ciphers from Pi → IP-restricted to US government networks. CLOSED. |
+| 2026-06-19 | 2 | gov.wiz.io probe | Resolves 4 CloudFront IPs (18.164.144.x); MX: gov-wiz-io.mail.protection.outlook.com; all paths 403 from Pi; login page accessible from mobile; accepts Gmail (no free-email block unlike commercial); magic-link auth flow; no magic link received in Gmail (no tenant associated) |
+| 2026-06-19 | 2 | **auth.gov.wiz.io — LIVE** | DNS: `09e3f2a2-default-auth-7d02-27039775.us-gov-west-1.elb.amazonaws.com` (IPs: 160.1.77.171, 40.38.146.104, 40.38.76.198); custom auth service on AWS GovCloud; HTTP/2 from Pi; sets `wiz-session-id` cookie on `/health` scoped to `Path=/api`; live endpoints: `/health`(200), `/api/login`(POST→Unauthorized/BadReq), `/api/me`(401), `/api/logout`(POST-only), `/api/register`(POST-only), `/api/callback`(400), `/oauth/token`(400); **email oracle confirmed** (3-way: unknown domain→404, @wiz.io domain→BadReq, known account→Unauthorized); surface exhausted without gov credentials |
 
 ## Key Findings
 
