@@ -422,11 +422,14 @@ fallback. Submit F003 to bughunters.google.com immediately.**
 - Cross-scheme redirect (HTTPS→HTTP) confirmed blocked on Surfaces 1 and 2
 
 **F003 SUBMITTED to Google VRP — 2026-06-20 00:55 UTC**
-- Issue tracker: #525815004
+- Issue tracker: #525815219
+- URL: https://issuetracker.google.com/issues/525815219
 - Title: "AppSheet: Systemic SSRF — 3 surfaces (OData, Apigee OpenAPI Spec, Cloud Database) send unfiltered GCP-origin requests to attacker hosts, forwarding credentials and leaking internal infrastructure"
 - Program: Google VRP
-- URL: https://www.appsheet.com/Account/ApigeeAuthInfo
+- Reported URL: https://www.appsheet.com/Account/ApigeeAuthInfo
 - Severity: High (CVSS 3.1 7.2, AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N)
-- Initial priority: P4 (standard for new VRP submissions; awaiting triage)
-- Attachments: ATT1–ATT4 (standalone evidence documents for each surface)
-- Status: AWAITING TRIAGE
+- Component: 310426
+- Initial priority: P4 / S4 (standard for new VRP submissions; awaiting triage)
+- CC: azmolhaque95@gmail.com, wo...@google.com (Google VRP team)
+- Attachments: ATT1-surface1-odata-http-capture.md, ATT2-surface2-apigee-http-capture.md, ATT3-surface3-database-dns-oracle.md, ATT4-three-surface-comparison-and-poc.md
+- Status: NEW — AWAITING TRIAGE
