@@ -87,22 +87,30 @@ ok "Result dirs: ${RESULTS_DIR}"
 # ─── Create tmux session ───────────────────────────────────────────
 info "Creating tmux session: $SESSION"
 
-# Window 1: recon (main shell + OOB log)
-tmux new-session  -d -s "$SESSION" -n "recon" -x 220 -y 55
+# Window 1: recon — capture pane IDs explicitly to avoid numbering issues
+tmux new-session -d -s "$SESSION" -n "recon" -x 220 -y 55
 
-# Top-left: main shell with context banner
-tmux send-keys -t "$SESSION:recon" \
-  "cd ${BB} && clear && echo '' && echo '  Target: ${TARGET}' && echo '  Session: ${SESSION}' && echo '  Results: ${RESULTS_DIR}' && echo '' && picheck" Enter
+# Grab the first pane ID (main shell)
+P_MAIN=$(tmux display-message -t "$SESSION:recon" -p "#{pane_id}")
 
-# Top-right pane: notes / scratchpad
-tmux split-window -t "$SESSION:recon" -h -p 30
-tmux send-keys -t "$SESSION:recon.2" \
-  "cd ${RESULTS_DIR} && echo '# ${TARGET} — Hunt Notes' > notes.md && nano notes.md" Enter
+# Right pane: notes/scratchpad (30% width)
+P_NOTES=$(tmux split-window -t "$P_MAIN" -h -p 30 -P -F "#{pane_id}")
 
-# Bottom pane: OOB listener (started automatically)
-tmux split-window -t "$SESSION:recon.1" -v -p 25
-tmux send-keys -t "$SESSION:recon.3" \
-  "cd /tmp && echo '[*] Starting OOB listener...' && interactsh-client -server oast.pro -v 2>&1 | tee /tmp/oob-${TARGET}.log" Enter
+# Bottom of main pane: OOB log (25% of left height)
+P_OOB=$(tmux split-window -t "$P_MAIN" -v -p 25 -P -F "#{pane_id}")
+
+# Send content using captured pane IDs
+tmux send-keys -t "$P_MAIN" \
+  "cd ${BB} && clear && printf '\n  Target : ${TARGET}\n  Session: ${SESSION}\n  Results: ${RESULTS_DIR}\n\n' && picheck" Enter
+
+tmux send-keys -t "$P_NOTES" \
+  "cd ${RESULTS_DIR} && printf '# ${TARGET} Hunt Notes\n' > notes.md && echo '[notes] edit with: nano notes.md'" Enter
+
+tmux send-keys -t "$P_OOB" \
+  "echo '[OOB] Run: oob ${TARGET}  (or: interactsh-client -server oast.pro -v)'" Enter
+
+# Focus back to main pane
+tmux select-pane -t "$P_MAIN"
 
 # Window 2: scan (nuclei/httpx/ffuf)
 tmux new-window -t "$SESSION" -n "scan"
