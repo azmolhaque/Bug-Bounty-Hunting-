@@ -1,896 +1,1012 @@
 #!/usr/bin/env python3
 """
-deep-recon-orchestrator.py — Intelligent Multi-target Recon with Claude Lead Analysis
-Google/Alphabet VRP | Pi 5 deployment | Runs 2-4 hours unattended
+deep-recon-orchestrator.py v3 — Advanced Bug Hunter with Claude CLI Integration
+Google/Alphabet VRP | Pi 5 | Runs 2-4 hours unattended
 
-Usage:
-    cd ~/bug-bounty-hunting- && export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-    ANTHROPIC_API_KEY=sk-ant-... nohup python3 scripts/deep-recon-orchestrator.py \
-      2>&1 | tee /tmp/recon-$(date +%Y%m%d-%H%M).log &
+Phases per cluster:
+  1. Discovery    — DNS resolve, crt.sh CT pull, targeted wordlist brute
+  2. Surface map  — HTTP probe, tech fingerprint, header analysis
+  3. Active tests — ArgoCD unauth, Firebase key validation, CORS chain,
+                    GraphQL introspection, OpenAPI schema parse, JWT decode,
+                    IDOR probe on discovered IDs, method override tests
+  4. JS mining    — Bundle download, credential extraction, endpoint harvest,
+                    source-map detection, GCS/S3 bucket enumeration
+  5. Claude CLI   — `claude -p` validates each finding against CLAUDE.md §2-4,
+                    scores 0-5, writes exact curl commands, decides PURSUE/DROP
+  6. Report       — Ranked lead table + triager-grade markdown per finding
 
-Without API key: runs full recon + local heuristic scoring (no Claude analysis).
-With API key: adds Claude-powered lead triage after each cluster completes.
+Usage (no API cost — uses local Claude Code install):
+  cd ~/bug-bounty-hunting-
+  export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+  nohup python3 scripts/deep-recon-orchestrator.py 2>&1 | tee /tmp/recon-$(date +%Y%m%d-%H%M).log &
 
-Target clusters (priority order):
-  TIER0: Photomath (ArgoCD + admin/internal — highest reward)
-  TIER1: Siemplify, Dataform, Waze, Fitbit, Apigee, Chronicle/Backstory
-
-Constraints:
-  - 0.5s rate limit between requests to same host, max 3 concurrent
-  - No RFC1918 / IMDS / localhost requests
-  - Passive DNS only; no brute-force credential attacks
-  - Benign GET/HEAD probes only; no payload injection
+Constraints honored:
+  - 0.5s rate limit per host, max 3 concurrent requests
+  - No RFC1918/IMDS/localhost probing
+  - Benign payloads only — no destructive writes, no brute-force credentials
+  - Single IDOR probe per resource (not mass enumeration)
 """
 
-# ── stdlib ───────────────────────────────────────────────────────────────────
-import socket, ssl, json, re, os, sys, time, threading, datetime, subprocess, hashlib
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import os, sys, re, json, time, socket, threading, datetime, subprocess, hashlib, base64
 from pathlib import Path
-from urllib.parse import urlparse, urljoin
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlencode, urlparse
 
-# Force full PATH so curl/sleep work on Pi's broken zsh environment
+# ── Bootstrap PATH so curl/dig work on Pi's broken zsh env ───────────────────
 os.environ["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:" + os.environ.get("PATH", "")
+CURL = "/usr/bin/curl"
 
-# ── Config ───────────────────────────────────────────────────────────────────
-
-def find_repo_root():
-    """Auto-detect repo root — works on Pi (lowercase) and remote env (camelcase)."""
+# ── Repo root auto-detection (Pi: ~/bug-bounty-hunting- OR remote: ~/Bug-Bounty-Hunting-) ──
+def _find_repo() -> Path:
     try:
-        out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"],
-                                      stderr=subprocess.DEVNULL, text=True).strip()
-        return Path(out)
+        r = subprocess.check_output(["git", "rev-parse", "--show-toplevel"],
+                                    stderr=subprocess.DEVNULL, text=True).strip()
+        return Path(r)
     except Exception:
-        # Fallback: check common paths
-        for p in [Path.home() / "bug-bounty-hunting-",
-                  Path.home() / "Bug-Bounty-Hunting-",
+        for p in [Path.home()/"bug-bounty-hunting-", Path.home()/"Bug-Bounty-Hunting-",
                   Path("/home/user/Bug-Bounty-Hunting-")]:
-            if p.exists():
-                return p
+            if p.exists(): return p
         return Path.cwd()
 
-REPO = find_repo_root()
-RESULTS_BASE = REPO / "results"
-LOG_PATH = Path("/tmp/recon-orchestrator.log")
-CURL = "/usr/bin/curl"
-DELAY = 0.5          # seconds between requests to the same host
-TIMEOUT = 20         # per-request timeout
-MAX_WORKERS = 3      # total concurrent HTTP requests
-ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = "claude-sonnet-4-6"
-UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36"
+REPO         = _find_repo()
+RESULTS      = REPO / "results"
+LOG_PATH     = Path("/tmp/recon-orchestrator.log")
+DELAY        = 0.5       # seconds between requests to same host
+TIMEOUT      = 18        # per-request curl timeout
+MAX_WORKERS  = 3         # global concurrent HTTP cap
+UA           = ("Mozilla/5.0 (Linux; Android 14; Pixel 8) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.6422.60 Mobile Safari/537.36")
 
-_log_lock = threading.Lock()
-_host_locks: dict = {}
-_host_locks_lock = threading.Lock()
-start_ts = datetime.datetime.now()
-
+_log_lock   = threading.Lock()
+_hlocks: dict[str, threading.Lock] = {}
+_hlocks_mu  = threading.Lock()
+_t0         = datetime.datetime.now()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
-
-def log(msg: str, level: str = "INFO"):
-    elapsed = str(datetime.datetime.now() - start_ts).split(".")[0]
-    ts = datetime.datetime.now().strftime("%H:%M:%S")
-    line = f"[{ts}|{elapsed}] [{level:6s}] {msg}"
+def log(msg: str, lvl: str = "INFO"):
+    ts  = datetime.datetime.now().strftime("%H:%M:%S")
+    ela = str(datetime.datetime.now() - _t0).split(".")[0]
+    line = f"[{ts}|{ela}][{lvl:6s}] {msg}"
     with _log_lock:
         print(line, flush=True)
-        with open(LOG_PATH, "a") as f:
-            f.write(line + "\n")
+        LOG_PATH.parent.mkdir(exist_ok=True)
+        with open(LOG_PATH, "a") as f: f.write(line + "\n")
 
-def logfind(host: str, title: str, detail: str = ""):
-    log(f"*** LEAD [{host}] {title} {detail}", "FIND  ")
+def lead(host: str, title: str, detail: str = ""):
+    log(f"★ LEAD [{host}] {title}  {detail}", "FIND")
 
-
-# ── Target clusters ──────────────────────────────────────────────────────────
-
+# ── Target clusters ───────────────────────────────────────────────────────────
 CLUSTERS = [
     {
         "name": "photomath", "tier": 0, "priority": 1,
-        "description": "Photomath TIER0 — ArgoCD dev cluster without IAP + admin APIs",
+        "desc": "Photomath TIER0 — ArgoCD dev cluster exposed without IAP + admin APIs",
         "hosts": [
-            "argocd-dwh-eu-dev.photomath.net",       # 403 NOT via IAP — ArgoCD unauthenticated
-            "portal.photomath.net",
-            "idp.photomath.net",
-            "dpcapi.photomath.net",
-            "dpcapi-admin.photomath.net",
-            "lapi.photomath.net",
-            "tlapi.photomath.net",
-            "baja.photomath.net",
-            "cuvar.photomath.net",
-            "daportal.photomath.net",
-            "mankey.photomath.net",
-            "taportal.photomath.net",
-            "zuja.photomath.net",
-            "glooker.photomath.net",
-            "cms.photomath.net",
-            "internal.photomath.net",
-            "internal.photomath.com",
-            "dpcapi-admin.photomath.com",
+            "argocd-dwh-eu-dev.photomath.net",        # KEY: 403 NOT via IAP
             "argocd-gke-app-eu-prod.photomath.net",
             "argocd-gke-app-us-prod.photomath.net",
+            "idp.photomath.net",
+            "dpcapi.photomath.net",      "dpcapi-admin.photomath.net",
+            "lapi.photomath.net",        "tlapi.photomath.net",
+            "baja.photomath.net",        "cuvar.photomath.net",
+            "daportal.photomath.net",    "mankey.photomath.net",
+            "taportal.photomath.net",    "zuja.photomath.net",
+            "glooker.photomath.net",     "cms.photomath.net",
+            "portal.photomath.net",
+            "internal.photomath.net",   "internal.photomath.com",
+            "dpcapi-admin.photomath.com",
         ],
-        "extra_wordlist": ["staging", "dev", "api", "app", "admin", "k8s",
-                           "grafana", "prometheus", "kibana", "vault", "harbor"],
-        "root_domains": ["photomath.net", "photomath.com"],
+        "brute_words": ["grafana","prometheus","kibana","vault","harbor","k8s",
+                        "staging","dev","api","admin","ops","monitoring","logging"],
+        "roots": ["photomath.net", "photomath.com"],
     },
     {
         "name": "siemplify", "tier": 1, "priority": 1,
-        "description": "Siemplify SOAR — SSRF via connectors, tenant isolation",
+        "desc": "Siemplify SOAR — hundreds of webhook connectors = SSRF surface, tenant IDOR",
         "hosts": [
-            "app.siemplify-soar.com",
-            "api.siemplify-soar.com",
-            "dev.siemplify-soar.com",
-            "staging.siemplify-soar.com",
-            "admin.siemplify-soar.com",
-            "portal.siemplify-soar.com",
-            "siemplify.co",
-            "siemplifycloud.com",
-            "passbolt.siemplify.co",
-            "api.siemplify.co",
+            "app.siemplify-soar.com",   "api.siemplify-soar.com",
+            "dev.siemplify-soar.com",   "staging.siemplify-soar.com",
+            "admin.siemplify-soar.com", "portal.siemplify-soar.com",
+            "siemplify.co",             "siemplifycloud.com",
+            "passbolt.siemplify.co",    "api.siemplify.co",
             "app.siemplify.co",
         ],
-        "extra_wordlist": ["api", "app", "admin", "portal", "marketplace", "docs", "integrations"],
-        "root_domains": ["siemplify.co", "siemplifycloud.com"],
+        "brute_words": ["api","app","admin","portal","marketplace","docs",
+                        "integrations","staging","dev","webhook","connector"],
+        "roots": ["siemplify.co", "siemplifycloud.com"],
     },
     {
         "name": "dataform", "tier": 1, "priority": 2,
-        "description": "Google Dataform (BigQuery) — workspace IDOR, project isolation",
+        "desc": "Google Dataform (BigQuery) — workspace IDOR, project isolation flaw",
         "hosts": ["app.dataform.co", "api.dataform.co", "dataform.co"],
-        "extra_wordlist": ["api", "app", "staging", "dev", "docs", "console"],
-        "root_domains": ["dataform.co"],
+        "brute_words": ["api","app","staging","dev","console","docs","beta"],
+        "roots": ["dataform.co"],
     },
     {
         "name": "waze", "tier": 1, "priority": 2,
-        "description": "Waze Biz — prior XSS + location IDOR; ad API staging",
+        "desc": "Waze Biz portal — prior XSS + location IDOR; ad API staging surface",
         "hosts": [
-            "biz.waze.com", "adsapi.waze.com",
-            "adsapi-staging.waze.com", "proxy.waze.com", "proxy-staging.waze.com",
+            "biz.waze.com",           "adsapi.waze.com",
+            "adsapi-staging.waze.com","proxy.waze.com",
+            "proxy-staging.waze.com",
         ],
-        "extra_wordlist": ["biz", "ads", "api", "partner", "dashboard", "reports"],
-        "root_domains": ["waze.com"],
+        "brute_words": ["biz","ads","api","partner","dashboard","reports","staging"],
+        "roots": ["waze.com"],
     },
     {
         "name": "fitbit", "tier": 1, "priority": 3,
-        "description": "Fitbit health admin — sensitive health data, management portal",
+        "desc": "Fitbit health admin — sensitive health data, management portal",
         "hosts": [
-            "accounts.fitbit.com", "health-admin.fitbit.com",
-            "ngw.fitbit.com", "mgmt.fitbit.com",
-            "coaching-dashboard.fitbit.com", "strava.fitbit.com",
+            "accounts.fitbit.com",          "health-admin.fitbit.com",
+            "ngw.fitbit.com",               "mgmt.fitbit.com",
+            "coaching-dashboard.fitbit.com","strava.fitbit.com",
         ],
-        "extra_wordlist": ["health", "admin", "api", "mgmt", "dashboard", "partner", "coach"],
-        "root_domains": ["fitbit.com"],
+        "brute_words": ["health","admin","api","mgmt","dashboard","partner","coach","staging"],
+        "roots": ["fitbit.com"],
     },
     {
         "name": "apigee", "tier": 1, "priority": 3,
-        "description": "Apigee enterprise portal — API management, policy injection",
-        "hosts": ["enterprise.apigee.com", "sense-ui.apigee.com", "apigee.com", "apigee.google.com"],
-        "extra_wordlist": ["api", "enterprise", "ui", "console", "portal", "docs", "sense"],
-        "root_domains": ["apigee.com"],
+        "desc": "Apigee enterprise portal — API management, policy sandbox injection",
+        "hosts": [
+            "enterprise.apigee.com","sense-ui.apigee.com",
+            "apigee.com",           "apigee.google.com",
+        ],
+        "brute_words": ["api","enterprise","ui","console","portal","docs","sense","staging"],
+        "roots": ["apigee.com"],
     },
 ]
 
-# ── Path sets ─────────────────────────────────────────────────────────────────
-
+# ── Path lists ────────────────────────────────────────────────────────────────
 CORE_PATHS = [
     "/robots.txt", "/sitemap.xml",
     "/.well-known/openid-configuration", "/.well-known/jwks.json",
     "/.well-known/security.txt",
-    "/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/ping",
-    "/metrics", "/status", "/version", "/info", "/debug", "/env",
-    "/swagger.json", "/openapi.json", "/openapi.yaml",
-    "/api-docs", "/swagger-ui.html",
-    "/v1/swagger.json", "/v2/swagger.json", "/v3/swagger.json",
-    "/api", "/api/v1", "/api/v2", "/api/v3",
-    "/graphql", "/gql",
-    "/v1", "/v2", "/v3",
-    "/auth", "/oauth", "/login", "/signin", "/sso", "/logout",
-    "/oauth/token", "/oauth/authorize",
-    "/admin", "/admin/api", "/internal", "/management", "/dashboard",
-    "/.env", "/config", "/server-status", "/server-info",
-    "/__/firebase/init.json", "/__/firebase/init.js",
-    "/api/user", "/api/users", "/api/me", "/api/account",
+    "/health","/healthz","/ready","/readyz","/live","/livez","/ping",
+    "/metrics","/status","/version","/info","/debug","/env",
+    "/swagger.json","/openapi.json","/openapi.yaml",
+    "/api-docs","/swagger-ui.html",
+    "/v1/swagger.json","/v2/swagger.json","/v3/swagger.json",
+    "/api","/api/v1","/api/v2","/api/v3",
+    "/graphql","/gql",
+    "/v1","/v2","/v3",
+    "/auth","/oauth","/login","/signin","/sso",
+    "/oauth/token","/oauth/authorize",
+    "/admin","/admin/api","/internal","/management","/dashboard",
+    "/.env","/config","/server-status","/server-info",
+    "/__/firebase/init.json","/__/firebase/init.js",
+    "/api/user","/api/users","/api/me","/api/account","/api/profile",
 ]
 
 ARGOCD_PATHS = [
-    "/api/v1/settings", "/api/v1/clusters", "/api/v1/applications",
-    "/api/v1/repositories", "/api/v1/projects", "/api/version",
-    "/api/v1/session",    # auth endpoint — 200/401 tells us auth status
-    "/api/v1/account",
-    "/api/v1/users",
+    "/api/v1/settings","/api/v1/clusters","/api/v1/applications",
+    "/api/v1/repositories","/api/v1/projects","/api/version",
+    "/api/v1/session","/api/v1/account","/api/v1/users",
+    "/api/v1/clusters?fields=items.name,items.server",
 ]
 
 SIEMPLIFY_PATHS = [
-    "/api/external/v1/cases", "/api/external/v1/alerts",
-    "/api/external/v1/playbooks", "/api/external/v1/connectors",
-    "/api/1.0/settings", "/api/settings", "/api/auth/login",
-    "/api/connectors", "/integrations", "/marketplace",
-    "/api/v1/health",
+    "/api/external/v1/cases","/api/external/v1/alerts",
+    "/api/external/v1/playbooks","/api/external/v1/connectors",
+    "/api/1.0/settings","/api/settings","/api/auth/login",
+    "/integrations","/marketplace","/api/v1/health",
+    "/api/external/v1/integrations",
 ]
 
 DATAFORM_PATHS = [
-    "/api/v1/projects", "/api/v1/workspaces",
-    "/api/v1/repositories", "/api/v1/compilationResults",
-    "/api/v1/workflowInvocations", "/v1/projects",
+    "/api/v1/projects","/api/v1/workspaces",
+    "/api/v1/repositories","/api/v1/compilationResults",
+    "/api/v1/workflowInvocations","/v1/projects",
 ]
 
 WAZE_PATHS = [
-    "/api/v1", "/api/v2",
-    "/campaigns", "/api/campaigns", "/api/reports",
-    "/api/locations", "/api/users", "/api/accounts",
+    "/api/v1","/api/v2",
+    "/campaigns","/api/campaigns","/api/reports",
+    "/api/locations","/api/users","/api/accounts","/api/creatives",
 ]
 
-EXTRA_PATHS_BY_CLUSTER = {
+GRAFANA_PATHS = [
+    "/api/dashboards/home","/api/datasources","/api/orgs",
+    "/api/admin/settings","/api/plugins","/api/users","/api/admin/users",
+]
+
+CLUSTER_EXTRA = {
     "photomath": ARGOCD_PATHS,
     "siemplify": SIEMPLIFY_PATHS,
-    "dataform": DATAFORM_PATHS,
-    "waze": WAZE_PATHS,
+    "dataform":  DATAFORM_PATHS,
+    "waze":      WAZE_PATHS,
 }
 
 # ── HTTP layer ────────────────────────────────────────────────────────────────
-
-def get_host_lock(host: str) -> threading.Lock:
-    with _host_locks_lock:
-        if host not in _host_locks:
-            _host_locks[host] = threading.Lock()
-        return _host_locks[host]
-
+def _hlock(host: str) -> threading.Lock:
+    with _hlocks_mu:
+        if host not in _hlocks: _hlocks[host] = threading.Lock()
+        return _hlocks[host]
 
 def dns_resolve(host: str) -> list[str]:
     try:
-        info = socket.getaddrinfo(host, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
-        return list({r[4][0] for r in info})
+        return list({r[4][0] for r in socket.getaddrinfo(host, 443, 0, socket.SOCK_STREAM)})
     except socket.gaierror:
         return []
 
-
-def is_safe_ip(ip: str) -> bool:
-    """Return False for any IP we must not probe (RFC1918, IMDS, loopback)."""
+def safe_ip(ip: str) -> bool:
     try:
         p = [int(x) for x in ip.split(".")]
         if p[0] in (10, 127): return False
         if p[0] == 172 and 16 <= p[1] <= 31: return False
         if p[0] == 192 and p[1] == 168: return False
         if p[0] == 169 and p[1] == 254: return False
-    except Exception:
-        pass
+    except Exception: pass
     return True
 
-
-def curl(url: str, method: str = "GET", extra_headers: list | None = None,
-         body_limit: int = 131072, follow: bool = True, timeout: int = TIMEOUT) -> tuple[int, dict, str]:
-    """Execute curl; return (status_code, headers_dict, body_str)."""
-    cmd = [CURL, "-s", f"--max-time={timeout}", f"--max-filesize={body_limit}",
-           "-A", UA, "-D", "-", "-o", "-", "--compressed"]
-    if follow:
-        cmd += ["-L", "--max-redirs", "5"]
-    if method != "GET":
-        cmd += ["-X", method]
-    for h in (extra_headers or []):
-        cmd += ["-H", h]
+def http(url: str, method: str = "GET", headers: list | None = None,
+         data: str | None = None, follow: bool = True,
+         limit: int = 131072, timeout: int = TIMEOUT) -> tuple[int, dict, str]:
+    """curl wrapper. Returns (status, headers_dict, body)."""
+    cmd = [CURL, "-s", f"--max-time={timeout}", f"--max-filesize={limit}",
+           "-A", UA, "-D", "-", "-o", "-", "--compressed",
+           "-k",   # ignore TLS errors — capture everything
+    ]
+    if follow: cmd += ["-L", "--max-redirs", "5"]
+    if method != "GET": cmd += ["-X", method]
+    for h in (headers or []): cmd += ["-H", h]
+    if data: cmd += ["-d", data]
     cmd.append(url)
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5)
         raw = r.stdout
-    except subprocess.TimeoutExpired:
-        return 0, {}, "timeout"
-    except Exception as e:
+    except (subprocess.TimeoutExpired, Exception) as e:
         return 0, {}, str(e)
 
-    hdrs: dict = {}
-    body_parts: list[str] = []
-    last_code = 0
-    in_body = False
+    hdrs: dict = {}; body_parts: list[str] = []; in_body = False; code = 0
     for line in raw.split("\n"):
         s = line.strip()
-        if s.startswith("HTTP/"):
+        if s.upper().startswith("HTTP/"):
             parts = s.split()
-            last_code = int(parts[1]) if len(parts) > 1 else 0
+            code = int(parts[1]) if len(parts) > 1 else 0
             hdrs = {}; in_body = False
         elif not in_body:
-            if s == "":
-                in_body = True
+            if s == "": in_body = True
             elif ":" in s:
                 k, _, v = s.partition(":")
                 hdrs[k.lower().strip()] = v.strip()
         else:
             body_parts.append(line)
-    return last_code, hdrs, "\n".join(body_parts)
+    return code, hdrs, "\n".join(body_parts)
 
+# ── Tech detection ────────────────────────────────────────────────────────────
+TECH_SIGS: dict[str, list[tuple[str, str]]] = {
+    "argocd":     [("body","argocd"), ("body","Argo CD"), ("x-argocd-version","*")],
+    "firebase":   [("body","firebaseapp"), ("body","AIzaSy"), ("body","firebase.google.com")],
+    "nextjs":     [("body","__NEXT_DATA__"), ("x-powered-by","Next.js")],
+    "framer":     [("server","Framer")],
+    "grafana":    [("body","grafana"), ("x-grafana-version","*")],
+    "metabase":   [("body","Metabase")],
+    "hasura":     [("body","hasura"), ("body","HGE version")],
+    "fastapi":    [("body","FastAPI"), ("body",'"detail":')],
+    "django":     [("body","csrfmiddlewaretoken")],
+    "gcp":        [("server","Google Frontend"), ("server","sffe"), ("x-cloud-trace-context","*")],
+    "cloudflare": [("server","cloudflare"), ("cf-ray","*")],
+    "looker":     [("body","looker"), ("x-looker-version","*")],
+    "kubernetes": [("body","kubernetes"), ("body","kubectl")],
+    "springboot": [("x-application-context","*")],
+    "express":    [("x-powered-by","Express")],
+}
 
-# ── Subdomain discovery ───────────────────────────────────────────────────────
+def detect_tech(hdrs: dict, body: str) -> list[str]:
+    found = []
+    for tech, sigs in TECH_SIGS.items():
+        for hdr, val in sigs:
+            if hdr == "body":
+                if val.lower() in body[:6000].lower(): found.append(tech); break
+            else:
+                hval = hdrs.get(hdr, "")
+                if (val == "*" and hval) or val.lower() in hval.lower():
+                    found.append(tech); break
+    return list(dict.fromkeys(found))
 
-def brute_dns(root_domain: str, wordlist: list[str]) -> list[str]:
-    """Resolve a short wordlist against root_domain; return live subdomains."""
-    live = []
-    for word in wordlist:
-        host = f"{word}.{root_domain}"
-        ips = dns_resolve(host)
-        if ips and all(is_safe_ip(ip) for ip in ips):
-            log(f"  DNS BRUTE: {host} → {ips[0]}", "DNS   ")
-            live.append(host)
-        time.sleep(0.05)
-    return live
-
-
-def crt_sh_subdomains(root_domain: str) -> list[str]:
-    """Pull subdomains from crt.sh (best-effort; may be blocked)."""
-    code, _, body = curl(
-        f"https://crt.sh/?q=%25.{root_domain}&output=json",
-        body_limit=2_000_000, timeout=30
-    )
-    if code != 200 or not body.strip().startswith("["):
-        return []
+# ── Discovery ─────────────────────────────────────────────────────────────────
+def crt_sh(root: str) -> list[str]:
+    code, _, body = http(f"https://crt.sh/?q=%25.{root}&output=json",
+                         limit=3_000_000, timeout=30)
+    if code != 200 or not body.strip().startswith("["): return []
     try:
         data = json.loads(body)
         names: set[str] = set()
         for e in data:
-            for n in e.get("name_value", "").split("\n"):
+            for n in e.get("name_value","").split("\n"):
                 n = n.strip().lstrip("*.")
-                if n and root_domain in n:
-                    names.add(n.lower())
-        log(f"  crt.sh: {len(names)} names for {root_domain}", "DNS   ")
+                if n and root in n: names.add(n.lower())
+        log(f"  crt.sh → {len(names)} names for {root}", "DNS")
         return sorted(names)
-    except Exception:
-        return []
+    except Exception: return []
 
-
-# ── Technology detection ──────────────────────────────────────────────────────
-
-TECH_SIGNALS = {
-    "argocd":     [("x-argocd-version", "*"), ("server", "argo"), ("body", "argocd"), ("body", "Argo CD")],
-    "firebase":   [("body", "firebaseapp"), ("body", "firebase"), ("body", "AIzaSy")],
-    "nextjs":     [("body", "__NEXT_DATA__"), ("body", "_next/static"), ("x-powered-by", "Next.js")],
-    "framer":     [("server", "Framer")],
-    "kubernetes": [("body", "kubernetes"), ("body", "k8s"), ("body", "kubectl")],
-    "grafana":    [("body", "Grafana"), ("x-grafana-version", "*")],
-    "metabase":   [("body", "Metabase"), ("body", "metabase")],
-    "hasura":     [("body", "hasura"), ("body", "graphql")],
-    "django":     [("body", "csrfmiddlewaretoken"), ("x-frame-options", "SAMEORIGIN")],
-    "rails":      [("x-powered-by", "Phusion Passenger"), ("set-cookie", "_session_id")],
-    "fastapi":    [("body", '"detail":'), ("body", "FastAPI")],
-    "gcp":        [("server", "sffe"), ("server", "Google Frontend"), ("x-cloud-trace-context", "*")],
-    "cloudflare": [("server", "cloudflare"), ("cf-ray", "*")],
-    "looker":     [("body", "looker"), ("x-looker-version", "*")],
-}
-
-def detect_tech(hdrs: dict, body: str) -> list[str]:
-    detected = []
-    for tech, signals in TECH_SIGNALS.items():
-        for header, value in signals:
-            if header == "body":
-                if value.lower() in body[:8000].lower():
-                    detected.append(tech); break
-            else:
-                hval = hdrs.get(header, "")
-                if value == "*" and hval:
-                    detected.append(tech); break
-                elif value.lower() in hval.lower():
-                    detected.append(tech); break
-    return list(dict.fromkeys(detected))
-
+def brute_dns(root: str, words: list[str]) -> list[str]:
+    live = []
+    for w in words:
+        h = f"{w}.{root}"
+        ips = dns_resolve(h)
+        if ips and all(safe_ip(ip) for ip in ips):
+            log(f"  DNS-BRUTE: {h} → {ips[0]}", "DNS")
+            live.append(h)
+        time.sleep(0.05)
+    return live
 
 # ── JS mining ─────────────────────────────────────────────────────────────────
-
-JS_PATTERNS = [
-    ("ENDPOINT",      r'["\'](/(?:api|v\d|graphql|auth|oauth|internal|admin)[/\w\-\.?={}&:@]*)["\']'),
+_JS_PATS = [
+    ("ENDPOINT",      r'["\'`](/(?:api|v\d|graphql|auth|oauth|internal|admin|webhook)[/\w\-\.?={}&:@%]*)["\']'),
     ("FIREBASE_KEY",  r'(AIzaSy[A-Za-z0-9_-]{33})'),
-    ("API_KEY",       r'(?:api[_-]?key|apiKey)[\s"\']*[:=][\s"\']*([A-Za-z0-9_\-]{20,80})'),
-    ("CLIENT_ID",     r'(?:client[_-]?id|clientId)[\s"\']*[:=][\s"\']*([A-Za-z0-9_\-.]{12,120})'),
-    ("GCP_PROJECT",   r'(?:project[_-]?id|projectId)[\s"\']*[:=][\s"\'`]*([a-z][a-z0-9-]{4,29})["\']'),
-    ("SECRET",        r'(?:secret|password)[\s"\']*[:=][\s"\'`]([A-Za-z0-9_+/=]{16,80})["\']'),
-    ("INTERNAL_HOST", r'["\'`]([a-z][a-z0-9\-]+\.(?:internal|local|corp|svc\.cluster\.local)(?:/[^"\']{0,60})?)["\']'),
-    ("GRAPHQL_OP",    r'(?:query|mutation)\s+(\w+)\s*[({]'),
-    ("AUTH_HEADER",   r'(?:Authorization|Bearer|X-API-Key)["\s]*[:=]\s*["\']([^"\']{8,})["\']'),
-    ("S3_BUCKET",     r'([a-z][a-z0-9\-]{2,62})\.s3(?:[\.-][a-z0-9-]+)?\.amazonaws\.com'),
+    ("API_KEY",       r'(?:api[_-]?key|apiKey)["\s\']*[:=]["\s\']*([A-Za-z0-9_\-]{20,100})'),
+    ("CLIENT_ID",     r'(?:client[_-]?id|clientId)["\s\']*[:=]["\s\']*([A-Za-z0-9_\-\.@]{12,200})'),
+    ("GCP_PROJECT",   r'(?:project[_-]?id|projectId)["\s\']*[:=]["\s\'`]*([a-z][a-z0-9-]{4,29})["\']'),
+    ("SECRET",        r'(?:client[_-]?secret|clientSecret|app[_-]?secret)["\s\']*[:=]["\s\'`]([A-Za-z0-9_+/=\-]{16,100})["\']'),
+    ("INTERNAL_HOST", r'["\'`]([a-z][a-z0-9\-]+\.(?:internal|local|corp|svc\.cluster\.local)(?:/[^"\'`]{0,80})?)["\']'),
     ("GCS_BUCKET",    r'storage\.googleapis\.com/([a-z][a-z0-9\-_]{2,62})'),
+    ("S3_BUCKET",     r'([a-z][a-z0-9\-]{2,62})\.s3(?:[\.-][a-z0-9-]+)?\.amazonaws\.com'),
     ("GITHUB_TOKEN",  r'(gh[pousr]_[A-Za-z0-9]{36,255})'),
+    ("JWT",           r'eyJ[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}'),
+    ("GRAPHQL_OP",    r'(?:query|mutation)\s+(\w+)\s*[({]'),
+    ("OAUTH_SCOPE",   r'scope["\s\']*[:=]["\s\'`]([a-z][a-z0-9:/_\-\. ]{4,120})["\']'),
 ]
+_NOISE = {"example","placeholder","your_","changeme","test","demo","undefined",
+          "null","none","todo","fixme","xxx","insert","abcdef","12345"}
 
-NOISE_VALUES = {"example", "placeholder", "your_", "changeme", "test", "demo",
-                "undefined", "null", "none", "todo", "fixme", "xxx"}
-
-def mine_js(host: str, body: str, host_lock: threading.Lock) -> list[dict]:
+def mine_js(host: str, body: str, lock: threading.Lock) -> list[dict]:
     js_urls = re.findall(r'(?:src|href)=["\']([^"\']+\.js(?:\?[^"\']*)?)["\']', body)
+    # Also check for source maps
+    sm_urls  = re.findall(r'sourceMappingURL=([^\s*]+\.map)', body)
     findings: list[dict] = []
 
-    for raw_url in js_urls[:10]:   # cap at 10 bundles per host
-        url = raw_url if raw_url.startswith("http") else f"https://{host}{raw_url}"
-        with host_lock:
-            time.sleep(DELAY)
-            code, _, js_body = curl(url, body_limit=524288, follow=False)
-        if code != 200 or not js_body:
-            continue
+    for raw in (js_urls[:12] + sm_urls[:4]):
+        url = raw if raw.startswith("http") else f"https://{host}{raw}"
+        with lock: time.sleep(DELAY)
+        code, _, js = http(url, limit=1_048_576, follow=False)
+        if code != 200 or not js: continue
 
-        for label, pattern in JS_PATTERNS:
-            for m in re.findall(pattern, js_body):
-                val = m if isinstance(m, str) else (m[0] if m else "")
-                if not val or len(val) < 3:
-                    continue
-                if any(n in val.lower() for n in NOISE_VALUES):
-                    continue
-                findings.append({"source": url.split("/")[-1][:50], "type": label, "value": val[:120]})
+        for label, pat in _JS_PATS:
+            for m in re.findall(pat, js):
+                val = m if isinstance(m, str) else (m if m else "")
+                if isinstance(val, tuple): val = val[0]
+                if not val or len(val) < 4: continue
+                if any(n in val.lower() for n in _NOISE): continue
+                findings.append({"src": url.split("/")[-1][:50], "type": label, "value": val[:150]})
 
-    # Deduplicate by (type, value)
-    seen = set()
-    deduped = []
+    # Deduplicate
+    seen: set = set()
+    dedup = []
     for f in findings:
         key = (f["type"], f["value"])
-        if key not in seen:
-            seen.add(key); deduped.append(f)
-    return deduped[:40]
+        if key not in seen: seen.add(key); dedup.append(f)
+    return dedup[:50]
 
+# ── JWT decode ────────────────────────────────────────────────────────────────
+def decode_jwt(token: str) -> dict:
+    try:
+        parts = token.split(".")
+        if len(parts) != 3: return {}
+        header  = json.loads(base64.urlsafe_b64decode(parts[0] + "=="))
+        payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=="))
+        alg = header.get("alg","")
+        findings = []
+        if alg.lower() == "none":   findings.append("ALG_NONE — critical: no signature")
+        if alg.upper() in ("HS256","HS384","HS512") and len(parts[2]) < 50:
+            findings.append("SHORT_SIG — possible weak secret")
+        return {"header": header, "payload": payload, "flags": findings}
+    except Exception: return {}
 
-# ── CORS analysis ─────────────────────────────────────────────────────────────
+# ── Active vulnerability tests ────────────────────────────────────────────────
 
-def check_cors(host: str, paths: list[str], host_lock: threading.Lock) -> list[dict]:
-    issues = []
+def test_argocd(host: str, lock: threading.Lock) -> list[dict]:
+    """Test all ArgoCD REST API endpoints for unauthenticated access."""
+    results = []
+    for path in ARGOCD_PATHS:
+        with lock: time.sleep(DELAY)
+        code, hdrs, body = http(f"https://{host}{path}", follow=False, limit=16384)
+        ct = hdrs.get("content-type","")
+        if code in (200, 206) and "json" in ct:
+            snippet = body[:300].replace("\n"," ")
+            results.append({"path": path, "code": code, "body": snippet})
+            lead(host, f"ARGOCD UNAUTH [{code}] {path}", snippet[:80])
+        elif code == 401:
+            results.append({"path": path, "code": 401, "note": "auth required"})
+    return results
+
+def validate_firebase_key(api_key: str, host: str) -> dict:
+    """Call Firebase identitytoolkit to confirm key is active (read-only probe)."""
+    payload = json.dumps({"identifier":"probe@probe.invalid","continueUri":f"https://{host}"})
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key={api_key}"
+    code, _, body = http(url, method="POST",
+                         headers=["Content-Type: application/json"], data=payload,
+                         follow=False, limit=4096, timeout=12)
+    if code == 200:
+        return {"valid": True, "response": body[:200]}
+    try:
+        err = json.loads(body).get("error",{}).get("message","")
+        return {"valid": False, "error": err}
+    except Exception:
+        return {"valid": False, "error": body[:100]}
+
+def test_graphql(host: str, path: str, lock: threading.Lock) -> dict:
+    """GraphQL introspection + batch/alias checks."""
+    introspect = '{"query":"{ __schema { queryType { name } types { name kind description fields { name type { name kind ofType { name kind } } } } } }"}'
+    with lock: time.sleep(DELAY)
+    code, hdrs, body = http(f"https://{host}{path}", method="POST",
+                             headers=["Content-Type: application/json"],
+                             data=introspect, follow=False, limit=131072)
+    result: dict = {"path": path, "introspection": False}
+    if "__schema" in body:
+        result["introspection"] = True
+        try:
+            schema = json.loads(body)
+            types  = [t["name"] for t in schema.get("data",{}).get("__schema",{}).get("types",[])
+                      if not t["name"].startswith("__")]
+            result["types"] = types[:30]
+            result["type_count"] = len(types)
+            lead(host, f"GRAPHQL INTROSPECTION OPEN", f"{path} → {len(types)} types")
+        except Exception:
+            result["raw_snippet"] = body[:500]
+    elif code in (200, 400):
+        result["alive"] = True
+        result["code"]  = code
+    return result
+
+def test_cors(host: str, api_paths: list[str], lock: threading.Lock) -> list[dict]:
+    """Test CORS with 4 origin variants on best API path."""
+    path = next((p for p in api_paths if "api" in p), "/api/v1/")
     test_origins = [
-        "https://evil-attacker.com",
-        f"https://evil{host}",
-        "null",
-        f"https://{host}.evil.com",
+        f"https://evil.com",
+        f"https://{host}.evil.com",     # domain-prefix bypass
+        "null",                         # null origin bypass
+        f"https://evil{host}",          # evil prefix
     ]
-    test_path = next((p for p in paths if "api" in p), "/api/v1/")
-
-    for origin in test_origins[:2]:   # keep it brief
-        with host_lock:
-            time.sleep(DELAY)
-            _, hdrs, _ = curl(
-                f"https://{host}{test_path}",
-                extra_headers=[f"Origin: {origin}",
-                               "Access-Control-Request-Method: GET"],
-                follow=False, body_limit=512,
-            )
-        acao = hdrs.get("access-control-allow-origin", "")
-        acac = hdrs.get("access-control-allow-credentials", "")
-        if not acao:
-            continue
-        if acao == origin or acao == "*":
+    issues = []
+    for origin in test_origins:
+        with lock: time.sleep(DELAY)
+        _, hdrs, _ = http(
+            f"https://{host}{path}", follow=False, limit=512,
+            headers=[f"Origin: {origin}",
+                     "Access-Control-Request-Method: GET",
+                     "Access-Control-Request-Headers: Authorization"],
+        )
+        acao = hdrs.get("access-control-allow-origin","")
+        acac = hdrs.get("access-control-allow-credentials","")
+        acah = hdrs.get("access-control-allow-headers","")
+        if not acao: continue
+        if acao in (origin, "*"):
             sev = "HIGH" if acac.lower() == "true" else "MEDIUM"
-            issues.append({"origin": origin, "acao": acao, "acac": acac, "severity": sev})
-            logfind(host, f"CORS {sev}", f"acao={acao} acac={acac} path={test_path}")
+            issue = {"origin": origin, "acao": acao, "acac": acac, "path": path, "sev": sev}
+            issues.append(issue)
+            lead(host, f"CORS {sev}", f"acao={acao} acac={acac} origin={origin}")
+            if acac.lower() == "true":
+                break   # critical — stop testing
     return issues
 
-
-# ── GraphQL introspection ─────────────────────────────────────────────────────
-
-GRAPHQL_INTROSPECT = '{"query":"{__schema{queryType{name}types{name kind description fields{name type{name kind}}}}}"}'
-
-def check_graphql(host: str, host_lock: threading.Lock) -> dict | None:
-    for path in ["/graphql", "/gql", "/api/graphql", "/v1/graphql"]:
-        with host_lock:
-            time.sleep(DELAY)
-            code, hdrs, body = curl(
-                f"https://{host}{path}",
-                extra_headers=["Content-Type: application/json",
-                               f"Content-Length: {len(GRAPHQL_INTROSPECT)}"],
-                body_limit=32768, follow=False,
-            )
-        ct = hdrs.get("content-type", "")
-        if code in (200, 400) and ("graphql" in ct or "json" in ct):
-            if "__schema" in body or "queryType" in body:
-                logfind(host, "GRAPHQL INTROSPECTION ENABLED", f"path={path}")
-                return {"path": path, "schema_snippet": body[:500]}
-            if code == 200:
-                logfind(host, f"GRAPHQL ENDPOINT [{code}]", f"path={path}")
-                return {"path": path, "code": code}
-    return None
-
-
-# ── Claude lead analysis ──────────────────────────────────────────────────────
-
-CLAUDE_PROMPT_TEMPLATE = """\
-You are an elite authorized bug bounty hunter analyzing recon data for Google/Alphabet VRP.
-The program pays up to $151,515. Only report if findings pass ALL of:
-  1. Attacker gain is concrete (account access, data of another user, RCE, SSRF to internal, auth bypass)
-  2. Not intended behavior
-  3. Passes Fix Test (vendor would actually change code)
-  4. Reproducible with minimal PoC
-  5. In scope, not a known dup
-
-HARD REJECT (never submit standalone): self-XSS, missing security headers, software version disclosure,
-login page lacks lockout, SPF/DKIM misconfig, subdomain takeover without cookie/OAuth proof,
-open redirect without token exfil chain, rate limit absent on non-sensitive endpoints.
-
-RECON DATA FOR: {cluster_name} (TIER{tier})
-Description: {description}
-
-{host_summaries}
-
-TASK:
-1. Score each LIVE host 0-5 on vulnerability potential (5 = near-certain High/Critical finding)
-2. For the top 2-3 hosts, name the SINGLE most plausible bug class and give the exact curl
-   command to verify it in the next hunting session
-3. Flag any finding that clears the submission bar already (report immediately)
-4. Explicitly DROP any finding that is on the Hard Reject list above
-5. If ArgoCD endpoint is unauthenticated → escalate to CRITICAL immediately
-
-Respond in strict JSON (no markdown fences, no commentary outside JSON):
-{{
-  "cluster_score": 1-5,
-  "top_hosts": [
-    {{
-      "host": "...",
-      "score": 0-5,
-      "bug_class": "...",
-      "rationale": "...",
-      "verify_command": "curl ...",
-      "severity_estimate": "Critical|High|Medium|Low|Info",
-      "submit_now": false
-    }}
-  ],
-  "immediate_flags": ["..."],
-  "drop_list": ["..."],
-  "next_session_priority": "one sentence"
-}}"""
-
-
-def call_claude(prompt: str) -> dict | None:
-    if not ANTHROPIC_KEY:
-        return None
-    payload = json.dumps({
-        "model": CLAUDE_MODEL,
-        "max_tokens": 2000,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode()
-    cmd = [
-        CURL, "-s", "--max-time", "45",
-        "-X", "POST", "https://api.anthropic.com/v1/messages",
-        "-H", "Content-Type: application/json",
-        "-H", f"x-api-key: {ANTHROPIC_KEY}",
-        "-H", "anthropic-version: 2023-06-01",
-        "-d", "@-",
-    ]
+def test_openapi(host: str, schema_path: str, schema_body: str, lock: threading.Lock) -> list[dict]:
+    """Parse OpenAPI/Swagger schema and probe every documented endpoint."""
+    endpoints = []
     try:
-        r = subprocess.run(cmd, input=payload, capture_output=True, timeout=50)
-        data = json.loads(r.stdout)
-        text = data.get("content", [{}])[0].get("text", "")
-        # Strip any markdown fences
-        text = re.sub(r"^```json\s*|\s*```$", "", text.strip())
-        return json.loads(text)
-    except Exception as e:
-        log(f"Claude API error: {e}", "WARN  ")
-        return None
+        schema = json.loads(schema_body)
+        base  = schema.get("basePath","") or ""
+        for path, methods in schema.get("paths", {}).items():
+            for method in methods:
+                if method.lower() in ("get","post","put","delete","patch"):
+                    endpoints.append((method.upper(), base + path))
+    except Exception: return []
 
+    results = []
+    for method, path in endpoints[:40]:    # cap at 40
+        # Replace path params with benign values
+        clean_path = re.sub(r'\{[^}]+\}', '1', path)
+        with lock: time.sleep(DELAY)
+        code, hdrs, body = http(f"https://{host}{clean_path}", method=method,
+                                 follow=False, limit=8192)
+        if code in (200, 201):
+            results.append({"method": method, "path": clean_path, "code": code,
+                            "ct": hdrs.get("content-type",""), "body": body[:200]})
+            lead(host, f"OPENAPI ENDPOINT 200 [{method}]", clean_path)
+    return results
 
-def score_host_heuristic(r: dict) -> int:
-    """Local scoring when Claude is unavailable. Returns 0-5."""
-    score = 0
-    codes_200 = [p for p, v in r["paths"].items() if v["code"] == 200]
-    if any("/api" in p or "/v1" in p for p in codes_200): score += 2
-    if "/graphql" in codes_200 or r.get("graphql"): score += 2
-    if r.get("cors"): score += 2
-    if r.get("js_findings"):
-        types = {f["type"] for f in r["js_findings"]}
-        if "FIREBASE_KEY" in types: score += 3
-        if "API_KEY" in types: score += 2
-        if "SECRET" in types: score += 2
-        if "INTERNAL_HOST" in types: score += 1
-    if "argocd" in r.get("tech", []):
-        if any("/api/v1/clusters" in p or "/api/v1/applications" in p for p in codes_200):
-            score += 5   # ArgoCD unauthenticated = CRITICAL
-    return min(score, 5)
+def test_method_override(host: str, path: str, lock: threading.Lock) -> dict:
+    """Test HTTP method override headers (can bypass WAF/auth on some frameworks)."""
+    overrides = [
+        ("X-HTTP-Method-Override", "DELETE"),
+        ("X-HTTP-Method",          "DELETE"),
+        ("_method",                "DELETE"),
+    ]
+    base_code, _, _ = http(f"https://{host}{path}", follow=False, limit=512, method="GET")
+    for hdr, val in overrides:
+        with lock: time.sleep(DELAY)
+        code, _, body = http(f"https://{host}{path}", method="POST",
+                              headers=[f"{hdr}: {val}",
+                                       "Content-Type: application/x-www-form-urlencoded"],
+                              data="_method=DELETE", follow=False, limit=4096)
+        if code != base_code and code in (200, 204, 202):
+            lead(host, f"METHOD OVERRIDE [{hdr}: {val}]", f"{path} base={base_code} → override={code}")
+            return {"header": hdr, "value": val, "path": path, "code": code}
+    return {}
 
+def test_idor_probe(host: str, path: str, lock: threading.Lock) -> list[dict]:
+    """Single IDOR probe: swap any numeric ID in path for id±1 and id=0."""
+    # Find numeric segment in path
+    match = re.search(r'/(\d+)(?:/|$)', path)
+    if not match: return []
+    orig_id = int(match.group(1))
+    issues = []
+    for probe_id in [max(0, orig_id - 1), orig_id + 1, 0, 99999]:
+        probe_path = path[:match.start(1)] + str(probe_id) + path[match.end(1):]
+        if probe_path == path: continue
+        with lock: time.sleep(DELAY)
+        code, _, body = http(f"https://{host}{probe_path}", follow=False, limit=8192)
+        if code == 200 and len(body) > 50:
+            issues.append({"probe_id": probe_id, "path": probe_path,
+                           "code": code, "body": body[:200]})
+            lead(host, "IDOR PROBE HIT", f"{probe_path} [{code}] len={len(body)}")
+            break  # one confirmation is enough
+    return issues
 
-# ── Main probe ────────────────────────────────────────────────────────────────
-
-def probe_host(host: str, cluster_name: str) -> dict:
-    result: dict = {
-        "host": host, "cluster": cluster_name,
-        "resolved": [], "live": False, "status": 0,
-        "server": "", "tech": [], "paths": {}, "js_findings": [],
-        "cors": [], "graphql": None, "interesting": [], "heuristic_score": 0,
+# ── Main host probe ───────────────────────────────────────────────────────────
+def probe_host(host: str, cluster: str) -> dict:
+    R: dict = {
+        "host": host, "cluster": cluster,
+        "ips": [], "live": False, "code": 0, "server": "", "tech": [],
+        "paths": {}, "js": [], "cors": [], "graphql": None,
+        "argocd": [], "idor": [], "openapi": [], "method_override": {},
+        "firebase_key": {}, "jwt": [], "interesting": [], "score": 0,
     }
 
     ips = dns_resolve(host)
-    if not ips:
-        log(f"  NXDOMAIN {host}", "DNS   ")
-        return result
-    if not all(is_safe_ip(ip) for ip in ips):
-        log(f"  SKIP internal IP {host} → {ips}", "WARN  ")
-        return result
+    if not ips: log(f"  NXDOMAIN {host}", "DNS"); return R
+    if not all(safe_ip(ip) for ip in ips):
+        log(f"  SKIP internal IP {host}", "WARN"); return R
+    R["ips"] = ips
 
-    result["resolved"] = ips
-    log(f"  RESOLVED {host} → {', '.join(ips)}", "DNS   ")
+    lock = _hlock(host)
 
-    lock = get_host_lock(host)
-
-    # ── Base request ──────────────────────────────────────────────────────────
-    with lock:
-        time.sleep(DELAY)
-        code, hdrs, body = curl(f"https://{host}/")
-
+    # ── Base response ─────────────────────────────────────────────────────────
+    with lock: time.sleep(DELAY)
+    code, hdrs, body = http(f"https://{host}/")
     if code == 0:
-        # Try HTTP fallback
-        with lock:
-            time.sleep(DELAY)
-            code, hdrs, body = curl(f"http://{host}/")
+        with lock: time.sleep(DELAY)
+        code, hdrs, body = http(f"http://{host}/")
+    R["code"] = code; R["live"] = code > 0
+    if not R["live"]: log(f"  DEAD {host}", "HTTP"); return R
 
-    result["status"] = code
-    result["live"] = code > 0
-    if not result["live"]:
-        log(f"  DEAD {host}", "HTTP  ")
-        return result
+    R["server"] = hdrs.get("server","")
+    R["tech"]   = detect_tech(hdrs, body)
+    log(f"  [{code}] {host}  srv={R['server'][:25]}  tech={R['tech']}", "HTTP")
 
-    result["server"] = hdrs.get("server", "")
-    result["tech"] = detect_tech(hdrs, body)
-    log(f"  [{code}] {host}  server={result['server'][:30]}  tech={result['tech']}", "HTTP  ")
+    # Adaptive path set
+    paths = list(CORE_PATHS) + CLUSTER_EXTRA.get(cluster, [])
+    if "argocd" in R["tech"] or "argocd" in host: paths = list(set(paths + ARGOCD_PATHS))
+    if "grafana" in R["tech"] or "grafana" in host: paths = list(set(paths + GRAFANA_PATHS))
 
-    # Determine probe path set
-    paths_to_probe = list(CORE_PATHS) + EXTRA_PATHS_BY_CLUSTER.get(cluster_name, [])
-    # Add technology-specific paths
-    if "argocd" in result["tech"] or "argocd-" in host:
-        paths_to_probe = list(set(paths_to_probe + ARGOCD_PATHS))
-    if "grafana" in result["tech"] or "grafana" in host:
-        paths_to_probe += ["/api/dashboards", "/api/datasources", "/api/orgs",
-                           "/api/admin/settings", "/api/plugins"]
-    if "metabase" in result["tech"] or "metabase" in host:
-        paths_to_probe += ["/api/database", "/api/card", "/api/dashboard",
-                           "/api/user", "/api/session/forgot_password"]
+    # ── Path probe ───────────────────────────────────────────────────────────
+    _skip_body = {"<html","<!doctype","framer","not found","404 page"}
+    _interesting_codes = {200,201,204,206,301,302,307,308,400,401,403,405,500}
+    for path in paths:
+        with lock: time.sleep(DELAY)
+        pc, ph, pb = http(f"https://{host}{path}", follow=False, limit=65536)
+        if pc not in _interesting_codes: continue
+        # Filter Framer redirects
+        if pc in (301, 308) and "framer" in ph.get("location","").lower(): continue
+        # Filter boring 200 HTML pages
+        if pc == 200 and any(s in pb[:300].lower() for s in _skip_body):
+            if "json" not in ph.get("content-type",""): continue
 
-    # ── Path enumeration ──────────────────────────────────────────────────────
-    interesting_codes = {200, 201, 204, 206, 301, 302, 307, 308, 400, 401, 403, 405, 500}
-    skip_in_body = {"<html", "<!doctype", "framer", "not found", "404"}
+        entry = {"code": pc, "ct": ph.get("content-type","")[:60],
+                 "len": ph.get("content-length",""), "body": pb[:600]}
+        R["paths"][path] = entry
+        icon = "★" if pc == 200 else ("○" if pc in {401,403} else "·")
+        log(f"  {icon} {pc} {host}{path}", "PATH")
 
-    for path in paths_to_probe:
-        with lock:
-            time.sleep(DELAY)
-            pcode, phdrs, pbody = curl(f"https://{host}{path}", follow=False, body_limit=32768)
+        if pc == 200:
+            # OpenAPI schema → parse and probe endpoints
+            if any(x in path for x in ("swagger","openapi")):
+                ops = test_openapi(host, path, pb, lock)
+                R["openapi"].extend(ops)
+                R["interesting"].append(f"API_SCHEMA:{path} ({len(pb)}B, {len(ops)} endpoints tested)")
 
-        if pcode not in interesting_codes:
-            continue
-        if pcode == 301 or pcode == 308:
-            loc = phdrs.get("location", "")
-            if any(skip in loc.lower() for skip in ["wing.com", "framer"]):
-                continue   # redirect to marketing/Framer — not interesting
+            # OIDC config
+            if "openid-configuration" in path:
+                R["interesting"].append(f"OIDC_CONFIG:{pb[:300]}")
 
-        entry = {
-            "code": pcode,
-            "content_type": phdrs.get("content-type", "")[:60],
-            "length": phdrs.get("content-length", ""),
-            "server": phdrs.get("server", ""),
-            "body_snippet": pbody[:400].strip(),
-            "location": phdrs.get("location", ""),
-        }
+            # JSON body with ID field → IDOR probe
+            if "json" in ph.get("content-type",""):
+                ids = re.findall(r'"id"\s*:\s*(\d+)', pb[:2000])
+                if ids:
+                    idor = test_idor_probe(host, path, lock)
+                    R["idor"].extend(idor)
 
-        # Filter boring 200s (HTML marketing pages)
-        if pcode == 200:
-            if any(s in pbody[:500].lower() for s in skip_in_body):
-                if "application/json" not in entry["content_type"]:
-                    continue
+            # Method override on API endpoints
+            if "/api" in path:
+                mo = test_method_override(host, path, lock)
+                if mo: R["method_override"][path] = mo
 
-        result["paths"][path] = entry
+    # ── ArgoCD specific ───────────────────────────────────────────────────────
+    if "argocd" in R["tech"] or "argocd" in host:
+        R["argocd"] = test_argocd(host, lock)
 
-        icon = "🔴" if pcode == 200 else ("🟡" if pcode in {401, 403} else "  ")
-        log(f"  {icon} {pcode} {host}{path}  [{entry['content_type'][:35]}]", "PATH  ")
+    # ── CORS ─────────────────────────────────────────────────────────────────
+    api_paths = [p for p in R["paths"] if "/api" in p or "/v1" in p]
+    if api_paths:
+        R["cors"] = test_cors(host, api_paths, lock)
 
-        # Immediate flags
-        if pcode == 200:
-            if "json" in entry["content_type"]:
-                result["interesting"].append(f"JSON-200: {path} body={pbody[:200]}")
-            if "swagger" in path or "openapi" in path:
-                result["interesting"].append(f"API-SCHEMA: {path} ({len(pbody)} bytes)")
-                logfind(host, "API SCHEMA EXPOSED", f"{path}")
-            if path in ARGOCD_PATHS and "cluster" in path:
-                result["interesting"].append(f"ARGOCD-UNAUTH: {path} → 200 !!!")
-                logfind(host, "ARGOCD UNAUTHENTICATED CLUSTER API", f"{path}")
-
-        if pcode == 200 and "openid-configuration" in path:
-            result["interesting"].append(f"OIDC-CONFIG: {pbody[:300]}")
-            logfind(host, "OIDC CONFIG EXPOSED", "")
-
-        if path == "/graphql" and pcode in {200, 400}:
-            result["interesting"].append(f"GRAPHQL: {path} [{pcode}]")
-
-    # ── CORS check ────────────────────────────────────────────────────────────
-    result["cors"] = check_cors(host, list(result["paths"].keys()) or ["/api/v1/"], lock)
-
-    # ── GraphQL introspection ─────────────────────────────────────────────────
-    if result["paths"].get("/graphql") or "graphql" in body.lower()[:3000]:
-        result["graphql"] = check_graphql(host, lock)
+    # ── GraphQL ───────────────────────────────────────────────────────────────
+    gql_paths = [p for p in R["paths"] if "graphql" in p or "gql" in p]
+    if not gql_paths and body and "graphql" in body.lower()[:4000]:
+        gql_paths = ["/graphql"]
+    for gp in gql_paths[:2]:
+        res = test_graphql(host, gp, lock)
+        if res.get("introspection") or res.get("alive"):
+            R["graphql"] = res; break
 
     # ── JS mining ─────────────────────────────────────────────────────────────
     if code == 200 and body:
-        result["js_findings"] = mine_js(host, body, lock)
-        for f in result["js_findings"]:
-            if f["type"] in {"FIREBASE_KEY", "API_KEY", "SECRET", "GITHUB_TOKEN"}:
-                logfind(host, f"JS CREDENTIAL FOUND: {f['type']}", f["value"][:40])
+        R["js"] = mine_js(host, body, lock)
+        # Firebase key validation
+        fb_keys = [f["value"] for f in R["js"] if f["type"] == "FIREBASE_KEY"]
+        for key in fb_keys[:2]:
+            val = validate_firebase_key(key, host)
+            R["firebase_key"][key[:10]+"..."] = val
+            if val.get("valid"):
+                lead(host, "FIREBASE KEY VALID", key[:20]+"...")
+        # JWT decode
+        for f in R["js"]:
+            if f["type"] == "JWT":
+                dec = decode_jwt(f["value"])
+                if dec and dec.get("flags"):
+                    R["jwt"].append(dec)
+                    lead(host, "JWT WEAK", str(dec["flags"]))
 
-    result["heuristic_score"] = score_host_heuristic(result)
-    return result
+    # ── Heuristic score ───────────────────────────────────────────────────────
+    s = 0
+    p200 = [p for p,v in R["paths"].items() if v["code"] == 200]
+    if any("/api" in p for p in p200): s += 2
+    if R["graphql"] and R["graphql"].get("introspection"): s += 3
+    if any(c["sev"]=="HIGH" for c in R["cors"]): s += 3
+    if any(c["sev"]=="MEDIUM" for c in R["cors"]): s += 1
+    if any(f["type"] in {"FIREBASE_KEY","API_KEY","SECRET"} for f in R["js"]): s += 2
+    if any(f.get("valid") for f in R["firebase_key"].values()): s += 3
+    if R["argocd"] and any(a["code"]==200 for a in R["argocd"]): s += 5
+    if R["idor"]: s += 3
+    if R["openapi"] and len(R["openapi"]) > 2: s += 2
+    if R["method_override"]: s += 1
+    if R["jwt"]: s += 2
+    R["score"] = min(s, 5)
+    return R
 
+# ── Claude CLI analysis ───────────────────────────────────────────────────────
+_CLAUDE_SYS = """\
+You are an elite authorized bug bounty hunter. Analyze recon findings for Google/Alphabet VRP.
 
-# ── Cluster runner ────────────────────────────────────────────────────────────
+SUBMISSION GATE — a finding must pass ALL of:
+1. Attacker gain is CONCRETE: account access, another user's data, RCE, SSRF to internal, auth bypass
+2. NOT intended behavior
+3. Fix Test: vendor would change code to fix it
+4. Reproduced with minimal PoC
+5. In scope, not a known dup
 
-def run_cluster(cluster: dict) -> list[dict]:
-    name = cluster["name"]
-    log(f"{'='*60}", "CLUST ")
-    log(f"CLUSTER START: {name} (TIER{cluster['tier']}) — {cluster['description']}", "CLUST ")
-    log(f"{'='*60}", "CLUST ")
+HARD REJECT (skip unless chained): self-XSS, missing security headers, software version disclosure,
+login page lacks lockout, SPF/DKIM misconfig, subdomain takeover without cookie/OAuth proof,
+open redirect without token exfil, rate limit absent on non-sensitive endpoint.
 
-    # Collect hosts: listed + brute DNS + optional crt.sh
-    all_hosts = list(cluster["hosts"])
+CHAIN RULE: Low + Low can equal High if each link is CONFIRMED and testable.
 
-    for root in cluster.get("root_domains", []):
-        wl = cluster.get("extra_wordlist", [])
-        brute = brute_dns(root, wl)
-        for h in brute:
-            if h not in all_hosts:
-                all_hosts.append(h)
+CONSTRAINTS on the hunter:
+- No RFC1918/IMDS/localhost probing allowed
+- No credential brute-force
+- OOB confirmation via interactsh only
+- No destructive writes to real data"""
 
-        ct_hosts = crt_sh_subdomains(root)
-        for h in ct_hosts:
-            if h not in all_hosts and root in h:
-                all_hosts.append(h)
+_CLAUDE_PROMPT = """\
+CLUSTER: {cluster} (TIER{tier}) — {desc}
 
-    log(f"Total hosts to probe: {len(all_hosts)}", "CLUST ")
+RECON DATA (highest-scored hosts first):
+{host_data}
 
-    probe_results: list[dict] = []
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(probe_host, h, name): h for h in all_hosts}
-        for fut in as_completed(futures):
-            host = futures[fut]
-            try:
-                res = fut.result()
-                probe_results.append(res)
-            except Exception as e:
-                log(f"  ERROR probing {host}: {e}", "ERR   ")
+FOR EACH HOST with score ≥ 2:
+1. VALIDATE: does any finding pass the full submission gate above? Say YES/NO + reason.
+2. SCORE: 0-5 confidence this yields a payable bug this session (5=near-certain High+)
+3. BUG CLASS: single most plausible class given the evidence
+4. VERIFY CMD: exact `curl` command to confirm in the next 10 minutes
+5. CHAIN: if standalone is Low, what chain step elevates it? Is it testable?
+6. DECISION: REPORT_NOW / PURSUE / HOLD / DROP
 
-    live = [r for r in probe_results if r["live"]]
-    log(f"Cluster {name}: {len(live)}/{len(all_hosts)} live hosts", "CLUST ")
+For ArgoCD unauthenticated access → auto-escalate to CRITICAL, REPORT_NOW.
+For Firebase key validated active → REPORT_NOW.
+For CORS HIGH (reflected + credentials) → REPORT_NOW.
+For GraphQL introspection open → PURSUE (extract mutations, test IDOR next).
 
-    # Write raw report
-    out_dir = RESULTS_BASE / name / "02-surface"
+Respond as VALID JSON only (no markdown, no prose outside JSON):
+{
+  "cluster_score": 0-5,
+  "summary": "one sentence",
+  "findings": [
+    {
+      "host": "...",
+      "score": 0-5,
+      "bug_class": "...",
+      "severity": "Critical|High|Medium|Low|Info",
+      "decision": "REPORT_NOW|PURSUE|HOLD|DROP",
+      "rationale": "...",
+      "verify_cmd": "curl ...",
+      "chain_note": "..."
+    }
+  ],
+  "top_priority": "host + exact next action in one sentence"
+}"""
+
+def _claude_available() -> bool:
+    try:
+        r = subprocess.run(["claude", "--version"], capture_output=True, text=True, timeout=5)
+        return r.returncode == 0
+    except FileNotFoundError:
+        return False
+
+def ask_claude(cluster: dict, host_results: list[dict]) -> dict | None:
+    if not _claude_available():
+        log("claude CLI not found — skipping AI analysis", "WARN")
+        return None
+
+    # Build host summaries (only live hosts with score ≥ 1)
+    summaries = []
+    for r in sorted(host_results, key=lambda x: -x["score"]):
+        if not r["live"]: continue
+        p200 = [p for p,v in r["paths"].items() if v["code"] == 200]
+        p401 = [p for p,v in r["paths"].items() if v["code"] == 401]
+        p403 = [p for p,v in r["paths"].items() if v["code"] == 403]
+        summaries.append(
+            f"HOST: {r['host']}  score={r['score']}\n"
+            f"  tech={r['tech']}  server={r['server']}\n"
+            f"  paths_200={p200}\n"
+            f"  paths_401={p401}\n"
+            f"  paths_403={p403}\n"
+            f"  cors={[c['sev']+'@'+c['origin'] for c in r['cors']]}\n"
+            f"  graphql={r['graphql']}\n"
+            f"  argocd_unauth={[a for a in r['argocd'] if a.get('code')==200]}\n"
+            f"  firebase_key_valid={any(v.get('valid') for v in r['firebase_key'].values())}\n"
+            f"  openapi_200_endpoints={len(r['openapi'])}\n"
+            f"  idor_hits={r['idor']}\n"
+            f"  method_override={bool(r['method_override'])}\n"
+            f"  jwt_flags={[j.get('flags') for j in r['jwt']]}\n"
+            f"  js_types={list({f['type'] for f in r['js']})}\n"
+            f"  js_samples={[f['type']+':'+f['value'][:40] for f in r['js'][:8]]}\n"
+            f"  interesting={r['interesting'][:5]}"
+        )
+
+    if not summaries:
+        return None
+
+    prompt = _CLAUDE_PROMPT.format(
+        cluster=cluster["name"], tier=cluster["tier"],
+        desc=cluster["desc"], host_data="\n\n".join(summaries)
+    )
+
+    # Write prompt to temp file (avoids shell escaping issues)
+    tmp = Path(f"/tmp/claude-prompt-{cluster['name']}.txt")
+    tmp.write_text(_CLAUDE_SYS + "\n\n" + prompt)
+
+    log(f"Calling `claude -p` for {cluster['name']} analysis…", "CLAUDE")
+    try:
+        r = subprocess.run(
+            ["claude", "-p", f"$(cat {tmp})"],
+            capture_output=True, text=True, timeout=120, shell=False
+        )
+        # Fallback: pass via stdin
+        if not r.stdout.strip():
+            r = subprocess.run(
+                ["claude", "--print"],
+                input=_CLAUDE_SYS + "\n\n" + prompt,
+                capture_output=True, text=True, timeout=120
+            )
+        text = r.stdout.strip()
+    except subprocess.TimeoutExpired:
+        log("Claude timed out", "WARN"); return None
+    except Exception as e:
+        log(f"Claude error: {e}", "WARN"); return None
+
+    # Extract JSON from response
+    try:
+        # Try direct parse
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Strip markdown fences and retry
+        text2 = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
+        # Extract first {...} block
+        m = re.search(r'\{[\s\S]*\}', text2)
+        if m:
+            try: return json.loads(m.group())
+            except Exception: pass
+        # Save raw response for debugging
+        (RESULTS / cluster["name"] / "02-surface" / "claude-raw.txt").write_text(text)
+        log("Claude response not parseable as JSON — saved raw to claude-raw.txt", "WARN")
+        return None
+
+# ── Report writer ─────────────────────────────────────────────────────────────
+def write_report(cluster: dict, results: list[dict], claude: dict | None) -> list[dict]:
+    name    = cluster["name"]
+    out_dir = RESULTS / name / "02-surface"
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    md_lines = [
-        f"# Deep Recon — {name}", f"Generated: {ts}",
-        f"Live: {len(live)}/{len(all_hosts)}  Tier: {cluster['tier']}", "",
-        "## Live Hosts",
-    ]
+    live    = [r for r in results if r["live"]]
     all_leads: list[dict] = []
 
-    for r in sorted(live, key=lambda x: -x["heuristic_score"]):
-        md_lines += [
-            f"\n### {r['host']}  [score={r['heuristic_score']}]",
-            f"- Status: {r['status']}  IPs: {', '.join(r['resolved'])}",
-            f"- Server: {r['server']}  Tech: {', '.join(r['tech']) or '?'}",
-        ]
+    md = [f"# Deep Recon — {name}", f"Generated: {ts}",
+          f"Live: {len(live)}/{len(results)}  Tier: {cluster['tier']}", "",
+          f"> {cluster['desc']}", "", "## Findings by Host"]
+
+    for r in sorted(live, key=lambda x: -x["score"]):
+        md += [f"\n### `{r['host']}`  score={r['score']}/5",
+               f"- **IPs**: {', '.join(r['ips'])}",
+               f"- **Server**: {r['server']}  **Tech**: {', '.join(r['tech']) or 'unknown'}"]
+
+        p200 = {p: v for p, v in r["paths"].items() if v["code"] == 200}
+        if p200:
+            md.append("- **200 paths**:")
+            for p, v in p200.items():
+                md.append(f"  - `{p}` `{v['ct'][:40]}`")
+                if v.get("body") and "json" in v.get("ct",""):
+                    md.append(f"    ```{v['body'][:300]}```")
+
+        p401 = [p for p,v in r["paths"].items() if v["code"] == 401]
+        p403 = [p for p,v in r["paths"].items() if v["code"] == 403]
+        if p401: md.append(f"- **401 (auth required)**: {', '.join(p401)[:200]}")
+        if p403: md.append(f"- **403 (forbidden)**:     {', '.join(p403)[:200]}")
+
         if r["cors"]:
-            md_lines.append(f"- **CORS: {r['cors']}**")
+            for c in r["cors"]:
+                md.append(f"- ⚠️ **CORS {c['sev']}**: acao=`{c['acao']}` acac=`{c['acac']}` origin=`{c['origin']}`")
         if r["graphql"]:
-            md_lines.append(f"- **GRAPHQL: {r['graphql']}**")
-        hit200 = {p: v for p, v in r["paths"].items() if v["code"] == 200}
-        if hit200:
-            md_lines.append("- 200 paths: " + ", ".join(f"`{p}`" for p in hit200))
-        if r["js_findings"]:
-            md_lines.append("- **JS findings:**")
-            for f in r["js_findings"][:15]:
-                md_lines.append(f"  - `{f['type']}` `{f['value'][:80]}`")
+            md.append(f"- ⚠️ **GraphQL**: {r['graphql']}")
+        if r["argocd"]:
+            unauth = [a for a in r["argocd"] if a.get("code")==200]
+            if unauth: md.append(f"- 🚨 **ARGOCD UNAUTH**: {[a['path'] for a in unauth]}")
+        if r["idor"]: md.append(f"- ⚠️ **IDOR probe hit**: {r['idor']}")
+        if r["openapi"]: md.append(f"- ⚠️ **OpenAPI endpoints 200**: {len(r['openapi'])} paths")
+        if r["firebase_key"]:
+            for k, v in r["firebase_key"].items():
+                if v.get("valid"): md.append(f"- 🚨 **FIREBASE KEY VALID**: `{k}`")
+        if r["jwt"]: md.append(f"- ⚠️ **JWT flags**: {[j.get('flags') for j in r['jwt']]}")
+        if r["js"]:
+            hi = [f for f in r["js"] if f["type"] in {"FIREBASE_KEY","API_KEY","SECRET","GITHUB_TOKEN","INTERNAL_HOST"}]
+            if hi:
+                md.append("- **JS credentials/hosts**:")
+                for f in hi[:10]: md.append(f"  - `{f['type']}` `{f['value'][:80]}`")
         for i in r["interesting"]:
-            md_lines.append(f"- ⚠️ `{i}`")
-            all_leads.append({"host": r["host"], "cluster": name, "finding": i,
-                               "score": r["heuristic_score"]})
+            md.append(f"- 📌 `{i}`")
+            all_leads.append({"host": r["host"], "cluster": name,
+                              "finding": i, "score": r["score"]})
 
-    (out_dir / "deep-recon.md").write_text("\n".join(md_lines))
+    if claude:
+        md += ["", "## Claude Analysis", f"**Cluster score**: {claude.get('cluster_score')}",
+               f"**Summary**: {claude.get('summary','')}",
+               f"**Top priority**: {claude.get('top_priority','')}",""]
+        for f in claude.get("findings",[]):
+            decision = f.get("decision","")
+            icon = "🚨" if decision == "REPORT_NOW" else ("🟡" if decision == "PURSUE" else "⬜")
+            md.append(f"\n#### {icon} `{f.get('host','')}` — {f.get('bug_class','')} [{f.get('severity','')}] → **{decision}**")
+            md.append(f"- Rationale: {f.get('rationale','')}")
+            if f.get("verify_cmd"):
+                md.append(f"- Verify: `{f['verify_cmd']}`")
+            if f.get("chain_note"):
+                md.append(f"- Chain: {f['chain_note']}")
+            if decision in ("REPORT_NOW","PURSUE"):
+                all_leads.append({"host": f["host"], "cluster": name,
+                                  "finding": f["bug_class"], "severity": f.get("severity"),
+                                  "decision": decision, "score": f.get("score",0),
+                                  "verify_cmd": f.get("verify_cmd","")})
+        (out_dir / "claude-analysis.json").write_text(json.dumps(claude, indent=2))
 
-    # Save raw JSON (gitignored dir)
-    raw_dir = RESULTS_BASE / name / "03-candidates"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    (raw_dir / "recon-raw.json").write_text(json.dumps(probe_results, indent=2))
+    (out_dir / "deep-recon.md").write_text("\n".join(md))
+    log(f"Report → {out_dir / 'deep-recon.md'}", "DONE")
 
-    # ── Claude analysis ───────────────────────────────────────────────────────
-    claude_result: dict | None = None
-    if ANTHROPIC_KEY and live:
-        log("Calling Claude for lead analysis…", "CLAUDE")
-        host_summaries = []
-        for r in sorted(live, key=lambda x: -x["heuristic_score"])[:8]:
-            paths_200 = [p for p, v in r["paths"].items() if v["code"] == 200]
-            paths_401 = [p for p, v in r["paths"].items() if v["code"] == 401]
-            paths_403 = [p for p, v in r["paths"].items() if v["code"] == 403]
-            host_summaries.append(
-                f"HOST: {r['host']}\n"
-                f"  status={r['status']} server={r['server']} tech={r['tech']}\n"
-                f"  paths_200={paths_200}\n"
-                f"  paths_401={paths_401}\n"
-                f"  paths_403={paths_403}\n"
-                f"  cors={r['cors']}\n"
-                f"  graphql={r['graphql']}\n"
-                f"  js_findings={[f['type']+':'+f['value'][:40] for f in r['js_findings'][:10]]}\n"
-                f"  interesting={r['interesting'][:5]}\n"
-                f"  heuristic_score={r['heuristic_score']}"
-            )
-        prompt = CLAUDE_PROMPT_TEMPLATE.format(
-            cluster_name=name, tier=cluster["tier"],
-            description=cluster["description"],
-            host_summaries="\n\n".join(host_summaries),
-        )
-        claude_result = call_claude(prompt)
-        if claude_result:
-            log(f"Claude cluster_score={claude_result.get('cluster_score')}", "CLAUDE")
-            log(f"Claude priority: {claude_result.get('next_session_priority')}", "CLAUDE")
-            for th in claude_result.get("top_hosts", []):
-                score = th.get("score", 0)
-                if score >= 3:
-                    logfind(th["host"], f"Claude [{th['severity_estimate']}] {th['bug_class']}",
-                            th.get("rationale", "")[:80])
-            (out_dir / "claude-analysis.json").write_text(json.dumps(claude_result, indent=2))
-            (out_dir / "claude-analysis.md").write_text(
-                f"# Claude Analysis — {name}\nGenerated: {ts}\n\n```json\n"
-                + json.dumps(claude_result, indent=2) + "\n```\n"
-            )
-        else:
-            log("Claude unavailable or returned no result; using heuristic scores only", "WARN  ")
+    # Save raw results (gitignored)
+    raw = RESULTS / name / "03-candidates"
+    raw.mkdir(parents=True, exist_ok=True)
+    (raw / "recon-raw.json").write_text(json.dumps(results, indent=2))
+    return all_leads
 
-    log(f"CLUSTER DONE: {name}  leads={len(all_leads)}", "CLUST ")
-    return all_leads, claude_result
+# ── Cluster runner ────────────────────────────────────────────────────────────
+def run_cluster(cluster: dict) -> list[dict]:
+    name = cluster["name"]
+    log(f"{'═'*60}", "CLUST")
+    log(f"START {name.upper()} (TIER{cluster['tier']}) — {cluster['desc']}", "CLUST")
+    log(f"{'═'*60}", "CLUST")
 
+    # Expand host list
+    all_hosts = list(cluster["hosts"])
+    for root in cluster.get("roots", []):
+        for h in brute_dns(root, cluster.get("brute_words",[])):
+            if h not in all_hosts: all_hosts.append(h)
+        for h in crt_sh(root):
+            if h not in all_hosts and root in h: all_hosts.append(h)
+    log(f"Total hosts: {len(all_hosts)}", "CLUST")
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+    results: list[dict] = []
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        fut_map = {pool.submit(probe_host, h, name): h for h in all_hosts}
+        for fut in as_completed(fut_map):
+            host = fut_map[fut]
+            try: results.append(fut.result())
+            except Exception as e:
+                log(f"ERROR {host}: {e}", "ERR")
+                results.append({"host": host, "cluster": name, "live": False,
+                                 "score": 0, "ips":[], "code":0, "server":"",
+                                 "tech":[], "paths":{}, "js":[], "cors":[],
+                                 "argocd":[], "idor":[], "openapi":[],
+                                 "method_override":{}, "firebase_key":{},
+                                 "graphql": None, "jwt":[], "interesting":[]})
 
+    live = [r for r in results if r["live"]]
+    log(f"Live: {len(live)}/{len(all_hosts)}", "CLUST")
+
+    claude_result = ask_claude(cluster, results)
+    leads = write_report(cluster, results, claude_result)
+    log(f"DONE {name} — leads={len(leads)}", "CLUST")
+    return leads
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 def main():
-    LOG_PATH.parent.mkdir(exist_ok=True)
-    log("="*60, "INIT  ")
-    log(f"deep-recon-orchestrator v2 — {datetime.datetime.now().isoformat()}", "INIT  ")
-    log(f"Repo: {REPO}", "INIT  ")
-    log(f"Clusters: {[c['name'] for c in CLUSTERS]}", "INIT  ")
-    log(f"Claude: {'enabled (' + CLAUDE_MODEL + ')' if ANTHROPIC_KEY else 'DISABLED (no ANTHROPIC_API_KEY)'}", "INIT  ")
-    log(f"Workers: {MAX_WORKERS}  Delay: {DELAY}s  Timeout: {TIMEOUT}s", "INIT  ")
-    log("="*60, "INIT  ")
+    log("="*60, "INIT")
+    log(f"deep-recon v3  {datetime.datetime.now().isoformat()}", "INIT")
+    log(f"Repo: {REPO}", "INIT")
+    log(f"Claude CLI: {'available' if _claude_available() else 'NOT FOUND — heuristic-only mode'}", "INIT")
+    log(f"Workers:{MAX_WORKERS}  Delay:{DELAY}s  Timeout:{TIMEOUT}s", "INIT")
+    log("="*60, "INIT")
 
-    master_leads: list[dict] = []
-    master_claude: list[dict] = []
-
+    all_leads: list[dict] = []
     for cluster in sorted(CLUSTERS, key=lambda c: c["priority"]):
         try:
-            leads, claude_out = run_cluster(cluster)
-            for l in leads:
-                l["cluster"] = cluster["name"]
-            master_leads.extend(leads)
-            if claude_out:
-                claude_out["cluster"] = cluster["name"]
-                master_claude.append(claude_out)
+            leads = run_cluster(cluster)
+            all_leads.extend(leads)
         except Exception as e:
-            log(f"Cluster {cluster['name']} crashed: {e}", "ERR   ")
+            log(f"Cluster {cluster['name']} crashed: {e}", "ERR")
 
-    # ── Final master report ───────────────────────────────────────────────────
-    elapsed = str(datetime.datetime.now() - start_ts).split(".")[0]
-    print("\n" + "="*70)
-    print(f"RECON COMPLETE — {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} — {elapsed}")
-    print("="*70)
+    # ── Final summary ─────────────────────────────────────────────────────────
+    elapsed = str(datetime.datetime.now() - _t0).split(".")[0]
+    print("\n" + "═"*72)
+    print(f"  RECON COMPLETE — {datetime.datetime.now():%Y-%m-%d %H:%M} — {elapsed}")
+    print("═"*72)
 
-    scored = sorted(master_leads, key=lambda x: -x.get("score", 0))
-    if scored:
-        print(f"\n{'RANK':<5} {'SCORE':<6} {'HOST':<40} FINDING")
-        print("-"*100)
-        for i, l in enumerate(scored[:20], 1):
-            print(f"{i:<5} {l.get('score',0):<6} {l.get('host',''):<40} {l.get('finding','')[:60]}")
+    # Prioritize by score, then by decision
+    _decision_rank = {"REPORT_NOW": 5, "PURSUE": 4, "HOLD": 2, "DROP": 0}
+    ranked = sorted(all_leads,
+                    key=lambda x: (x.get("score",0) * 2 + _decision_rank.get(x.get("decision",""),1)),
+                    reverse=True)
+
+    if ranked:
+        print(f"\n{'#':<4} {'DEC':<12} {'SEV':<8} {'SCORE':<6} {'HOST':<35} FINDING")
+        print("─"*110)
+        for i, l in enumerate(ranked[:25], 1):
+            dec  = l.get("decision", "—")[:11]
+            sev  = l.get("severity","—")[:7]
+            scr  = str(l.get("score",0))
+            host = l.get("host","")[:34]
+            find = l.get("finding","")[:55]
+            print(f"{i:<4} {dec:<12} {sev:<8} {scr:<6} {host:<35} {find}")
+        print()
+        report_now = [l for l in ranked if l.get("decision") == "REPORT_NOW"]
+        if report_now:
+            print(f"\n🚨 REPORT NOW ({len(report_now)} findings):")
+            for l in report_now:
+                print(f"   [{l['cluster']}] {l['host']} — {l['finding']}")
+                if l.get("verify_cmd"):
+                    print(f"   └─ {l['verify_cmd'][:100]}")
     else:
-        print("No leads surfaced in this run.")
+        print("  No leads surfaced this run.")
 
-    if master_claude:
-        print("\nCLAUDE TOP PRIORITIES:")
-        for c in master_claude:
-            print(f"\n  [{c.get('cluster','?')}] cluster_score={c.get('cluster_score')}")
-            print(f"  → {c.get('next_session_priority','')}")
-            for th in c.get("top_hosts", [])[:2]:
-                if th.get("score", 0) >= 3:
-                    print(f"    [{th.get('severity_estimate')}] {th.get('host')} — {th.get('bug_class')}")
-                    print(f"    CMD: {th.get('verify_command','')[:100]}")
+    print(f"\n  Full log:    {LOG_PATH}")
+    print(f"  Reports:     {RESULTS}/<cluster>/02-surface/deep-recon.md")
+    print("═"*72)
 
-    print(f"\nFull log: {LOG_PATH}")
-    print("="*70)
-
-    # Save master leads
-    ml_path = RESULTS_BASE / "MASTER-LEADS.json"
+    ml = RESULTS / "MASTER-LEADS.json"
     existing = []
-    if ml_path.exists():
-        try: existing = json.loads(ml_path.read_text())
+    if ml.exists():
+        try: existing = json.loads(ml.read_text())
         except Exception: pass
-    existing.extend(scored)
-    ml_path.write_text(json.dumps(existing, indent=2))
-    log(f"Master leads saved: {ml_path}  ({len(scored)} new)", "DONE  ")
-
+    existing.extend(ranked)
+    ml.write_text(json.dumps(existing, indent=2))
+    log(f"Master leads → {ml}  ({len(ranked)} new)", "DONE")
 
 if __name__ == "__main__":
     main()
