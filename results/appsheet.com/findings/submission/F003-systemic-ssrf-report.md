@@ -437,6 +437,15 @@ a different bug class (CWE-502), not SSRF — noted as context only.
 - No GCP metadata token was retrieved. IMDS testing stopped at TCP-reachability (OData
   session, documented in F002 standalone). No internal-range redirect chaining was
   performed on either surface.
+- **Cross-scheme redirect (HTTPS→HTTP) tested and confirmed blocked on both surfaces
+  (2026-06-19).** A redirect server was placed at the OOB listener URL; both the OData
+  client and Apigee client received the 302 response but did not follow it to the
+  plain-HTTP destination. The OData client returns an "OData web request error (Found)"
+  error; the Apigee client returns "Apigee error code: Found: Found" — in both cases the
+  HTTP 302 status code is reflected in the user-facing error message (itself a minor
+  information-disclosure). IMDS escalation via redirect is therefore not currently
+  confirmed from attacker infrastructure; Google should evaluate the GCP metadata
+  endpoint's HTTPS accessibility from the AppSheet backend fleet directly.
 - The Apigee connector hit (Surface 2) may overlap with the prior fixed Apigee report.
   We flag this explicitly; triage should determine whether Surface 2 is a new code path
   or a regression and route accordingly. Surface 1 (OData) is definitively novel
