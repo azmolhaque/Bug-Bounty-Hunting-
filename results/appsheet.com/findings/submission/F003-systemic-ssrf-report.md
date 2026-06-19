@@ -244,12 +244,28 @@ type is, by default, a fresh instance of the same SSRF root cause.
 | 9 | Internal infrastructure topology leaked via `Via` header (Surface 2) | **Confirmed — proxy name, GCP region, service id exposed** |
 | 10 | IMDS token read / GCP service-account compromise | **NOT attempted** |
 
-**Real-world impact:** any credentials a user enters into either connector form are
-forwarded to whatever URL is configured. In a phishing scenario, an attacker distributes
-a connector "template" pointing at an attacker server — victims who click "Test"/"Validate"
-hand over their OData credentials or Apigee API key with no further interaction. The
-systemic nature means this attack surface extends to every connector type that has not
-been individually audited.
+**Confirmed impact (attacker's own account — no victim interaction, UI:N):**
+The attacker configures their own AppSheet account's connector with an attacker-controlled
+OOB URL and clicks Test/Validate. AppSheet's backend makes an unfiltered server-side
+HTTP fetch from a GCP-origin IP to the attacker's server. What is forwarded in this path
+are the attacker's *own* credentials (entered by the attacker into the form) — confirming
+the SSRF mechanism and demonstrating that any credentials entered into these forms are
+unconditionally forwarded to whatever URL is supplied. Additionally, the attacker receives
+AppSheet's internal `Traceparent` trace headers (infrastructure telemetry leak) and can
+probe internal GCP network ranges including the IMDS endpoint `169.254.169.254` (confirmed
+TCP-reachable via OData connector in a prior session). The `Via` header on Surface 2 also
+exposes internal proxy service names and GCP region. This path requires no victim.
+
+**Additional attack path (phishing — UI:R, same severity):**
+An attacker distributes a connector "template" pointing at an attacker-controlled URL.
+A victim who imports and clicks Test/Validate in their own account forwards *their* OData
+username/password or Apigee API key to the attacker's server with no further interaction.
+This path elevates the credential-theft impact beyond self-use. Note that the CVSS vector
+below is scored on the confirmed UI:N path; the phishing path would be scored UI:R at
+equivalent confidentiality impact.
+
+The systemic nature means this attack surface extends to every connector type that has not
+been individually audited — audited connectors have each been found vulnerable.
 
 ---
 
@@ -262,14 +278,13 @@ been individually audited.
 | Attack Vector | Network | Triggered remotely via the AppSheet web UI |
 | Attack Complexity | Low | Single form submission per surface |
 | Privileges Required | Low | Free, authenticated AppSheet account |
-| User Interaction | None | No victim interaction for the self-SSRF path |
+| User Interaction | None | Scored on the confirmed self-SSRF path: attacker uses their own account, supplies their own OOB URL, triggers Test/Validate — no victim required. An alternative phishing path (attacker shares a connector template; victim triggers it in their own account) would score UI:R at the same severity. |
 | Scope | Changed | Vulnerable component exposes AppSheet's internal GCP backend network |
-| Confidentiality | High | Confirmed exfiltration of user-entered credentials (Basic Auth or API key) and internal trace headers to attacker-controlled host across two surfaces |
+| Confidentiality | High | Anchored to the UI:N path: confirmed GCP-origin server-side fetch to arbitrary attacker-controlled URL; confirmed IMDS endpoint TCP-reachability (169.254.169.254); confirmed exfiltration of internal W3C Traceparent trace IDs and Squid proxy topology (Via header) on both surfaces. Credential forwarding (Basic Auth on Surface 1, API key on Surface 2) is demonstrated with attacker's own test credentials — confirming the mechanism unconditionally forwards whatever is in the form field. |
 | Integrity | None | No data modification demonstrated |
 | Availability | None | No availability impact demonstrated |
 
-*Note: this score covers the confirmed SSRF + credential-forwarding impact. It does not
-claim IMDS token retrieval, which was not attempted.*
+*Note on scoring: UI:N is anchored to the self-SSRF path (attacker controls both their account and the OOB URL). C:H is justified by confirmed IMDS TCP-reachability, internal Traceparent + Squid proxy topology leakage, and the unconditional credential-forwarding mechanism — IMDS token retrieval was not attempted. The phishing path (victim loads attacker's connector template) represents a secondary attack vector that would score UI:R at equivalent C:H.*
 
 ---
 
