@@ -73,7 +73,7 @@ unset _gf_comp
 # ─── 5. Bug Bounty Workflow ─────────────────────────────────────
 
 # hunt <target.com> — open/attach a persistent tmux session for that target
-hunt() {
+unalias hunt 2>/dev/null; hunt() {
   local target="${1:?Usage: hunt <target.com>}"
   local session="hunt-$(echo "$target" | tr '.' '-')"
   if tmux has-session -t "$session" 2>/dev/null; then
