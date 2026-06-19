@@ -402,3 +402,31 @@ endpoint URL code path but not the OpenAPI Spec URL validation code path. Either
 
 **Current status: F003 (systemic) is PRIMARY submission. F002 (OData standalone) is
 fallback. Submit F003 to bughunters.google.com immediately.**
+
+---
+
+## Session 8 — Surface 3 Confirmed + F003 Submitted (2026-06-19)
+
+**T5 — Cloud Database connector (MySQL), TCP-layer SSRF via DNS oracle:**
+- Server field: `d8qjsaa69r8bl9bvgga06dddkcnydprf7.oast.pro`
+- 15 DNS queries (A+AAAA) from Google resolver fleet (172.217.46.x, 192.178.118.x, AS15169)
+- Timestamps: 13:05:04–13:05:08 UTC, 2026-06-19
+- TCP:3306 attempted → "Failed to connect to database" (Pi behind NAT, DNS oracle sufficient)
+- SSL Mode: None confirmed — plaintext MySQL handshake would expose credentials to attacker
+- 8 DB types (SQLServer, MySQL, Postgres, DynamoDB, MariaDB, Redshift, Oracle, BigQuery) share the same unfiltered Server field
+- EGRESS-GAP confirmed. Added to F003 as Surface 3.
+
+**Pre-submission reconfirmation (2026-06-19):**
+- Surface 1 (OData v2+v3+v4): reconfirmed, GCP IPs 35.185.223.113 + 35.203.182.241, 10:58–59 UTC
+- Surface 2 (Apigee OpenAPI Spec): reconfirmed, GCP IP 8.231.222.130 (Squid proxy), 11:01 UTC
+- Cross-scheme redirect (HTTPS→HTTP) confirmed blocked on Surfaces 1 and 2
+
+**F003 SUBMITTED to Google VRP — 2026-06-20 00:55 UTC**
+- Issue tracker: #525815004
+- Title: "AppSheet: Systemic SSRF — 3 surfaces (OData, Apigee OpenAPI Spec, Cloud Database) send unfiltered GCP-origin requests to attacker hosts, forwarding credentials and leaking internal infrastructure"
+- Program: Google VRP
+- URL: https://www.appsheet.com/Account/ApigeeAuthInfo
+- Severity: High (CVSS 3.1 7.2, AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N)
+- Initial priority: P4 (standard for new VRP submissions; awaiting triage)
+- Attachments: ATT1–ATT4 (standalone evidence documents for each surface)
+- Status: AWAITING TRIAGE
