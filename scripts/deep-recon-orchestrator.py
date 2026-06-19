@@ -223,12 +223,27 @@ def _hlock(host: str) -> threading.Lock:
         return _hlocks[host]
 
 def dns_resolve(host: str) -> list[str]:
+    """Resolve a host; prefer IPv4 (Pi may have no IPv6 route to internet)."""
+    ips: list[str] = []
+    # Try IPv4 first
     try:
-        return list({r[4][0] for r in socket.getaddrinfo(host, 443, 0, socket.SOCK_STREAM)})
+        v4 = [r[4][0] for r in socket.getaddrinfo(host, 443, socket.AF_INET, socket.SOCK_STREAM)]
+        ips.extend(v4)
     except socket.gaierror:
-        return []
+        pass
+    # Fall back to IPv6 only if no IPv4
+    if not ips:
+        try:
+            v6 = [r[4][0] for r in socket.getaddrinfo(host, 443, socket.AF_INET6, socket.SOCK_STREAM)]
+            ips.extend(v6)
+        except socket.gaierror:
+            pass
+    return list(dict.fromkeys(ips))
 
 def safe_ip(ip: str) -> bool:
+    # Allow IPv6 public addresses; block RFC1918/IMDS
+    if ":" in ip:
+        return not ip.startswith(("::1", "fc", "fd"))
     try:
         p = [int(x) for x in ip.split(".")]
         if p[0] in (10, 127): return False
@@ -238,26 +253,59 @@ def safe_ip(ip: str) -> bool:
     except Exception: pass
     return True
 
+# Optional proxy — set ALL_PROXY or HTTP_PROXY env var to route through VPN/SOCKS5
+_PROXY = os.environ.get("ALL_PROXY") or os.environ.get("HTTP_PROXY") or ""
+
 def http(url: str, method: str = "GET", headers: list | None = None,
          data: str | None = None, follow: bool = True,
          limit: int = 131072, timeout: int = TIMEOUT) -> tuple[int, dict, str]:
-    """curl wrapper. Returns (status, headers_dict, body)."""
-    cmd = [CURL, "-s", f"--max-time={timeout}", f"--max-filesize={limit}",
-           "-A", UA, "-D", "-", "-o", "-", "--compressed",
-           "-k",   # ignore TLS errors — capture everything
+    """curl wrapper. Returns (status, headers_dict, body).
+    Forces IPv4, sets connect-timeout separately from transfer timeout,
+    forwards ALL_PROXY/HTTP_PROXY if set (e.g. for VPN/SOCKS5 bypass).
+    """
+    connect_timeout = min(12, timeout)
+    cmd = [
+        CURL, "-s",
+        "--ipv4",                         # avoid broken IPv6 on Pi
+        f"--connect-timeout={connect_timeout}",
+        f"--max-time={timeout}",
+        f"--max-filesize={limit}",
+        "-A", UA,
+        "-D", "-",    # dump headers to stdout
+        "-o", "-",    # body to stdout
+        "--compressed",
+        "-k",         # ignore TLS cert errors (captures geo-block pages too)
+        "-w", "\n##CURL_EXIT:%{response_code}##",  # append exit info
     ]
+    if _PROXY: cmd += ["--proxy", _PROXY]
     if follow: cmd += ["-L", "--max-redirs", "5"]
     if method != "GET": cmd += ["-X", method]
     for h in (headers or []): cmd += ["-H", h]
     if data: cmd += ["-d", data]
     cmd.append(url)
+
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 8)
         raw = r.stdout
+        # On total failure retry once with longer timeout
+        if not raw.strip() and r.returncode != 0:
+            time.sleep(1)
+            r2 = subprocess.run(cmd, capture_output=True, text=True,
+                                timeout=timeout + 15)
+            raw = r2.stdout
     except (subprocess.TimeoutExpired, Exception) as e:
-        return 0, {}, str(e)
+        return 0, {"_curl_error": str(e)}, str(e)
 
     hdrs: dict = {}; body_parts: list[str] = []; in_body = False; code = 0
+
+    # Strip and parse our exit trailer
+    curl_code_match = re.search(r'\n##CURL_EXIT:(\d+)##\s*$', raw)
+    if curl_code_match:
+        raw = raw[:curl_code_match.start()]
+        fallback_code = int(curl_code_match.group(1))
+    else:
+        fallback_code = 0
+
     for line in raw.split("\n"):
         s = line.strip()
         if s.upper().startswith("HTTP/"):
@@ -271,7 +319,20 @@ def http(url: str, method: str = "GET", headers: list | None = None,
                 hdrs[k.lower().strip()] = v.strip()
         else:
             body_parts.append(line)
-    return code, hdrs, "\n".join(body_parts)
+
+    # If our HTTP parser got 0 but curl's own %{response_code} gave something, use it
+    if code == 0 and fallback_code > 0:
+        code = fallback_code
+
+    body = "\n".join(body_parts)
+
+    # Detect geo-block / Cloudflare challenge pages — mark them as 403 with a flag
+    if code in (0, 403) and ("cloudflare" in body.lower() or "cf-ray" in hdrs):
+        hdrs["_geoblock"] = "cloudflare"
+    if code == 0 and "access denied" in body.lower():
+        hdrs["_geoblock"] = "access-denied"
+
+    return code, hdrs, body
 
 # ── Tech detection ────────────────────────────────────────────────────────────
 TECH_SIGS: dict[str, list[tuple[str, str]]] = {
@@ -555,24 +616,48 @@ def probe_host(host: str, cluster: str) -> dict:
 
     ips = dns_resolve(host)
     if not ips: log(f"  NXDOMAIN {host}", "DNS"); return R
-    if not all(safe_ip(ip) for ip in ips):
-        log(f"  SKIP internal IP {host}", "WARN"); return R
-    R["ips"] = ips
+    # Filter: skip if ALL resolved IPs are internal (one public IP is enough)
+    if not any(safe_ip(ip) for ip in ips):
+        log(f"  SKIP all-internal IPs {host} → {ips}", "WARN"); return R
+    R["ips"] = [ip for ip in ips if safe_ip(ip)] or ips
 
     lock = _hlock(host)
 
-    # ── Base response ─────────────────────────────────────────────────────────
+    # ── Base response — try HTTPS then HTTP, log reason on failure ────────────
     with lock: time.sleep(DELAY)
     code, hdrs, body = http(f"https://{host}/")
+
     if code == 0:
+        # HTTPS failed — try HTTP
         with lock: time.sleep(DELAY)
         code, hdrs, body = http(f"http://{host}/")
-    R["code"] = code; R["live"] = code > 0
-    if not R["live"]: log(f"  DEAD {host}", "HTTP"); return R
 
+    R["code"] = code
+    geoblock = hdrs.get("_geoblock", "")
+
+    if code == 0:
+        # Diagnose: is it a connection refusal, timeout, or just TLS error?
+        diag_cmd = [CURL, "-sv", "--ipv4", "--connect-timeout", "8",
+                    "--max-time", "10", "https://" + host + "/",
+                    "-o", "/dev/null"]
+        diag = subprocess.run(diag_cmd, capture_output=True, text=True, timeout=15)
+        err = (diag.stderr or "")[:200]
+        reason = "timeout" if "timed out" in err.lower() else \
+                 "refused" if "connection refused" in err.lower() else \
+                 "geoblock" if any(x in err.lower() for x in ("403","handshake","alert")) else \
+                 "unknown"
+        log(f"  DEAD {host}  reason={reason}  proxy={'yes' if _PROXY else 'NONE—set ALL_PROXY for VPN'}", "HTTP")
+        R["dead_reason"] = reason
+        return R
+
+    R["live"] = True
     R["server"] = hdrs.get("server","")
     R["tech"]   = detect_tech(hdrs, body)
-    log(f"  [{code}] {host}  srv={R['server'][:25]}  tech={R['tech']}", "HTTP")
+    if geoblock:
+        R["tech"].append(f"geoblock:{geoblock}")
+        log(f"  [{code}] {host}  GEO-BLOCKED via {geoblock} — continuing probe", "WARN")
+    else:
+        log(f"  [{code}] {host}  srv={R['server'][:25]}  tech={R['tech']}", "HTTP")
 
     # Adaptive path set
     paths = list(CORE_PATHS) + CLUSTER_EXTRA.get(cluster, [])
