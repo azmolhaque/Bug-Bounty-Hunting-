@@ -1,0 +1,18 @@
+auth0.demo.wiz.io → HTTP 200
+[0;31m[CHAIN HIT][0m Found OIDC config at auth0.demo.wiz.io — extracting issuer...
+    "issuer": "https://auth0.demo.wiz.io/",
+    "authorization_endpoint": "https://auth0.demo.wiz.io/authorize",
+    "issuer": "https://auth0.demo.wiz.io/",
+    "authorization_endpoint": "https://auth0.demo.wiz.io/authorize",
+auth0.e2e.wiz.io → HTTP 200
+[0;31m[CHAIN HIT][0m Found OIDC config at auth0.e2e.wiz.io — extracting issuer...
+    "issuer": "https://auth0.e2e.wiz.io/",
+    "authorization_endpoint": "https://auth0.e2e.wiz.io/authorize",
+    "issuer": "https://auth0.e2e.wiz.io/",
+    "authorization_endpoint": "https://auth0.e2e.wiz.io/authorize",
+auth.wiz.io → HTTP 200
+[0;31m[CHAIN HIT][0m Found OIDC config at auth.wiz.io — extracting issuer...
+    "issuer": "https://auth.wiz.io/",
+    "authorization_endpoint": "https://auth.wiz.io/authorize",
+    "issuer": "https://auth.wiz.io/",
+    "authorization_endpoint": "https://auth.wiz.io/authorize",

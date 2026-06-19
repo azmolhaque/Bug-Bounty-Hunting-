@@ -1,0 +1,20 @@
+{
+    "data": {
+        "id": "admin",
+        "type": "user",
+        "links": {
+            "self": "https://www.virustotal.com/api/v3/users/admin"
+        },
+        "attributes": {
+            "collections_count": 0,
+            "status": "active",
+            "user_since": 1276696825,
+            "certified": false,
+            "is_service_account": false,
+            "first_name": "",
+            "reputation": 2006,
+            "private": false,
+            "last_name": ""
+        }
+    }
+}

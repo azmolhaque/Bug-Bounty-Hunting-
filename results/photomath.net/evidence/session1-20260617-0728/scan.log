@@ -1,0 +1,4 @@
+=== PHOTOMATH DEEP SCAN — 20260617-0728 ===
+IN-SCOPE: photomath.net matches 'photomath.net'
+OUT-OF-SCOPE: portal.photomath.net matches no in_scope entry (default-deny)
+SCOPE FAIL

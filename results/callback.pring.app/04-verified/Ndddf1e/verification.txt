@@ -1,0 +1,2 @@
+MANUAL: Ndddf1e [RCE] @ https://staging.callback.pring.app — requires authenticated session or OOB infrastructure
+VERDICT: NEEDS_MANUAL

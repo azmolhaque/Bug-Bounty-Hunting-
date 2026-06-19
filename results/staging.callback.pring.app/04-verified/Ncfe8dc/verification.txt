@@ -1,0 +1,2 @@
+MANUAL: Ncfe8dc [unknown-info]
+VERDICT: NEEDS_MANUAL

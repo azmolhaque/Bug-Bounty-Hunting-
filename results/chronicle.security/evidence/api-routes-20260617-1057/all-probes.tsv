@@ -1,0 +1,966 @@
+GET	/api/1p/external/v1/1:getExternalProviders	401	no	
+
+POST	/api/external/v1/agents/AddAgent	401	no	
+
+POST	/api/external/v1/agents/AddOrUpdatePublisher	401	no	
+
+POST	/api/external/v1/agents/DeleteAgent	401	no	
+
+POST	/api/external/v1/agents/DeletePublishers	401	no	
+
+GET	/api/external/v1/agents/GetAgentByIdentifier/1	401	no	
+
+GET	/api/external/v1/agents/GetAgentInformationByIdentifier/1	401	no	
+
+GET	/api/external/v1/agents/GetAgentInformationByIntegrationInstance/1	401	no	
+
+GET	/api/external/v1/agents/GetAgents	401	no	
+
+POST	/api/external/v1/agents/GetAgentsByEnvironment	401	no	
+
+POST	/api/external/v1/agents/GetAgentsInformationByIdentifiers	401	no	
+
+GET	/api/external/v1/agents/GetAvailableEnvironmentsForAgents	401	no	
+
+GET	/api/external/v1/agents/GetEnabledAgents	401	no	
+
+GET	/api/external/v1/agents/GetPublisherById/1	401	no	
+
+GET	/api/external/v1/agents/GetPublishers	401	no	
+
+POST	/api/external/v1/agents/GetSecondaryAgentsByPrimaryIdentifiers	401	no	
+
+GET	/api/external/v1/agents/GetValidAgentsForConnector/1/1	401	no	
+
+GET	/api/external/v1/agents/GetValidAgentsForIdeConnector/1/1	401	no	
+
+POST	/api/external/v1/agents/RedeployAgent	401	no	
+
+GET	/api/external/v1/agents/TestPublisherConnectivity/1	401	no	
+
+POST	/api/external/v1/agents/UpdateAgent	401	no	
+
+GET	/api/external/v1/agents/integration-upgrade-unsupported-agents	401	no	
+
+GET	/api/external/v1/agents/valid-for-jobs	401	no	
+
+POST	/api/external/v1/approval-link/Apply	500	yes	{"errorCode":2000,"errorMessage":"An error has occurred. When reporting the issue to SecOps support,
+POST	/api/external/v1/attackssimulator/CreateSimulatedCustomCase	401	no	
+
+POST	/api/external/v1/attackssimulator/DeleteUseCase	401	no	
+
+GET	/api/external/v1/attackssimulator/ExportCustomCase/1	401	no	
+
+POST	/api/external/v1/attackssimulator/GenerateUseCases	401	no	
+
+POST	/api/external/v1/attackssimulator/GetCustomCaseDetails	401	no	
+
+GET	/api/external/v1/attackssimulator/GetCustomCases	401	no	
+
+POST	/api/external/v1/attackssimulator/ImportCustomCase	401	no	
+
+GET	/api/external/v1/attackssimulator/IsCustomCaseExists/1	401	no	
+
+POST	/api/external/v1/attackssimulator/SimulateAlert	401	no	
+
+POST	/api/external/v1/case-overview/GetAlertOverviewData	401	no	
+
+POST	/api/external/v1/case-overview/GetAlertsEntities	401	no	
+
+GET	/api/external/v1/case-overview/GetCaseEntities/1	401	no	
+
+POST	/api/external/v1/case-overview/GetCaseOverviewData	401	no	
+
+GET	/api/external/v1/case-overview/GetFullOverviewTemplateDetails/1	401	no	
+
+POST	/api/external/v1/case-overview/GetOverviewTemplate	401	no	
+
+GET	/api/external/v1/case-overview/GetOverviewTemplateCards	401	no	
+
+POST	/api/external/v1/case-overview/PreviewOverviewWidget	401	no	
+
+POST	/api/external/v1/case-overview/ResolveOverviewWidget	401	no	
+
+POST	/api/external/v1/case-overview/SaveOverviewTemplate	401	no	
+
+GET	/api/external/v1/casechat/attachments/preview/1	401	no	
+
+GET	/api/external/v1/casechat/attachments/1	401	no	
+
+POST	/api/external/v1/casechat/pin/1	401	no	
+
+POST	/api/external/v1/casechat/unpin/1	401	no	
+
+POST	/api/external/v1/casechat/1	401	no	
+
+GET	/api/external/v1/casechat/1	401	no	
+
+GET	/api/external/v1/casechat/1/new-messages-count	401	no	
+
+POST	/api/external/v1/cases-queue/GetAlertNames	401	no	
+
+POST	/api/external/v1/cases-queue/GetCaseCardsByRequest	401	no	
+
+GET	/api/external/v1/cases-queue/alert-vendors	401	no	
+
+POST	/api/external/v1/cases-queue/bulk-operations/ExecuteBulkAssignCase	401	no	
+
+POST	/api/external/v1/cases-queue/bulk-operations/ExecuteBulkCloseCase	401	no	
+
+POST	/api/external/v1/cases-queue/bulk-operations/MergeCases	401	no	
+
+POST	/api/external/v1/cases-queue/bulk-operations/ValidateCasesAssigneeForCloseCase	401	no	
+
+GET	/api/external/v1/cases-queue/saved-filter	401	no	
+
+POST	/api/external/v1/cases-queue/saved-filter	401	no	
+
+DELETE	/api/external/v1/cases-queue/saved-filter	401	no	
+
+POST	/api/external/v1/cases/AddCaseComment	401	no	
+
+POST	/api/external/v1/cases/AddCaseTag	401	no	
+
+POST	/api/external/v1/cases/AddEvidence	401	no	
+
+POST	/api/external/v1/cases/AddOrUpdateCaseTask	401	no	
+
+POST	/api/external/v1/cases/AssignUserToCase	401	no	
+
+POST	/api/external/v1/cases/ChangeCaseDescription	401	no	
+
+POST	/api/external/v1/cases/ChangeCaseImportanceStatus	401	no	
+
+POST	/api/external/v1/cases/ChangeCasePriority	401	no	
+
+POST	/api/external/v1/cases/ChangeCaseStage	401	no	
+
+POST	/api/external/v1/cases/CloseAlert	401	no	
+
+POST	/api/external/v1/cases/CloseCase	401	no	
+
+POST	/api/external/v1/cases/CreateCase	401	no	
+
+POST	/api/external/v1/cases/CreateCaseEntity	401	no	
+
+POST	/api/external/v1/cases/CreateCaseInsight	401	no	
+
+POST	/api/external/v1/cases/CreateManualCase	401	no	
+
+POST	/api/external/v1/cases/CreateWarRoomIncidentFromCase	401	no	
+
+POST	/api/external/v1/cases/ExecuteBulkAddCaseTag	401	no	
+
+POST	/api/external/v1/cases/ExecuteBulkAssign	401	no	
+
+POST	/api/external/v1/cases/ExecuteBulkChangeCasePriority	401	no	
+
+POST	/api/external/v1/cases/ExecuteBulkChangeCaseStage	401	no	
+
+POST	/api/external/v1/cases/ExecuteBulkCloseCase	401	no	
+
+POST	/api/external/v1/cases/ExecuteBulkReopenCase	401	no	
+
+POST	/api/external/v1/cases/ExecuteManualAction	401	no	
+
+POST	/api/external/v1/cases/ExecuteStep	401	no	
+
+POST	/api/external/v1/cases/GenerateCaseReport	401	no	
+
+GET	/api/external/v1/cases/GetActionResultById/1	401	no	
+
+POST	/api/external/v1/cases/GetCaseCardsByRequest	401	no	
+
+GET	/api/external/v1/cases/GetCaseExists/1	401	no	
+
+GET	/api/external/v1/cases/GetCaseFullDetails/1	401	no	
+
+GET	/api/external/v1/cases/GetEvidenceData/1	401	no	
+
+GET	/api/external/v1/cases/GetWallItemsForWarRoom/1	401	no	
+
+POST	/api/external/v1/cases/GetWorkflowInstanceSummary	401	no	
+
+POST	/api/external/v1/cases/IsCaseUpdated	401	no	
+
+POST	/api/external/v1/cases/PauseAlertSla	401	no	
+
+POST	/api/external/v1/cases/RaiseIncident	401	no	
+
+POST	/api/external/v1/cases/ReassignCaseTask	401	no	
+
+POST	/api/external/v1/cases/RemoveCaseTag	401	no	
+
+POST	/api/external/v1/cases/RenameCase	401	no	
+
+POST	/api/external/v1/cases/ResumeAlertSla	401	no	
+
+POST	/api/external/v1/cases/Skip	401	no	
+
+POST	/api/external/v1/cases/UnraiseIncident	401	no	
+
+POST	/api/external/v1/cases/UpdateAlertPriority	401	no	
+
+GET	/api/external/v1/cases/comments	401	no	
+
+POST	/api/external/v1/cases/comments	401	no	
+
+GET	/api/external/v1/cases/comments/file/1	401	no	
+
+PATCH	/api/external/v1/cases/comments/mark-as-deleted/1	401	no	
+
+PUT	/api/external/v1/cases/comments/1	401	no	
+
+GET	/api/external/v1/cases/homepagecases/GetByRequest	401	no	
+
+GET	/api/external/v1/cases/homepagecases/GetHomepageCasesCount	401	no	
+
+GET	/api/external/v1/cases/insights/1	403	no	
+
+POST	/api/external/v1/cases/requests/GenerateCollaboratorRequest	401	no	
+
+GET	/api/external/v1/cases/requests/GetByRequest	401	no	
+
+GET	/api/external/v1/cases/requests/GetCollaboratorRequestCount	401	no	
+
+POST	/api/external/v1/cases/tasks	401	no	
+
+PUT	/api/external/v1/cases/tasks	401	no	
+
+GET	/api/external/v1/cases/tasks/GetByRequest	401	no	
+
+GET	/api/external/v1/cases/tasks/GetTasksCountForUser	401	no	
+
+PUT	/api/external/v1/cases/tasks/MarkAsDone	401	no	
+
+GET	/api/external/v1/cases/tasks/1	401	no	
+
+DELETE	/api/external/v1/cases/tasks/1	401	no	
+
+PATCH	/api/external/v1/cases/wall/favourite	403	no	
+
+GET	/api/external/v1/cases/wall/1	403	no	
+
+GET	/api/external/v1/configuration-items/1	404	no	
+
+PUT	/api/external/v1/configuration-items/1	404	no	
+
+POST	/api/external/v1/connectors	401	no	
+
+GET	/api/external/v1/connectors/cards	401	no	
+
+POST	/api/external/v1/connectors/fetch-sample-data	401	no	
+
+POST	/api/external/v1/connectors/template	401	no	
+
+GET	/api/external/v1/connectors/template-cards	401	no	
+
+POST	/api/external/v1/connectors/update-from-ide	401	no	
+
+GET	/api/external/v1/connectors/1	401	no	
+
+DELETE	/api/external/v1/connectors/1	401	no	
+
+GET	/api/external/v1/connectors/1/statistics	401	no	
+
+POST	/api/external/v1/dashboards/AddOrUpdateDashboard	401	no	
+
+POST	/api/external/v1/dashboards/AddOrUpdateDashboardWidget	401	no	
+
+POST	/api/external/v1/dashboards/DeleteDashboard	401	no	
+
+POST	/api/external/v1/dashboards/DeleteDashboardWidget	401	no	
+
+POST	/api/external/v1/dashboards/GetDashboardWidgetCaseIds	401	no	
+
+GET	/api/external/v1/dashboards/GetDashboardWidgetDefinitions	401	no	
+
+POST	/api/external/v1/dashboards/GetDashboardWidgetValues	401	no	
+
+POST	/api/external/v1/dashboards/ImportDashboard	401	no	
+
+POST	/api/external/v1/dashboards/SaveDashboardAsReportTemplate	401	no	
+
+POST	/api/external/v1/dynamic-cases/AddCaseComment	401	no	
+
+POST	/api/external/v1/dynamic-cases/AddCaseTag	401	no	
+
+POST	/api/external/v1/dynamic-cases/AddComment	401	no	
+
+POST	/api/external/v1/dynamic-cases/AddEvidence	401	no	
+
+POST	/api/external/v1/dynamic-cases/AddOrUpdateCaseTask	401	no	
+
+POST	/api/external/v1/dynamic-cases/AddOrUpdateEntityProperty	401	no	
+
+POST	/api/external/v1/dynamic-cases/AssignUserToCase	401	no	
+
+POST	/api/external/v1/dynamic-cases/ChangeCaseDescription	401	no	
+
+POST	/api/external/v1/dynamic-cases/ChangeCaseImportanceStatus	401	no	
+
+POST	/api/external/v1/dynamic-cases/ChangeCaseStage	401	no	
+
+POST	/api/external/v1/dynamic-cases/CloseAlert	401	no	
+
+POST	/api/external/v1/dynamic-cases/CloseCase	401	no	
+
+POST	/api/external/v1/dynamic-cases/CreateCase	401	no	
+
+POST	/api/external/v1/dynamic-cases/CreateCaseEntity	401	no	
+
+POST	/api/external/v1/dynamic-cases/ExecuteBulkReopenCase	401	no	
+
+POST	/api/external/v1/dynamic-cases/GenerateCaseReport	401	no	
+
+POST	/api/external/v1/dynamic-cases/GetAlertEvents	401	no	
+
+GET	/api/external/v1/dynamic-cases/GetCaseDetails/1	401	no	
+
+POST	/api/external/v1/dynamic-cases/GetCaseWallActivities	401	no	
+
+POST	/api/external/v1/dynamic-cases/GetCaseWallActivities/count	401	no	
+
+GET	/api/external/v1/dynamic-cases/GetEvidenceData/1	401	no	
+
+GET	/api/external/v1/dynamic-cases/GetWallActivities/1	401	no	
+
+GET	/api/external/v1/dynamic-cases/GetWallActivitiesForCommandCenter/1	401	no	
+
+GET	/api/external/v1/dynamic-cases/GetWallActivitiesV2/1	401	no	
+
+POST	/api/external/v1/dynamic-cases/IngestCaseInOtherEnvironment	401	no	
+
+POST	/api/external/v1/dynamic-cases/IsCaseUpdated	401	no	
+
+PUT	/api/external/v1/dynamic-cases/MarkCommentAsDeleted/1	401	no	
+
+POST	/api/external/v1/dynamic-cases/MarkTaskAsDone	401	no	
+
+POST	/api/external/v1/dynamic-cases/MoveAlertToNewCase	401	no	
+
+POST	/api/external/v1/dynamic-cases/RaiseIncident	401	no	
+
+POST	/api/external/v1/dynamic-cases/RemoveCaseTag	401	no	
+
+POST	/api/external/v1/dynamic-cases/RenameCase	401	no	
+
+POST	/api/external/v1/dynamic-cases/ReopenAlert	401	no	
+
+POST	/api/external/v1/dynamic-cases/UnraiseIncident	401	no	
+
+POST	/api/external/v1/dynamic-cases/UpdateAlertPriority	401	no	
+
+POST	/api/external/v1/dynamic-cases/UpdateCasePriority	401	no	
+
+PUT	/api/external/v1/dynamic-cases/UpdateComment	401	no	
+
+POST	/api/external/v1/dynamic-cases/request	401	no	
+
+POST	/api/external/v1/entity-search/count	401	no	
+
+POST	/api/external/v1/entity-search/entities	401	no	
+
+GET	/api/external/v1/external-authentication-settings	401	no	
+
+POST	/api/external/v1/external-authentication-settings	401	no	
+
+GET	/api/external/v1/external-authentication-settings/1	404	no	
+
+DELETE	/api/external/v1/external-authentication-settings/1	404	no	
+
+PATCH	/api/external/v1/external-authentication-settings/1	404	no	
+
+PUT	/api/external/v1/external-authentication-settings/1	404	no	
+
+GET	/api/external/v1/federation/cases	401	no	
+
+PATCH	/api/external/v1/federation/cases/batch-patch	403	no	
+
+GET	/api/external/v1/federation/platforms	401	no	
+
+DELETE	/api/external/v1/federation/platforms/1	401	no	
+
+POST	/api/external/v1/homepage/attachments	401	no	
+
+PUT	/api/external/v1/homepage/attachments	401	no	
+
+GET	/api/external/v1/homepage/attachments/GetByRequest	401	no	
+
+GET	/api/external/v1/homepage/attachments/1	401	no	
+
+DELETE	/api/external/v1/homepage/attachments/1	401	no	
+
+POST	/api/external/v1/homepage/contacts	401	no	
+
+PUT	/api/external/v1/homepage/contacts	401	no	
+
+GET	/api/external/v1/homepage/contacts/GetByRequest	401	no	
+
+GET	/api/external/v1/homepage/contacts/1	401	no	
+
+DELETE	/api/external/v1/homepage/contacts/1	401	no	
+
+POST	/api/external/v1/homepage/links	401	no	
+
+PUT	/api/external/v1/homepage/links	401	no	
+
+GET	/api/external/v1/homepage/links/GetByRequest	401	no	
+
+GET	/api/external/v1/homepage/links/1	401	no	
+
+DELETE	/api/external/v1/homepage/links/1	401	no	
+
+POST	/api/external/v1/homepage/notes	401	no	
+
+PUT	/api/external/v1/homepage/notes	401	no	
+
+GET	/api/external/v1/homepage/notes/GetByRequest	401	no	
+
+GET	/api/external/v1/homepage/notes/1	401	no	
+
+DELETE	/api/external/v1/homepage/notes/1	401	no	
+
+POST	/api/external/v1/homepage/rss	401	no	
+
+PUT	/api/external/v1/homepage/rss	401	no	
+
+GET	/api/external/v1/homepage/rss/GetByRequest	401	no	
+
+GET	/api/external/v1/homepage/rss/GetRssCount	401	no	
+
+GET	/api/external/v1/homepage/rss/1	401	no	
+
+DELETE	/api/external/v1/homepage/rss/1	401	no	
+
+POST	/api/external/v1/idp-group-mapping	401	no	
+
+GET	/api/external/v1/idp-group-mapping	401	no	
+
+GET	/api/external/v1/idp-group-mapping/count	401	no	
+
+GET	/api/external/v1/idp-group-mapping/1	404	no	
+
+PUT	/api/external/v1/idp-group-mapping/1	404	no	
+
+DELETE	/api/external/v1/idp-group-mapping/1	404	no	
+
+POST	/api/external/v1/idpMapping	401	no	
+
+GET	/api/external/v1/idpMapping	401	no	
+
+POST	/api/external/v1/integrations/CreateIntegrationInstance	401	no	
+
+POST	/api/external/v1/integrations/DeleteIntegrationInstance	401	no	
+
+POST	/api/external/v1/integrations/GetAllEnvironmentCards	401	no	
+
+POST	/api/external/v1/integrations/GetEnvironmentInstalledIntegrations	401	no	
+
+GET	/api/external/v1/integrations/GetInstalledIntegrations	401	no	
+
+GET	/api/external/v1/integrations/GetIntegrationDefaultInstance/1	401	no	
+
+GET	/api/external/v1/integrations/GetIntegrationInstanceSettings/1	401	no	
+
+POST	/api/external/v1/integrations/GetOptionalIntegrationInstances	401	no	
+
+GET	/api/external/v1/integrations/GetPlaybooksNamesUsingIntegrationInstance/1	401	no	
+
+POST	/api/external/v1/jobs/DeleteJobData	401	no	
+
+GET	/api/external/v1/jobs/GetInstalledJobs	401	no	
+
+GET	/api/external/v1/jobs/GetJobTemplates	401	no	
+
+POST	/api/external/v1/jobs/RunJob	401	no	
+
+POST	/api/external/v1/jobs/SaveOrUpdateJobData	401	no	
+
+POST	/api/external/v1/jobs/instances	401	no	
+
+PUT	/api/external/v1/jobs/instances	401	no	
+
+GET	/api/external/v1/jobs/instances	401	no	
+
+POST	/api/external/v1/jobs/instances/run	401	no	
+
+DELETE	/api/external/v1/jobs/instances/1	401	no	
+
+GET	/api/external/v1/logging/agents/1	401	no	
+
+POST	/api/external/v1/logging/python	401	no	
+
+GET	/api/external/v1/notifications/CloseAllNotifications	401	no	
+
+GET	/api/external/v1/notifications/CloseSystemNotification/1	401	no	
+
+GET	/api/external/v1/notifications/CloseUserNotification/1	401	no	
+
+GET	/api/external/v1/notifications/GetUnreadNotificationCount	401	no	
+
+GET	/api/external/v1/notifications/GetUserNotificationSettings	401	no	
+
+GET	/api/external/v1/notifications/GetUserNotifications	401	no	
+
+POST	/api/external/v1/notifications/SaveUserNotificationSettings	401	no	
+
+POST	/api/external/v1/ontology/AddOrUpdateMappingRules	401	no	
+
+POST	/api/external/v1/ontology/AddOrUpdateVisualFamily	401	no	
+
+POST	/api/external/v1/ontology/AddOrUpdateVisualFamilyRules	401	no	
+
+GET	/api/external/v1/ontology/DeleteFamilyData/1	401	no	
+
+POST	/api/external/v1/ontology/DeleteMappingRule	401	no	
+
+POST	/api/external/v1/ontology/DeleteVisualFamilyRule	401	no	
+
+POST	/api/external/v1/ontology/DuplicateVisualFamilyForSettings	401	no	
+
+POST	/api/external/v1/ontology/ExportOntology	401	no	
+
+POST	/api/external/v1/ontology/ExportVisualFamily	401	no	
+
+POST	/api/external/v1/ontology/GetFamily	401	no	
+
+POST	/api/external/v1/ontology/GetMappingRules	401	no	
+
+GET	/api/external/v1/ontology/GetRelatedEntitiesByFamilyName/1	401	no	
+
+GET	/api/external/v1/ontology/GetVisualFamilies	401	no	
+
+POST	/api/external/v1/ontology/ImportOntology	401	no	
+
+POST	/api/external/v1/ontology/ImportVisualFamily	401	no	
+
+POST	/api/external/v1/ontology/IsOntologyOrVisualFamilyExists	401	no	
+
+POST	/api/external/v1/ontology/IsVisualFamilyExists	401	no	
+
+POST	/api/external/v1/ontology/UpdateVisualFamilyImage	401	no	
+
+POST	/api/external/v1/permissions	401	no	
+
+PUT	/api/external/v1/permissions	401	no	
+
+POST	/api/external/v1/permissions/Duplicate/1	401	no	
+
+GET	/api/external/v1/permissions/GetAllEnvironmentStatus	401	no	
+
+GET	/api/external/v1/permissions/GetAllEnvironmentStatus/1	401	no	
+
+GET	/api/external/v1/permissions/GetPermissionsGroupCards	401	no	
+
+GET	/api/external/v1/permissions/GetPermissionsGroupTemplateByType/1	401	no	
+
+GET	/api/external/v1/permissions/GetPermissionsGroupTypes	401	no	
+
+GET	/api/external/v1/permissions/1	401	no	
+
+DELETE	/api/external/v1/permissions/1	401	no	
+
+POST	/api/external/v1/playbooks/AddOrUpdatePlaybookCategory	401	no	
+
+POST	/api/external/v1/playbooks/AttacheNestedWorkflowToCase	401	no	
+
+POST	/api/external/v1/playbooks/AttacheWorkflowToCase	401	no	
+
+POST	/api/external/v1/playbooks/CheckWorkflowNameInDifferentEnvironments	401	no	
+
+POST	/api/external/v1/playbooks/DeleteWorkflow	401	no	
+
+POST	/api/external/v1/playbooks/DeleteWorkflows	401	no	
+
+POST	/api/external/v1/playbooks/DuplicateNestedWorkflows	401	no	
+
+POST	/api/external/v1/playbooks/DuplicateWorkflow	401	no	
+
+POST	/api/external/v1/playbooks/DuplicateWorkflows	401	no	
+
+POST	/api/external/v1/playbooks/ExecuteStep	401	no	
+
+POST	/api/external/v1/playbooks/ExportDefinitions	401	no	
+
+GET	/api/external/v1/playbooks/ExportWorkflowWithBlocksByIdentifier/1	401	no	
+
+GET	/api/external/v1/playbooks/GetActionResultsOfWFId/1	401	no	
+
+GET	/api/external/v1/playbooks/GetCaseEntities/1	401	no	
+
+GET	/api/external/v1/playbooks/GetContextGroupByKey/1	401	no	
+
+POST	/api/external/v1/playbooks/GetDebugStepCaseData	401	no	
+
+POST	/api/external/v1/playbooks/GetEnabledWFCards	401	no	
+
+POST	/api/external/v1/playbooks/GetOverviewTemplate	401	no	
+
+GET	/api/external/v1/playbooks/GetOverviewTemplate/1	401	no	
+
+POST	/api/external/v1/playbooks/GetPendingStep	401	no	
+
+GET	/api/external/v1/playbooks/GetPendingStepsCountForUser	401	no	
+
+GET	/api/external/v1/playbooks/GetPendingStepsUserRelated	401	no	
+
+POST	/api/external/v1/playbooks/GetPlaybookSimulationEnrichment	401	no	
+
+POST	/api/external/v1/playbooks/GetPlaybookStatsMap	401	no	
+
+POST	/api/external/v1/playbooks/GetTestCases	401	no	
+
+POST	/api/external/v1/playbooks/GetTriggerTags	401	no	
+
+POST	/api/external/v1/playbooks/GetWorkFlowVersionLogs	401	no	
+
+GET	/api/external/v1/playbooks/GetWorkflowCategories	401	no	
+
+GET	/api/external/v1/playbooks/GetWorkflowFullInfoByIdentifier/1	401	no	
+
+GET	/api/external/v1/playbooks/GetWorkflowFullInfoWithEnvFilterByIdentifier/1	401	no	
+
+POST	/api/external/v1/playbooks/GetWorkflowStepInstance	401	no	
+
+POST	/api/external/v1/playbooks/GetWorkflowsInvolvingAction	401	no	
+
+POST	/api/external/v1/playbooks/ImportDefinitions	401	no	
+
+POST	/api/external/v1/playbooks/MoveDefinitionsToCategory	401	no	
+
+POST	/api/external/v1/playbooks/RemoveCategories	401	no	
+
+POST	/api/external/v1/playbooks/RerunBlock	401	no	
+
+POST	/api/external/v1/playbooks/RerunPlaybook	401	no	
+
+POST	/api/external/v1/playbooks/RestoreWorkflowDefinition	401	no	
+
+POST	/api/external/v1/playbooks/RunPlaybookInDebug	401	no	
+
+POST	/api/external/v1/playbooks/SaveLogVersionOfWorkflowDefinitions	401	no	
+
+POST	/api/external/v1/playbooks/SaveWorkflowDefinitions	401	no	
+
+GET	/api/external/v1/playbooks/action-widget-template	401	no	
+
+POST	/api/external/v1/playbooks/permissions	401	no	
+
+POST	/api/external/v1/playbooks/permissions/options	401	no	
+
+DELETE	/api/external/v1/playbooks/permissions/1	404	no	
+
+GET	/api/external/v1/predefined-widgets/cases	401	no	
+
+POST	/api/external/v1/reports/AddOrUpdateReportSchedule	401	no	
+
+POST	/api/external/v1/reports/AddOrUpdateReportTemplate	401	no	
+
+POST	/api/external/v1/reports/AddOrUpdateReportWidget	401	no	
+
+GET	/api/external/v1/reports/DeleteReportSchedule/1	401	no	
+
+POST	/api/external/v1/reports/DuplicateReportTemplate	401	no	
+
+POST	/api/external/v1/reports/GenerateReportTemplate	401	no	
+
+POST	/api/external/v1/reports/GetReportSchedules	401	no	
+
+GET	/api/external/v1/reports/GetReportTemplates	401	no	
+
+POST	/api/external/v1/reports/ImportReportTemplate	401	no	
+
+GET	/api/external/v1/reports/RefreshAdvancedReports	401	no	
+
+GET	/api/external/v1/reports/RemoveReportTemplate/1	401	no	
+
+GET	/api/external/v1/reports/RemoveReportWidget/1	401	no	
+
+POST	/api/external/v1/reports/ShareAdvancedReport	401	no	
+
+GET	/api/external/v1/resources/DownloadAuditControllerActionsCsv	401	no	
+
+GET	/api/external/v1/resources/GetActionResultsById/1/1	401	no	
+
+GET	/api/external/v1/resources/GetCaseFullDetailsById/1/1	401	no	
+
+GET	/api/external/v1/resources/GetEntityInsightsById/1/1	401	no	
+
+POST	/api/external/v1/retention/delete-cases	401	no	
+
+POST	/api/external/v1/retention/system	401	no	
+
+POST	/api/external/v1/retention/user	401	no	
+
+POST	/api/external/v1/search/CaseSearchEverything	401	no	
+
+POST	/api/external/v1/search/EntitySearchEverything	401	no	
+
+POST	/api/external/v1/search/GetCasesFilterUserAndRoles	401	no	
+
+POST	/api/external/v1/search/GetCasesFilterValues	401	no	
+
+POST	/api/external/v1/search/GetEntitiesFilterValues	401	no	
+
+POST	/api/external/v1/search/GetSearchResultsAsCsv	401	no	
+
+POST	/api/external/v1/settings/AddCaseStageDefinitionRecord	401	no	
+
+POST	/api/external/v1/settings/AddCollaboratorRequest	401	no	
+
+POST	/api/external/v1/settings/AddLicenseAgreementSignature	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateCaseAssignmentPolicySettings	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateEnvironmentRecords	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateModelBlockRecords	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateMoveCaseBetweenEnvironmentsPolicySettings	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateNetworkDetailsRecords	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateRootCauseClose	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateTrackingListRecords	401	no	
+
+POST	/api/external/v1/settings/AddOrUpdateUserProfile	401	no	
+
+POST	/api/external/v1/settings/AddSlaDefinitionsRecord	401	no	
+
+POST	/api/external/v1/settings/AddTagDefinitionsRecords	401	no	
+
+DELETE	/api/external/v1/settings/DeleteCollaboratorRequest/1	401	no	
+
+POST	/api/external/v1/settings/ExportAuditLastWeekAsCsv	401	no	
+
+POST	/api/external/v1/settings/ExportAuditLastWeekAsCsvV2	401	no	
+
+GET	/api/external/v1/settings/GetAdvancedReportsSettings	401	no	
+
+GET	/api/external/v1/settings/GetAllCollaboratorRequests	401	no	
+
+GET	/api/external/v1/settings/GetAllModelBlockRecords	401	no	
+
+POST	/api/external/v1/settings/GetAnalysts	401	no	
+
+POST	/api/external/v1/settings/GetBlockListDetails	401	no	
+
+GET	/api/external/v1/settings/GetCaseAssigmentPolicySettings	401	no	
+
+POST	/api/external/v1/settings/GetCaseStageDefinitionRecords	401	no	
+
+GET	/api/external/v1/settings/GetCollaboratorRequestsByUser	401	no	
+
+GET	/api/external/v1/settings/GetEnvironmentInstanceUrls	401	no	
+
+POST	/api/external/v1/settings/GetEnvironments	401	no	
+
+GET	/api/external/v1/settings/GetLatestLicenseAgreement	401	no	
+
+GET	/api/external/v1/settings/GetMaximumAlertsGroupingConfiguration	401	no	
+
+GET	/api/external/v1/settings/GetMoveCaseBetweenEnvironmentsPolicySettings	401	no	
+
+POST	/api/external/v1/settings/GetNetworkDetails	401	no	
+
+GET	/api/external/v1/settings/GetProxySettings	401	no	
+
+GET	/api/external/v1/settings/GetPublicCertificate	200	no	0Ç˚0Ç„†ìZU„48¶™OÓÄbﬁRè0	*ÜHÜ˜010U	Siemplify0170119075556Z210119075555Z0
+GET	/api/external/v1/settings/GetRootCauseCloseRecords	401	no	
+
+POST	/api/external/v1/settings/GetSlaDefinitions	401	no	
+
+GET	/api/external/v1/settings/GetSlaDefinitionsRecords	401	no	
+
+GET	/api/external/v1/settings/GetSystemEventEntityTypes	401	no	
+
+GET	/api/external/v1/settings/GetSystemVersion	401	no	
+
+POST	/api/external/v1/settings/GetTagDefinitionsRecords	401	no	
+
+GET	/api/external/v1/settings/GetTrackingListRecords	401	no	
+
+POST	/api/external/v1/settings/GetTrackingListRecordsFiltered	401	no	
+
+POST	/api/external/v1/settings/GetUserImage	401	no	
+
+POST	/api/external/v1/settings/GetUserProfileCards	401	no	
+
+POST	/api/external/v1/settings/GetUserProfiles	401	no	
+
+POST	/api/external/v1/settings/GetUserProfilesByEnvironments	401	no	
+
+GET	/api/external/v1/settings/IsPermittedToEnvironment/1	401	no	
+
+POST	/api/external/v1/settings/RemoveAllNetworkDetailsRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveCaseStageDefinitionRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveEnvironmentRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveModelBlockRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveNetworkDetailsRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveRootCauseClose	401	no	
+
+POST	/api/external/v1/settings/RemoveSlaDefinitionRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveTagDefinitionRecords	401	no	
+
+POST	/api/external/v1/settings/RemoveTrackingListRecords	401	no	
+
+POST	/api/external/v1/settings/SaveAdvancedReportsSettings	401	no	
+
+GET	/api/external/v1/settings/TestAdvancedReportsSettings	401	no	
+
+POST	/api/external/v1/settings/TestProxySettings	401	no	
+
+POST	/api/external/v1/settings/UpdateAlertGroupingRule	401	no	
+
+PUT	/api/external/v1/settings/UpdateCollaboratorRequest	401	no	
+
+POST	/api/external/v1/settings/UpdateUserImage	401	no	
+
+POST	/api/external/v1/settings/UploadCustomActionResultJson	401	no	
+
+POST	/api/external/v1/settings/batch-delete-custom-lists	401	no	
+
+GET	/api/external/v1/settings/environment-load-balancing-status	401	no	
+
+GET	/api/external/v1/settings/environment-priorities	401	no	
+
+PATCH	/api/external/v1/settings/environment-priorities/1	401	no	
+
+GET	/api/external/v1/settings/environment-priorities/1	401	no	
+
+GET	/api/external/v1/settings/form-dynamic-parameters	403	no	
+
+POST	/api/external/v1/settings/form-dynamic-parameters	401	no	
+
+GET	/api/external/v1/settings/form-dynamic-parameters/1	403	no	
+
+PUT	/api/external/v1/settings/form-dynamic-parameters/1	401	no	
+
+DELETE	/api/external/v1/settings/form-dynamic-parameters/1	401	no	
+
+DELETE	/api/external/v1/settings/networks/permitted	401	no	
+
+DELETE	/api/external/v1/settings/networks/1	401	no	
+
+POST	/api/external/v1/settings/reset-environment-priorities	401	no	
+
+GET	/api/external/v1/settings/tag-definition/names	401	no	
+
+POST	/api/external/v1/settings/toggle-environment-load-balancing	401	no	
+
+POST	/api/external/v1/socroles/AddOrUpdateSocRole	401	no	
+
+POST	/api/external/v1/socroles/DeleteSocRole	401	no	
+
+GET	/api/external/v1/socroles/GetSocRole/1	401	no	
+
+GET	/api/external/v1/socroles/GetSocRoles	401	no	
+
+POST	/api/external/v1/socroles/GetSocRolesByEnvironments	401	no	
+
+GET	/api/external/v1/socroles/HasAssignedUsers/1	401	no	
+
+POST	/api/external/v1/store/ExportUseCase	401	no	
+
+GET	/api/external/v1/store/GetHtmlViewPresets	401	no	
+
+GET	/api/external/v1/store/GetIntegrationDependencies/1	401	no	
+
+POST	/api/external/v1/store/GetIntegrationFullDetails	401	no	
+
+GET	/api/external/v1/store/GetIntegrationsStoreData	401	no	
+
+GET	/api/external/v1/store/GetPowerUpsStoreData	401	no	
+
+GET	/api/external/v1/store/GetReportsStoreData	401	no	
+
+GET	/api/external/v1/store/GetUsecasesCards	401	no	
+
+POST	/api/external/v1/store/ReinstallAllIntegrations	401	no	
+
+POST	/api/external/v1/store/SaveIntegrationConfigurationProperties	401	no	
+
+GET	/api/external/v1/store/TestIntegration/1	401	no	
+
+POST	/api/external/v1/warroom/CloseIncident	401	no	
+
+POST	/api/external/v1/warroom/CreateIncident	401	no	
+
+POST	/api/external/v1/warroom/CreateWarRoomAssessment	401	no	
+
+POST	/api/external/v1/warroom/CreateWarRoomComment	401	no	
+
+POST	/api/external/v1/warroom/CreateWarRoomDecision	401	no	
+
+POST	/api/external/v1/warroom/CreateWarRoomFact	401	no	
+
+GET	/api/external/v1/warroom/CreateWarRoomReport/1	401	no	
+
+POST	/api/external/v1/warroom/CreateWarRoomTask	401	no	
+
+GET	/api/external/v1/warroom/GetChatChannelCards/1	401	no	
+
+POST	/api/external/v1/warroom/GetChatChannelConversation	401	no	
+
+GET	/api/external/v1/warroom/GetDepartments	401	no	
+
+GET	/api/external/v1/warroom/GetFilterDepartments/1	401	no	
+
+GET	/api/external/v1/warroom/GetForgotPasswordTimeLimit	401	no	
+
+GET	/api/external/v1/warroom/GetIncident/1	401	no	
+
+GET	/api/external/v1/warroom/GetIncidentUserById/1	401	no	
+
+GET	/api/external/v1/warroom/GetLastSeverityScore/1	401	no	
+
+GET	/api/external/v1/warroom/GetWarRoomAuditors	401	no	
+
+GET	/api/external/v1/warroom/GetWarRoomUserForIncident/1	401	no	
+
+POST	/api/external/v1/warroom/GetWarRoomWallItems	401	no	
+
+POST	/api/external/v1/warroom/SaveSeverityScore	401	no	
+
+POST	/api/external/v1/warroom/SendChatMessage	401	no	
+
+POST	/api/external/v1/warroom/UpdateWarRoomAssessment	401	no	
+
+POST	/api/external/v1/warroom/UpdateWarRoomComment	401	no	
+
+POST	/api/external/v1/warroom/UpdateWarRoomDecision	401	no	
+
+POST	/api/external/v1/warroom/UpdateWarRoomFact	401	no	
+
+POST	/api/external/v1/warroom/UpdateWarRoomTask	401	no	
+
+POST	/api/external/v1/webhooks-management	401	no	
+
+PUT	/api/external/v1/webhooks-management	401	no	
+
+GET	/api/external/v1/webhooks-management/Cards	401	no	
+
+GET	/api/external/v1/webhooks-management/ExportLogs/1	404	no	
+
+GET	/api/external/v1/webhooks-management/Logs	401	no	
+
+POST	/api/external/v1/webhooks-management/Revoke/1	404	no	
+
+GET	/api/external/v1/webhooks-management/1	404	no	
+
+DELETE	/api/external/v1/webhooks-management/1	404	no	
+
+GET	/api/external/v1/webhooks-management/1/statistics	404	no	
+
+POST	/api/external/v1/1/configuration-items:batchUpdate	404	no	
+
+POST	/api/external/v1/1/pubsub-backfill:trigger	404	no	
+

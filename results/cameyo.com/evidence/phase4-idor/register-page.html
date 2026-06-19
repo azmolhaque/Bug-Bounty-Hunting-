@@ -1,0 +1,365 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script type="text/javascript" src="/js/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="/js/jquery-migrate-3.3.2.min.js"></script>
+    
+    
+    <meta name="author" content="Cameyo">
+
+    <!-- Set the viewport width to device width for mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Fav and touch icons -->
+    <link rel='icon' href='/favicon.ico'>
+
+    <!-- CSS -->
+    <!-- Bootstrap & FontAwesome & Entypo CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/fontawesome/css/all.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Fonts CSS -->
+    <link href="/css/fonts.css" rel="stylesheet" type="text/css">
+
+    <!-- Plugin CSS -->
+    <link href="/plugins/jquery-ui/jquery-ui.custom.min.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/isotope/css/isotope.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/google-code-prettify/prettify.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/mCustomScrollbar/jquery.mCustomScrollbar.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/tagsInput/jquery.tagsinput.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/bootstrap-switch/bootstrap-switch.css" rel="stylesheet" type="text/css">
+
+    <!-- Theme CSS -->
+    <link href="/css/gin-grants.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/chrome.css" rel="stylesheet" type="text/chrome">
+    <!-- chrome only css -->
+    <link href="/css/theme-responsive.css" rel="stylesheet" type="text/css">
+    <!-- Custom CSS -->
+    
+    
+    
+
+    <!-- Head SCRIPTS -->
+    <script type="text/javascript" src="/js/modernizr.js"></script>
+    <script type="text/javascript" src="/js/mobile-detect.min.js"></script>
+    <script type="text/javascript" src="/js/mobile-detect-modernizr.js"></script>
+    <script type="text/javascript">
+        function onSlaveClick(id, name) {
+            document.cookie = "CyoMngEnt" + "=" + "Id=" + id + "&Name=" + encodeURIComponent(name) + "; path=/";
+            window.location = window.location.href;
+        }
+    </script>
+
+    <!-- Cookies consent popup -->
+    
+        <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.0.3/cookieconsent.min.css" />
+        <script src="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.0.3/cookieconsent.min.js"></script>
+        <script>
+            /*var kChromeExtId = 'gkndpjfddnmddjomdmoencaljmceogek';
+            var kChromeExtUrl = 'chrome-extension://' + kChromeExtId + '/';
+            var useChromeExt = !!window.chrome && !!window.chrome.webstore;
+            if (useChromeExt) {
+                var url = kChromeExtUrl + 'cameyo_index.html';
+                var http = new XMLHttpRequest();
+                http.open('HEAD', url, true);
+                try {
+                    http.onreadystatechange = function () {
+                        if (http.readyState == 4) {
+                            if (http.status == 404 || http.status == 0) {
+                                var notif = $('#chrome-ext-notify');
+                                //12-NOV-2017: disabled: not advertising Chrome ext at the moment: notif.addClass('in');
+                            }
+                        }
+                    };
+                    http.send(null);
+                }
+                catch (err) { }
+            }*/
+
+            window.addEventListener("load", function () {
+                window.cookieconsent.initialise({
+                    "palette": {
+                        "popup": {
+                            "background": "black",
+                            "text": "white"
+                        },
+                        "button": {
+                            "background": "rgb(35, 112, 158)"
+                        }
+                    }
+                })
+            });
+        </script>
+    
+
+    
+    
+</head>
+
+<body ng-app="myApp" ng-controller="MainController" id="dashboard" class="full-layout nav-right-hide nav-right-start-hide nav-top-fixed responsive clearfix vd_bg-white nav-left-hide nav-left-start-hide" data-active="dashboard " data-smooth-scrolling="1">  <!-- Remove "nav-left-medium" to start as large nav size -->
+
+    
+
+    <!-- Header Start -->
+    
+        <header class="header-1" id="header">
+            <div class="vd_top-menu-wrapper">
+                <div class="container ">
+
+                    <div class="vd_top-nav vd_nav-width ">
+                        <div class="vd_panel-header">
+                            <div class="logo">
+                                <a href="/">
+                                    <img src="/command?op=Logo&type=Portal" style="max-height:30px">
+                                </a>
+                            </div>
+
+                            <!-- Responsive button -->
+                            
+                        </div>
+                    </div>
+
+                    <div class="vd_container">
+                        <div class="row">
+                            <div class="col-sm-5 col-xs-12">
+                            </div>
+                            <!-- Top right menu -->
+                            <div class="col-sm-7 col-xs-12">
+                                <div class="vd_mega-menu-wrapper">
+                                    <div class="vd_mega-menu pull-right">
+                                        <ul class="mega-ul">
+                                            
+
+                                            <!-- Login/Register buttons -->
+                                            
+                                                <li class="mega-li">
+                                                    <a href="https://www.cameyo.com" class="btn vd_black btn-default">Sign-up</a>
+                                                </li>
+                                                <li class="mega-li">
+                                                    <a href="/login" class="btn vd_black btn-default">Login</a>
+                                                </li>
+                                            
+
+                                            <!-- Profile button -->
+                                            
+                                        </ul>
+                                        <!-- Head menu search form ends -->
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <!-- container -->
+            </div>
+            <!-- vd_primary-menu-wrapper -->
+        </header>
+    
+    <!-- Header Ends -->
+
+
+    <!-- ModalDialog: Begin -->
+    
+    <!-- ModalDialog: End -->
+
+    <div class="content">
+        <div class="container">
+            
+                <div class="vd_navbar vd_nav-width vd_navbar-tabs-menu vd_navbar-left">
+                    <div class="navbar-menu clearfix">
+                        <div class="vd_menu">
+                            <ul>
+                                <li><a href="/dashboard"><span class="menu-icon"><i class="fa fa-chart-bar"></i></span><span class="menu-text">Dashboard</span></a></li>
+                                
+
+                                <li><a href="/public"><span class="menu-icon"><i class="fa fa-th-large"></i></span><span class="menu-text">Apps</span></a></li>
+                                <li><a href="/servers"><span class="menu-icon"><i class="fa fa-server"></i></span><span class="menu-text">Servers</span></a></li>
+
+                                <li><a href="javascript:void(0);" data-action="click-trigger"><span class="menu-icon"><i class="fa fa-users"></i></span><span class="menu-text">Admin</span> <span class="menu-badge"><span class="badge vd_bg-white vd_blue"><i class="fa fa-angle-down"></i></span></span></a>
+                                    <div class="child-menu" data-action="click-target">
+                                        <ul>
+                                            <li><a href="/company"><span class="menu-text">Company settings</span></a></li>
+                                            <li><a href="/policy"><span class="menu-text">Session settings</span></a></li>
+                                            <li><a href="/users"><span class="menu-text">Users</span></a></li>
+                                            <li><a href="/portal"><span class="menu-text">Portal</span></a></li>
+                                            
+                                        </ul>
+                                    </div>
+                                </li>
+                            </ul>
+                            <!-- Head menu search form ends -->
+                        </div>
+                    </div>
+                </div>
+            
+
+            <!-- Middle Content Start -->
+            <div class="vd_content-wrapper">
+                <div class="vd_container">
+                    <div class="vd_content clearfix">
+                        <div class="vd_content-section clearfix">
+                            
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <div class="panel">
+                                        <h1>
+                                            
+                                            
+                                        </h1>
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+
+                            
+    <div class="alert alert-danger vd_hidden" style="display: block;">
+        <span class="vd_alert-icon"><i class="fa fa-exclamation-circle vd_red"></i></span><strong>Sorry</strong><br />
+        Page not found.
+    </div>
+    <p style="height: 105px; width: 934px">
+    </p>
+
+                        </div>
+                        <!-- .vd_content -->
+                    </div>
+                    <!-- .vd_container -->
+                </div>
+                <!-- .vd_content-wrapper -->
+                <!-- Middle Content End -->
+            </div>
+            <!-- .container -->
+        </div>
+        <!-- .content -->
+
+        <!-- Footer Start -->
+        
+            <footer class="footer-1" id="footer">
+                <div class="vd_bottom ">
+                    <div class="container">
+                        <div class="row">
+                            <div class=" col-xs-12">
+                                <div class="copyright">Copyright 2026 Google LLC.</div>
+                            </div>
+                        </div>
+                        <!-- row -->
+                    </div>
+                    <!-- container -->
+                </div>
+            </footer>
+        
+        <!-- Footer END -->
+    </div>
+    <!-- .vd_body END  -->
+    <a id="back-top" href="#" data-action="backtop" class="vd_back-top visible"><i class="fa  fa-angle-up"></i></a>
+
+    <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src='/plugins/jquery-ui/jquery-ui.custom.min.js'></script>
+    <script type="text/javascript" src="/plugins/jquery-ui-touch-punch/jquery.ui.touch-punch.min.js"></script>
+    <script type="text/javascript" src="/plugins/breakpoints/breakpoints.js"></script>
+    <script type="text/javascript" src="/plugins/mCustomScrollbar/jquery.mCustomScrollbar.concat.min.js"></script>
+    <script type="text/javascript" src="/plugins/tagsInput/jquery.tagsinput.min.js"></script>
+    <script type="text/javascript" src="/plugins/bootstrap-switch/bootstrap-switch.min.js"></script>
+    <script type="text/javascript" src="/plugins/blockUI/jquery.blockUI.js"></script>
+    <script type="text/javascript" src="/js/theme.js"></script>
+    
+
+    <!-- Specific Page Scripts Put Here -->
+
+    <!-- Flot Chart  -->
+    <script type="text/javascript" src="/plugins/flot/jquery.flot.min.js"></script>
+    <script type="text/javascript" src="/plugins/flot/jquery.flot.resize.min.js"></script>
+    <script type="text/javascript" src="/plugins/flot/jquery.flot.pie.min.js"></script>
+    <script type="text/javascript" src="/plugins/flot/jquery.flot.categories.min.js"></script>
+    <script type="text/javascript" src="/plugins/flot/jquery.flot.time.min.js"></script>
+    <script type="text/javascript" src="/plugins/flot/jquery.flot.animator.min.js"></script>
+
+    <!-- Vector Map -->
+    <script type="text/javascript" src="/plugins/jvectormap/jquery-jvectormap-1.2.2.min.js"></script>
+    <script type="text/javascript" src="/plugins/jvectormap/jquery-jvectormap-world-mill-en.js"></script>
+
+    <!-- Sky Icons -->
+    <script type="text/javascript" src='/plugins/skycons/skycons.js'></script>
+    <script type="text/javascript">
+        function onSearchSubmit() {
+            var filterBy = $("#app-search-text").val();
+            var category = $('input[name=app-search-category-radio]:checked', '#search-box').val();
+            if (category == "private")
+                url = "/apps?filter=" + filterBy;
+            else
+                url = "/apps/public?filter=" + filterBy;
+            window.location.href = url;
+        }
+
+        function getSafeRedirectUrl(urlParameter) {
+            if (!urlParameter) {
+                return; // No URL provided
+            }
+            try {
+                const url = new URL(urlParameter, window.location.origin);
+                if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                    return; //Blocked redirect to potentially unsafe URL
+                }
+                if (url.hostname !== window.location.hostname) {
+                    return; //Blocked redirect to external URL
+                }
+                return url;
+            } catch (e) {
+                return; // Handle cases where urlParameter is not a valid URL at all
+            }
+        }
+
+        $(window).on('load', function () {
+            "use strict";
+
+            function getURLParameter(name) {
+                return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null
+            }
+
+            function showTooltip(x, y, contents) {
+                $('<div id="tooltip">' + contents + '</div>').css({
+                    position: 'absolute',
+                    display: 'none',
+                    top: y + 5,
+                    left: x + 20,
+                    size: '10px',
+                    //				'border-top' : '3px solid #1FAE66',
+                    'background-color': '#111111',
+                    color: "#FFFFFF",
+                    opacity: 0.85
+                }).appendTo("body").fadeIn(200);
+            }
+
+            // SetCookie (used by companyAdd.aspx)
+            var setCookie = getURLParameter("setCookie");
+            if (setCookie !== null && setCookie.startsWith('CyoMngEnt=')) {
+                var redirUrl = getURLParameter("redirUrl");
+                var safeUrl = getSafeRedirectUrl(redirUrl);
+                if (safeUrl) {
+                    document.cookie = setCookie;
+                    document.location.href = safeUrl;
+                }
+            }
+
+            if (false) {
+                $('.vd_top-menu-wrapper').css('background', '');
+                $('.vd_content-section').css('background', '');
+                $('.vd_content-wrapper').css('background', '');
+                $('.gallery-item').css('background', '');
+            }
+
+            // Notification
+            //cameyo:setTimeout(function () { notification("topright", "notify", "fa fa-exclamation-triangle vd_yellow", "Welcome to Vendroid", "Click on <i class='fa fa-question-circle vd_red'></i> Question Mark beside filter to take a view layout tour guide"); }, 1500);
+        });
+    </script>
+    <!-- Specific Page Scripts END -->
+
+    
+    
+</body>
+</html>

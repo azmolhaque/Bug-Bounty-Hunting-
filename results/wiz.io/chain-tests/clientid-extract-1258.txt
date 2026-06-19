@@ -1,0 +1,10 @@
+
+[0;36m═══ Wiz Auth0 client_id Extraction (Direct Follow Method) ═══[0m
+
+[0;36m[*][0m Method 1: Follow NextAuth signin redirect (captures client_id from Auth0 authorize URL)
+
+[0;36m[*][0m   Getting NextAuth CSRF token...
+  NextAuth CSRF: ...
+
+[0;36m[*][0m   Triggering /api/auth/signin/auth0 (POST)...
+< HTTP/2 403 

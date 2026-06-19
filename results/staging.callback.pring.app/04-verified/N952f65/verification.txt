@@ -1,0 +1,2 @@
+MANUAL: N952f65 [unknown-info]
+VERDICT: NEEDS_MANUAL

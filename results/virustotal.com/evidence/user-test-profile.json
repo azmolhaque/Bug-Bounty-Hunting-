@@ -1,0 +1,20 @@
+{
+    "data": {
+        "id": "test",
+        "type": "user",
+        "links": {
+            "self": "https://www.virustotal.com/api/v3/users/test"
+        },
+        "attributes": {
+            "status": "active",
+            "first_name": "",
+            "reputation": 1,
+            "is_service_account": false,
+            "certified": false,
+            "collections_count": 0,
+            "private": false,
+            "last_name": "",
+            "user_since": 1281919280
+        }
+    }
+}

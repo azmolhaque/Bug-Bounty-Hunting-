@@ -1,0 +1,7 @@
+  [000000] demo.siemplify-soar.com — 
+  [200] app.siemplify-soar.com — Google SecOps
+  [000000] trial.siemplify-soar.com — Google SecOps
+  [000000] community.siemplify-soar.com — Google SecOps
+  [000000] test.siemplify-soar.com — Google SecOps
+  [000000] staging.siemplify-soar.com — Google SecOps
+  [000000] dev.siemplify-soar.com — Google SecOps
