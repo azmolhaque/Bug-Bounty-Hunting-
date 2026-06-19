@@ -15,17 +15,20 @@
 #   8. Prompt extras
 # ═══════════════════════════════════════════════════════════════
 
-# ─── 0. PATH — ONE declaration, deduped by zsh ──────────────────
-export PATH=\
-"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:"\
-"/usr/local/go/bin:"\
-"$HOME/go/bin:"\
-"$HOME/.pdtm/go/bin:"\
-"$HOME/.local/bin:"\
-"$HOME/.npm-global/bin:"\
-"$PATH"
-
+# ─── 0. PATH — zsh array syntax, deduped natively ──────────────
+path=(
+  /usr/local/sbin
+  /usr/local/bin
+  /usr/sbin /usr/bin /sbin /bin
+  /usr/local/go/bin
+  $HOME/go/bin
+  $HOME/.pdtm/go/bin
+  $HOME/.local/bin
+  $HOME/.npm-global/bin
+  $path
+)
 typeset -U path   # remove duplicates — zsh-native, no custom precmd needed
+export PATH
 
 # ─── 1. Oh-My-Zsh ───────────────────────────────────────────────
 export ZSH="$HOME/.oh-my-zsh"
@@ -62,11 +65,10 @@ export NVM_DIR="$HOME/.config/nvm"
 [ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"
 
 # gf pattern tab-completion (tomnomnom/gf)
-() {
-  local gf_comp
-  gf_comp=(${HOME}/go/pkg/mod/github.com/tomnomnom/gf*/gf-completion.zsh(#q[1]N))
-  [[ -f $gf_comp ]] && source "$gf_comp"
-} 2>/dev/null
+for _gf_comp in ${HOME}/go/pkg/mod/github.com/tomnomnom/gf*/gf-completion.zsh; do
+  [[ -f "$_gf_comp" ]] && source "$_gf_comp" && break
+done 2>/dev/null
+unset _gf_comp
 
 # ─── 5. Bug Bounty Workflow ─────────────────────────────────────
 
@@ -247,13 +249,21 @@ alias topmem='ps aux --sort=-%mem | head -12'
 
 # ─── 8. Prompt extras ───────────────────────────────────────────
 
-# Show current git branch + Pi temp in right prompt
+# Show Pi temp in right prompt (evaluated at each prompt draw)
 RPROMPT='%F{240}$(vcgencmd measure_temp 2>/dev/null | tr -d "temp=")%f'
+setopt PROMPT_SUBST
 
-# Print a quick status on new SSH sessions
-if [[ -n "$SSH_CONNECTION" ]]; then
+# Print a quick status banner on SSH login (not on every source)
+_pi_banner() {
+  [[ -z "${SSH_CONNECTION:-}" ]] && return 0
+  [[ -n "${_PI_BANNER_SHOWN:-}" ]] && return 0
+  export _PI_BANNER_SHOWN=1
   echo ""
-  echo "  Pi5 Bug Bounty Lab  $(vcgencmd measure_temp 2>/dev/null)  RAM: $(free -h | awk '/Mem:/{print $3"/"$2}')"
-  echo "  Branch: $(git -C $BB rev-parse --abbrev-ref HEAD 2>/dev/null)  Sessions: $(tmux ls 2>/dev/null | wc -l)"
+  local _temp; _temp=$(vcgencmd measure_temp 2>/dev/null || echo "?°C")
+  local _ram;  _ram=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')
+  local _br;   _br=$(git -C "$BB" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+  local _sess; _sess=$(tmux ls 2>/dev/null | wc -l)
+  echo "  Pi5 Bug Bounty Lab | $_temp | RAM: $_ram | Branch: $_br | tmux: $_sess sessions"
   echo ""
-fi
+}
+_pi_banner
