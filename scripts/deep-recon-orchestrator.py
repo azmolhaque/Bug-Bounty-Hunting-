@@ -781,26 +781,30 @@ def ask_claude(cluster: dict, host_results: list[dict]) -> dict | None:
         desc=cluster["desc"], host_data="\n\n".join(summaries)
     )
 
-    # Write prompt to temp file (avoids shell escaping issues)
-    tmp = Path(f"/tmp/claude-prompt-{cluster['name']}.txt")
-    tmp.write_text(_CLAUDE_SYS + "\n\n" + prompt)
+    full_prompt = _CLAUDE_SYS + "\n\n" + prompt
+    log(f"Calling claude CLI for {cluster['name']} ({len(full_prompt)} chars)…", "CLAUDE")
 
-    log(f"Calling `claude -p` for {cluster['name']} analysis…", "CLAUDE")
-    try:
-        r = subprocess.run(
-            ["claude", "-p", f"$(cat {tmp})"],
-            capture_output=True, text=True, timeout=120, shell=False
+    # Method 1: stdin pipe — most reliable for long prompts
+    def _run(extra_flags: list[str] = []) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["claude", "--print"] + extra_flags,
+            input=full_prompt,
+            capture_output=True, text=True, timeout=150,
+            env={**os.environ, "NO_COLOR": "1"},
         )
-        # Fallback: pass via stdin
-        if not r.stdout.strip():
-            r = subprocess.run(
-                ["claude", "--print"],
-                input=_CLAUDE_SYS + "\n\n" + prompt,
-                capture_output=True, text=True, timeout=120
-            )
+
+    try:
+        r = _run()
+        # If claude needs --output-format flag on this install
+        if "unknown flag" in r.stderr.lower() or not r.stdout.strip():
+            r = _run(["--output-format", "text"])
         text = r.stdout.strip()
+        if r.returncode != 0 and not text:
+            log(f"Claude stderr: {r.stderr[:200]}", "WARN"); return None
     except subprocess.TimeoutExpired:
-        log("Claude timed out", "WARN"); return None
+        log("Claude timed out after 150s", "WARN"); return None
+    except FileNotFoundError:
+        log("claude binary not found", "WARN"); return None
     except Exception as e:
         log(f"Claude error: {e}", "WARN"); return None
 
