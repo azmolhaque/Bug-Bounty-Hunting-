@@ -259,7 +259,7 @@ _pi_banner() {
   [[ -n "${_PI_BANNER_SHOWN:-}" ]] && return 0
   export _PI_BANNER_SHOWN=1
   echo ""
-  local _temp; _temp=$(vcgencmd measure_temp 2>/dev/null || echo "?°C")
+  local _temp; _temp=$(vcgencmd measure_temp 2>/dev/null | tr -d 'temp=' || echo "?°C")
   local _ram;  _ram=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')
   local _br;   _br=$(git -C "$BB" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
   local _sess; _sess=$(tmux ls 2>/dev/null | wc -l)
