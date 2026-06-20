@@ -77,9 +77,9 @@ Form action: `POST /apigee_create_account_request`
 
 ## Lead Status
 
-| ID | Class | Endpoint | Status | Next Step |
-|----|-------|----------|--------|-----------|
-| APG-L001 | OAuth redirect_uri bypass | /sign_up + /apigee_create_account_request | UNCONFIRMED LEAD | Run Pi verification (see runbook) |
+| ID | Class | Endpoint | Status | Decision |
+|----|-------|----------|--------|----------|
+| APG-L001 | OAuth redirect_uri bypass | /sign_up + /apigee_create_account_request | DROPPED | FALSE POSITIVE — see Session 2 |
 
 ---
 
@@ -104,4 +104,50 @@ Form action: `POST /apigee_create_account_request`
 - Spring Boot actuators: all 404 → DROP
 - `registry.apigee.com`: all 404 → DROP (requires GCP auth)
 - `client_id=unifiedui` in state JWT with `alg:none`: interesting but rfp nonce prevents direct abuse without browser session → LOG as context
-- APG-L001: primary lead; awaiting POST validation test on Pi
+- APG-L001: DROPPED — FALSE POSITIVE. See Session 2.
+
+---
+
+## Session 2 — 2026-06-20 (APG-L001 Verification + Closure)
+
+### /oauth/authorize redirect_uri validation test (Pi)
+
+All four tests (external redirect_uri, registered redirect_uri, no client_id, bogus client_id) returned:
+```
+HTTP/1.1 302
+Location: https://login.apigee.com/login
+SSO_JSESSIONID=<session>
+```
+
+The server defers ALL validation (client_id, redirect_uri) to a server-side session evaluated AFTER
+authentication. This is standard CloudFoundry UAA behavior — not a vulnerability. Pre-auth there is
+no differentiation between valid and invalid redirect_uri values.
+
+### APG-L001 Final Evidence (browser test on phone)
+
+Full sign_up flow with `redirect_uri=https://example.com` and `client_id=unifiedui`:
+1. GET `/sign_up?client_id=unifiedui&redirect_uri=https://example.com` → form loads with injected hidden fields ✓
+2. POST `/apigee_create_account_request` → HTTP 200, "Check your inbox" (account created, no redirect_uri error) ✓
+3. Email confirmation link clicked → browser lands at `apigee.com/no-orgs-available` (NOT `example.com`) ✗
+
+**VERDICT: FALSE POSITIVE — DROP APG-L001**
+
+The server accepts the injected `redirect_uri` in the POST body without a server-side validation error,
+but the OAuth callback completion stage uses the registered URI (`console.apigee.com/oauthCallback`)
+or the default dashboard, ignoring the user-supplied value.
+
+The GET-level reflection into hidden form fields is real but produces no exploitable redirect.
+Does NOT meet CLAUDE.md §3 bar: "Open redirect without chaining to token exfiltration or account takeover."
+
+### New Asset — Test Apigee Edge Account
+A test Apigee Edge account was created during verification (no org provisioned — new Edge orgs are 
+disabled for trial accounts). This account could be used for authenticated API testing.
+- Account email: zahinshahriar3@gmail.com
+- Org: none (Edge trial provisioning disabled)
+- Potential use: test authenticated management API endpoints, JWT token handling, account-level IDORs
+
+### Next Hunting Direction
+With APG-L001 closed, options:
+1. **Apigee Edge authenticated surface** — use test account to probe management API with real JWT
+2. **Apigee X** — newer platform, different attack surface, may have less-reviewed code
+3. **Move to new target** — Siemplify SOAR, Waze Biz Portal, or Dataform per deep-research ranking
