@@ -2,7 +2,7 @@
 export PATH="/usr/bin:/usr/local/bin:/usr/sbin:/bin:$PATH"
 
 echo "=== Fetching www.icrc.org ==="
-/usr/bin/curl -sk --max-time 15 "https://www.icrc.org/" -o /tmp/www_icrc.txt
+/usr/bin/curl -skL --max-time 15 --compressed "https://www.icrc.org/" -o /tmp/www_icrc.txt
 echo "Downloaded $(wc -c < /tmp/www_icrc.txt) bytes"
 
 echo
