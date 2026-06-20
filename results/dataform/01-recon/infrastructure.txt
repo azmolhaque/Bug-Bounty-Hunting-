@@ -1,0 +1,25 @@
+# Dataform Infrastructure Notes
+# 
+# OLD (retired): app.dataform.co — standalone SaaS product (acquired by Google ~2020)
+# NEW (active):  dataform.googleapis.com — Google Cloud Dataform API (in BigQuery)
+#                https://cloud.google.com/dataform
+#
+# GCP Project: dataform-open-source
+# Artifact Registry: us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source
+# npm CLI: @dataform/cli v3.0.59
+# npm Core: @dataform/core v3.0.59
+# npm API (old): @dataform/api v1.6.4 (last updated ~2022)
+#
+# GitHub: https://github.com/dataform-co/ (15+ repos)
+# Main repo: dataform-co/dataform
+# 
+# API Discovery URL (TIER4 - OUT OF SCOPE for active testing):
+# https://dataform.googleapis.com/$discovery/rest?version=v1
+# Auth: OAuth2 (bigquery, cloud-platform scopes)
+#
+# API Resources (reference only - host is out of scope):
+# projects.locations.repositories (create, patch, delete, get, list, commit, move)
+# projects.locations.repositories.workspaces (writeFile, readFile, push, pull, etc.)
+# projects.locations.repositories.workflowInvocations (create, cancel, query)
+# projects.locations.folders (setIamPolicy, getIamPolicy, testIamPermissions)
+# projects.locations.teamFolders (setIamPolicy, getIamPolicy, testIamPermissions)

@@ -1,0 +1,4 @@
+# No hosts resolved successfully.
+# All *.dataform.co queries return SERVFAIL from authoritative TLD NS.
+# Dataform SaaS has been fully migrated to cloud.google.com/dataform (BigQuery Dataform).
+# The dataform.co domain infrastructure is abandoned.
