@@ -1,22 +1,13 @@
-# Subdomains discovered for icrc.org
-# Date: 2026-06-20
-# Source: DNS wordlist enumeration (crt.sh blocked)
-
-www.icrc.org
-api.icrc.org
-app.icrc.org
-auth.icrc.org
-test.icrc.org
-uat.icrc.org
-elearning.icrc.org
-careers.icrc.org
-familylinks.icrc.org
-news.icrc.org
-blogs.icrc.org
-library.icrc.org
-ftp.icrc.org
-autodiscover.icrc.org
-shop.icrc.org
-extranet.icrc.org
-api-dev.icrc.org
-api-test.icrc.org
+# ICRC subdomain DNS sweep — 2026-06-20
+www.icrc.org -> www-g5gshsf0dmgyg2b9.a01.azurefd.net (Azure Front Door)
+api.icrc.org -> 80.94.147.175 (direct IP — HIGH PRIORITY)
+test.icrc.org -> 80.94.146.176 (direct IP — HIGH PRIORITY test env)
+careers.icrc.org -> icrc.jobs2web.com (third-party CNAME — OUT OF SCOPE per VDP)
+elearning.icrc.org -> 128.65.195.27 (direct IP — e-learning platform)
+shop.icrc.org -> 45.157.190.36 (direct IP — online shop)
+auth.icrc.org -> 80.94.147.172 (direct IP — auth endpoint HIGH PRIORITY)
+library.icrc.org -> icrc-org-afd-icrc-wapp-prd-chn-cae8bmamb8efa0ej.z01.azurefd.net (Azure Front Door)
+autodiscover.icrc.org -> 80.94.147.134 (Exchange autodiscovery — mail infra)
+extranet.icrc.org -> 80.94.147.215 (direct IP — partner extranet)
+familylinks.icrc.org -> icrc-org-afd-icrc-wapp-prd-chn-cae8bmamb8efa0ej.z01.azurefd.net (Azure Front Door — SENSITIVE)
+casebook.icrc.org -> icrc-org-afd-icrc-wapp-prd-chn-cae8bmamb8efa0ej.z01.azurefd.net (Azure Front Door — SENSITIVE detainee data)
