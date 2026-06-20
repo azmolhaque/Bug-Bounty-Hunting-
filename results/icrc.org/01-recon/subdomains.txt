@@ -1,0 +1,22 @@
+# Subdomains discovered for icrc.org
+# Date: 2026-06-20
+# Source: DNS wordlist enumeration (crt.sh blocked)
+
+www.icrc.org
+api.icrc.org
+app.icrc.org
+auth.icrc.org
+test.icrc.org
+uat.icrc.org
+elearning.icrc.org
+careers.icrc.org
+familylinks.icrc.org
+news.icrc.org
+blogs.icrc.org
+library.icrc.org
+ftp.icrc.org
+autodiscover.icrc.org
+shop.icrc.org
+extranet.icrc.org
+api-dev.icrc.org
+api-test.icrc.org
