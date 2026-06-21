@@ -10,7 +10,20 @@ Started: 2026-06-20
 
 | ID | Class | Surface | Status | Severity |
 |----|-------|---------|--------|----------|
-| FIT-C001 | CORS Misconfiguration | accounts.fitbit.com + dev.fitbit.com | ⛔ **RETIRED — DUP OF WAI CLOSURE (Issue 518912931)** | — |
+| FIT-C001 | CORS Misconfiguration | accounts.fitbit.com + dev.fitbit.com | ⛔ RETIRED — DUP OF WAI (Issue 518912931) | — |
+| FIT-L002 | CORS (no ACAC) | strava.fitbit.com | ❌ CLOSED — CORS w/o credentials=true; page = public transition HTML only | — |
+
+## ⛔ FITBIT CLUSTER CLOSED — 2026-06-21
+
+All TIER1 Fitbit subdomains exhausted:
+- `accounts.fitbit.com`: CORS WAI closure (Issue 518912931)
+- `health-admin.fitbit.com`: NXDOMAIN
+- `ngw.fitbit.com`: NXDOMAIN
+- `coaching-dashboard.fitbit.com`: NXDOMAIN
+- `mgmt.fitbit.com`: Google corp.google.com gated (employees only, authLevel=2000000)
+- `strava.fitbit.com`: Transition page ("Fitbit → Google Health"); CORS reflects origin BUT no ACAC=true; all paths 404; public content only
+
+**PIVOT → app.siemplify-soar.com / Chronicle Security** (*.siemplify-soar.com TIER1 wildcard, confirmed 200 in prior recon, SSRF-rich security connector platform).
 
 > **2026-06-21 — CRITICAL DEDUP CORRECTION.** FIT-C001 was already submitted as
 > **Issue 518912931** on 2026-06-02 and **closed Won't Fix / Intended Behavior (P4)**.
