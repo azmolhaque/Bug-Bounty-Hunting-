@@ -106,14 +106,39 @@ This is the highest-priority target for Session 2.
 
 ---
 
-## Session 3 — 2026-06-21 (QUEUED)
+## Session 3 — 2026-06-21 (COMPLETE)
 
-Three parallel objectives:
-1. **JS mining** on `home.ft.nest.com` — extract API endpoints, internal hosts, auth logic from SPA bundles
-2. **accounts.nest.com TIER0** — CORS + OAuth redirect_uri probe
-3. **phoenix.nest.com + www5.dev.nestlabs.com** — DNS + HTTP fingerprint, scope check
+**Phase A — JS bundles extracted from home.ft.nest.com (not yet fetched):**
+```
+/js/main-30c9a58864910c0d57f2.js          ← main app logic — MINE FIRST
+/js/_shared_/main-b15efb8dfb535b5c78cb.js  ← shared core — mine
+/js/_vendors_/common-c9405a385b5ad51803c3.js ← vendor bundle — mine
+/css/camera-9f4b09a95f34d4358b9c.js        ← camera module
+/css/security-c7179311710ad7c2fc43.js       ← security module
+```
 
-See runbooks/PI-RUNBOOK-nest-session3.md.
+**Phase B — CSP host DNS + scope check:**
+
+| Host | DNS result | HTTP | Scope |
+|------|-----------|------|-------|
+| `www5.dev.nestlabs.com` | CNAME → `www5.web-dev.s1.nestlabs.com.` (35.190.38.33 GCP) | 301 → https://www5.web-dev.s1.nestlabs.com/ → **404 nginx/1.18.0** | ❌ OOS — only `supportadmin.nestlabs.com` listed; acquisition unlisted subdomain = TIER4 |
+| `phoenix.nest.com` | Resolves (served HTTP) | **301 → `http://accounts.nest.com/login/`** (own CSP, nginx/1.18.0) | ❌ OOS — not in explicit Nest scope list; TIER4 default |
+| `integration.store.nest.com` (phoenix.nest.com CSP) | not probed | n/a | ❌ OOS — not listed |
+
+NST-L005, NST-L006: **CLOSED — out of scope.** Cannot probe any of these three hosts.
+
+**Phase C — accounts.nest.com OIDC + CORS:** ⏳ OUTPUT CUT OFF — re-run in Session 4.
+
+---
+
+## Session 4 — 2026-06-21 (QUEUED)
+
+Objectives:
+1. **JS bundle mining** — `/js/main-30c9a58864910c0d57f2.js` + `/js/_shared_/main-b15efb8dfb535b5c78cb.js` from home.ft.nest.com
+2. **accounts.nest.com TIER0** — OIDC discovery + CORS probe (cut off in S3)
+3. **Unprobed in-scope TIER1 hosts** — `fleet.home.nest.com`, `clips.home.nest.com`, `nssbridge.nest.com`, `beta.home.nest.com`, `alpha.home.nest.com`
+
+See runbooks/PI-RUNBOOK-nest-session4.md.
 
 ---
 
@@ -121,11 +146,14 @@ See runbooks/PI-RUNBOOK-nest-session3.md.
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| NST-L001 | Auth differential | `home.ft.nest.com` root=200 | ❌ CLOSED — SPA catch-all (login shell) |
-| NST-L002 | API surface | `api.home.ft.nest.com` (bearer gate) | ⏳ HOLD — needs valid Nest account |
-| NST-L003 | Admin panel | `admin.store.nest.com` + ft (403 root, 200 health) | ⏳ HOLD — probe health content in Session 3 |
-| NST-L004 | Support admin | `supportadmin.nestlabs.com` | ❌ CLOSED — Google IAP, inaccessible externally |
-| NST-L005 | Undocumented API | `*.phoenix.nest.com` (in CSP connect-src) | ⏳ NEW — Session 3 DNS + scope check |
-| NST-L006 | Dev artifact | `www5.dev.nestlabs.com` (in CSP frame-src) | ⏳ NEW — Session 3 DNS + HTTP fingerprint |
-| NST-L007 | JS bundle mining | `home.ft.nest.com` SPA (build 2026-04-29) | ⏳ NEW — Session 3 bundle extraction |
-| NST-L008 | TIER0 OAuth | `accounts.nest.com` CORS + redirect_uri | ⏳ NEW — Session 3 OAuth probe |
+| NST-L001 | Auth differential | `home.ft.nest.com` root=200 | ❌ CLOSED — SPA catch-all |
+| NST-L002 | API surface | `api.home.ft.nest.com` (bearer gate) | ⏳ HOLD — needs Nest account |
+| NST-L003 | Admin panel | `admin.store.*.nest.com` | ⏳ HOLD — health content probe in S4 |
+| NST-L004 | Support admin | `supportadmin.nestlabs.com` | ❌ CLOSED — Google IAP |
+| NST-L005 | Undocumented API | `phoenix.nest.com` (CSP connect-src) | ❌ CLOSED — out of scope (TIER4) |
+| NST-L006 | Dev artifact | `www5.dev.nestlabs.com` (CSP frame-src) | ❌ CLOSED — out of scope (TIER4) |
+| NST-L007 | JS bundle mining | `home.ft.nest.com` SPA bundles | ⏳ ACTIVE — Session 4 |
+| NST-L008 | TIER0 OIDC/CORS | `accounts.nest.com` | ⏳ ACTIVE — Session 4 |
+| NST-L009 | Fleet/multi-tenant | `fleet.home.nest.com` | ⏳ NEW — unprobed, Session 4 |
+| NST-L010 | Video clips | `clips.home.nest.com` | ⏳ NEW — unprobed, Session 4 |
+| NST-L011 | NSS Bridge | `nssbridge.nest.com` | ⏳ NEW — unprobed, Session 4 |
