@@ -34,9 +34,53 @@ explicitly TIER4 in scope.yaml — do NOT probe it.
 
 ---
 
-## Session 1 — 2026-06-21 (QUEUED)
+## Session 1 — 2026-06-21 (COMPLETE)
 
-Quick viability check: is tenor.com a live web app or a redirect?
+**tenor.com root (HTTP/2 200):**
+- Live web application: 250KB response, App Engine Flex backend
+- Build: `release=r260617-1-master-a09c` (2026-06-17 — very recent)
+- `set-cookie: countryCode=BD; path=/` — geo-detection cookie, not auth
+- `unsafe-eval` present in `script-src` (alongside nonce)
+- `via: 1.1 google` — GFE proxied
+
+**CSP domains (passive, informational):**
+- `connect-src`: `*.tenor.co`, `*.tenor.com`, `*.googleapis.com`, `tenor.googleapis.com`
+- `img-src / media-src`: `media.tenor.co`, `media.tenor.com`, `media1.tenor.co`, `media1.tenor.com`, `c.tenor.com`
+- All subdomains OOS (unlisted acquisition subdomains = TIER4)
+
+**Path probe results:**
+| Path | Status | Notes |
+|------|--------|-------|
+| `/` | **200** | Live SPA |
+| `/search` | **200** | Real endpoint — not a catch-all |
+| `/robots.txt` | **200** | To be mined |
+| `/api` | 301 | Redirect |
+| `/api/v1` | 404 | Real 404 — route table exists (not catch-all) |
+| `/health` | 404 | — |
+| `/upload` | 404 | — |
+| `/gif` | 404 | — |
+| `/trending` | 404 | — |
+| `/.well-known/openid-configuration` | 404 | No OIDC |
+
+**www.tenor.com:** 301 → `https://tenor.com/`. Response includes `x-debug-*` headers:
+`x-debug-canonicalpath`, `x-debug-currentpath`, `x-debug-host`, `x-debug-hostname`,
+`x-debug-protocol`, `x-debug-scheme` — debug routing headers in production. www.tenor.com
+is OOS (unlisted subdomain), so not directly reportable, but confirms same App Engine app.
+
+**Session 1 verdict:** tenor.com is LIVE with a real route table. Pursue Session 2.
+
+---
+
+## Session 2 — 2026-06-21 (QUEUED)
+
+Objectives:
+1. Mine `robots.txt` for disallowed paths
+2. Probe `/search` — is it HTML or JSON? Does it accept query params? Any CORS?
+3. GAE standard paths (`/_ah/...`)
+4. CORS probe on tenor.com root + search
+5. Discover authenticated endpoints via JS bundle
+
+See runbooks/PI-RUNBOOK-tenor-session2.md.
 
 ---
 
@@ -44,4 +88,6 @@ Quick viability check: is tenor.com a live web app or a redirect?
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| (none yet) | — | — | Recon pending |
+| TEN-L001 | Search endpoint | `tenor.com/search` (200) | ⏳ ACTIVE — probe content + CORS in S2 |
+| TEN-L002 | JS bundle mining | tenor.com SPA bundle (`main.min.js`) | ⏳ NEW — Session 2 |
+| TEN-L003 | GAE internal paths | `tenor.com/_ah/...` | ⏳ NEW — Session 2 |
