@@ -38,14 +38,18 @@ portal or SDK distribution site for the eye-tracking SDK.
 
 ---
 
+## ⛔ ADHAWKDEV CLOSED — 2026-06-21
+
+`adhawkdev.com`: NXDOMAIN (no DNS A/CNAME) + 000 (TCP refused) on all paths.
+Fully decommissioned. Eye-tracking SDK/portal has been removed post-acquisition.
+Same pattern as Respond Software, Dataform, Dropcam.
+
+**PIVOT → Cameyo cluster (TIER0)**: cameyo.com, online.cameyo.com, session.svc.cameyo.com,
+gwebhook.svc.cameyo.com — cloud VDI/application streaming, acquired ~2023, completely untested.
+
 ## Session 1 — 2026-06-21
 
-### Runbook
-See: `runbooks/PI-RUNBOOK-adhawk-session1.md`
-
-### Output
-
-(Paste Pi output here after running)
+DNS: NXDOMAIN. All paths: 000 (TCP refused).
 
 ---
 
