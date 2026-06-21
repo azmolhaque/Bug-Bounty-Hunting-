@@ -7,7 +7,7 @@
 **CWE:** CWE-284 (Improper Access Control), CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor)  
 **Status:** Report-ready  
 **Discovered:** 2026-06-21 (Session 2), confirmed + chain-tested 2026-06-22 (Sessions 3, 4, 6, 7)  
-**Researcher IP used during testing:** [Pi external IP — redact before submission]  
+**Researcher IP used during testing:** `180.148.212.54`  
 **Tools:** curl 7.x  
 
 ---

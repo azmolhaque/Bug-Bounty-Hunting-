@@ -7,7 +7,7 @@
 **CWE:** CWE-306 (Missing Authentication for Critical Function), CWE-209 (Information Exposure Through an Error Message)  
 **Status:** Report-ready  
 **Discovered:** 2026-06-22 (Session 5–6)  
-**Researcher IP used during testing:** [Pi external IP — redact before submission]  
+**Researcher IP used during testing:** `180.148.212.54`  
 **Tools:** curl 7.x  
 
 ---
