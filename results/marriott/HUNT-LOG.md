@@ -212,10 +212,48 @@ cp ~/hunt/session2/session2-output.txt ~/bug-bounty-hunting-/results/marriott/se
 
 ---
 
-### Session 3 — QUEUED (Pi required — read session 2 output first)
+### Session 3 — COMPLETE (2026-06-22)
 
 **Goal:** Targeted manual testing with CVE-informed approach.
 **Runbook:** `runbooks/PI-RUNBOOK-marriott-session3.md`
+**Status:** COMPLETE. Key results below.
+
+**Session 3 Results (2026-06-22):**
+
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| A — Saviynt CVE-2022-23855 | `/ECM/maintenance/forgotpasswordstep1` | HTTP 500 (endpoint exists, not patched-clean 404/403) | AMBIGUOUS — try GET + other payloads |
+| A — Saviynt API | `/ECM/api/v5/user/getUser` | **HTTP 401** (auth required, 0B body — WAF or auth wall) | Expected behavior |
+| **B — Salesforce Aura** | `cpp.marriott.com/s/sfsites/aura` | **GET HTTP 200 + POST `"state":"SUCCESS"` on User | **CONFIRMED LEAD** |
+| B — User getObjectInfo | Aura POST w/ getObjectInfo | **4,500,982 bytes SUCCESS** — User schema returned WITHOUT auth | **ACTIVE — need record test** |
+| B — Contact/Account/Lead/Opp | Aura POST getObjectInfo | **4,336,904 bytes ERROR** each — suspiciously large errors | **Parse required** |
+| C — esupplier | IIS/10.0 + ASP.NET, all paths 404 | No API endpoints found via generic paths | ASP.NET — need source analysis |
+| D — franchisetx | ALL paths 200/7080B (SPA catch-all) | Homepage 12594B, /login 7080B = SPA index.html served everywhere | SPA — need JS bundle |
+| E — mgs.marriott.com | Root 200/19501B, all other paths 404 | Nothing open | Low signal |
+| PATH errors | grep/head/cat/sort not found | Same PATH issue as session 2 | Fixed in session 4 |
+
+**M002 — Salesforce Aura (cpp.marriott.com): CONFIRMED LEAD**
+- Aura API endpoint `/s/sfsites/aura` accessible without credentials (HTTP 200)
+- `getObjectInfo` on `User` returns `"state":"SUCCESS"` with **4.5MB response** (full User object schema)
+- Contact/Account/Lead/Opportunity return ERROR but with 4.3MB each (need to parse error body — may contain schema data)
+- `getItems` on Contact returned ERROR/4.3MB (parse needed to determine if records in error payload)
+- **Next: test `getRecord` with User IDs, `getItems` on User, parse ERROR bodies, try SOQL**
+- Severity if schema only: ~Medium (5.3). If records readable: High (8.6) to Critical.
+
+**M006 — Saviynt (500 on forgotpassword): AMBIGUOUS**
+- `/ECM/maintenance/forgotpasswordstep1` GET → 500, POST → 500 (same error HTML)
+- Not a clean 404/403 (patch would give that) — endpoint IS live and erroring
+- Could mean: payload format wrong, partial patch, or endpoint broken independently
+- Next: try GET with `?username=admin` query param, try form-encoded POST
+
+**M004 — Franchise transactions SPA catch-all: NEEDS JS HUNTING**
+- ALL paths return 200 (SPA router serves index.html for unknown routes)
+- Need to extract JS bundle from homepage, find real API endpoints
+- Next: parse 12594B homepage for script tags → extract JS bundle → mine endpoints
+
+---
+
+### Session 4 — QUEUED (Pi required)
 **Priority order:**
 1. Read session 2 output: `cat ~/hunt/session2/session2-output.txt | grep -E "200|CRITICAL|port"`
 2. **Phase A** — Saviynt CVE-2022-23855: POST to `/ECM/maintenance/forgotpasswordstep1` — if HTTP 200 → CRITICAL admin takeover
@@ -252,11 +290,11 @@ cp ~/hunt/session2/session2-output.txt ~/bug-bounty-hunting-/results/marriott/se
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
 | M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
-| M002 | **Salesforce Aura Guest User data exposure** (ShinyHunters class, active 2026) | `cpp.marriott.com/s/` | 301→/s/ | ACTIVE — extract fwuid, POST to /s/sfsites/aura | **CRITICAL** |
+| M002 | **Salesforce Aura — User schema confirmed, records TBD** | `cpp.marriott.com/s/sfsites/aura` | POST→`"state":"SUCCESS"` + 4.5MB | **CONFIRMED LEAD — Session 4: getRecord + getItems on User** | **HIGH/CRITICAL** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | **200 / 4853B** | ACTIVE — endpoint enum | CRITICAL |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
-| M006 | **CVE-2022-23855 auth bypass + IAM IDOR** | `ssm-marriottms.saviyntcloud.com` | **302→/ECM** confirmed alive | ACTIVE — test `/ECM/maintenance/forgotpasswordstep1` | **CRITICAL** |
+| M006 | CVE-2022-23855 ambiguous (500 not 200) | `ssm-marriottms.saviyntcloud.com` | `forgotpasswordstep1` → HTTP 500 | ACTIVE — try GET+query, form-encoded POST | HIGH |
 | M007 | Messaging portal auth bypass / IDOR | `mgs.marriott.com` | **200 / 19501B**, raw EC2 | ACTIVE — endpoint enum | HIGH |
 | M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
 | M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
