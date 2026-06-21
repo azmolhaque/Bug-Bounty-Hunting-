@@ -69,7 +69,28 @@ Waze Ads **shut down September 1, 2023**. No new Waze Ads accounts can be create
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| WAZ-L001 | SSRF (potential) | proxy.waze.com + proxy-staging.waze.com | HYPOTHESIS — needs Pi probe |
-| WAZ-L002 | IDOR (WAM API accounts) | ads.wazeapis.com/v1/accounts/{account}/... | BLOCKED — needs WAZE_ACCESS_TOKEN |
-| WAZ-L003 | Unauthenticated exposure | adsapi-staging.waze.com | HYPOTHESIS — needs Pi probe |
+| WAZ-L001 | SSRF (potential) | proxy.waze.com + proxy-staging.waze.com | ❌ CLOSED — DEAD. Blanket 301 → www.waze.com on every path (GFE redirector, not a fetcher) |
+| WAZ-L002 | IDOR (WAM API accounts) | ads.wazeapis.com/v1/accounts/{account}/... | BLOCKED — needs WAZE_ACCESS_TOKEN; host 301s (parked, redirect target TBD) |
+| WAZ-L003 | Unauthenticated exposure | adsapi-staging.waze.com | ❌ CLOSED — DEAD. Same blanket 301 → www.waze.com as adsapi.waze.com |
 | WAZ-L004 | SSRF (partner feed) | www.waze.com/partnerhub | BLOCKED — needs Waze for Cities partner status |
+
+---
+
+## Session 1 — 2026-06-21 (Pi probe results)
+
+**All four ad-API hosts are decommissioned.** `proxy.waze.com`, `proxy-staging.waze.com`,
+`adsapi-staging.waze.com`, `adsapi.waze.com` all resolve to `130.211.9.172` (CNAME → waze.com)
+and return `HTTP/2 301 → https://www.waze.com/` on every path, served by `Google Frontend`.
+No app behind them. WAZ-L001 and WAZ-L003 CLOSED (dead infra, confirms Sept-2023 ads shutdown).
+
+`ads.wazeapis.com` (WAM API) → 301 on /v1/health, /v1/, /v1/accounts. Parked; redirect target
+to be confirmed (Session 1b).
+
+`biz.waze.com` (34.111.115.4) and `biz.world.waze.com` (34.36.203.208) → live SPA, **catch-all
+200 on every probed path** (/, /app/signup, /health, /.well-known/openid-configuration, etc.).
+This is the SPA index.html shell, NOT distinct endpoints. Real surface = the backend API the
+SPA calls (needs auth; no new ads accounts possible). Session 1b: mine the SPA JS for the real
+API host + check if openid-configuration is real JSON.
+
+**DECISION GATE:** If Session 1b finds no live backend API reachable pre-auth → Waze surface is
+exhausted for an unauthenticated solo hunter → PIVOT to Photomath portal IDOR (TIER0).
