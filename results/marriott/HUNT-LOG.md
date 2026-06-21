@@ -253,7 +253,52 @@ cp ~/hunt/session2/session2-output.txt ~/bug-bounty-hunting-/results/marriott/se
 
 ---
 
-### Session 4 — QUEUED (Pi required)
+### Session 4 — COMPLETE (2026-06-22)
+
+**Goal:** Salesforce Aura deep investigation + Franchise JS extraction + Saviynt retry.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session4.md`
+
+**Session 4 Results:**
+
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| A — Salesforce User schema | `getObjectInfo User` | **SUCCESS 203 fields — Email, FirstName, Address, Company confirmed accessible** | CONFIRMED MEDIUM → test record access |
+| A — Contact/Account/Lead | `getObjectInfo` | ERROR 4.3MB each — Aura bootstrap context, NOT data | Schema blocked for guest |
+| A — getItems User | `ACTION$getItems` | Internal server error (not ACCESS_DENIED) | Try different descriptor |
+| A — REST `/services/data/` | GET | **HTTP 200 / 2556B** | Get response body (version list likely) |
+| A — REST `/services/data/v55.0/` | GET | HTTP 401 (auth required) | Expected |
+| **B — Franchise /ajax.php** | `/login` source | **Form action=/ajax.php, params: module, function, email, password** | **NEW HIGH LEAD M018** |
+| B — JS bundle | `/assets/scripts.jgz?v=7` | Found — need to decompress + mine module/function pairs | Session 5 |
+| C — Saviynt forgotpw | All variants | HTTP 500 + uniform 1038B for all ?id=N | **DEPRIORITIZED — likely patched** |
+| PATH bug | Phase C loop | `for PATH in /ECM/...` overwrote $PATH — curl not found | Fixed in session 5 |
+
+**M002 — Salesforce Aura Status:**
+
+**CONFIRMED MEDIUM — pending record access test for High/Critical upgrade**
+
+Evidence:
+- `cpp.marriott.com/s/sfsites/aura` → unauthenticated POST accepted (`aura.token=undefined`)
+- `getObjectInfo User` → `"state":"SUCCESS"` | **203 fields** including: `Email`, `FirstName`, `Address`, `CommunityNickname`, `CompanyName`, `BannerPhotoUrl`, `HasUserVerifiedEmail`
+- Guest User profile has "API Enabled" — this is the Salesforce misconfiguration class (ShinyHunters, 2026)
+- Contact/Account schema: ERROR state (restricted for guest)
+- Record access (`getItems`): "internal server error" not "access denied" — try `getListRecordsByName` with `AllUsers` viewApiName
+- REST API `/services/data/` → 200 (version list)
+
+**Immediate next test:** `getListRecordsByName User AllUsers` + download+decompress scripts.jgz
+
+**M018 — Franchise Transactions /ajax.php: NEW LEAD (HIGH)**
+
+PHP application with module/function POST routing:
+```
+POST /ajax.php
+module=<X>&function=<Y>&email_address=<...>&password=<...>
+```
+If any `module/function` combo is accessible without auth → auth bypass finding (High).
+JS bundle `/assets/scripts.jgz?v=7` should contain all valid module/function names.
+
+---
+
+### Session 5 — QUEUED (Pi required)
 **Priority order:**
 1. Read session 2 output: `cat ~/hunt/session2/session2-output.txt | grep -E "200|CRITICAL|port"`
 2. **Phase A** — Saviynt CVE-2022-23855: POST to `/ECM/maintenance/forgotpasswordstep1` — if HTTP 200 → CRITICAL admin takeover
@@ -303,6 +348,7 @@ cp ~/hunt/session2/session2-output.txt ~/bug-bounty-hunting-/results/marriott/se
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | **302→/Login/Login** | ACTIVE — test auth paths | HIGH |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
+| **M018** | **PHP /ajax.php module routing — auth bypass / IDOR** | `marriottfranchisetransactions.marriott.com/ajax.php` | Form: module+function POST params | ACTIVE — mine scripts.jgz + test module combos | **HIGH** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
 | M016 | SSO endpoint discovery | `sso.marriott.com` NXDOMAIN — auth moved | 000 | PENDING — find new auth hostname | HIGH |
 | ~~M017~~ | ~~lawmanager internal~~ | 000 timeout | Zscaler internal, inaccessible externally | PARKED | — |
