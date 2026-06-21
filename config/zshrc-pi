@@ -287,51 +287,212 @@ alias reload='source ~/.zshrc'
 alias zshconfig='$EDITOR ~/.zshrc'
 alias secrets='$EDITOR ~/.secrets.zsh && chmod 600 ~/.secrets.zsh'
 
-# ls (lsd — modern ls with icons)
-alias ls='lsd'
-alias ll='lsd -l'
-alias la='lsd -la'
-alias lt='lsd --tree --depth 2'
+# ls (lsd if available, fallback to exa then plain ls)
+if command -v lsd &>/dev/null; then
+  alias ls='lsd'; alias ll='lsd -l'; alias la='lsd -la'; alias lt='lsd --tree --depth 2'
+elif command -v exa &>/dev/null; then
+  alias ls='exa'; alias ll='exa -l'; alias la='exa -la'; alias lt='exa --tree --level 2'
+fi
 
-# Bug bounty
+# Bug bounty core
 alias bb='cd $BB'
 alias nuclei-update='nuclei -update-templates -silent'
 alias interactsh='interactsh-client -server oast.pro'
 alias iactsh='interactsh-client -server oast.pro'
-alias httpx="$HOME/go/bin/httpx"
-alias clean='~/scripts/cleanup_workspace.sh'
+alias oob='$BB/scripts/oob-manager.sh start'
+alias oob-hits='$BB/scripts/oob-manager.sh hits'
+alias oob-watch='$BB/scripts/oob-manager.sh watch'
+alias clean='bb-clean'
 
-# Git
+# Convenience wrappers that prefer ~/go/bin over system bins
+for _go_bin in httpx subfinder dnsx naabu katana nuclei ffuf dalfox; do
+  [[ -x "$HOME/go/bin/$_go_bin" ]] && alias "$_go_bin"="$HOME/go/bin/$_go_bin"
+done
+unset _go_bin
+
+# Git shortcuts
 alias gs='git status'
 alias gc='git commit'
 alias gp='git push'
-alias gl='git log --oneline -10'
+alias gl='git log --oneline -15'
 alias gd='git diff'
+alias gca='git commit --amend --no-edit'
+alias gst='git stash'
 
 # Pi health
-alias temp='vcgencmd measure_temp 2>/dev/null || awk "{printf \"%.1f°C\n\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp'
+alias temp='awk "{printf \"%.1f°C\n\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp 2>/dev/null'
 alias memfree='free -h'
+alias memwatch='watch -n2 free -h'
 alias ports='ss -tuln'
 alias topcpu='ps aux --sort=-%cpu | head -12'
 alias topmem='ps aux --sort=-%mem | head -12'
+alias iowait='iostat -x 2 3 2>/dev/null | tail -5'
+
+# Hacking workflow shortcuts
+alias scope='bash $BB/scripts/scope-check.sh'
+alias diag='bash $BB/scripts/pi-diag.sh'
+alias workspace='bash $BB/scripts/hunt-workspace.sh'
+alias thermal-guard='bash $BB/scripts/thermal-guard.sh'
+alias screenshot='bash $BB/scripts/screenshot-targets.sh'
+alias subdmon='bash $BB/scripts/subdomain-monitor.sh'
+
+# Quick recon one-liners
+alias subs='subfinder -silent -all'
+alias subs-resolve='subfinder -silent -all | dnsx -silent'
+alias live-hosts='httpx -silent -status-code -title -tech-detect'
+alias quick-nuclei='nuclei -severity critical,high -tags cve,misconfig,exposure -silent'
+
+# ─── 7b. Advanced Workflow Functions ─────────────────────────────
+
+# recon <target> — rapid Phase 1+2: subs → resolve → probe → JS mine
+recon() {
+  local target="${1:?Usage: recon <target.com>}"
+  local outdir="$BB/results/${target}"
+  mkdir -p "$outdir"
+  echo "[*] Recon: $target → $outdir"
+  echo "[1] Subdomain discovery..."
+  subfinder -d "$target" -silent -all 2>/dev/null | anew "$outdir/subs.txt"
+  echo "    Subs: $(wc -l < "$outdir/subs.txt")"
+  echo "[2] DNS resolution..."
+  cat "$outdir/subs.txt" | dnsx -silent 2>/dev/null | anew "$outdir/resolved.txt"
+  echo "    Resolved: $(wc -l < "$outdir/resolved.txt")"
+  echo "[3] HTTP probing..."
+  cat "$outdir/resolved.txt" | httpx -silent -status-code -title -tech-detect 2>/dev/null | anew "$outdir/live.txt"
+  echo "    Live: $(wc -l < "$outdir/live.txt")"
+  echo "[+] Recon done. Live hosts: $outdir/live.txt"
+}
+
+# vuln-scan <target-or-file> — nuclei fan-out with Pi-safe concurrency
+vuln-scan() {
+  local input="${1:?Usage: vuln-scan <target.com|file.txt>}"
+  local outdir="$BB/results"
+  local TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  if [ -f "$input" ]; then
+    echo "[*] Nuclei scan on $(wc -l < "$input") targets..."
+    nuclei -list "$input" \
+      -severity critical,high,medium \
+      -tags cve,misconfig,exposure,takeover,oauth,ssrf,idor \
+      -exclude-tags dos,fuzz,intrusive \
+      -concurrency 25 -rate-limit 100 \
+      -jsonl -output "$outdir/nuclei-$TIMESTAMP.jsonl" \
+      -stats 2>/dev/null
+  else
+    echo "[*] Nuclei scan on $input..."
+    nuclei -target "$input" \
+      -severity critical,high,medium \
+      -tags cve,misconfig,exposure,takeover,oauth,ssrf,idor \
+      -exclude-tags dos,fuzz,intrusive \
+      -concurrency 25 -rate-limit 100 \
+      -jsonl -output "$outdir/nuclei-$TIMESTAMP.jsonl" \
+      -stats 2>/dev/null
+  fi
+  echo "[+] Results: $outdir/nuclei-$TIMESTAMP.jsonl"
+}
+
+# crtsh <domain> — certificate transparency recon (replaces the cert() function)
+crtsh() {
+  local domain="${1:?Usage: crtsh <domain>}"
+  curl -sS "https://crt.sh/?q=%25.$domain&output=json" 2>/dev/null | \
+    python3 -c "
+import sys, json
+try:
+  data = json.load(sys.stdin)
+  names = sorted({e['name_value'].strip() for e in data if e.get('name_value')})
+  names = [n for n in names if not n.startswith('*')]
+  [print(n) for n in names]
+  import sys; print(f'\n[+] {len(names)} unique names', file=sys.stderr)
+except Exception as e: print(f'Error: {e}', file=sys.stderr)
+"
+}
+
+# jsmine <url> — extract endpoints, params, secrets from JS at URL
+jsmine() {
+  local url="${1:?Usage: jsmine <https://target.com/app.js>}"
+  echo "[*] Mining: $url"
+  if command -v jsluice &>/dev/null; then
+    curl -sfL --max-time 30 "$url" 2>/dev/null | jsluice urls 2>/dev/null
+    echo ""
+    curl -sfL --max-time 30 "$url" 2>/dev/null | jsluice secrets 2>/dev/null
+  else
+    echo "[-] jsluice not installed: go install github.com/BishopFox/jsluice/cmd/jsluice@latest"
+  fi
+}
+
+# idortest <url-with-id> <low> <high> — brute integer IDs
+idortest() {
+  local tmpl="${1:?Usage: idortest https://api.example.com/users/ID 1 1000}"
+  local low="${2:-1}"
+  local high="${3:-1000}"
+  local token="${4:-}"
+  local AUTH=""
+  [ -n "$token" ] && AUTH="-H 'Authorization: Bearer $token'"
+  echo "[*] IDOR test: $tmpl ($low → $high)"
+  seq "$low" "$high" | while read -r id; do
+    url="${tmpl/ID/$id}"
+    code=$(curl -sk --max-time 5 $AUTH -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
+    [[ "$code" =~ ^2 ]] && echo "[HIT] $code → $url"
+  done
+}
+
+# ssrf-test <endpoint> <param> — quick SSRF test with OOB callback
+ssrf-test() {
+  local endpoint="${1:?Usage: ssrf-test <https://target.com/fetch?url=> <param>}"
+  local OOB_URL
+  OOB_URL=$(cat /tmp/oob-url.txt 2>/dev/null || echo "REPLACE_WITH_INTERACTSH_URL")
+  echo "[*] SSRF probe: ${endpoint}https://${OOB_URL}"
+  curl -sk --max-time 10 "${endpoint}https://${OOB_URL}" -o /dev/null -w "HTTP %{http_code}\n"
+  echo "[*] Check OOB hits: oob-hits"
+}
+
+# takeover-check <file-or-domain> — run subzy on a target
+takeover-check() {
+  local input="${1:?Usage: takeover-check <domain|file.txt>}"
+  if [ -f "$input" ]; then
+    subzy run --targets "$input" --hide-fails 2>/dev/null
+  else
+    echo "$input" | subzy run --stdin --hide-fails 2>/dev/null
+  fi
+}
 
 # ─── 8. Prompt extras ───────────────────────────────────────────
 
-# Show Pi temp in right prompt (evaluated at each prompt draw)
-RPROMPT='%F{240}$(vcgencmd measure_temp 2>/dev/null | tr -d "temp=")%f'
+# Right prompt: temp + active hunt sessions
+_pi_rprompt() {
+  local _temp
+  _temp=$(awk '{printf "%.0f°C", $1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "?°C")
+  local _sess
+  _sess=$(tmux ls 2>/dev/null | grep -c hunt || echo "0")
+  echo "%F{240}${_temp}%f %F{green}[${_sess}]%f"
+}
+RPROMPT='$(_pi_rprompt)'
 setopt PROMPT_SUBST
 
-# Print a quick status banner on SSH login (not on every source)
+# Print a smart status banner on SSH login
 _pi_banner() {
   [[ -z "${SSH_CONNECTION:-}" ]] && return 0
   [[ -n "${_PI_BANNER_SHOWN:-}" ]] && return 0
   export _PI_BANNER_SHOWN=1
   echo ""
-  local _temp; _temp=$(vcgencmd measure_temp 2>/dev/null | tr -d 'temp=' || echo "?°C")
+  local _temp; _temp=$(awk '{printf "%.0f°C", $1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "?°C")
   local _ram;  _ram=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')
+  local _disk; _disk=$(df -h / 2>/dev/null | awk 'NR==2{print $4" free"}')
   local _br;   _br=$(git -C "$BB" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
   local _sess; _sess=$(tmux ls 2>/dev/null | wc -l)
-  echo "  Pi5 Bug Bounty Lab | $_temp | RAM: $_ram | Branch: $_br | tmux: $_sess sessions"
+  local _oob;  _oob=$(cat /tmp/oob-url.txt 2>/dev/null | head -1 || echo "none")
+  local _hunt; _hunt=$(find "$BB/results" -name "HUNT-LOG.md" 2>/dev/null | wc -l)
+  echo "  ╔══════════════════════════════════════════════╗"
+  echo "  ║  Pi5 Bug Bounty Lab                          ║"
+  echo "  ╟──────────────────────────────────────────────╢"
+  printf "  ║  Temp: %-8s  RAM: %-14s  Disk: %-8s║\n" "$_temp" "$_ram" "$_disk"
+  printf "  ║  Branch: %-10s  tmux: %-3s sessions       ║\n" "$_br" "$_sess"
+  printf "  ║  OOB: %-37s  ║\n" "$_oob"
+  printf "  ║  Targets tracked: %-28s ║\n" "$_hunt"
+  echo "  ╚══════════════════════════════════════════════╝"
+  echo ""
+  # Alert if temperature is high
+  local _tempnum; _tempnum=$(awk '{printf "%.0f", $1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
+  (( _tempnum > 70 )) && echo "  ⚠️  Temperature ${_temp} — check active cooling!"
+  (( _tempnum > 78 )) && echo "  🔥 CRITICAL TEMPERATURE — stop scans immediately!"
   echo ""
 }
 _pi_banner
