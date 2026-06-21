@@ -39,14 +39,24 @@ Respond Software built an AI-driven autonomous threat detection and response pla
 
 ---
 
-## Session 1 — 2026-06-21 (DNS + HTTP fingerprint + surface map)
+## ⛔ RESPOND SOFTWARE CLOSED — 2026-06-21
 
-### Runbook
-See: `runbooks/PI-RUNBOOK-respond-session1.md`
+`prod.respond-software.com`: NXDOMAIN (no DNS A/CNAME record) + 000 (TCP refused) on all paths.
+Host is fully decommissioned. Same pattern as Dataform (DNS SERVFAIL) and Dropcam (blanket 301).
+Service was folded into Chronicle/Google SecOps infrastructure post-acquisition with no retained
+public hostname.
+
+**PIVOT → Pring cluster (TIER0)**: admin.pring.app, api.pring.jp, dev-api.pring.jp,
+staging.callback.pring.app, callback.pring.app — Japanese payment app, highest payout tier.
+
+## Session 1 — 2026-06-21 (DNS + HTTP fingerprint)
 
 ### Output
 
-(Paste Pi output here after running)
+```
+DNS: (empty — NXDOMAIN)
+All paths: 000 (TCP refused — no listener)
+```
 
 ---
 
