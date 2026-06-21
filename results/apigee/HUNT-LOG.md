@@ -270,36 +270,52 @@ This is a real application defect (improper error handling), but:
 
 **VERDICT APG-L007: LOG ONLY — not a standalone reportable finding** (CLAUDE.md §3: "stack traces/verbose errors with no exploitable data"). Would only be worth mentioning as supplement to a higher-severity finding.
 
-### Token Revocation Bypass — PENDING
+### Token Revocation — CLOSED (Non-Functional)
 
-JTI extracted from JWT payload (`ab94838d-adef-48d9-b34b-6d34f347faf5`). Running fresh with JTI-from-JWT fallback.
+All revocation methods tested:
+- M1: `DELETE /oauth/token/revoke/{JTI}` → HTTP 405 (endpoint exists, DELETE unsupported)
+- M2: `POST /oauth/token/revoke` (RFC 7009 with token body) → HTTP 404 (endpoint not present)
+- M3: `POST /oauth/token/revoke/{JTI}` → HTTP 404 (login page — not found)
 
----
+**Token revocation is not implemented on this UAA deployment.** Tokens expire naturally:
+- Access token: 43200 seconds (12 hours)
+- Refresh token: ~30 days
 
-## Lead Status (Final — Session 4)
+The earlier "CVE-2026-22723 CONFIRMED" verdict from the script was a **FALSE POSITIVE** — the script's logic assumed "revoke succeeded then token still works → bypass", but revocation returned 4xx (failed), so the token remained valid because revocation never happened.
 
-| ID | Class | Endpoint | Status | Decision |
-|----|-------|----------|--------|----------|
-| APG-L001 | OAuth redirect_uri bypass | /sign_up + /apigee_create_account_request | CLOSED | FALSE POSITIVE |
-| APG-L002 | Management API IDOR | /v1/users/{email} | BLOCKED | No Apigee org on test account |
-| APG-L003 | Privilege escalation | /v1/organizations, /v1/users | BLOCKED | No Apigee org on test account |
-| APG-L004 | Token revocation bypass | /oauth/token/revoke/{JTI} | PENDING | JTI from JWT; revocation test in progress |
-| APG-L005 | SAML SSO assertion bypass | /saml/SSO/alias/apigee-saml-login | ON HOLD | /saml_error = generic "Uh oh"; no intel on rejection reason |
-| APG-L006 | SCIM email/ID enumeration | /Users, /ids/Users | CLOSED | Properly blocked (needs scim.read) |
-| APG-L007 | /Groups HTTP 500 anomaly | /Groups | LOG ONLY | Improper error handling, no exploitable impact |
+**Severity: LOG ONLY.** Falls under CLAUDE.md §3: "Feature gaps without demonstrating bypass." Not reportable standalone on Google VRP. A token theft would still be bounded by the 12h TTL.
 
 ---
 
-## Strategic Assessment
+## Lead Status (FINAL — Apigee Closed)
 
-All unauthenticated and authenticated (no-org) attack paths are exhausted or blocked.
-Remaining viable paths require either:
-1. An Apigee Edge account WITH org → management API IDOR/priv esc (APG-L002/L003)
-2. Token revocation bypass result (APG-L004 — pending JTI-from-JWT fix)
+| ID | Class | Endpoint | Status | Final Decision |
+|----|-------|----------|--------|----------------|
+| APG-L001 | OAuth redirect_uri bypass | /sign_up + /apigee_create_account_request | CLOSED | FALSE POSITIVE — server ignores injected redirect_uri |
+| APG-L002 | Management API IDOR | /v1/users/{email} | SUSPENDED | No Apigee org → 403 on all mgmt API; resumable if org acquired |
+| APG-L003 | Privilege escalation | /v1/organizations, /v1/users | SUSPENDED | Same blocker as APG-L002 |
+| APG-L004 | Token revocation bypass | /oauth/token/revoke | CLOSED LOG ONLY | All revocation endpoints return 4xx; missing feature, not bypass |
+| APG-L005 | SAML SSO assertion bypass | /saml/SSO/alias/apigee-saml-login | SUSPENDED | /saml_error = generic; rejection reason unknown; needs signed assertion to progress |
+| APG-L006 | SCIM enumeration | /Users, /ids/Users | CLOSED | Properly blocked (scim.read required) |
+| APG-L007 | /Groups HTTP 500 | /Groups | CLOSED LOG ONLY | Unhandled exception — no exploitable impact |
 
-**If APG-L004 is negative → recommend pivot to next target.**
+---
 
-Next candidates (per deep-research ranking):
-- Siemplify SOAR (acquired 2022, multi-tenant SOAR platform, likely IDOR surface)
-- Waze Biz Portal (location + business data, potential auth/tenant isolation bugs)
-- Dataform (SQL transformation SaaS, recently more active)
+## Final Strategic Decision — PIVOT
+
+All currently-accessible Apigee attack surface is exhausted. Every remaining lead (APG-L002/L003/L005) requires either:
+- An Apigee Edge org (trial provisioning disabled; would need Google Cloud / Apigee X trial)
+- A signed SAML assertion from a registered IDP
+
+**DECISION: PIVOT to Siemplify SOAR (Google Security Operations SOAR)**
+
+Rationale:
+- Multi-tenant SOAR → cross-tenant isolation bugs, playbook IDOR
+- Acquired 2022, integrated into Chronicle/Google Cloud Security — newer code, less-reviewed
+- Workflow execution engine → SSRF potential via webhook/integration connectors
+- Web-based IDE surface → XSS, stored injection
+- Public trial/community tier available for authenticated testing
+
+Backup: Waze Biz Portal (location data + auth isolation bugs)
+
+**Session 5 objective**: Recon Siemplify SOAR / Google Security Operations portal, map authenticated surface, identify primary bug classes.
