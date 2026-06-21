@@ -1,3 +1,8 @@
+> ⛔ **RETIRED 2026-06-21 — DO NOT SUBMIT.** Duplicate of **Issue 518912931**
+> (filed 2026-06-02, closed **Won't Fix / Intended Behavior, P4**). See
+> `FIT-C001-RETRACTION.md`. Google VRP has explicitly declared the CORS config on
+> accounts.fitbit.com and dev.fitbit.com intended. This report is kept only for history.
+
 # Google VRP Report — FIT-C001
 ## CORS Misconfiguration on accounts.fitbit.com: Origin Reflection + Credentials=true Allows Cross-Origin Theft of Fitbit Session, OAuth Tokens, and Health Data
 

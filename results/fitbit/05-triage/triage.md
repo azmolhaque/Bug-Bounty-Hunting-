@@ -2,7 +2,19 @@
 
 | ID | Severity | CVSS | Target | Gate | Title |
 |----|----------|------|--------|------|-------|
-| FIT-C001 | **High** | 8.1 | accounts.fitbit.com | **PASS — SUBMIT** | CORS Misconfiguration: Origin Reflection + Credentials=true on OAuth + Profile API |
+| FIT-C001 | ~~High 8.1~~ | — | accounts.fitbit.com | **RETIRED — DUPLICATE OF WAI CLOSURE** | CORS Misconfiguration: Origin Reflection + Credentials=true |
+
+> ⛔ **DO NOT SUBMIT — FIT-C001 RETIRED 2026-06-21.**
+> This exact finding was already submitted as **Issue 518912931** (filed 2026-06-02)
+> and **closed Won't Fix / Intended Behavior (P4)**. The 2026-06-20 automated re-discovery
+> below did NOT dedup against submission history. Triager's exact words: the CORS headers
+> on accounts.fitbit.com and dev.fitbit.com "are actually designed for legitimate cross-origin
+> access … The presence of these headers alone, even with origin reflection, doesn't
+> automatically mean it's a security flaw. To prove an issue here, you'd need to show a
+> concrete attack scenario where an attacker can actually exploit this to compromise sensitive
+> user data." We never demonstrated a cross-origin read of real session-gated data (the browser
+> PoC returned an HTML login page, not profile JSON). Finding does not clear the bar. See
+> `findings/submission/FIT-C001-RETRACTION.md`.
 
 ## FIT-C001 Detail
 

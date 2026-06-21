@@ -10,7 +10,16 @@ Started: 2026-06-20
 
 | ID | Class | Surface | Status | Severity |
 |----|-------|---------|--------|----------|
-| FIT-C001 | CORS Misconfiguration | accounts.fitbit.com — all endpoints | **REPORT NOW** | High (8.1) |
+| FIT-C001 | CORS Misconfiguration | accounts.fitbit.com + dev.fitbit.com | ⛔ **RETIRED — DUP OF WAI CLOSURE (Issue 518912931)** | — |
+
+> **2026-06-21 — CRITICAL DEDUP CORRECTION.** FIT-C001 was already submitted as
+> **Issue 518912931** on 2026-06-02 and **closed Won't Fix / Intended Behavior (P4)**.
+> The 2026-06-20 automated scan re-flagged it as new without checking submission history —
+> a CLAUDE.md §6 dedup failure. **Do not resubmit.** The CORS config on accounts.fitbit.com
+> and dev.fitbit.com is explicitly declared intended by Google VRP. The only revival path is
+> a concrete cross-origin read of *real* session-gated sensitive data — which we never
+> demonstrated (browser PoC returned an HTML login page). See
+> `findings/submission/FIT-C001-RETRACTION.md`.
 
 ---
 

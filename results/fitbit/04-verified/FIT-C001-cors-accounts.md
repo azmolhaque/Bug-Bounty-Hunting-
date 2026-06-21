@@ -2,7 +2,7 @@
 
 **ID**: FIT-C001  
 **Date**: 2026-06-20  
-**Status**: CONFIRMED — ready to submit  
+**Status**: ⛔ RETIRED 2026-06-21 — duplicate of Issue 518912931 (closed WAI/Intended Behavior). DO NOT SUBMIT. See `../submission/FIT-C001-RETRACTION.md`.  
 **Program**: Google / Alphabet VRP — bughunters.google.com  
 **Tier**: TIER1 (Fitbit — health/account data, up to $31,337)
 
