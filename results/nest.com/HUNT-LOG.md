@@ -131,14 +131,56 @@ NST-L005, NST-L006: **CLOSED — out of scope.** Cannot probe any of these three
 
 ---
 
-## Session 4 — 2026-06-21 (QUEUED)
+## Session 4 — 2026-06-21 (COMPLETE)
 
-Objectives:
-1. **JS bundle mining** — `/js/main-30c9a58864910c0d57f2.js` + `/js/_shared_/main-b15efb8dfb535b5c78cb.js` from home.ft.nest.com
-2. **accounts.nest.com TIER0** — OIDC discovery + CORS probe (cut off in S3)
-3. **Unprobed in-scope TIER1 hosts** — `fleet.home.nest.com`, `clips.home.nest.com`, `nssbridge.nest.com`, `beta.home.nest.com`, `alpha.home.nest.com`
+**Phase A — JS bundle (1.8 MB) mined for in-scope hosts:**
 
-See runbooks/PI-RUNBOOK-nest-session4.md.
+Hosts found in bundle — ALL out of scope (acquisition unlisted subdomains = TIER4):
+- `store.ft.nest.com` — OOS
+- `store.integration.nestlabs.com` — OOS
+- `store.qa.nestlabs.com` — OOS
+- `www.ft.nest.com` — OOS
+- `www.web-integration.s1.nestlabs.com` — OOS
+- `www.web-qa.s1.nestlabs.com` — OOS
+
+No new in-scope hosts discovered. NST-L007 **CLOSED** — bundle revealed only OOS environment hosts.
+
+**Phase B — accounts.nest.com OIDC:**
+- `https://accounts.nest.com/.well-known/openid-configuration` → **404 nginx/1.18.0**
+- No OIDC discovery endpoint. Proprietary Nest auth flow, not standard OIDC. NST-L008 partially closed.
+
+**Phase C — Unprobed TIER1 host fingerprints:**
+
+| Host | root | /health | Verdict |
+|------|------|---------|---------|
+| `fleet.home.nest.com` | 000 | (no response) | VPN-only — unreachable |
+| `clips.home.nest.com` | 000 | (no response) | VPN-only — unreachable |
+| `nssbridge.nest.com` | 302 | `Invalid IAP credentials: empty token` | **Google IAP** — inaccessible externally |
+| `beta.home.nest.com` | 000 | (no response) | VPN-only — unreachable |
+| `alpha.home.nest.com` | 403 | `403 Forbidden nginx` | Auth-gated (not IAP) — needs Nest account |
+
+NST-L009, NST-L010: CLOSED (VPN-only). NST-L011: CLOSED (IAP).
+
+**Remaining actionable surface:**
+- `alpha.home.nest.com` — 403 on root (not IAP, not 000) — probe specific paths in S5
+- accounts.nest.com CORS probe — not yet run
+- admin.store.nest.com /health content — not yet retrieved
+
+**Overall Nest assessment:**
+Most in-scope hosts are IAP-gated, VPN-only, or behind auth with no pre-auth surface.
+Nest is a hardened cluster. Remaining unauthenticated surface = alpha.home.nest.com paths + accounts.nest.com CORS.
+
+---
+
+## Session 5 — FINAL NEST SWEEP (2026-06-21, QUEUED)
+
+Remaining quick probes before pivot decision:
+1. `alpha.home.nest.com` — path probe (not IAP, real nginx 403)
+2. `accounts.nest.com` CORS probe
+3. `admin.store.nest.com` /health content
+4. **Pivot decision gate**: if nothing actionable → close Nest, pivot to next target
+
+See runbooks/PI-RUNBOOK-nest-session5.md.
 
 ---
 
@@ -146,14 +188,15 @@ See runbooks/PI-RUNBOOK-nest-session4.md.
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| NST-L001 | Auth differential | `home.ft.nest.com` root=200 | ❌ CLOSED — SPA catch-all |
-| NST-L002 | API surface | `api.home.ft.nest.com` (bearer gate) | ⏳ HOLD — needs Nest account |
-| NST-L003 | Admin panel | `admin.store.*.nest.com` | ⏳ HOLD — health content probe in S4 |
-| NST-L004 | Support admin | `supportadmin.nestlabs.com` | ❌ CLOSED — Google IAP |
-| NST-L005 | Undocumented API | `phoenix.nest.com` (CSP connect-src) | ❌ CLOSED — out of scope (TIER4) |
-| NST-L006 | Dev artifact | `www5.dev.nestlabs.com` (CSP frame-src) | ❌ CLOSED — out of scope (TIER4) |
-| NST-L007 | JS bundle mining | `home.ft.nest.com` SPA bundles | ⏳ ACTIVE — Session 4 |
-| NST-L008 | TIER0 OIDC/CORS | `accounts.nest.com` | ⏳ ACTIVE — Session 4 |
-| NST-L009 | Fleet/multi-tenant | `fleet.home.nest.com` | ⏳ NEW — unprobed, Session 4 |
-| NST-L010 | Video clips | `clips.home.nest.com` | ⏳ NEW — unprobed, Session 4 |
-| NST-L011 | NSS Bridge | `nssbridge.nest.com` | ⏳ NEW — unprobed, Session 4 |
+| NST-L001 | Auth differential | `home.ft.nest.com` | ❌ CLOSED — SPA catch-all |
+| NST-L002 | API surface | `api.home.ft.nest.com` | ⏳ HOLD — needs Nest account |
+| NST-L003 | Admin panel | `admin.store.*.nest.com` | ⏳ ACTIVE — /health content in S5 |
+| NST-L004 | Support admin | `supportadmin.nestlabs.com` | ❌ CLOSED — IAP |
+| NST-L005 | Undoc. API | `phoenix.nest.com` | ❌ CLOSED — OOS |
+| NST-L006 | Dev artifact | `www5.dev.nestlabs.com` | ❌ CLOSED — OOS |
+| NST-L007 | JS mining | `home.ft.nest.com` bundles | ❌ CLOSED — only OOS hosts found |
+| NST-L008 | TIER0 OIDC/CORS | `accounts.nest.com` | ⏳ ACTIVE — CORS probe in S5 |
+| NST-L009 | Fleet | `fleet.home.nest.com` | ❌ CLOSED — VPN-only |
+| NST-L010 | Clips | `clips.home.nest.com` | ❌ CLOSED — VPN-only |
+| NST-L011 | NSS Bridge | `nssbridge.nest.com` | ❌ CLOSED — IAP |
+| NST-L012 | Alpha staging | `alpha.home.nest.com` | ⏳ ACTIVE — 403, path probe in S5 |
