@@ -561,7 +561,7 @@ if command -v fzf >/dev/null 2>&1; then
   pass "fzf: ✓"
 else
   warn "fzf: not installed"
-  add_fix "Install fzf" "sudo apt-get install -y fzf 2>/dev/null || git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install --all"
+  add_fix "Install fzf" "sudo apt-get install -y fzf 2>/dev/null && echo 'fzf installed via apt' || { git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf 2>/dev/null && ~/.fzf/install --all; }"
 fi
 
 # ripgrep
