@@ -120,24 +120,66 @@
 
 ## Sessions
 
-### Session 1 — 2026-06-21 (ACTIVE)
+### Session 1 — 2026-06-21 (COMPLETE — Recon Done)
 
-**Goal:** Phase A-G recon + initial probe of all 0-report high-priority targets.
-**Status:** Runbook ready → `runbooks/PI-RUNBOOK-marriott-session1.md`
+**Goal:** Phase 1-2 recon — DNS fingerprint + HTTP surface mapping.
+**Status:** COMPLETE. 60/80 assets resolved. See `RECON-SESSION1.md` + `01-assets/` + `02-surface/`.
+
+**Key recon findings:**
+- `sso.marriott.com` is **NXDOMAIN** — 33-report SSO endpoint is dead. Auth surface moved.
+- **7 raw AWS EC2 hosts with no WAF/CDN**: esupplier, device, marrtool, marriottfranchisetransactions, mgs, splunk-phantom-nlb, university — direct exploitation viable
+- **APC cluster convergence**: auth-apc, apcgateway, gateway-apc all → `23.61.96.201` — one backend, 3 virtual hosts, Host-header routing determines which service responds
+- `dcfgatewaytst1.marriott.com` → `159.166.124.24` (Marriott private DC, no CDN)
+- `sba.marriott.com` → `159.166.44.21` (Marriott private DC, no CDN)
+- `ssm-marriottms.saviyntcloud.com` → Cloudflare proxy, 0 reports, Saviynt IAM
+- CT log queries blocked from cloud env — run crt.sh wildcard queries from Pi
+
+**Infrastructure map:**
+
+| Infra | Count | Notable |
+|-------|-------|---------|
+| Akamai (WAF) | 24 | Most public-facing assets |
+| AWS EC2 direct (NO WAF) | 7 | esupplier, device, marrtool, franchisetx, mgs, splunk, university |
+| AWS CloudFront | 8 | mipartnerprivileges, ifast, efast, eidhelp, activities, ifast |
+| Zscaler/Marriott-CDN | 6 | owa, lawmanager, oasisprod, bpa2 — internal-facing |
+| Marriott Private DC | 2 | dcfgatewaytst1, sba.marriott.com |
+| Cloudflare | 2 | ssm-marriottms.saviyntcloud.com, hotel-development |
+| GCP | 2 | join.marriott.com, moments.marriott.com |
+| Oracle Cloud OCI | 1 | ocijlbex1prd.marriott.com |
+| NXDOMAIN (dead) | 6 | **sso.marriott.com** (33 prior reports — moved), wechat.api, ifast alt |
+
+### Session 2 — 2026-06-21 (QUEUED — Pi required)
+
+**Goal:** Active HTTP probe + port scan of raw EC2 hosts + wildcard CT log enum.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session1.md` (Phases A-I still valid; reorder by priority below)
+
+**Revised Pi probe priority order:**
+1. Raw EC2 hosts (no WAF) — port scan + HTTP: esupplier, device, marrtool, marriottfranchisetransactions, mgs, splunk-phantom-nlb
+2. APC cluster Host-header routing — auth-apc / apcgateway / gateway-apc all on same IP
+3. DEV gateways — gatewaydsapdev2 + gatewaydsapdev1 (Akamai)
+4. PSP + financial — psp.marriott.com (Akamai)
+5. Saviynt IAM — ssm-marriottms.saviyntcloud.com
+6. CT log wildcard enum — *.apigwc, *.apigatewayc, *.dcfgateway, *uat, *gateway-apc
+7. OWA NTLM — owa.marriott.com via Zscaler CDN
+8. Private DC direct — dcfgatewaytst1.marriott.com (159.166.124.24)
 
 ---
 
 ## Lead Status
 
-| ID | Class | Surface | Status | Priority |
-|----|-------|---------|--------|----------|
-| M001 | Missing auth / debug API | `gatewaydsapdev2.marriott.com` | PENDING — session 1 | CRITICAL |
-| M002 | Anon access / cred exposure | `*.artifactory.marriott.com` | PENDING — session 1 | CRITICAL |
-| M003 | SSRF / auth bypass | `*.apigwc.marriott.com` + `*.apigatewayc.marriott.com` | PENDING — session 1 | HIGH |
-| M004 | Payment bypass / IDOR | `psp.marriott.com` | PENDING — session 1 | CRITICAL |
-| M005 | Auth bypass / OIDC | `auth-apc.marriott.com` + `sso.marriott.com` | PENDING — session 1 | HIGH |
-| M006 | IAM privilege escalation | `ssm-marriottms.saviyntcloud.com` | PENDING — session 1 | HIGH |
-| M007 | NTLM disclosure | `owa.marriott.com` | PENDING — session 1 | MEDIUM |
-| M008 | SAP debug APIs | `gatewaydsaptst1.marriott.com` + `dcfgatewaytst1.marriott.com` | PENDING — session 1 | HIGH |
-| M009 | Employee PW reset bypass | `passwordchallenge.marriott.com` | PENDING — session 1 | HIGH |
-| M010 | UAT env missing auth | `*uat.marriott.com` | PENDING — session 1 | HIGH |
+| ID | Class | Surface | IP / Infra | Status | Priority |
+|----|-------|---------|-----------|--------|----------|
+| M001 | Missing auth / debug API + IDOR | `esupplier.marriott.com` | `3.219.138.243` RAW EC2, NO WAF | PENDING — Pi session 2 | **CRITICAL** |
+| M002 | MDM/device API missing auth | `device.marriott.com` | `54.243.246.159` RAW EC2, NO WAF | PENDING — Pi session 2 | **CRITICAL** |
+| M003 | SAP debug APIs / missing auth | `gatewaydsapdev2.marriott.com` | Akamai | PENDING — Pi session 2 | CRITICAL |
+| M004 | Payment bypass / IDOR | `psp.marriott.com` | Akamai dedicated | PENDING — Pi session 2 | CRITICAL |
+| M005 | Legal doc IDOR / SSRF | `lawmanager.marriott.com` | Zscaler/internal | PENDING — Pi session 2 | CRITICAL |
+| M006 | Host-header routing / auth bypass | APC cluster: `auth-apc` + `apcgateway` + `gateway-apc` | `23.61.96.201` Akamai | PENDING — Pi session 2 | HIGH |
+| M007 | IAM privilege escalation / IDOR | `ssm-marriottms.saviyntcloud.com` | Cloudflare / Saviynt | PENDING — Pi session 2 | HIGH |
+| M008 | NTLM hash disclosure | `owa.marriott.com` | Zscaler CDN | PENDING — Pi session 2 | MEDIUM |
+| M009 | Splunk SOAR admin exposure | `splunk-phantom-nlb.marriott.com` | `34.205.160.170` RAW EC2 | PENDING — Pi session 2 | HIGH (Critical impact if open) |
+| M010 | Private DC gateway probe | `dcfgatewaytst1.marriott.com` | `159.166.124.24` Private DC | PENDING — Pi session 2 | HIGH |
+| M011 | Wildcard CT enum: API gateway, UAT, APC | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | PENDING — crt.sh from Pi | HIGH |
+| M012 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | AWS CloudFront | PENDING — Pi session 2 | HIGH |
+| M013 | SSO endpoint discovery | `sso.marriott.com` **NXDOMAIN** — auth moved | Find current auth endpoint | PENDING | HIGH |
+| ~~M014~~ | ~~OIDC / auth~~ | ~~sso.marriott.com~~ | NXDOMAIN | CLOSED — endpoint dead | — |
