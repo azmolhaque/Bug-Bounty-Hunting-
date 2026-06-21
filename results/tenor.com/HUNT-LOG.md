@@ -71,23 +71,52 @@ is OOS (unlisted subdomain), so not directly reportable, but confirms same App E
 
 ---
 
-## Session 2 — 2026-06-21 (QUEUED)
+## Session 2 — 2026-06-21 (COMPLETE)
 
-Objectives:
-1. Mine `robots.txt` for disallowed paths
-2. Probe `/search` — is it HTML or JSON? Does it accept query params? Any CORS?
-3. GAE standard paths (`/_ah/...`)
-4. CORS probe on tenor.com root + search
-5. Discover authenticated endpoints via JS bundle
+**Full config blob decoded from `<script id="data" type="text/x-cache">` on /gifapi:**
+```json
+{
+  "API_KEY": "JJHDC7UK73EH",          → api-v1.tenor.com/v1  (OOS)
+  "API_V2_KEY": "AIzaSyCZt6SSh5VgVPzD9fhyzG1DprdPRhtoaR4",  → tenor.googleapis.com/v2  (OOS/TIER4)
+  "GOOGLE_SIGNIN_CLIENT_ID": "598652403343-harjvt5thjol9qjkrfqpmb7njrnek80v.apps.googleusercontent.com",
+  "FB_ID": "210233399450162",
+  "MV_RESET_TIMESTAMP": 1546300800
+}
+```
+All credentials public-by-design: OAuth client IDs and Facebook App IDs are meant to be public;
+browser API keys target OOS endpoints. TEN-L004 **CLOSED** — no reportable credential exposure.
 
-See runbooks/PI-RUNBOOK-tenor-session2.md.
+**gifapi/documentation (200):** Same SPA shell + same config blob. API docs only.
 
----
+**search/cats-gifs (200):** Returns 250KB rendered HTML (SSR'd SPA). Not a JSON API.
+Content-type: text/html — real search results are baked into SSR HTML, not served as JSON.
+
+**Account paths:** All 404. No user account management surface on tenor.com.
+
+**GAE paths:** All 404. No admin console exposure.
+
+**CORS:** No Access-Control-Allow-Origin reflection observed.
+
+## ⛔ TENOR CLOSED — 2026-06-21
+
+**Verdict:** Same architectural pattern as Waze biz.waze.com and accounts.fitbit.com.
+tenor.com is a pure SSR/SPA frontend. All API, auth, and user-data surface lives on:
+- `api-v1.tenor.com/v1` → OOS (unlisted acquisition subdomain = TIER4)
+- `tenor.googleapis.com/v2` → OOS (googleapis.com = TIER4)
+- Google Sign-In → OOS (accounts.google.com)
+
+The in-scope `tenor.com` domain has: rendered HTML search pages + developer docs + zero API
+or user-data endpoints. No attack surface accessible to an unauthenticated external tester.
+
+**PIVOT → Fitbit unprobed TIER1 subdomains:** `health-admin.fitbit.com`, `mgmt.fitbit.com`,
+`ngw.fitbit.com`, `coaching-dashboard.fitbit.com`, `strava.fitbit.com` — none of these have
+been touched. Admin-class names (health-admin, mgmt) are the highest priority.
 
 ## Lead Status
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| TEN-L001 | Search endpoint | `tenor.com/search` (200) | ⏳ ACTIVE — probe content + CORS in S2 |
-| TEN-L002 | JS bundle mining | tenor.com SPA bundle (`main.min.js`) | ⏳ NEW — Session 2 |
-| TEN-L003 | GAE internal paths | `tenor.com/_ah/...` | ⏳ NEW — Session 2 |
+| TEN-L001 | Search endpoint | `tenor.com/search` (200) | ❌ CLOSED — SSR HTML, no JSON API |
+| TEN-L002 | JS bundle mining | `tenor.com` SPA | ❌ CLOSED — all API endpoints on OOS hosts |
+| TEN-L003 | GAE internal paths | `tenor.com/_ah/...` | ❌ CLOSED — all 404 |
+| TEN-L004 | Credential exposure | Config blob API keys | ❌ CLOSED — all public-by-design or OOS targets |
