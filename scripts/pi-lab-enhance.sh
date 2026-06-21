@@ -66,44 +66,20 @@ section "1 — Missing Go Tools"
 declare -A EXTRA_TOOLS=(
   # Screenshot all live hosts (essential for visual recon)
   ["gowitness"]="github.com/sensepost/gowitness@latest"
-  # URL deduplication (smarter than sort | uniq)
-  ["uro"]="github.com/s0md3v/uro@latest"
   # Efficient parallel URL fetcher (tomnomnom)
   ["meg"]="github.com/tomnomnom/meg@latest"
-  # Fast HTTP probing (tomnomnom, lighter than httpx for quick checks)
+  # Fast HTTP probing (lighter than httpx for quick checks)
   ["httprobe"]="github.com/tomnomnom/httprobe@latest"
   # Subdomain enumeration (OWASP Amass v4)
   ["amass"]="github.com/owasp-amass/amass/v4/...@master"
-  # DNS enumeration and AXFR
-  ["dnsrecon"]="github.com/darkoperator/dnsrecon@latest"
-  # Find secrets in git repos
-  ["gitjacker"]="github.com/liamg/gitjacker@latest"
-  # CORS misconfiguration scanner
-  ["cors-scanner"]="github.com/RUB-NDS/CORStest@latest"
-  # Open redirect scanner
-  ["oralyzer"]="github.com/r0075h3ll/Oralyzer@latest"
-  # GitHub dorking for secrets
-  ["gitrob"]="github.com/michenriksen/gitrob@latest"
   # Cloud asset discovery
   ["cloudbrute"]="github.com/m0nad/cloudbrute@latest"
-  # Reverse whois
+  # Reverse whois / cert + ASN pivot
   ["metabigor"]="github.com/j3ssie/metabigor@latest"
-  # Probe HTTP with custom wordlists in pipeline
-  ["x8"]="github.com/ffffffff0x1/x8@latest"
-  # SSRF payload generator
-  ["ssrfmap"]="github.com/swisskyrepo/SSRFmap@latest"
-  # Blind XSS callback host
-  ["bxss"]="github.com/ethiack/bxss@latest"
   # JWT toolkit
   ["jwt-hack"]="github.com/hahwul/jwt-hack@latest"
-  # DNS takeover with better fingerprinting
-  ["nuclei-wordfence-takeover"]="github.com/0xJin/nuclei-wordfence-takeover@latest"
-  # URL normalizer for dedup pipeline
-  ["urldedupe"]="github.com/ameenmaali/urldedupe@latest"
-  # Header injection tester
+  # CRLF injection scanner
   ["crlfuzz"]="github.com/dwisiswant0/crlfuzz/cmd/crlfuzz@latest"
-  # Sensitive data regex extractor from JS
-  ["getJS"]="github.com/003random/getJS@latest"
 )
 
 for name in "${!EXTRA_TOOLS[@]}"; do
@@ -133,17 +109,27 @@ else
   info "  feroxbuster ✓"
 fi
 
-# altdns — subdomain alteration/permutation (Python)
-if ! command -v altdns >/dev/null 2>&1; then
-  log "  Installing altdns..."
-  pipx install altdns 2>/dev/null && log "  altdns ✓" || warn "  altdns pip failed"
-fi
+# Python tools (pipx install — isolated envs)
+# pipx name → installed command name
+declare -A PY_TOOLS=(
+  ["uro"]="uro"               # URL deduplication (smarter than sort|uniq)
+  ["dnsrecon"]="dnsrecon"     # DNS enumeration and AXFR
+  ["py-altdns"]="altdns"      # Subdomain permutation (PyPI pkg = py-altdns, cmd = altdns)
+  ["dnsvalidator"]="dnsvalidator"  # Validate resolver list quality
+  ["oralyzer"]="oralyzer"     # Open redirect scanner
+)
 
-# dnsvalidator — validate resolvers list
-if ! command -v dnsvalidator >/dev/null 2>&1; then
-  log "  Installing dnsvalidator..."
-  pipx install dnsvalidator 2>/dev/null && log "  dnsvalidator ✓" || warn "  dnsvalidator pip failed"
-fi
+for pypkg in "${!PY_TOOLS[@]}"; do
+  cmd="${PY_TOOLS[$pypkg]}"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    info "  $cmd ✓ (already installed)"
+    continue
+  fi
+  log "  Installing $pypkg (Python)..."
+  pipx install "$pypkg" 2>/dev/null \
+    && log "  $cmd ✓" \
+    || warn "  $pypkg pip failed — try: pipx install $pypkg"
+done
 
 # gowitness: install chromium dependency if not already present
 if command -v gowitness >/dev/null 2>&1 && ! command -v chromium >/dev/null 2>&1; then
