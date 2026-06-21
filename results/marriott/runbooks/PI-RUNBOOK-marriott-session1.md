@@ -5,8 +5,9 @@
 # Scope check: SCOPE_FILE=~/bug-bounty-hunting-/config/marriott-scope.yaml ~/bug-bounty-hunting-/scripts/scope-check.sh <host>
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gorib/go/bin:/home/gorib/.pdtm/go/bin:/home/gorib/.local/bin
-cd /home/gorib/hunt
-BB=~/bug-bounty-hunting-
+BB="${BB:-$HOME/bug-bounty-hunting-}"
+mkdir -p "$HOME/hunt"
+cd "$HOME/hunt"
 
 # ============================================================
 # PHASE A — HTTP fingerprint all Critical/High priority targets
@@ -61,79 +62,87 @@ done
 # ============================================================
 # PHASE B — Wildcard subdomain enumeration (fresh surface)
 # ============================================================
+# FIX: crt.sh query format for in-scope wildcard patterns:
+#   "*.gateway.marriott.com" (3rd-level) → query: %25.gateway.marriott.com
+#   "gateway*.marriott.com"  (2nd-level) → query: %25gateway%25.marriott.com
+#   "*gateway-apc.marriott.com"          → query: %25gateway-apc.marriott.com
+#   "*uat.marriott.com"                  → query: %25uat.marriott.com
 
 section "PHASE B — Wildcard subdomain enum"
 
-# These wildcards all have 0 reports — highest priority
-WILDCARDS=(
-  "apigwc.marriott.com"
-  "apigatewayc.marriott.com"
-  "dcfgateway.marriott.com"
-  "gateway.marriott.com"
-  "mgs.marriott.com"
-  "sba.marriott.com"
-  "artifactory.marriott.com"
-  "marriott.com"   # general — for uat/* discovery
-)
+HUNTDIR="$HOME/hunt"
 
-for DOMAIN in "${WILDCARDS[@]}"; do
-  OUTFILE="/home/gorib/hunt/marriott-subs-${DOMAIN//./-}.txt"
-  echo "  Enumerating: *.$DOMAIN → $OUTFILE"
-  subfinder -d "$DOMAIN" -silent -o "$OUTFILE" 2>/dev/null
-  echo "    subfinder: $(wc -l < "$OUTFILE" 2>/dev/null || echo 0) results"
-  
-  # CT log supplement
-  curl -sk --max-time 30 "https://crt.sh/?q=%25.$DOMAIN&output=json" \
+ct_query() {
+  local label="$1" pattern="$2" outfile="$3"
+  echo -n "  crt.sh [$label]: "
+  curl -sk --max-time 45 "https://crt.sh/?q=${pattern}&output=json" \
     | python3 -c "
 import sys,json
 try:
-    data=json.load(sys.stdin)
-    names=set()
-    for e in data:
+    seen=set()
+    for e in json.load(sys.stdin):
         for n in e.get('name_value','').split('\n'):
-            n=n.strip().lstrip('*.')
-            if n and '.' in n: names.add(n.lower())
-    for n in sorted(names): print(n)
+            n=n.strip().lstrip('*. ')
+            if n and '.' in n and n not in seen:
+                seen.add(n); print(n.lower())
 except: pass
-" 2>/dev/null >> "$OUTFILE"
-  
-  # Deduplicate and resolve
-  sort -u -o "$OUTFILE" "$OUTFILE"
-  echo "    after crt.sh dedup: $(wc -l < "$OUTFILE" 2>/dev/null || echo 0) total"
+" 2>/dev/null | sort -u >> "$outfile"
+  echo "$(wc -l < "$outfile" 2>/dev/null || echo 0) entries"
+}
+
+# Correct patterns per scope wildcard entries:
+ct_query "gateway*.marriott.com"       "%25gateway%25.marriott.com"         "$HUNTDIR/ct-gateway.txt"
+ct_query "*gateway-apc.marriott.com"   "%25gateway-apc.marriott.com"        "$HUNTDIR/ct-gateway-apc.txt"
+ct_query "*uat.marriott.com"           "%25uat.marriott.com"                 "$HUNTDIR/ct-uat.txt"
+ct_query "*.apigwc.marriott.com"       "%25.apigwc.marriott.com"             "$HUNTDIR/ct-apigwc.txt"
+ct_query "*.apigatewayc.marriott.com"  "%25.apigatewayc.marriott.com"        "$HUNTDIR/ct-apigatewayc.txt"
+ct_query "*.dcfgateway.marriott.com"   "%25.dcfgateway.marriott.com"         "$HUNTDIR/ct-dcfgateway.txt"
+ct_query "*.artifactory.marriott.com"  "%25.artifactory.marriott.com"        "$HUNTDIR/ct-artifactory.txt"
+ct_query "*.mgs.marriott.com"          "%25.mgs.marriott.com"                "$HUNTDIR/ct-mgs.txt"
+ct_query "*.sba.marriott.com"          "%25.sba.marriott.com"                "$HUNTDIR/ct-sba.txt"
+# Also broad marriott.com sweep (aggressive — may return many results)
+ct_query "all *.marriott.com"          "%25.marriott.com"                    "$HUNTDIR/ct-all-marriott.txt"
+
+echo ""
+echo "=== CT results summary ==="
+for F in "$HUNTDIR"/ct-*.txt; do
+  echo "  $(basename "$F"): $(wc -l < "$F" 2>/dev/null || echo 0) subs"
 done
 
-# Enumerate *gateway-apc.marriott.com specifically (wildcard pattern)
-curl -sk --max-time 30 "https://crt.sh/?q=%25gateway-apc.marriott.com&output=json" \
-  | python3 -c "
-import sys,json
-try:
-    data=json.load(sys.stdin)
-    for e in data:
-        for n in e.get('name_value','').split('\n'):
-            n=n.strip().lstrip('*.')
-            if n: print(n.lower())
-except: pass
-" 2>/dev/null | sort -u | tee /home/gorib/hunt/marriott-gateway-apc.txt
-
-# Enumerate *uat.marriott.com
-curl -sk --max-time 30 "https://crt.sh/?q=%25uat.marriott.com&output=json" \
-  | python3 -c "
-import sys,json
-try:
-    data=json.load(sys.stdin)
-    for e in data:
-        for n in e.get('name_value','').split('\n'):
-            n=n.strip().lstrip('*.')
-            if n: print(n.lower())
-except: pass
-" 2>/dev/null | sort -u | tee /home/gorib/hunt/marriott-uat.txt
-
+echo ""
+echo "=== Gateway-pattern subdomains found ==="
+cat "$HUNTDIR/ct-gateway.txt" 2>/dev/null
 echo ""
 echo "=== UAT environments found ==="
-cat /home/gorib/hunt/marriott-uat.txt
+cat "$HUNTDIR/ct-uat.txt" 2>/dev/null
 echo ""
-echo "=== gateway-apc.marriott.com variants found ==="
-cat /home/gorib/hunt/marriott-gateway-apc.txt
+echo "=== Artifactory instances found ==="
+cat "$HUNTDIR/ct-artifactory.txt" 2>/dev/null
+echo ""
+echo "=== API Gateway subdomains found ==="
+cat "$HUNTDIR/ct-apigwc.txt" "$HUNTDIR/ct-apigatewayc.txt" 2>/dev/null | sort -u
+echo ""
+echo "=== Previously unknown Marriott subdomains (from broad sweep) ==="
+cat "$HUNTDIR/ct-all-marriott.txt" 2>/dev/null | grep -v -f <(
+  # Filter out already-known in-scope list
+  grep -E "^\s+-\s+\"" "$BB/config/marriott-scope.yaml" | sed "s/.*\"\(.*\)\".*/\1/" | grep "\."
+) | head -50
+
+# Resolve live CT-discovered hosts (probe which are alive)
+echo ""
+echo "=== Resolving discovered subdomains ==="
+for F in "$HUNTDIR"/ct-gateway.txt "$HUNTDIR"/ct-uat.txt "$HUNTDIR"/ct-artifactory.txt \
+         "$HUNTDIR"/ct-apigwc.txt "$HUNTDIR"/ct-apigatewayc.txt; do
+  [ -f "$F" ] || continue
+  while IFS= read -r host; do
+    [ -z "$host" ] && continue
+    IP=$(dig +short "$host" A 2>/dev/null | grep -E "^[0-9]" | head -1)
+    if [ -n "$IP" ]; then
+      CODE=$(curl -sk --max-time 8 -o /dev/null -w "%{http_code}" "https://$host/" 2>/dev/null)
+      echo "  LIVE: $host → $IP | HTTP $CODE"
+    fi
+  done < "$F"
+done
 
 # ============================================================
 # PHASE C — DEV/TEST Gateway deep probe (SAP + generic)

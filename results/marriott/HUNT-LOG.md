@@ -120,19 +120,51 @@
 
 ## Sessions
 
-### Session 1 — 2026-06-21 (COMPLETE — Recon Done)
+### Session 1 — 2026-06-21 (COMPLETE — Recon + Phase A HTTP done)
 
 **Goal:** Phase 1-2 recon — DNS fingerprint + HTTP surface mapping.
-**Status:** COMPLETE. 60/80 assets resolved. See `RECON-SESSION1.md` + `01-assets/` + `02-surface/`.
+**Status:** COMPLETE. 60/80 assets resolved. Phase A HTTP probes complete from Pi.
 
 **Key recon findings:**
-- `sso.marriott.com` is **NXDOMAIN** — 33-report SSO endpoint is dead. Auth surface moved.
+- `sso.marriott.com` is **NXDOMAIN** — 33-report SSO endpoint dead. Auth surface moved.
 - **7 raw AWS EC2 hosts with no WAF/CDN**: esupplier, device, marrtool, marriottfranchisetransactions, mgs, splunk-phantom-nlb, university — direct exploitation viable
-- **APC cluster convergence**: auth-apc, apcgateway, gateway-apc all → `23.61.96.201` — one backend, 3 virtual hosts, Host-header routing determines which service responds
-- `dcfgatewaytst1.marriott.com` → `159.166.124.24` (Marriott private DC, no CDN)
-- `sba.marriott.com` → `159.166.44.21` (Marriott private DC, no CDN)
-- `ssm-marriottms.saviyntcloud.com` → Cloudflare proxy, 0 reports, Saviynt IAM
-- CT log queries blocked from cloud env — run crt.sh wildcard queries from Pi
+- **APC cluster convergence**: auth-apc, apcgateway, gateway-apc all → `23.61.96.201`
+
+**Phase A HTTP Probe Results (from Pi 2026-06-21):**
+
+| Host | Result | Action |
+|------|--------|--------|
+| `psp.marriott.com` | **200 / 4853B** | PURSUE — live payment service |
+| `esupplier.marriott.com` | **200 / 54985B** | PURSUE — large live app, raw EC2, no WAF |
+| `mgs.marriott.com` | **200 / 19501B** | PURSUE — live messaging portal |
+| `marriottfranchisetransactions.marriott.com` | **200 / 12595B** | PURSUE — live financial portal |
+| `homes-and-villas.marriott.com` | **200 / 3.8MB** | PURSUE (known 17 reports) |
+| `traveler.marriott.com` | **200 / 267KB** | PURSUE |
+| `eidhelp.marriott.com` | **200 / 7767B** | PURSUE — small employee identity app |
+| `www.ritzcarlton.com` | **200 / 256KB** | PURSUE |
+| `ci-propertyconversionportal.marriott.com` | **200 / 5939B** | PURSUE — small app, 1 prior report |
+| `cpp.marriott.com` | **301 → /s/** | **Salesforce Community Cloud** — IDOR target |
+| `ssm-marriottms.saviyntcloud.com` | **302 → /ECM** | PURSUE — Saviynt IAM confirmed alive |
+| `efast.marriott.com` | **401 / 6834B** | PURSUE — auth required, service alive |
+| `bpa2.marriott.com` | **302 → /Login/Login** | PURSUE — portal alive |
+| `owa.marriott.com` | **302 → /owa/** | PURSUE — Exchange confirmed alive |
+| `gatewaydsapdev2.marriott.com` | 404 / 261B | Probe specific paths (actuator/swagger) |
+| `apcgateway.marriott.com` | 503 | Service unavailable |
+| `dcfgatewaytst1.marriott.com` | **000 timeout** | Private DC — only accessible internally? |
+| `lawmanager.marriott.com` | **000 timeout** | Zscaler internal — inaccessible externally |
+| `sso.marriott.com` | **000 (NXDOMAIN)** | DEAD — find new auth endpoint |
+
+**NEW SCOPE GAP DISCOVERIES (via redirects):**
+- `device.marriott.com` → redirects to **`mdmconsole.marriott.com/AirWatch/default.aspx`**
+  - AirWatch (VMware Workspace ONE) MDM console! `mdmconsole.marriott.com` NOT in scope list
+  - Action: Email domain.administrator@marriott.com to confirm scope, or test only `device.marriott.com` itself
+- `passwordchallenge.marriott.com` → redirects to **`mgscloud.marriott.com`**
+  - `mgscloud.marriott.com` NOT in explicit scope list — do NOT follow redirect
+
+**cpp.marriott.com Salesforce Finding:**
+- `cpp.marriott.com/s/` = Salesforce Community Cloud (Experience Cloud)
+- Salesforce Guest User Object Exposure is a common bug class: unauthenticated API access to `sObject` data
+- Probe: `/services/data/v55.0/sobjects/`, `/s/sfsites/aura`, aura actions without auth
 
 **Infrastructure map:**
 
@@ -167,19 +199,22 @@
 
 ## Lead Status
 
-| ID | Class | Surface | IP / Infra | Status | Priority |
-|----|-------|---------|-----------|--------|----------|
-| M001 | Missing auth / debug API + IDOR | `esupplier.marriott.com` | `3.219.138.243` RAW EC2, NO WAF | PENDING — Pi session 2 | **CRITICAL** |
-| M002 | MDM/device API missing auth | `device.marriott.com` | `54.243.246.159` RAW EC2, NO WAF | PENDING — Pi session 2 | **CRITICAL** |
-| M003 | SAP debug APIs / missing auth | `gatewaydsapdev2.marriott.com` | Akamai | PENDING — Pi session 2 | CRITICAL |
-| M004 | Payment bypass / IDOR | `psp.marriott.com` | Akamai dedicated | PENDING — Pi session 2 | CRITICAL |
-| M005 | Legal doc IDOR / SSRF | `lawmanager.marriott.com` | Zscaler/internal | PENDING — Pi session 2 | CRITICAL |
-| M006 | Host-header routing / auth bypass | APC cluster: `auth-apc` + `apcgateway` + `gateway-apc` | `23.61.96.201` Akamai | PENDING — Pi session 2 | HIGH |
-| M007 | IAM privilege escalation / IDOR | `ssm-marriottms.saviyntcloud.com` | Cloudflare / Saviynt | PENDING — Pi session 2 | HIGH |
-| M008 | NTLM hash disclosure | `owa.marriott.com` | Zscaler CDN | PENDING — Pi session 2 | MEDIUM |
-| M009 | Splunk SOAR admin exposure | `splunk-phantom-nlb.marriott.com` | `34.205.160.170` RAW EC2 | PENDING — Pi session 2 | HIGH (Critical impact if open) |
-| M010 | Private DC gateway probe | `dcfgatewaytst1.marriott.com` | `159.166.124.24` Private DC | PENDING — Pi session 2 | HIGH |
-| M011 | Wildcard CT enum: API gateway, UAT, APC | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | PENDING — crt.sh from Pi | HIGH |
-| M012 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | AWS CloudFront | PENDING — Pi session 2 | HIGH |
-| M013 | SSO endpoint discovery | `sso.marriott.com` **NXDOMAIN** — auth moved | Find current auth endpoint | PENDING | HIGH |
-| ~~M014~~ | ~~OIDC / auth~~ | ~~sso.marriott.com~~ | NXDOMAIN | CLOSED — endpoint dead | — |
+| ID | Class | Surface | HTTP Result | Status | Priority |
+|----|-------|---------|------------|--------|----------|
+| M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
+| M002 | Salesforce Guest User Object Exposure | `cpp.marriott.com/s/` (Salesforce Community) | 301→/s/ | ACTIVE — Salesforce aura probe | **CRITICAL** |
+| M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | **200 / 4853B** | ACTIVE — endpoint enum | CRITICAL |
+| M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
+| M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
+| M006 | IAM privilege escalation / role IDOR | `ssm-marriottms.saviyntcloud.com` | **302→/ECM** confirmed alive | ACTIVE — /ECM/api/v5 probe | HIGH |
+| M007 | Messaging portal auth bypass / IDOR | `mgs.marriott.com` | **200 / 19501B**, raw EC2 | ACTIVE — endpoint enum | HIGH |
+| M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
+| M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
+| M010 | Employee identity app IDOR | `eidhelp.marriott.com` | **200 / 7767B** small app | ACTIVE — endpoint enum | HIGH |
+| M011 | Property conversion portal bugs | `ci-propertyconversionportal.marriott.com` | **200 / 5939B** | ACTIVE — 1 prior report | HIGH |
+| M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | **302→/Login/Login** | ACTIVE — test auth paths | HIGH |
+| M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
+| M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
+| M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
+| M016 | SSO endpoint discovery | `sso.marriott.com` NXDOMAIN — auth moved | 000 | PENDING — find new auth hostname | HIGH |
+| ~~M017~~ | ~~lawmanager internal~~ | 000 timeout | Zscaler internal, inaccessible externally | PARKED | — |

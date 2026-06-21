@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
 # marriott-hunt-init.sh — initialize environment for a Marriott hunting session.
 #
-# Usage: source scripts/marriott-hunt-init.sh
-#
-# Sets env vars + aliases so you can run scope-check, read the hunt log,
-# and open the runbook without typing long paths.
+# Usage: source scripts/marriott-hunt-init.sh   (bash and zsh compatible)
 
-export SCOPE_FILE="${BB:-$HOME/bug-bounty-hunting-}/config/marriott-scope.yaml"
+BB="${BB:-$HOME/bug-bounty-hunting-}"
+export SCOPE_FILE="$BB/config/marriott-scope.yaml"
 export HUNT_PROGRAM="marriott"
-export HUNT_RESULTS="${BB:-$HOME/bug-bounty-hunting-}/results/marriott"
+export HUNT_RESULTS="$BB/results/marriott"
 
-alias scope-check='SCOPE_FILE="$SCOPE_FILE" ~/bug-bounty-hunting-/scripts/scope-check.sh'
-alias hunt-log='cat "$HUNT_RESULTS/HUNT-LOG.md"'
-alias runbook='cat "$HUNT_RESULTS/runbooks/PI-RUNBOOK-marriott-session1.md"'
+# Functions (not aliases) — reliable in both bash and zsh, work with pipes
+scope-check()  { SCOPE_FILE="$SCOPE_FILE" "$BB/scripts/scope-check.sh" "$@"; }
+hunt-log()     { cat "$HUNT_RESULTS/HUNT-LOG.md" | less -R; }
+runbook()      { cat "$HUNT_RESULTS/runbooks/PI-RUNBOOK-marriott-${1:-session2}.md" | less -R; }
+hunt-status()  { grep -E "^\| M[0-9]+" "$HUNT_RESULTS/HUNT-LOG.md" | column -t -s'|'; }
+hunt-live()    { grep "200\|301\|302\|401" "$HUNT_RESULTS/HUNT-LOG.md" 2>/dev/null | head -20; }
+
+# Ensure hunt output directories exist
+mkdir -p "$HOME/hunt" "$HUNT_RESULTS/session2" "$HUNT_RESULTS/findings"
+
+# Export functions so subshells can use them
+export -f scope-check 2>/dev/null || true
 
 echo "[marriott] Hunt session initialized"
+echo "  BB:      $BB"
 echo "  Scope:   $SCOPE_FILE"
 echo "  Results: $HUNT_RESULTS"
-echo "  Check scope: scope-check <host>"
+echo "  Hunt dir: $HOME/hunt"
+echo ""
+echo "  Commands:"
+echo "    scope-check <host>          — verify host is in scope"
+echo "    hunt-log                    — read full hunt log"
+echo "    runbook [session1|session2] — read Pi runbook"
+echo "    hunt-status                 — show lead tracker"
