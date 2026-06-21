@@ -80,12 +80,40 @@ This is the highest-priority target for Session 2.
 
 ---
 
-## Session 2 — 2026-06-21 (QUEUED — content probe)
+## Session 2 — 2026-06-21 (COMPLETE)
 
-Objective: Determine what `home.ft.nest.com/` actually serves (SPA catch-all vs real content),
-map the API error format on `api.home.ft.nest.com`, and fingerprint `accounts.ft.nest.com`.
+**Phase A — home.ft.nest.com root content:**
+- Serves: `<!doctype html><!-- Build: 5.87.0.60073-20260429-1c89441-1 --><title>Log into the Nest app</title>`
+- SPA catch-all confirmed: `/this-path-does-not-exist-zz9xyz` → 302 → / → 200 (21738 bytes).
+  NST-L001 **CLOSED** — SPA login shell, not auth bypass.
 
-See runbooks/PI-RUNBOOK-nest-session2.md.
+**Phase B — CORS check + CSP extraction:**
+- No ACAO reflection on `home.ft.nest.com/`.
+- CSP notable entries:
+  - `connect-src ... https://*.phoenix.nest.com:*` — **undocumented internal API host** ⚠️
+  - `frame-src ... https://www5.dev.nestlabs.com` — **dev server in ft CSP** ⚠️
+  - `img-src ... https://d2nk85tze0mjf3.cloudfront.net https://d2ybkvo7oee6te.cloudfront.net`
+  - `script-src 'nonce-...' 'unsafe-eval' 'strict-dynamic' 'unsafe-inline'` — unsafe-eval present
+  - `wss://*.dropcam.com:80 wss://*.dropcam.com` in connect-src
+
+**Phase C — api.home.ft.nest.com auth body:**
+- Unauthenticated → body: `provide authorization`. Simple bearer gate, not IAP. Real API.
+
+**Phase D — supportadmin.nestlabs.com redirect:**
+- **Google IAP protected.** `x-goog-iap-generated-response: true` confirmed.
+- `redirect_uri=https://iap.googleapis.com/v1/oauth/clientIds/849799817816-...:handleRedirect`
+- NST-L004 **CLOSED** — IAP-gated, inaccessible externally.
+
+---
+
+## Session 3 — 2026-06-21 (QUEUED)
+
+Three parallel objectives:
+1. **JS mining** on `home.ft.nest.com` — extract API endpoints, internal hosts, auth logic from SPA bundles
+2. **accounts.nest.com TIER0** — CORS + OAuth redirect_uri probe
+3. **phoenix.nest.com + www5.dev.nestlabs.com** — DNS + HTTP fingerprint, scope check
+
+See runbooks/PI-RUNBOOK-nest-session3.md.
 
 ---
 
@@ -93,7 +121,11 @@ See runbooks/PI-RUNBOOK-nest-session2.md.
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| NST-L001 | Auth differential / potential bypass | `home.ft.nest.com` (root=200 vs prod=redirect) | ⏳ ACTIVE — Session 2 content probe queued |
-| NST-L002 | API surface mapping | `api.home.ft.nest.com` (401 everywhere, needs auth model) | ⏳ ACTIVE — Session 2 error-format probe queued |
-| NST-L003 | Admin panel exposure | `admin.store.nest.com` + ft variant (403 root, 200 health) | ⏳ HOLD — lower priority until L001 resolved |
-| NST-L004 | Support admin | `supportadmin.nestlabs.com` (302 redirect to login) | ⏳ HOLD — need login URL from redirect |
+| NST-L001 | Auth differential | `home.ft.nest.com` root=200 | ❌ CLOSED — SPA catch-all (login shell) |
+| NST-L002 | API surface | `api.home.ft.nest.com` (bearer gate) | ⏳ HOLD — needs valid Nest account |
+| NST-L003 | Admin panel | `admin.store.nest.com` + ft (403 root, 200 health) | ⏳ HOLD — probe health content in Session 3 |
+| NST-L004 | Support admin | `supportadmin.nestlabs.com` | ❌ CLOSED — Google IAP, inaccessible externally |
+| NST-L005 | Undocumented API | `*.phoenix.nest.com` (in CSP connect-src) | ⏳ NEW — Session 3 DNS + scope check |
+| NST-L006 | Dev artifact | `www5.dev.nestlabs.com` (in CSP frame-src) | ⏳ NEW — Session 3 DNS + HTTP fingerprint |
+| NST-L007 | JS bundle mining | `home.ft.nest.com` SPA (build 2026-04-29) | ⏳ NEW — Session 3 bundle extraction |
+| NST-L008 | TIER0 OAuth | `accounts.nest.com` CORS + redirect_uri | ⏳ NEW — Session 3 OAuth probe |
