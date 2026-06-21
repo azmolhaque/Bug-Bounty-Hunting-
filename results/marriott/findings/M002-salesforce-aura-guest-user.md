@@ -6,7 +6,7 @@
 **CVSS 3.1:** `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` → **5.3**  
 **CWE:** CWE-284 (Improper Access Control), CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor)  
 **Status:** Report-ready  
-**Discovered:** 2026-06-21 (Session 2), confirmed 2026-06-22 (Sessions 3, 4, 6)  
+**Discovered:** 2026-06-21 (Session 2), confirmed + chain-tested 2026-06-22 (Sessions 3, 4, 6, 7)  
 **Researcher IP used during testing:** [Pi external IP — redact before submission]  
 **Tools:** curl 7.x  
 
@@ -36,6 +36,8 @@ The correct configuration is to disable API access for the Guest User profile. T
 4. `getItems` (record fetch) on `User` → internal server error (not "access denied" — the call reaches server code, but list view config is absent or erroring)
 5. REST API (`/services/data/`) → HTTP 200 with version list (public Salesforce behavior, not a finding on its own)
 6. REST sObjects API with guest session cookie → HTTP 401 `INVALID_SESSION_ID` (REST blocked)
+7. LWC (Lightning Web Component) wire endpoints also exposed: `/s/sfsites/lwr/` → HTTP 200 / 1368B, `/s/sfsites/lwr/fetch` → HTTP 200 / 1383B (different API from Aura with potentially different access controls — unexplored)
+8. Salesforce org instance identified: `usa850` (via static asset URL `https://a.static.lightning.force.com/usa850.sfdc-8tgtt5` found in error response body)
 
 ### Fields exposed in User schema (sample)
 
@@ -51,6 +53,8 @@ The 203-field response includes (but is not limited to):
 | `CompanyName` | Company | String |
 | `CommunityNickname` | Community Nickname | String |
 | `HasUserVerifiedEmail` | Has User Verified Email | Boolean |
+| `Phone` | Phone | Phone |
+| `MobilePhone` | Mobile | Phone |
 | `BannerPhotoUrl` | Banner Photo URL | Url |
 | `UserType` | User Type | Picklist |
 | `IsActive` | Active | Boolean |

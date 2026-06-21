@@ -378,9 +378,48 @@ Evidence confirms:
 Session 6 Phase D reconfirmed: `getObjectInfo(User)` → `"state":"SUCCESS"` | 203 fields including Email, FirstName, Address, CommunityNickname, CompanyName, HasUserVerifiedEmail.  
 Guest User profile has API access enabled — matches ShinyHunters attack class (March 2026 wave).  
 Contact/Account schema blocked for guest profile.  
+Session 7 further confirmed: Phone + MobilePhone fields added, LWC endpoints discovered live, Salesforce org instance usa850 identified. Report held pending Session 8 LWC exploration.
 
 **CVSS estimate:** 5.3 Medium  
-**Status: REPORT-READY**
+**Status: REPORT-READY (holding for Session 8 LWC chain test)**
+
+---
+
+### Session 7 — COMPLETE (2026-06-22)
+
+**Goal:** Reconfirm M018 + M002, chain elevation attempts, new targets.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session7.md`
+**Status:** COMPLETE. Both findings confirmed. LWC new surface discovered.
+
+**Session 7 Results:**
+
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| A — M018 reconfirm | `module=user&function=list` (no cookie) | **430B fatal error CONFIRMED** | Auth bypass still active |
+| B1/B2 — GET routing bypass | `?module=user&function=list` + JSON body | 93B — routing uses `$_POST`, not `$_REQUEST` | Chain closed |
+| **B3 — Multipart test** | `-F module=user -F function=list -F data={"page":1}` | **430B — definitively proves `json_decode($_POST)` bug** | **KEY EVIDENCE** |
+| B4 — HTTP Parameter Pollution | Double `module=` parameter | 430B (PHP uses last value, both path same) | No new bypass |
+| **B5 — CSRF bypass** | No `activekey` field at all | **430B — CSRF not validated** | **CSRF bypass confirmed** |
+| B6/B7 — Function/module enum | 24 user functions + financial modules | All 93B | Only user/list bypasses auth |
+| B8 — Backup files | `.env`, `.git/HEAD`, `phpinfo.php` etc. | All 7080B SPA catch-all (false positives) | SPA serves index.html for all unknown paths |
+| C — M002 reconfirm | getObjectInfo(User) | **state=SUCCESS \| 203 fields \| Phone+MobilePhone added** | CONFIRMED MEDIUM |
+| C2 — Contrast | getObjectInfo(Contact) | state=ERROR | Contrast confirmed |
+| D1-D5 — Record access | searchRecords, getListUi, getItems, getRecord, getCurrentUserOrGuest | All `state=warning` 11279B (framework mismatch, NOT "access denied") | Records not returned; different code path from permission block |
+| D6 — CommLoginController | Three email addresses | All 11279B identical | User enumeration NOT possible (no differential) |
+| **D9 — Error body analysis** | Contact ERROR body | **Real fwuid extracted; Salesforce instance: usa850** | FWUID for future session tests |
+| **D10 — LWC discovery** | `/s/sfsites/lwr/` + `/s/sfsites/lwr/fetch` | **200 / 1368B and 200 / 1383B — LIVE** | **NEW UNEXPLORED ATTACK SURFACE** |
+| D8 — Apex REST | `/services/apexrest/*` | All 404 | Not exposed |
+| E1 — marrtool.com | All paths | 000 timeout | Unreachable externally (IP-restricted or internal only) |
+
+**M018 FINAL STATUS:** REPORT-READY (Medium, CVSS 5.3). B3 and B5 strengthen the finding.
+**M002 STATUS:** One more session needed — LWC endpoints unexplored. Hold M002 report until Session 8.
+
+**M019 — NEW LEAD: Salesforce LWC Wire Endpoints**
+- `/s/sfsites/lwr/` → HTTP 200 / 1368B
+- `/s/sfsites/lwr/fetch` → HTTP 200 / 1383B
+- LWC is the newer Salesforce component framework with a different wire protocol
+- If LWC wire adapters allow guest record access (different access control model than Aura), this could elevate M002 to High
+- Session 8 focus
 
 ---
 

@@ -68,6 +68,34 @@ The stack trace also leaks the full server filesystem path:
 
 `FranLic` = "Franchise Licensing" — confirms this is the internal name for the franchise financial system.
 
+### Session 7: Definitive bug proof (multipart encoding test)
+
+To conclusively identify whether the server calls `json_decode($_POST['data'])` (which would accept a string) versus `json_decode($_POST)` (which passes the entire array), a multipart/form-data request was tested. With multipart encoding, PHP populates `$_POST['data']` as a string value — not as part of the URL-encoded body. If the server called `json_decode($_POST['data'])`, multipart would succeed. Instead, the identical 430-byte Fatal Error was returned:
+
+```bash
+curl -sk -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
+  -F "module=user" \
+  -F "function=list" \
+  -F "activekey=NONE" \
+  -F 'data={"page":1}' 
+# Returns: 430B PHP Fatal Error (identical to form-encoded test)
+```
+
+This definitively proves the server code is calling `json_decode($_POST)` — passing the entire PHP superglobal array — rather than `json_decode($_POST['data'])`. No HTTP encoding variation can fix this from the caller side.
+
+### Session 7: CSRF token validation absent
+
+The `activekey` CSRF token is also not validated. Sending the request with no `activekey` field at all returns the identical 430-byte bypass response:
+
+```bash
+curl -sk -X POST 'https://marriottfranchisetransactions.marriott.com/ajax.php' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  --data 'module=user&function=list&data={}'
+# Returns: 430B PHP Fatal Error (CSRF token not validated)
+```
+
+This means the `user/list` function is reachable with: (a) no session cookie, (b) no CSRF token, (c) via any content-type encoding including multipart.
+
 ---
 
 ## Reproduction Steps
@@ -152,6 +180,8 @@ Expected output: `430` and `93` respectively.
 ### Confirmed impact
 - **Authentication bypass on a financial portal** serving Marriott franchise hotel owners. Any unauthenticated internet user can invoke the `user/list` function.
 - **Absolute server path disclosure** (`/FranLic/www/html/`) aids further exploitation.
+- **CSRF protection is also absent** — the `user/list` function requires neither a session cookie NOR a valid CSRF token. The `activekey` field is accepted but not validated server-side.
+- **Developer attribution:** `Ignition72, Inc.` (found in page source `<meta name="author" content="Ignition72, Inc.">`). This is a custom development shop, not a vendor CMS, which means the bug is a bespoke implementation error.
 
 ### Risk if secondary PHP 8 bug is fixed (or in PHP 7 mode)
 If the `json_decode($_POST)` bug is patched (or the server downgrades to PHP 7 where `json_decode(array)` returns `null` rather than throwing), the `user/list` function would execute successfully and return **a list of franchise portal user accounts** (names, emails, roles) to any unauthenticated attacker. This would be a **High** finding.
