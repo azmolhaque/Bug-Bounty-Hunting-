@@ -4,7 +4,7 @@
 # Usage: export APIGEE_TOKEN="..." && bash scripts/apigee_mgmt_token_probe.sh
 export PATH="/usr/bin:/usr/local/bin:/usr/sbin:/bin:$PATH"
 
-APIGEE_EMAIL="${APIGEE_EMAIL:-zahinshahriar3@gmail.com}"
+APIGEE_EMAIL="${APIGEE_EMAIL:-azmolhaque95@gmail.com}"
 TOKEN="${APIGEE_TOKEN:-}"
 MGMT="https://api.enterprise.apigee.com"
 
