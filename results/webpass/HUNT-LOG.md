@@ -127,9 +127,41 @@ See: `runbooks/PI-RUNBOOK-webpass-session2.md`
 ### Runbook
 See: `runbooks/PI-RUNBOOK-webpass-session2.md`
 
-### Output
+### Results
 
-(Paste Pi output here after running)
+- **`/users/sign_up` → 302 → `/user_sessions/new`** — no self-registration; redirects to login
+- **Login page: email+password only** (Authlogic). No Google OAuth / OmniAuth buttons in HTML.
+- **JS bundles**: `user_sessions-*.js` = 112 bytes (empty stub); `application-*.js` = 2.5 MB
+- **Bundle routes extracted**: `/set_complete_personal_todo_from_non_dashboard_page`, `/set_complete_team_assignment_from_non_dashboard_page`, `/set_complete_user_assignment`, `/update_address_two/`, `/users/5`, `/workflows/`, `/alerts/`, `/increment_opp_reminder_date`, `/reminders/`, `/search`, `/spotlight_search`
+- **App is a support CRM** — routes like `/increment_opp_reminder_date`, `/reminders/`, `/alerts/`, `/spotlight_search`, `/set_complete_*_assignment` confirm sales/support CRM. Users are Webpass support agents, not ISP customers.
+- **Forgot password**: all variants → 404 (no password reset flow exposed)
+- **New routes confirmed** (integer IDs, auth-gated): `/tickets`, `/contacts`, `/contacts/1`
+
+---
+
+## Session 3 — 2026-06-21 (Format bypass + AJAX + CSRF test)
+
+### Results
+
+- **Format bypass (`.json` extension)**: `/invoices/1.json`, `/accounts.json`, `/dashboard.json`, `/admin.json` → all **302** (auth filter is format-agnostic)
+- **Format bypass (`Accept: application/json`)**: all auth-gated routes → still **302** (no JSON-specific bypass)
+- **AJAX POST endpoints without CSRF**: 4x 404 (routes not found); `/increment_opp_reminder_date` → **422** (route exists — CSRF rejection, not auth redirect)
+- **CSRF bypass test**: Fetched valid `_portal_session` cookie + CSRF token (unauthenticated), replayed POST to `/increment_opp_reminder_date` → **302 → `/user_sessions/new`** — auth `before_action` fires after CSRF passes
+- **GET search/CRM endpoints with CSRF+session**: all → **302** (consistently auth-gated)
+
+**The 422 on `/increment_opp_reminder_date` without CSRF was purely Rails CSRF protection (`protect_from_forgery :exception`). Once CSRF is satisfied, the `require_user` before_action fires and redirects to login. No auth bypass.**
+
+## ⛔ WEBPASS CLOSED — 2026-06-21
+
+All unauthenticated surface exhausted across 3 sessions:
+- Real route table confirmed (not SPA)
+- **Confirmed attack surface for authenticated testing**: `/invoices/:id`, `/contacts/:id`, `/users/:id`, `/tickets/:id` (all integer IDs, all auth-gated)
+- **Fundamental blocker**: No self-registration. Portal is ISP employee support CRM (embedded in Genesys Cloud). Requires Webpass employee credentials. Cannot create test account from external.
+- Format bypass: NOT possible
+- AJAX auth bypass: NOT possible
+- No password reset flow exposed
+
+**PIVOT → prod.respond-software.com** (TIER1, Respond Software acquired by Google 2021, AI security detection platform, completely untested)
 
 ---
 
