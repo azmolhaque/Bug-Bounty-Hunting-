@@ -68,7 +68,15 @@ Browser PoC still needed before submission (Step 4 in FIT-C001-cors-accounts.md)
 
 ### Next Steps
 
-1. Run browser PoC (HTML fetch with victim's session cookies)
-2. Screenshot profile data returned to evil origin
-3. Submit FIT-C001 to bughunters.google.com
-4. While waiting for triage: start Pring or Dataform cluster (both TIER0/1, untested)
+1. **BLOCKER (user action required)**: Run browser PoC (Step 4 in FIT-C001-cors-accounts.md)
+   - Open the HTML snippet in a server you control (or localhost via python3 -m http.server)
+   - Have a browser tab logged into accounts.fitbit.com open simultaneously
+   - Visit the PoC page — profile JSON should render on screen
+   - Screenshot it and attach to the VRP report
+
+2. **Submission package ready**: `results/fitbit/findings/submission/FIT-C001-google-vrp-report.md`
+   - Add the browser screenshot before filing
+   - Submit to bughunters.google.com → Google VRP → accounts.fitbit.com
+   - CVSS 8.1 High; TIER1
+
+3. While waiting for triage: Pring (TIER0 payments), Dataform, or Wiz trial account
