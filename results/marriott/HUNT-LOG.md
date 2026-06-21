@@ -332,35 +332,55 @@ Evidence:
 
 ---
 
-### Session 6 — QUEUED (Pi required)
-**Priority order:**
-1. Read session 2 output: `cat ~/hunt/session2/session2-output.txt | grep -E "200|CRITICAL|port"`
-2. **Phase A** — Saviynt CVE-2022-23855: POST to `/ECM/maintenance/forgotpasswordstep1` — if HTTP 200 → CRITICAL admin takeover
-3. **Phase B** — Salesforce Aura: extract fwuid from cpp.marriott.com/s/, POST to /s/sfsites/aura — if `aura:invalidSession` → CRITICAL data exposure
-4. **Phase C** — esupplier deep: naabu port scan + endpoint enum + IDOR seed test
-5. **Phase D** — Franchise transactions IDOR: sequential ID probing
-6. **Phase E** — mgs.marriott.com: map gaps from 3 prior reports
-7. **Phase F** — CT discovery follow-up from session 2
+### Session 6 — COMPLETE (2026-06-22)
 
-**New intel from OSINT research (2026-06-21):**
+**Goal:** Franchise auth bypass exploitation + Salesforce Aura confirmation.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session6.md`
+**Status:** COMPLETE. Two findings confirmed report-ready.
 
-| Lead | CVE/Class | Test | CVSS (if confirmed) |
-|------|-----------|------|---------------------|
-| M006 Saviynt | CVE-2022-23855 — auth bypass → admin PW reset | `POST /ECM/maintenance/forgotpasswordstep1 {"username":"admin"}` → HTTP 200? | 9.8 Critical |
-| M006 Saviynt | CVE-2022-23856 — user enumeration via `?id=N` | Compare response size for id=1 vs id=9999 | High |
-| M002 Salesforce | Guest User Aura exposure (ShinyHunters class, active 2026) | POST to `/s/sfsites/aura` → `aura:invalidSession` in body? | ~8.6 High |
-| M002 Salesforce | Aura object data read | `ACTION$getObjectInfo` + `ACTION$getItems` on Contact/Account | Critical if records returned |
+**Session 6 Results:**
 
-**Saviynt behavior key:**
-- 401 JSON = properly configured (auth required)
-- 403 = WAF block (can't determine)
-- 200 + JSON = **UNAUTHENTICATED ACCESS — CRITICAL**
-- `/ECM/maintenance/forgotpasswordstep1` POST → 200 = **CVE-2022-23855 present**
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| A1 — JSON body | `/ajax.php` Content-Type:application/json | **93B false** — module/function not parsed from JSON body | Expected ($POST array not populated) |
+| **A2 — Form + data={}** | `/ajax.php module=user&function=list&data={}` | **430B PHP Fatal Error + STACK TRACE** | **CONFIRMED — full trace captured** |
+| A3 — Form + data=null | Same | 430B fatal error | Identical to A2 |
+| A4 — Form + data= (empty) | Same | 430B fatal error | Identical |
+| A5/A6/A7 — JSON variants | Various | 93B false | JSON body never routes |
+| B — Real module names | `applications_v2/*, user_auth/*` (13 functions) | **93B false for all** | Real functions auth-protected |
+| C — user/list without cookie | Confirm unauthenticated | **430B without session cookie** | **AUTH BYPASS CONFIRMED** |
+| D — Salesforce reconfirm | `getObjectInfo(User)` | **`state=SUCCESS` | 203 fields** | **MEDIUM CONFIRMED READY TO REPORT** |
 
-**Salesforce Aura key:**
-- `aura:invalidSession` in POST response = endpoint reachable (not locked) → enumerate objects
-- `"state":"SUCCESS"` with data = **CRITICAL data exposure**
-- 403 / no response = locked down (but try different Aura endpoints)
+**M018 — CONFIRMED FINDING: Auth Bypass + Absolute Path Disclosure**
+
+Full PHP stack trace captured (no session cookie required):
+```
+Fatal error: Uncaught TypeError: json_decode(): Argument #1 ($json) must be of type string,
+array given in /FranLic/www/html/lib/internal/request.inc.php:233
+Stack trace:
+#0 /FranLic/www/html/lib/internal/request.inc.php(233): json_decode(Array)
+#1 /FranLic/www/html/ajax.php(26): process_request(Object(MysqliDb))
+#2 {main}
+```
+
+Evidence confirms:
+- `module=user&function=list` reaches server code WITHOUT session cookie (93B → 430B = different code path)
+- `MysqliDb` object constructed and passed = DB connection live behind auth gate
+- PHP 8 strict typing prevents data return (`json_decode(Array)` throws TypeError)
+- **Absolute server path disclosed**: `/FranLic/www/html/` ("FranLic" = Franchise Licensing)
+- Real module names (`applications_v2`, `user_auth`) all return 93B → properly protected
+
+**CVSS estimate:** 5.3 Medium (auth bypass demonstrable, data not returned due to PHP 8 type error)  
+**Status: REPORT-READY**
+
+**M002 — CONFIRMED FINDING: Salesforce Guest User Aura API Exposure**
+
+Session 6 Phase D reconfirmed: `getObjectInfo(User)` → `"state":"SUCCESS"` | 203 fields including Email, FirstName, Address, CommunityNickname, CompanyName, HasUserVerifiedEmail.  
+Guest User profile has API access enabled — matches ShinyHunters attack class (March 2026 wave).  
+Contact/Account schema blocked for guest profile.  
+
+**CVSS estimate:** 5.3 Medium  
+**Status: REPORT-READY**
 
 ---
 
@@ -369,7 +389,7 @@ Evidence:
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
 | M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
-| M002 | **Salesforce Aura — User schema confirmed, records TBD** | `cpp.marriott.com/s/sfsites/aura` | POST→`"state":"SUCCESS"` + 4.5MB | **CONFIRMED LEAD — Session 4: getRecord + getItems on User** | **HIGH/CRITICAL** |
+| M002 | **Salesforce Aura Guest User API Exposure — 203 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | POST→`"state":"SUCCESS"` + 203-field User schema | **REPORT-READY — Medium (5.3). Session 6 confirmed.** | **MEDIUM** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | **200 / 4853B** | ACTIVE — endpoint enum | CRITICAL |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
@@ -382,7 +402,7 @@ Evidence:
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | **302→/Login/Login** | ACTIVE — test auth paths | HIGH |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
-| **M018** | **PHP /ajax.php module routing — auth bypass / IDOR** | `marriottfranchisetransactions.marriott.com/ajax.php` | Form: module+function POST params | ACTIVE — mine scripts.jgz + test module combos | **HIGH** |
+| **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 430B PHP Fatal Error w/ MysqliDb stack trace | **REPORT-READY — Medium (5.3). Session 6 confirmed.** | **MEDIUM** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
 | M016 | SSO endpoint discovery | `sso.marriott.com` NXDOMAIN — auth moved | 000 | PENDING — find new auth hostname | HIGH |
 | ~~M017~~ | ~~lawmanager internal~~ | 000 timeout | Zscaler internal, inaccessible externally | PARKED | — |
