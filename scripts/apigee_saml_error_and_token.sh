@@ -44,7 +44,13 @@ echo "  Step 3: Run this command with that passcode:"
 echo '    export PASSCODE="PASTE_YOUR_CODE_HERE"'
 echo '    curl -sk -X POST "https://login.apigee.com/oauth/token" \'
 echo '      -u "edgecli:edgeclisecret" \'
-echo '      -d "grant_type=password&passcode=${PASSCODE}&response_type=token" \'
+echo '      -d "grant_type=password&username=azmolhaque95@gmail.com&passcode=${PASSCODE}" \'
+echo '      | python3 -m json.tool'
+echo
+echo "  If that still fails try:"
+echo '    curl -sk -X POST "https://login.apigee.com/oauth/token" \'
+echo '      -H "Content-Type: application/x-www-form-urlencoded" \'
+echo '      -d "grant_type=password&username=azmolhaque95@gmail.com&passcode=${PASSCODE}&client_id=edgecli&client_secret=edgeclisecret" \'
 echo '      | python3 -m json.tool'
 echo
 echo "  Step 4: Copy the access_token value, then run:"
