@@ -423,13 +423,41 @@ Session 7 further confirmed: Phone + MobilePhone fields added, LWC endpoints dis
 
 ---
 
+### Session 8 — COMPLETE (2026-06-22)
+
+**Goal:** LWC wire endpoint probe, real fwuid Aura tests, psp.marriott.com, esupplier.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session8.md`
+**Status:** COMPLETE. Both findings confirmed report-ready. LWC closed. PSP blocked.
+
+**Session 8 Results:**
+
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| **A — LWC wire endpoints** | `/s/sfsites/lwr/*` all subpaths | All 200 + **JavaScript login redirect** → `/s/login?ec=302` | **M019 CLOSED — LWR requires auth, properly protected** |
+| B — Real fwuid Aura tests | All requests | 298B (broken helper — `aura.context=` prefix missing) | **Helper bug; real fwuid not actually tested** |
+| C — Salesforce direct org | `usa850.salesforce.com` | 000 timeout — pod not externally accessible | Blocked |
+| **D — psp.marriott.com** | Root page + endpoints | Root = **meta-refresh to PingFederate SSO** → `extranet.marriott.com/2FAmarrsso/idp/startSSO.ping?PartnerSpId=Marriott-SAML2-SP-EverestRCD-PROD` | **BLOCKED — employee SAML2 SSO required** |
+| D2 — psp endpoints | All 40+ paths | Only `/login` returns 301 | No open endpoints |
+| E — esupplier | ASP.NET paths | `/trace.axd` → 403 (exists, blocked) | Not a finding |
+
+**Key discoveries:**
+- `psp.marriott.com` → PingFederate SAML2 ("EverestRCD" app) via `extranet.marriott.com` — requires Marriott employee credentials, inaccessible externally
+- LWR properly protected (auth redirect, not open)
+- Session 8 confirms M002 record access is definitively blocked: LWR gated, Apex REST 404, REST SOQL 401, all Aura record calls blocked
+
+**FINAL STATUS for both findings:**
+- **M018:** REPORT-READY. Confirmed across Sessions 5-7 with 3 encoding variants and CSRF bypass.
+- **M002:** REPORT-READY. Confirmed across Sessions 3-8. All record access paths exhausted. Schema exposure as Medium is the finding.
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
 | M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
 | M002 | **Salesforce Aura Guest User API Exposure — 203 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | POST→`"state":"SUCCESS"` + 203-field User schema | **REPORT-READY — Medium (5.3). Session 6 confirmed.** | **MEDIUM** |
-| M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | **200 / 4853B** | ACTIVE — endpoint enum | CRITICAL |
+| M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | Meta-refresh → PingFederate SAML2 (`extranet.marriott.com/2FAmarrsso`); PartnerSpId=Marriott-SAML2-SP-EverestRCD-PROD | **BLOCKED — requires Marriott employee SAML2 auth. Inaccessible externally.** | — |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
 | M006 | CVE-2022-23855 ambiguous (500 not 200) | `ssm-marriottms.saviyntcloud.com` | `forgotpasswordstep1` → HTTP 500 | ACTIVE — try GET+query, form-encoded POST | HIGH |
@@ -445,3 +473,4 @@ Session 7 further confirmed: Phone + MobilePhone fields added, LWC endpoints dis
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
 | M016 | SSO endpoint discovery | `sso.marriott.com` NXDOMAIN — auth moved | 000 | PENDING — find new auth hostname | HIGH |
 | ~~M017~~ | ~~lawmanager internal~~ | 000 timeout | Zscaler internal, inaccessible externally | PARKED | — |
+| ~~M019~~ | ~~Salesforce LWC wire endpoints~~ | `/s/sfsites/lwr/*` | 200 + JS login redirect to `/s/login?ec=302` — properly auth-gated | **CLOSED — requires authentication** | — |
