@@ -38,14 +38,35 @@ current nest.com cluster.
 
 ---
 
-## Session 1 — 2026-06-21 (QUEUED)
+## Session 1 — 2026-06-21 (COMPLETE)
 
-See runbooks/PI-RUNBOOK-dropcam-session1.md.
+**DNS:**
+- `dropcam.com`, `www.dropcam.com`, `api.dropcam.com` → all resolve to `35.227.226.203` (GCP)
+- All other common subdomains (app, stream, ws, camera, nest, beta, staging) → NXDOMAIN
+- `x-nl-request-id` header present → Nest Labs nginx infrastructure
 
----
+**HTTP:**
+- `dropcam.com/` → 301 → `https://www.dropcam.com/`
+- `www.dropcam.com/` → 301 → `https://www.nest.com/camera/meet-nest-cam/?dropcam=true`
+- ALL paths on `dropcam.com` (/api, /api/v1, /api/v2, /health, /v1, /robots.txt, /cameras, /oauth2/token) → **301**
+
+`api.dropcam.com` resolves (same IP) — probed in Session 1b.
+
+## Session 1b — 2026-06-21 (COMPLETE)
+
+`api.dropcam.com/` → **301** → `https://www.nest.com/camera/meet-nest-cam/?dropcam=true`
+Same `x-nl-request-id` header, same nginx. Confirmed same redirector.
+
+## ⛔ DROPCAM CLOSED (pending api.dropcam.com confirmation)
+
+Blanket-301 on all paths mirrors Waze ad-API decommission pattern. The `wss://*.dropcam.com`
+CSP entries use internal subdomains (camera-ID or region-specific) that don't resolve publicly.
+No unauthenticated external API surface exists.
+
+**PIVOT → Tenor.com** (TIER1, GIF platform, active content upload API, potential SSRF/IDOR).
 
 ## Lead Status
 
 | ID | Class | Surface | Status |
 |----|-------|---------|--------|
-| (none yet) | — | — | Recon pending |
+| DRC-L001 | API / WebSocket surface | `api.dropcam.com`, `wss://*.dropcam.com` | ❌ CLOSED — blanket 301 redirectors, internal WS subdomains not publicly resolvable |
