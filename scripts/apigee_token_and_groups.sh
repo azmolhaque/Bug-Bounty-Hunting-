@@ -42,6 +42,19 @@ CHECK=$(/usr/bin/curl -sk --max-time 10 \
   -d "token=${TOKEN}")
 echo "$CHECK" | python3 -m json.tool 2>/dev/null || echo "$CHECK"
 JTI=$(echo "$CHECK" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('jti',''))" 2>/dev/null)
+
+# Fallback: extract JTI directly from JWT payload (edgecli doesn't have tokens.read)
+if [ -z "$JTI" ]; then
+  echo "check_token blocked (edgecli lacks tokens.read). Extracting JTI from JWT payload..." | tee -a "$OUT"
+  JTI=$(echo "$TOKEN" | python3 -c "
+import sys, base64, json
+parts = sys.stdin.read().strip().split('.')
+if len(parts) >= 2:
+    p = parts[1] + '=' * (4 - len(parts[1])%4)
+    d = json.loads(base64.b64decode(p))
+    print(d.get('jti',''))
+" 2>/dev/null)
+fi
 echo "JTI: $JTI" | tee -a "$OUT"
 echo | tee -a "$OUT"
 

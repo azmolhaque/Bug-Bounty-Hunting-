@@ -213,26 +213,93 @@ Passcode expired before fix was applied; needs fresh code.
 
 ---
 
-## Lead Status (Updated)
+---
 
-| ID | Class | Endpoint | Status | Decision |
-|----|-------|----------|--------|----------|
-| APG-L001 | OAuth redirect_uri bypass | /sign_up + /apigee_create_account_request | DROPPED | FALSE POSITIVE |
-| APG-L002 | Management API IDOR | /v1/users/{email} | BLOCKED | Needs valid Bearer token |
-| APG-L003 | Privilege escalation | /v1/organizations, /v1/users | BLOCKED | Needs valid Bearer token |
-| APG-L004 | Token revocation bypass (CVE-2026-22723) | /oauth/token/revoke | BLOCKED | Needs valid Bearer token |
-| APG-L005 | SAML SSO assertion bypass | /saml/SSO/alias/apigee-saml-login | OPEN | Both tests → /saml_error; rejection reason unknown |
+## Session 4 — 2026-06-21 (Token Obtained — Authenticated Probes)
+
+### Token obtained (azmolhaque95@gmail.com)
+
+Passcode exchange with `username` field fix → SUCCESS:
+- Token type: Bearer (edgecli client), expires in ~12h
+- Scopes: `scim.emails.read scim.me openid password.write approvals.me scim.ids.read oauth.approvals`
+- User ID: `80dc0e8a-f939-414c-9f9c-0b8f9699a877`
+- JTI: `ab94838d-adef-48d9-b34b-6d34f347faf5`
+- Origin: `usergrid`
+- `/userinfo` → HTTP 200 ✓ ("Tester BD")
+
+### SCIM API probe (APG-L006 — CLOSED)
+
+All UAA SCIM endpoints properly blocked:
+- `/Users` → 403 `"scope":"scim.read zones.uaa.admin"` (needs more than we have)
+- `/Users?attributes=id,emails` → 403 same (scim.emails.read does NOT allow bulk enum)
+- `/Users?filter=emails.value+pr` → 403 same
+- `/ids/Users` → 403 `"scope":"scim.userids"` (scim.ids.read ≠ scim.userids)
+- `/Users/{other-id}` → 403 same (scim.me only covers own user)
+
+**VERDICT APG-L006: CLOSED — properly secured.** The `scim.emails.read` and `scim.ids.read` scopes in the edgecli token do NOT grant enumeration access. All SCIM endpoints enforce `scim.read` for listing.
+
+### /check_token blocked
+
+`POST /check_token` with `edgecli:edgeclisecret` → 403 "access_denied".  
+`edgecli` client lacks `tokens.read` on this UAA. JTI extracted directly from JWT payload instead.
+
+### Management API — BLOCKED (no org)
+
+`GET /v1/users/azmolhaque95@gmail.com` (with correct email) → HTTP 403, empty body.
+
+**Root cause:** `azmolhaque95@gmail.com` has no Apigee Edge organization. The management API at `api.enterprise.apigee.com` requires org membership even to read own user profile. The edgecli token is valid (UAA accepts it) but the management API's own RBAC layer enforces org membership.
+
+**Impact:** APG-L002 and APG-L003 (management API IDOR and priv esc) are BLOCKED until we have an account with an Apigee org.
+
+### /Groups HTTP 500 Anomaly — CLASSIFIED
+
+**Behavior:**
+- No token → HTTP 401 `{"error":"unauthorized","error_description":"Full authentication is required..."}`
+- Bad token → HTTP 401 `{"error":"invalid_token","error_description":"Invalid token (could not decode)..."}`
+- Valid edgecli token → HTTP 500 `{"signupX":"...","passwd":"...","signup":"..."}` (REPRODUCIBLE × 3)
+
+**Classification: APG-L007 — Unhandled Exception in SCIM Groups Handler (LOW/INFO)**
+
+The scope check for `GET /Groups` with a valid-but-insufficient token triggers an unhandled exception that falls through to a default UAA handler returning prompts JSON with HTTP 500 instead of the expected 403.
+
+This is a real application defect (improper error handling), but:
+- Yields no data access, no bypass
+- Response body is UAA login prompts JSON (URLs to signup/reset) — not sensitive
+- Does not chain to any higher severity
+- Would be remediated with proper scope-check exception handling
+
+**VERDICT APG-L007: LOG ONLY — not a standalone reportable finding** (CLAUDE.md §3: "stack traces/verbose errors with no exploitable data"). Would only be worth mentioning as supplement to a higher-severity finding.
+
+### Token Revocation Bypass — PENDING
+
+JTI extracted from JWT payload (`ab94838d-adef-48d9-b34b-6d34f347faf5`). Running fresh with JTI-from-JWT fallback.
 
 ---
 
-## Next Actions (Priority Order)
+## Lead Status (Final — Session 4)
 
-1. **[IMMEDIATE] Get fresh passcode** → visit `login.apigee.com/passcode` → run `scripts/apigee_get_token.sh`
-   - If `edgecli:edgeclisecret` fails: capture token from browser DevTools (Network tab on console.apigee.com)
-   - Once token obtained → run `scripts/apigee_mgmt_token_probe.sh` (APG-L002, L003, L004)
+| ID | Class | Endpoint | Status | Decision |
+|----|-------|----------|--------|----------|
+| APG-L001 | OAuth redirect_uri bypass | /sign_up + /apigee_create_account_request | CLOSED | FALSE POSITIVE |
+| APG-L002 | Management API IDOR | /v1/users/{email} | BLOCKED | No Apigee org on test account |
+| APG-L003 | Privilege escalation | /v1/organizations, /v1/users | BLOCKED | No Apigee org on test account |
+| APG-L004 | Token revocation bypass | /oauth/token/revoke/{JTI} | PENDING | JTI from JWT; revocation test in progress |
+| APG-L005 | SAML SSO assertion bypass | /saml/SSO/alias/apigee-saml-login | ON HOLD | /saml_error = generic "Uh oh"; no intel on rejection reason |
+| APG-L006 | SCIM email/ID enumeration | /Users, /ids/Users | CLOSED | Properly blocked (needs scim.read) |
+| APG-L007 | /Groups HTTP 500 anomaly | /Groups | LOG ONLY | Improper error handling, no exploitable impact |
 
-2. **[PARALLEL] Determine SAML /saml_error content** → re-run `/saml_error` fetch with better HTML stripping
-   - If "no registered IDP" → explore IDP registration via other vectors
-   - If "signature" → SAML bypass path requires signed assertions (private key needed) → CLOSE
+---
 
-3. **[IF TOKEN FAILS] DevTools fallback** — use console.apigee.com in browser, capture Bearer token from XHR to `api.enterprise.apigee.com`
+## Strategic Assessment
+
+All unauthenticated and authenticated (no-org) attack paths are exhausted or blocked.
+Remaining viable paths require either:
+1. An Apigee Edge account WITH org → management API IDOR/priv esc (APG-L002/L003)
+2. Token revocation bypass result (APG-L004 — pending JTI-from-JWT fix)
+
+**If APG-L004 is negative → recommend pivot to next target.**
+
+Next candidates (per deep-research ranking):
+- Siemplify SOAR (acquired 2022, multi-tenant SOAR platform, likely IDOR surface)
+- Waze Biz Portal (location + business data, potential auth/tenant isolation bugs)
+- Dataform (SQL transformation SaaS, recently more active)
