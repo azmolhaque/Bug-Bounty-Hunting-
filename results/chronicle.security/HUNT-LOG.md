@@ -5,6 +5,26 @@
 **Scope confirmed:** IN-SCOPE — matches `chronicle.security` in `config/scope.yaml`  
 **Hypothesis:** SOAR connector framework follows same SSRF pattern as AppSheet — connectors make server-side HTTP requests to user-supplied URLs with no centralized egress filter.
 
+## ⛔ CHRONICLE/SIEMPLIFY CLOSED (unauthenticated surface) — 2026-06-21
+
+All unauthenticated attack surface on `app.siemplify-soar.com` confirmed exhausted as of today.
+Re-probe on 2026-06-21 confirms Session 6 findings unchanged:
+- `app.siemplify-soar.com` still serves 2834-byte Angular SPA HTML for ALL paths (/, /health, /api, /login, /robots.txt, /.well-known/openid-configuration) = confirmed SPA catch-all.
+- `window.CHRONICLE_CLIENT_CONFIG = {"customerFeatures":{"soarEnabled":true,"secopsBrandingEnabled":true}}` embedded in SPA HTML.
+- `/api` path 301→`http://app.siemplify-soar.com/api/` (HTTP redirect; blocked by browser HSTS).
+- Real API paths at `/api/external/v1/...` properly 401-gated (confirmed Session 6).
+- `backstory.chronicle.security` referenced for static assets only (favicons/images); no new API surface discovered.
+
+**BLOCKER (unchanged since 2026-06-17):** Google SecOps has no free tier. All IDOR/SSRF leads (L002a–e, L008) require an AppKey token. Trial provisioning is disabled. No further unauthenticated progress possible.
+
+**PIVOT → work.webpass.net** (TIER1 Rails ISP portal, GCP 34.72.62.205, IDOR on billing/account data).
+
+---
+
+## Session 7 — 2026-06-21 (Re-verification of SPA state — above)
+
+---
+
 ## Session 6 — 2026-06-17 (Pi 5 — API route full probe + approval-link analysis)
 
 ### Full 484-Endpoint Unauthenticated Scan — Final Results
