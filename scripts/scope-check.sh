@@ -23,7 +23,18 @@ SCOPE_FILE="${SCOPE_FILE:-$SCRIPT_DIR/../config/scope.yaml}"
 
 die_ambiguous() { echo "AMBIGUOUS: $1"; exit 2; }
 
-[ -n "${1:-}" ] || die_ambiguous "no target supplied (usage: scope-check.sh <host>)"
+# --- --program flag: map program name to scope file ---------------------------
+if [ "${1:-}" = "--program" ]; then
+  [ -n "${2:-}" ] || die_ambiguous "--program requires a program name (e.g. --program marriott)"
+  case "$2" in
+    marriott) SCOPE_FILE="$SCRIPT_DIR/../config/marriott-scope.yaml" ;;
+    google)   SCOPE_FILE="$SCRIPT_DIR/../config/scope.yaml" ;;
+    *)        die_ambiguous "unknown program '$2' (known: marriott, google)" ;;
+  esac
+  shift 2
+fi
+
+[ -n "${1:-}" ] || die_ambiguous "no target supplied (usage: scope-check.sh [--program <name>] <host>)"
 [ -f "$SCOPE_FILE" ] || die_ambiguous "scope file not found at $SCOPE_FILE — populate it before hunting"
 
 # --- normalize the target down to a bare host ---------------------------------
