@@ -180,20 +180,70 @@
 | Oracle Cloud OCI | 1 | ocijlbex1prd.marriott.com |
 | NXDOMAIN (dead) | 6 | **sso.marriott.com** (33 prior reports — moved), wechat.api, ifast alt |
 
-### Session 2 — 2026-06-21 (QUEUED — Pi required)
+### Session 2 — 2026-06-21 (RAN on Pi — analysis context lost, see note)
 
-**Goal:** Active HTTP probe + port scan of raw EC2 hosts + wildcard CT log enum.
-**Runbook:** `runbooks/PI-RUNBOOK-marriott-session1.md` (Phases A-I still valid; reorder by priority below)
+**Goal:** Active HTTP probe (8 phases) of raw EC2 hosts, CT log enum, APC cluster, DEV gateways,
+PSP, Saviynt IAM, OWA, Salesforce Community Cloud.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session2.md`
+**Status:** Ran on Pi 2026-06-21 (confirmed by terminal screenshots). All 8 phases executed.
+Output saved at: `~/hunt/session2/session2-output.txt` on the Pi.
 
-**Revised Pi probe priority order:**
-1. Raw EC2 hosts (no WAF) — port scan + HTTP: esupplier, device, marrtool, marriottfranchisetransactions, mgs, splunk-phantom-nlb
-2. APC cluster Host-header routing — auth-apc / apcgateway / gateway-apc all on same IP
-3. DEV gateways — gatewaydsapdev2 + gatewaydsapdev1 (Akamai)
-4. PSP + financial — psp.marriott.com (Akamai)
-5. Saviynt IAM — ssm-marriottms.saviyntcloud.com
-6. CT log wildcard enum — *.apigwc, *.apigatewayc, *.dcfgateway, *uat, *gateway-apc
-7. OWA NTLM — owa.marriott.com via Zscaler CDN
-8. Private DC direct — dcfgatewaytst1.marriott.com (159.166.124.24)
+**NOTE:** Analysis was interrupted when session context was compressed. Results need to be
+re-read from the Pi output file. Run on Pi:
+```bash
+cat ~/hunt/session2/session2-output.txt | less -R
+# Or to sync with this repo:
+cp ~/hunt/session2/session2-output.txt ~/bug-bounty-hunting-/results/marriott/session2/
+```
+
+**Phase coverage confirmed:**
+- Phase 1: CT log wildcard enum (*.apigwc, *.apigatewayc, *uat, *gateway-apc, *.artifactory)
+- Phase 2: Raw EC2 probes + port scans (esupplier, device, marrtool, franchisetx, mgs, splunk)
+- Phase 3: APC cluster Host-header routing (23.61.96.201, Akamai)
+- Phase 4: SAP DEV gateways (actuator/swagger/OData paths)
+- Phase 5: PSP deep probe
+- Phase 6: Saviynt IAM (/ECM/api/v5/* without auth)
+- Phase 7: OWA NTLM autodiscover
+- Phase 7b: Salesforce Community Cloud Aura API + REST sObject
+- Phase 8: Live CT-discovered subdomain probe
+- Decision Gate: output visible in screenshots
+
+**Awaiting analysis of output file. Start Session 3 after reading session 2 results.**
+
+---
+
+### Session 3 — QUEUED (Pi required — read session 2 output first)
+
+**Goal:** Targeted manual testing with CVE-informed approach.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session3.md`
+**Priority order:**
+1. Read session 2 output: `cat ~/hunt/session2/session2-output.txt | grep -E "200|CRITICAL|port"`
+2. **Phase A** — Saviynt CVE-2022-23855: POST to `/ECM/maintenance/forgotpasswordstep1` — if HTTP 200 → CRITICAL admin takeover
+3. **Phase B** — Salesforce Aura: extract fwuid from cpp.marriott.com/s/, POST to /s/sfsites/aura — if `aura:invalidSession` → CRITICAL data exposure
+4. **Phase C** — esupplier deep: naabu port scan + endpoint enum + IDOR seed test
+5. **Phase D** — Franchise transactions IDOR: sequential ID probing
+6. **Phase E** — mgs.marriott.com: map gaps from 3 prior reports
+7. **Phase F** — CT discovery follow-up from session 2
+
+**New intel from OSINT research (2026-06-21):**
+
+| Lead | CVE/Class | Test | CVSS (if confirmed) |
+|------|-----------|------|---------------------|
+| M006 Saviynt | CVE-2022-23855 — auth bypass → admin PW reset | `POST /ECM/maintenance/forgotpasswordstep1 {"username":"admin"}` → HTTP 200? | 9.8 Critical |
+| M006 Saviynt | CVE-2022-23856 — user enumeration via `?id=N` | Compare response size for id=1 vs id=9999 | High |
+| M002 Salesforce | Guest User Aura exposure (ShinyHunters class, active 2026) | POST to `/s/sfsites/aura` → `aura:invalidSession` in body? | ~8.6 High |
+| M002 Salesforce | Aura object data read | `ACTION$getObjectInfo` + `ACTION$getItems` on Contact/Account | Critical if records returned |
+
+**Saviynt behavior key:**
+- 401 JSON = properly configured (auth required)
+- 403 = WAF block (can't determine)
+- 200 + JSON = **UNAUTHENTICATED ACCESS — CRITICAL**
+- `/ECM/maintenance/forgotpasswordstep1` POST → 200 = **CVE-2022-23855 present**
+
+**Salesforce Aura key:**
+- `aura:invalidSession` in POST response = endpoint reachable (not locked) → enumerate objects
+- `"state":"SUCCESS"` with data = **CRITICAL data exposure**
+- 403 / no response = locked down (but try different Aura endpoints)
 
 ---
 
@@ -202,11 +252,11 @@
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
 | M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
-| M002 | Salesforce Guest User Object Exposure | `cpp.marriott.com/s/` (Salesforce Community) | 301→/s/ | ACTIVE — Salesforce aura probe | **CRITICAL** |
+| M002 | **Salesforce Aura Guest User data exposure** (ShinyHunters class, active 2026) | `cpp.marriott.com/s/` | 301→/s/ | ACTIVE — extract fwuid, POST to /s/sfsites/aura | **CRITICAL** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | **200 / 4853B** | ACTIVE — endpoint enum | CRITICAL |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
-| M006 | IAM privilege escalation / role IDOR | `ssm-marriottms.saviyntcloud.com` | **302→/ECM** confirmed alive | ACTIVE — /ECM/api/v5 probe | HIGH |
+| M006 | **CVE-2022-23855 auth bypass + IAM IDOR** | `ssm-marriottms.saviyntcloud.com` | **302→/ECM** confirmed alive | ACTIVE — test `/ECM/maintenance/forgotpasswordstep1` | **CRITICAL** |
 | M007 | Messaging portal auth bypass / IDOR | `mgs.marriott.com` | **200 / 19501B**, raw EC2 | ACTIVE — endpoint enum | HIGH |
 | M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
 | M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
