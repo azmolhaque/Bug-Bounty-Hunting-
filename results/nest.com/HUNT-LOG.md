@@ -172,15 +172,37 @@ Nest is a hardened cluster. Remaining unauthenticated surface = alpha.home.nest.
 
 ---
 
-## Session 5 — FINAL NEST SWEEP (2026-06-21, QUEUED)
+## Session 5 — FINAL NEST SWEEP (2026-06-21, COMPLETE)
 
-Remaining quick probes before pivot decision:
-1. `alpha.home.nest.com` — path probe (not IAP, real nginx 403)
-2. `accounts.nest.com` CORS probe
-3. `admin.store.nest.com` /health content
-4. **Pivot decision gate**: if nothing actionable → close Nest, pivot to next target
+**alpha.home.nest.com/login redirect:**
+- `Location: http://alpha.home.nest.com/login/` — redirects to itself with trailing slash (same HTTP normalization pattern as phoenix.nest.com and accounts.nest.com)
+- Same CSP and nginx/1.18.0 as the rest of the cluster → same application throughout
+- HSTS set (`max-age=31536000; includeSubDomains; preload`)
+- NST-L012: CLOSED — same auth app, no distinct login surface
 
-See runbooks/PI-RUNBOOK-nest-session5.md.
+**alpha/api/v1 auth body:**
+- Returns: `provide authorization` (identical to `api.home.ft.nest.com`)
+- Same bearer gate, no `WWW-Authenticate` header to reveal auth scheme
+- No CORS headers reflected on the API path
+
+**accounts.nest.com CORS:** No `Access-Control-Allow-Origin` reflection. 301 redirect only. No vulnerability.
+
+**admin.store /health:** Returns literal `healthy` string. NST-L003 CLOSED — no sensitive info.
+
+## ⛔ NEST CLOSED — 2026-06-21
+
+**Verdict:** Nest cluster is exhausted for an unauthenticated external hunter.
+
+Summary of all 12 leads:
+- 9 definitively closed (SPA catch-alls, IAP gates, VPN-only, OOS)
+- 3 require a valid Nest account bearer token to go further (NST-L002, L008, L012)
+- 0 reportable findings from 5 sessions
+
+Root cause: Every live external-facing Nest host is one of: (a) SPA catch-all login shell, (b) Google IAP gated (internal accounts only), (c) VPN-only (000), (d) bearer-token gated API with no unauthenticated surface. The ft (field-test) variant hypothesis did not pan out — same auth stack as prod.
+
+**Revival condition:** Register a free Nest account and extract a bearer token from the login flow. This would unlock `/api` and `/api/v1` on `alpha.home.nest.com` for differential testing vs prod. Set aside for now.
+
+**PIVOT → dropcam.com** (in scope.yaml TIER1, actively used as WebSocket backend in Nest SPA CSP: `wss://*.dropcam.com:80 wss://*.dropcam.com`). Separate domain, potentially less hardened than nest.com, camera streaming API.
 
 ---
 
