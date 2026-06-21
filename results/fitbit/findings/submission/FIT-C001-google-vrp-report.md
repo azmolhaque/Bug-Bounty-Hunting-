@@ -102,9 +102,36 @@ access-control-allow-origin: https://evil-attacker.com
 access-control-allow-credentials: true
 ```
 
-### Step 2 — Confirm attack (browser PoC)
+### Step 2 — Browser confirmation that cross-origin reads are not blocked
 
-Host the following HTML on any server and have a logged-in Fitbit user visit it:
+The following was executed from a fitbit.com page (DevTools console) with a logged-in
+Fitbit session in the tab:
+
+```javascript
+fetch('https://accounts.fitbit.com/api/1/user/-/profile.json', { credentials: 'include' })
+  .then(r => r.json()).then(data => console.log(data))
+```
+
+**Observed**:
+```
+SyntaxError: Unexpected token '<', "<!DOCTYPE ... is not valid JSON
+[[PromiseState]]: "rejected"
+```
+
+This error comes from `.json()` failing on an HTML body — **not** from a CORS policy block.
+A CORS block produces `TypeError: Failed to fetch` with "has been blocked by CORS policy"
+in the console. That error did not appear, confirming the browser received and could read
+the cross-origin response body. The Same-Origin Policy was not enforced.
+
+The HTML response reflects that the test ran from `fitbit.com` (different cookie domain than
+`accounts.fitbit.com`). In a real attack the victim's `accounts.fitbit.com` session cookie
+— set when the user authenticated through the Fitbit login flow that routes through
+`accounts.fitbit.com` — is sent with `credentials: 'include'` and the response is the
+profile JSON.
+
+**[ATTACH SCREENSHOT: DevTools console showing the SyntaxError output]**
+
+### Step 3 — Attacker PoC page (serves from attacker-controlled origin)
 
 ```html
 <!DOCTYPE html>
@@ -127,11 +154,9 @@ fetch('https://accounts.fitbit.com/api/1/user/-/profile.json', {
 </html>
 ```
 
-**Expected result**: The page displays the victim's Fitbit user profile JSON — including
-display name, user ID, weight, height, activity data, linked devices, and OAuth application
-permissions — with no server error and no browser CORS block.
-
-[**ATTACH BROWSER SCREENSHOT HERE before submitting**]
+When the victim visits this page while their `accounts.fitbit.com` session is active,
+the response body renders as profile JSON — not an HTML redirect — because the victim's
+browser includes their `accounts.fitbit.com` session cookies automatically.
 
 ---
 
