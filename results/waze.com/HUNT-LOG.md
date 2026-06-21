@@ -93,4 +93,21 @@ SPA calls (needs auth; no new ads accounts possible). Session 1b: mine the SPA J
 API host + check if openid-configuration is real JSON.
 
 **DECISION GATE:** If Session 1b finds no live backend API reachable pre-auth → Waze surface is
-exhausted for an unauthenticated solo hunter → PIVOT to Photomath portal IDOR (TIER0).
+exhausted for an unauthenticated solo hunter → PIVOT.
+
+### Session 1b — 2026-06-21 (deciding probe) → WAZE CLOSED
+
+- `biz.waze.com/.well-known/openid-configuration` → **empty body** (no real OIDC; the earlier
+  catch-all 200 was the SPA following a redirect to an empty 200).
+- `ads.wazeapis.com/v1/health` and `/v1/accounts` → redirect chain
+  `→ waze.com/ads → www.waze.com/ads → support.google.com/wazeads → 404`. **WAM API fully
+  decommissioned.** WAZ-L002 CLOSED (dead, not just blocked).
+- `biz.waze.com/app/login` → 0 bytes without `-L`+browser UA. Auth-gated SPA shell; no new
+  Waze Ads accounts can be created (platform shut down Sept 2023).
+
+**VERDICT: WAZE CLOSED.** Every host is either a dead redirector or an auth-gated SPA behind
+an account that cannot be created. No unauthenticated live surface exists. All leads
+WAZ-L001..L004 closed or permanently blocked.
+
+**PIVOT → Nest** (fresh TIER0/TIER1 cluster, see results/nest.com/HUNT-LOG.md).
+Photomath portal IDOR (TIER0) remains documented as the concrete desktop-session lead.
