@@ -1,4 +1,4 @@
-# M002 — Salesforce Guest User "API Enabled" Misconfiguration at cpp.marriott.com Enables Unauthenticated Aura Controller Access — 7 sObject Schemas (873 Fields) Including Complete Permission Model Exposed
+# M002 — Salesforce Guest User "API Enabled" Misconfiguration Exposes 873 Fields Unauthenticated (cpp.marriott.com)
 
 **Target:** `cpp.marriott.com` (Community Partner Portal — Marriott franchise hotel owners)  
 **Endpoint:** `POST https://cpp.marriott.com/s/sfsites/aura`  
