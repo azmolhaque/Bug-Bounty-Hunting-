@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 11 — M018 submitted (#3816825), M002 report-ready for submission
+**Status:** SESSION 12 COMPLETE — M018 submitted (#3816825), M002 report-ready for submission (all chains closed)
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -530,12 +530,48 @@ Session 7 further confirmed: Phone + MobilePhone fields added, LWC endpoints dis
 
 ---
 
+### Session 12 — COMPLETE (2026-06-22)
+
+**Goal:** Final three unexplored escalation paths — executeGraphQL separate field format, direct REST GraphQL, custom Apex controllers.
+**Runbook:** `runbooks/PI-ESCALATION-session12.sh`
+**Status:** COMPLETE. All three paths closed. Root cause of executeGraphQL failure identified.
+
+**Session 12 Results:**
+
+| Path | Test | Result | Conclusion |
+|------|------|--------|-----------|
+| 1a executeGraphQL | Separate `query=` field, params={}, User | `actionsTotal=0` state=ERROR INVALID_INPUT | Aura framework block — empty params fails before routing |
+| 1b executeGraphQL | Separate field, params has empty query string | `actionsTotal=0` state=ERROR INVALID_INPUT | Same |
+| 1c executeGraphQL | Separate field, NetworkMember query | `actionsTotal=2` state=ERROR INVALID_INPUT | Routed but still fails |
+| 2a REST GraphQL GET | /v55.0/graphql + guest cookie | **HTTP 403 / 125B** | Access denied |
+| 2b REST GraphQL POST | /v55.0/graphql + JSON body | **`API_DISABLED_FOR_ORG` — "Chatter Connect API not enabled"** | **ROOT CAUSE FOUND** |
+| 2c REST GraphQL POST | /v57.0/graphql | Same `API_DISABLED_FOR_ORG` | Permanent org config |
+| 3a CPP Apex controllers | 15 names × 11 methods | All actions:[] (no output) | All Aura-framework blocked |
+| 3b Standard community controllers | 7 controllers (NetworkMemberController etc.) | All actions:[] | All blocked |
+| 3c CommLoginController | 2 email addresses | `actionsTotal=0` both | Aura-layer blocked |
+
+**Root cause of executeGraphQL failure (resolved):** `"API_DISABLED_FOR_ORG"` — `"The Chatter Connect API is not enabled for this organization or user type."` Salesforce's GraphQL API uses the Chatter Connect API infrastructure. This org has Chatter Connect API disabled at the org level. The `executeGraphQL` Aura action cannot succeed on this org because the underlying API it proxies to is unavailable. This is an administrative org-level setting and is permanently blocked.
+
+**Chain elevation: DEFINITIVELY CLOSED across 12 sessions.**
+
+All record access mechanisms confirmed blocked:
+- Aura record actions (getItems, getListUi, searchRecords, getCurrentUserOrGuest): `actions:[]` framework block
+- executeGraphQL: Chatter Connect API disabled at org level
+- REST GraphQL (/services/data/vXX/graphql): 403 + API_DISABLED_FOR_ORG
+- REST SOQL: 401 INVALID_SESSION_ID
+- Custom Apex controllers (15 CPP-themed + 7 standard community): Aura framework block
+- LWC /lwr/fetch: Dead endpoint (404)
+
+**SUBMIT M002 AS MEDIUM (5.3) — NO FURTHER ESCALATION POSSIBLE.**
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
 | M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
-| M002 | **Salesforce Aura Guest User API Exposure — 7 sObject schemas, 873 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | getObjectInfo(User) 203F + getObjectInfos(Profile 517F, Org 41F, Network 10F, ContentDocument 27F, ContentVersion 47F, FeedItem 28F) + getPicklistValues SUCCESS + getConfigData 187-object inventory | **REPORT-READY — Medium (5.3). Sessions 6-11 complete. All chain paths exhausted.** | **MEDIUM** |
+| M002 | **Salesforce Aura Guest User API Exposure — 7 sObject schemas, 873 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | getObjectInfo(User) 203F + getObjectInfos(Profile 517F, Org 41F, Network 10F, ContentDocument 27F, ContentVersion 47F, FeedItem 28F) + getPicklistValues SUCCESS + getConfigData 187-object inventory | **REPORT-READY — Medium (5.3). Sessions 6-12 complete. All chain paths closed. SUBMIT NOW.** | **MEDIUM** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | Meta-refresh → PingFederate SAML2 (`extranet.marriott.com/2FAmarrsso`); PartnerSpId=Marriott-SAML2-SP-EverestRCD-PROD | **BLOCKED — requires Marriott employee SAML2 auth. Inaccessible externally.** | — |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
