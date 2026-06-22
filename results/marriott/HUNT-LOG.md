@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 12 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499)
+**Status:** SESSION 13 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: mgs.marriott.com (M007)
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -566,22 +566,46 @@ All record access mechanisms confirmed blocked:
 
 ---
 
+### Session 13 — COMPLETE (2026-06-22)
+
+**Goal:** Four-target sweep — gatewaydsapdev2 (M005), esupplier (M001), eidhelp (M010), bpa2 (M012).
+**Runbooks:** `runbooks/PI-RUNBOOK-session13-four-targets.sh`, `runbooks/PI-FOLLOWUP-session13-bpa2-esupplier.sh`
+**Status:** COMPLETE. All four targets assessed; none yielded a submittable finding.
+
+**Session 13 Results:**
+
+| Target | Lead | Result | Decision |
+|--------|------|--------|----------|
+| `gatewaydsapdev2.marriott.com` | M005 | Akamai WAF returns uniform 404/261B for **all** probed paths (root, actuator, swagger-ui, SAP OData, Spring Boot debug, backup files). No path visibility past the WAF. | **CLOSED** |
+| `esupplier.marriott.com` | M001 | Root page (54985B) is a static Microsoft Word HTML document (Word 14, saved 2014, Windows-1252). No ASP.NET app here. Real Oracle PeopleSoft Financials portal lives at `extranet.marriott.com/psfin` — `extranet.marriott.com` is **OUT-OF-SCOPE** (scope-check: `*.marriott.com` catch-all applies, not explicitly listed). Document paths (`/marrforms/esuppliersplash.htm`, etc.) not yet probed due to shell PATH error. | **PARKED — static host; real app OOS** |
+| `eidhelp.marriott.com` | M010 | Static S3+CloudFront site. All 12+ dropdown options (Associates, Franchisees, Owners, Ritz-Carlton, Vendors, Consultants, etc.) route to identical URL: `https://eidhelp.marriott.com/help/index.html`. No API surface, no JS bundles mining value, no dynamic endpoints. `x-amz-meta-user-agent-id: jblaney@s-3be2486a258a4a059` in headers (IAM username — informational, no exploit path). | **CLOSED** |
+| `bpa2.marriott.com` | M012 | Checkpoint Web Server (CPWS) allowlist routing. Only `/Login/Login.css` (7835B) accessible outside allowlist; all other paths return uniform 403/5125B "not configured." Login form tests (CSRF extraction, user enumeration differential, SQLi probe) did not complete — script jumped from B2 to B6 due to cookie-check redirect loop (`CheckCookieSupport=1`). | **PARKED — CPWS locked; low ROI** |
+
+**Infrastructure note — scope-check.sh critical fix:**
+- Bug discovered: `*.marriott.com` catch-all in `out_of_scope` was blocking all explicitly listed in-scope targets.
+- Fix applied in `scripts/scope-check.sh`: exact (non-wildcard) in_scope entries now checked FIRST before out_of_scope (specific beats general). Wildcard out-of-scope still beats wildcard in-scope.
+- Verified: all 4 session-13 targets correctly return IN-SCOPE; `random-unlisted.marriott.com` still OUT-OF-SCOPE; `extranet.marriott.com` correctly OUT-OF-SCOPE.
+
+**Next session:** mgs.marriott.com (M007) — raw EC2 200/19501B, no WAF, zero prior reports. Secondary: ci-propertyconversionportal.marriott.com (M011, 200/5939B, 1 prior report).
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
-| M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
+| M001 | Static Word HTML doc; real PeopleSoft app at extranet.marriott.com/psfin (OOS) | `esupplier.marriott.com` | Root = 54985B Word 14 HTML (2014). `/trace.axd` → 403. Document sub-paths not probed. Real app at `extranet.marriott.com/psfin` is OUT-OF-SCOPE. | **PARKED — real app OOS. Document-path scan pending.** | LOW |
 | M002 | **Salesforce Aura Guest User API Exposure — 7 sObject schemas, 873 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | getObjectInfo(User) 203F + getObjectInfos(Profile 517F, Org 41F, Network 10F, ContentDocument 27F, ContentVersion 47F, FeedItem 28F) + getPicklistValues SUCCESS + getConfigData 187-object inventory | **SUBMITTED — HackerOne #3817499. Medium (5.3). 2026-06-22.** | **MEDIUM** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | Meta-refresh → PingFederate SAML2 (`extranet.marriott.com/2FAmarrsso`); PartnerSpId=Marriott-SAML2-SP-EverestRCD-PROD | **BLOCKED — requires Marriott employee SAML2 auth. Inaccessible externally.** | — |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
-| M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
+| ~~M005~~ | ~~SAP DEV gateway — actuator/swagger/debug~~ | `gatewaydsapdev2.marriott.com` | Akamai WAF uniform 404/261B on all paths (root, actuator, swagger-ui, SAP OData, Spring Boot, backup files). No path visibility. | **CLOSED — WAF-locked, no path accessible** | — |
 | M006 | CVE-2022-23855 ambiguous (500 not 200) | `ssm-marriottms.saviyntcloud.com` | `forgotpasswordstep1` → HTTP 500 | ACTIVE — try GET+query, form-encoded POST | HIGH |
 | M007 | Messaging portal auth bypass / IDOR | `mgs.marriott.com` | **200 / 19501B**, raw EC2 | ACTIVE — endpoint enum | HIGH |
 | M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
 | M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
-| M010 | Employee identity app IDOR | `eidhelp.marriott.com` | **200 / 7767B** small app | ACTIVE — endpoint enum | HIGH |
+| ~~M010~~ | ~~Employee identity app IDOR~~ | `eidhelp.marriott.com` | Static S3+CloudFront. All dropdowns → same `/help/index.html`. No API. Headers leak `x-amz-meta-user-agent-id: jblaney@...` (informational). | **CLOSED — static site, zero API surface** | — |
 | M011 | Property conversion portal bugs | `ci-propertyconversionportal.marriott.com` | **200 / 5939B** | ACTIVE — 1 prior report | HIGH |
-| M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | **302→/Login/Login** | ACTIVE — test auth paths | HIGH |
+| M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
 | **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 431B PHP Fatal Error w/ MysqliDb stack trace | **SUBMITTED — HackerOne #3816825. Medium (6.1). 2026-06-22.** | **MEDIUM** |
