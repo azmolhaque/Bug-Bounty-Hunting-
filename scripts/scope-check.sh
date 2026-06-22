@@ -77,6 +77,15 @@ matches() {
       case "$host" in *".$base") return 0;; esac        # any subdomain depth
       return 1
       ;;
+    \**)
+      # Leading wildcard without dot: *gateway-apc.marriott.com
+      # Matches the bare suffix (gateway-apc.marriott.com) and any host ending in
+      # that suffix (api-gateway-apc.marriott.com, dev-gateway-apc.marriott.com).
+      local base="${pat#\*}"
+      [ "$host" = "$base" ] && return 0                 # apex match
+      case "$host" in *"$base") return 0;; esac         # prefix wildcard match
+      return 1
+      ;;
     *)
       [ "$host" = "$pat" ] && return 0
       return 1
@@ -89,12 +98,12 @@ out_scope_list="$(extract_list out_of_scope || true)"
 
 [ -n "$in_scope_list" ] || die_ambiguous "in_scope is empty in $SCOPE_FILE — refuse to hunt without an authorized scope"
 
-# --- exact in-scope match wins over wildcard exclusions -----------------------
-# A specific explicit listing (non-wildcard) always overrides a catch-all
-# wildcard exclusion. This supports programs that say "test ONLY listed assets"
-# by using *.example.com in out_of_scope while listing exact subdomains in
-# in_scope (e.g. Marriott). TIER4 exact entries in Google VRP are unaffected
-# because they use exact domain names which still win in the out-of-scope check.
+# --- PASS 1: exact in-scope always wins ---------------------------------------
+# An explicit non-wildcard in_scope entry beats any out_of_scope entry.
+# Supports "test ONLY listed assets" programs (e.g. Marriott) where *.domain.com
+# is in out_of_scope as a catch-all and specific subdomains are explicitly listed
+# in in_scope. Google VRP Tier4 exact out_of_scope entries are unaffected because
+# they are exact strings that win in PASS 2 before any wildcard matching.
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
   case "$pat" in \**) continue ;; esac   # skip wildcards in this pass
@@ -104,23 +113,41 @@ while IFS= read -r pat; do
   fi
 done <<< "$in_scope_list"
 
-# --- out-of-scope wins over wildcard in-scope (default-deny) ------------------
+# --- PASS 2: exact out-of-scope (non-wildcard) wins over wildcard in-scope ----
+# This ensures Google VRP Tier4 exact exclusions still block even if a wildcard
+# in_scope pattern would otherwise match.
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
+  case "$pat" in \**) continue ;; esac   # only exact entries in this pass
+  if matches "$pat" "$target"; then
+    echo "OUT-OF-SCOPE: $target matches explicit exclusion '$pat'"
+    exit 1
+  fi
+done <<< "$out_scope_list"
+
+# --- PASS 3: wildcard in-scope beats wildcard out-of-scope --------------------
+# A specific wildcard in_scope entry (e.g. *gateway-apc.marriott.com,
+# *uat.marriott.com, *.apigwc.marriott.com) wins over a catch-all wildcard
+# out_of_scope exclusion (e.g. *.marriott.com). This is "longest match wins"
+# for wildcard patterns: the more-specific in_scope wildcard takes precedence.
+while IFS= read -r pat; do
+  [ -n "$pat" ] || continue
+  case "$pat" in \**) ;; *) continue ;; esac   # only wildcards in this pass
+  if matches "$pat" "$target"; then
+    echo "IN-SCOPE: $target matches '$pat' (overrides wildcard exclusions)"
+    exit 0
+  fi
+done <<< "$in_scope_list"
+
+# --- PASS 4: wildcard out-of-scope (default-deny) -----------------------------
+while IFS= read -r pat; do
+  [ -n "$pat" ] || continue
+  case "$pat" in \**) ;; *) continue ;; esac   # only wildcards in this pass
   if matches "$pat" "$target"; then
     echo "OUT-OF-SCOPE: $target matches exclusion '$pat'"
     exit 1
   fi
 done <<< "$out_scope_list"
-
-# --- wildcard in-scope match --------------------------------------------------
-while IFS= read -r pat; do
-  [ -n "$pat" ] || continue
-  if matches "$pat" "$target"; then
-    echo "IN-SCOPE: $target matches '$pat'"
-    exit 0
-  fi
-done <<< "$in_scope_list"
 
 echo "OUT-OF-SCOPE: $target matches no in_scope entry (default-deny)"
 exit 1

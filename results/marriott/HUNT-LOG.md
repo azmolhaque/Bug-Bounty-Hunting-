@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 15 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: M013 CT wildcard enum + M009 OWA NTLM
+**Status:** SESSION 16 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: auth-apc.marriott.com /login (M020) + efast + CT retry
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -653,6 +653,40 @@ All record access mechanisms confirmed blocked:
 
 ---
 
+### Session 16 — COMPLETE (2026-06-22)
+
+**Goal:** CT wildcard enum (M013) + OWA NTLM (M009) + efast auth fingerprint + APC cluster probe.
+**Runbook:** `runbooks/PI-RUNBOOK-session16-wildcard-enum-owa.sh`
+**Status:** COMPLETE. CT enum failed (crt.sh 502); OWA confirmed internal; efast fingerprinted; auth-apc `/login` live 137KB — NEW HIGH LEAD.
+
+**Session 16 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| A — CT enum | crt.sh returned 502 Bad Gateway for all wildcard queries; `*.apigatewayc` returned 0 results | **CT enum failed — retry needed.** No subdomain data obtained. |
+| B — DNS brute force | 0 resolved hosts for all prefix combinations against `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | No live subdomains found via brute force. Prefix list may not cover Marriott naming conventions. |
+| D — OWA | Root 302 → `/owa/` with `Server: BigIP` (F5 LB). Autodiscover/EWS/ActiveSync all timeout (000) | **PARKED** — OWA is internal-facing behind corporate network. BigIP LB handles the redirect but blocks all actual Exchange paths. |
+| E — efast | `server: Tomcat`, CloudFront (`x-cache: Error from cloudfront`), `SessionIDCookie` (custom session), NO `WWW-Authenticate` header. Root 401/6834B, `/efast` 401/6839B. All other paths 404/0B (CloudFront 404). | **ACTIVE — form-based auth (custom app-level 401). 6834B body is the login form. Read body next session.** |
+| F — APC cluster | `auth-apc.marriott.com` → `000` (all paths except `/login`). **`/login` → 200/137KB** — live SSO login application! | **NEW HIGH LEAD M020 — auth-apc /login is a live 137KB SSO portal** |
+| Scope bug | `gateway-apc.marriott.com` incorrectly returned OUT-OF-SCOPE (no-dot wildcard `*gateway-apc.marriott.com` not handled) | **FIXED in scope-check.sh** — added PASS 3 (wildcard in_scope beats wildcard out_of_scope); also fixes `*uat.marriott.com`. Verified: both now IN-SCOPE. |
+
+**auth-apc.marriott.com /login (M020) analysis:**
+- All paths except `/login` timeout (000) — only `/login` exposed externally
+- 137KB = full SSO application (login form, CSS, JS — not a redirect page)
+- Pattern matches PingFederate, ForgeRock Access Manager, or custom SAML/OAuth IDP
+- `apc` = Asia Pacific & Caribbean cluster; `auth-apc` is the APC cluster's authentication entry point
+- **Potential findings: SAML RelayState open redirect, OAuth redirect_uri bypass, username enumeration, weak crypto in SAML assertions**
+- Session 17 priority: download + fingerprint + test auth bypass vectors
+
+**scope-check.sh critical fix:**
+- `*gateway-apc.marriott.com` and `*uat.marriott.com` (no-dot wildcards) were incorrectly blocked by `*.marriott.com` catch-all
+- New 4-pass algorithm: (1) exact in_scope > any, (2) exact out_of_scope > wildcard in_scope, (3) wildcard in_scope > wildcard out_of_scope, (4) wildcard out_of_scope as catch-all
+- All existing tests pass; Google VRP unaffected
+
+**Next session:** auth-apc.marriott.com `/login` deep analysis (M020) + efast body read + CT enum retry.
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
@@ -665,11 +699,12 @@ All record access mechanisms confirmed blocked:
 | M006 | CVE-2022-23855 ambiguous (500 not 200) | `ssm-marriottms.saviyntcloud.com` | `forgotpasswordstep1` → HTTP 500 | ACTIVE — try GET+query, form-encoded POST | HIGH |
 | ~~M007~~ | ~~mgs.marriott.com — employee intranet~~ | `mgs.marriott.com` | CrafterCMS, all 78 paths 404/387B. Title: "Marriott Global Source — Intranet and eTool Gateway." AWSALB = ALB not raw EC2. Requires employee creds. | **PARKED — employee intranet, no external surface** | — |
 | M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
-| M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
+| ~~M009~~ | ~~OWA NTLM — internal-facing~~ | `owa.marriott.com` | 302→/owa/ (Server: BigIP F5). Autodiscover/EWS all timeout 000. Internal-facing behind corporate network, unreachable externally. | **PARKED — inaccessible externally** | — |
 | ~~M010~~ | ~~Employee identity app IDOR~~ | `eidhelp.marriott.com` | Static S3+CloudFront. All dropdowns → same `/help/index.html`. No API. Headers leak `x-amz-meta-user-agent-id: jblaney@...` (informational). | **CLOSED — static site, zero API surface** | — |
 | ~~M011~~ | ~~ci-propertyconversionportal — Akamai-locked SPA~~ | `ci-propertyconversionportal.marriott.com` | Akamai WAF fully blocks all `/api/**`, `/actuator/**`, `/openapi.json`, etc. (cdn-cache: HIT 403). Session 14 "1280B differentials" were empty origin responses padded with 1280B Akamai mRUM script (cache MISS → MISS carries RUM; now HIT blocks). No origin IP accessible. | **CLOSED — Akamai WAF fully blocks all API surface** | — |
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
-| M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
+| M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | crt.sh 502 in S16, DNS brute 0 results | ACTIVE — retry CT enum; expand prefix list | HIGH |
+| **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. 137KB = full SSO app (PingFederate/ForgeRock/custom). APC cluster auth entry. | **ACTIVE — download + fingerprint + SAML/OAuth bypass testing** | **HIGH** |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
 | **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 431B PHP Fatal Error w/ MysqliDb stack trace | **SUBMITTED — HackerOne #3816825. Medium (6.1). 2026-06-22.** | **MEDIUM** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
