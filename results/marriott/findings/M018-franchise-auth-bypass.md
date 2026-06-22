@@ -5,7 +5,7 @@
 **Severity:** Medium  
 **CVSS 3.1:** `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` → **5.3**  
 **CWE:** CWE-306 (Missing Authentication for Critical Function), CWE-209 (Information Exposure Through an Error Message)  
-**Status:** Report-ready  
+**Status:** Submitted — HackerOne #3816825 (2026-06-22)  
 **Discovered:** 2026-06-22 (Session 5–6)  
 **Researcher IP used during testing:** `180.148.212.54`  
 **Tools:** curl 8.14.1  
