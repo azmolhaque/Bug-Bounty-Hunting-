@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 16 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: auth-apc.marriott.com /login (M020) + efast + CT retry
+**Status:** SESSION 17 COMPLETE — auth-apc fingerprinted (Next.js + PingFederate), efast SAML SP confirmed (IdP OUT-OF-SCOPE). Next: SAMLRequest decode + graphql-chunk mining + CT retry (Session 18)
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -687,6 +687,44 @@ All record access mechanisms confirmed blocked:
 
 ---
 
+### Session 17 — COMPLETE (2026-06-22)
+
+**Goal:** auth-apc.marriott.com deep fingerprint + efast body read (login form / SAML form) + graphql-chunk JS mining start.
+**Runbook:** `runbooks/PI-RUNBOOK-session17-auth-apc-efast.sh`
+**Status:** COMPLETE. auth-apc identified as Marriott Bonvoy Next.js + PingFederate SSO portal. efast confirmed as SAML SP routing to `extranetcloud.marriott.com` (OUT-OF-SCOPE IdP). graphql-chunk downloaded but not yet mined.
+
+**Session 17 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| A — auth-apc fingerprint | `X-Powered-By: Next.js`, build version `mi-account-renderer/web-rel-26.6.1-5d80cc6-11089`, 27 JS chunks in `_next/static/chunks/`. `PR_INFORMATION: PR_EXECUTED:;PR_EXECUTED_RULE:` response header = PingFederate identity broker confirmed. Dynatrace OneAgent: `X-OneAgent-JS-Injection: true` + `X-ruxit-JS-Agent: true`. | **auth-apc is Marriott Bonvoy APC cluster login portal: Next.js SPA frontend → PingFederate IdP backend** |
+| B — JS bundle inventory | 27 chunks total; 5 downloaded this session. `graphql-chunk-793e1a2cf24c51e7.js` (chunk #14, high priority) not yet mined. `nodeForgeVendor-4e937f79b0795bc3.js` present (client-side RSA/crypto — suggests client-side key operations, possibly PKCE or JWT signing). | **graphql-chunk mining deferred to Session 18** |
+| C — Python URL regex error | A3 URL extraction phase: `re.PatternError: unterminated character set at position 39` — backslash before `]` inside character class in URL regex pattern. URL extraction failed; other phases unaffected. | **Fix regex in Session 18 runbook** |
+| D — crt.sh | Still returning 502 Bad Gateway for all wildcard queries. CT enum (M013) still blocked. | **Need alternative CT source (Certspotter / wayback CDX API)** |
+| E — efast body read | `/tmp/s17/efast-body.html` saved. efast auto-submits SAML2 AuthnRequest (HTTP POST binding) to `extranetcloud.marriott.com/marrsso/idp/startSSO.ping?PartnerSpId=clr-saml2-efast.marriott.com`. SAMLRequest base64 captured (truncated in Pi output): `PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c2FtbDJwOkF1dGhuUmVxd...` | **efast SP entity ID = `clr-saml2-efast.marriott.com`. ACS URL unknown — decode SAMLRequest to find it.** |
+| F — Scope check | `extranetcloud.marriott.com` → **OUT-OF-SCOPE** (`*.marriott.com` catch-all applies; not in explicit in_scope list). OWA `/tmp/s17/owa-autodiscover.txt` not created (all paths timeout — confirmed internal-only). | **Cannot probe PingFederate IdP at extranetcloud. Focus: efast SP surface + auth-apc OIDC endpoints** |
+
+**Key technical discoveries:**
+- **auth-apc SAML/PingFederate**: `PR_INFORMATION` header = PingFederate Policy Runtime executed; `PR_EXECUTED_RULE:` (empty rule name = no rule fired = pre-auth). This is the standard PingFederate reverse proxy header injected into responses. Testing target: auth-apc login form parameters (redirect_uri, RelayState, error handling).
+- **efast SAML SP**: efast is a ClearTrust/RSA Access Manager → migrated to PingFederate integration. SP entity ID `clr-saml2-efast.marriott.com` prefix `clr-` = ClearTrust (legacy RSA product). ACS URL embedded in SAMLRequest XML at `AssertionConsumerServiceURL` attribute. Once decoded, can probe whether ACS accepts unauthenticated POST.
+- **node-forge**: Client-side crypto library in auth-apc. May implement PKCE code_verifier locally, or encrypt credentials client-side before sending. Mine for key material, hardcoded secrets, or crypto misuse.
+
+**Lead M021 — efast SAML Surface:**
+- efast.marriott.com = SAML SP with visible SAMLRequest (base64, non-signed request per POST binding)
+- ACS URL unknown pending SAMLRequest decode
+- Potential: ACS accepts unsigned SAML response (broken SP validation) → auth bypass
+- Potential: RelayState open redirect (OOS per Marriott policy unless chains to auth bypass)
+- Test priority: decode → find ACS URL → probe ACS for unsigned POST acceptance
+
+**Next session priority:**
+1. **Phase A**: Decode full SAMLRequest from `/tmp/s17/efast-body.html` → extract ACS URL + SP metadata
+2. **Phase B**: Download + mine `graphql-chunk-793e1a2cf24c51e7.js` → GraphQL schema, operations, client_id
+3. **Phase C**: auth-apc OIDC/Next.js API probing (`.well-known/openid-configuration`, `/_next/data/`, redirect_uri manipulation)
+4. **Phase D**: Probe efast ACS URL (from Phase A) for unauthenticated POST acceptance
+5. **Phase E**: CT enum retry via Certspotter API or wayback CDX
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
@@ -704,7 +742,8 @@ All record access mechanisms confirmed blocked:
 | ~~M011~~ | ~~ci-propertyconversionportal — Akamai-locked SPA~~ | `ci-propertyconversionportal.marriott.com` | Akamai WAF fully blocks all `/api/**`, `/actuator/**`, `/openapi.json`, etc. (cdn-cache: HIT 403). Session 14 "1280B differentials" were empty origin responses padded with 1280B Akamai mRUM script (cache MISS → MISS carries RUM; now HIT blocks). No origin IP accessible. | **CLOSED — Akamai WAF fully blocks all API surface** | — |
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | crt.sh 502 in S16, DNS brute 0 results | ACTIVE — retry CT enum; expand prefix list | HIGH |
-| **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. 137KB = full SSO app (PingFederate/ForgeRock/custom). APC cluster auth entry. | **ACTIVE — download + fingerprint + SAML/OAuth bypass testing** | **HIGH** |
+| **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. Next.js + PingFederate confirmed (`PR_INFORMATION` header). 27 JS chunks; `graphql-chunk-793e1a2cf24c51e7.js` + `nodeForgeVendor` not yet mined. | **ACTIVE — graphql-chunk mining + OIDC probe + redirect_uri bypass** | **HIGH** |
+| **M021** | **efast SAML SP — ACS URL unknown, decode pending** | `efast.marriott.com` | SAML2 SP auto-submits AuthnRequest to `extranetcloud.marriott.com` (OUT-OF-SCOPE IdP). SP entity: `clr-saml2-efast.marriott.com`. SAMLRequest base64 captured in `/tmp/s17/efast-body.html`. ACS URL = key unknown. | **ACTIVE — decode SAMLRequest → find ACS → probe unsigned POST** | **HIGH** |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
 | **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 431B PHP Fatal Error w/ MysqliDb stack trace | **SUBMITTED — HackerOne #3816825. Medium (6.1). 2026-06-22.** | **MEDIUM** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
