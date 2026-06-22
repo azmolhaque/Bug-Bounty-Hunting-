@@ -89,7 +89,22 @@ out_scope_list="$(extract_list out_of_scope || true)"
 
 [ -n "$in_scope_list" ] || die_ambiguous "in_scope is empty in $SCOPE_FILE — refuse to hunt without an authorized scope"
 
-# --- out-of-scope wins (default-deny) -----------------------------------------
+# --- exact in-scope match wins over wildcard exclusions -----------------------
+# A specific explicit listing (non-wildcard) always overrides a catch-all
+# wildcard exclusion. This supports programs that say "test ONLY listed assets"
+# by using *.example.com in out_of_scope while listing exact subdomains in
+# in_scope (e.g. Marriott). TIER4 exact entries in Google VRP are unaffected
+# because they use exact domain names which still win in the out-of-scope check.
+while IFS= read -r pat; do
+  [ -n "$pat" ] || continue
+  case "$pat" in \**) continue ;; esac   # skip wildcards in this pass
+  if [ "$target" = "$pat" ]; then
+    echo "IN-SCOPE: $target matches explicit entry '$pat' (overrides wildcard exclusions)"
+    exit 0
+  fi
+done <<< "$in_scope_list"
+
+# --- out-of-scope wins over wildcard in-scope (default-deny) ------------------
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
   if matches "$pat" "$target"; then
@@ -98,7 +113,7 @@ while IFS= read -r pat; do
   fi
 done <<< "$out_scope_list"
 
-# --- must match an in-scope pattern -------------------------------------------
+# --- wildcard in-scope match --------------------------------------------------
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
   if matches "$pat" "$target"; then
