@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 13 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: mgs.marriott.com (M007)
+**Status:** SESSION 14 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: ci-propertyconversionportal (M011) deep dive
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -590,6 +590,38 @@ All record access mechanisms confirmed blocked:
 
 ---
 
+### Session 14 — COMPLETE (2026-06-22)
+
+**Goal:** mgs.marriott.com (M007) + ci-propertyconversionportal (M011) + esupplier document paths (S13 leftover).
+**Runbook:** `runbooks/PI-RUNBOOK-session14-mgs-ciportal.sh`
+**Status:** COMPLETE. mgs parked; ci-portal has active differentials; esupplier docs confirmed accessible.
+
+**Session 14 Results:**
+
+| Target | Lead | Result | Decision |
+|--------|------|--------|----------|
+| `mgs.marriott.com` | M007 | **X-Powered-By: CrafterCMS** — Marriott Global Source employee intranet. All 78 probed paths return 404/387B (CrafterCMS custom 404). No login page, no API surface, no GraphQL. AWSALB cookies confirm ALB (not raw EC2 — earlier recon was wrong about no WAF). Root title: "Marriott International's Global Intranet and Business Application (eTool) Gateway." Employee credentials required. | **PARKED — employee intranet, no external API** |
+| `ci-propertyconversionportal.marriott.com` | M011 | Akamai-fronted SPA (title: "PCT Modernization"). SPA catch-all = 5939-5940B. **Three non-catch-all differentials found** (see below). `/.env`, `/web.config`, `/web.config.bak` all return **403 with varying sizes** (406/412/420B — path embedded in error body = app-level block, not Akamai generic). | **ACTIVE — API surface + config file exposure signals** |
+| `esupplier.marriott.com` | M001 | `/marrforms/esuppliersplash.htm` → 200/48043B, `/ESupplier-Basics%20Job%20Aid.doc` → 200/564KB, `/Electronic%20Payment%20Authorization%20form.doc` → 200/90KB, `/e-Supplier-%20Self%20Help.pdf` → 200/370KB, `/default_files/filelist.xml` → 200/273B. All publicly accessible. | **DOCUMENT AUDIT — read filelist.xml for more paths; check splash page** |
+
+**ci-propertyconversionportal.marriott.com differential analysis:**
+
+| Path | Response | Interpretation |
+|------|----------|----------------|
+| `/health` | 200 / **0B** | Real health endpoint — NOT the SPA (SPA = 5940B). Empty 200 = app alive, health ping. |
+| `/openapi.json` | 200 / **1280B** | NOT SPA (5940B) and NOT Akamai filler (would be 404). Real small JSON document — likely OpenAPI spec stub. READ CONTENT NEXT. |
+| `/v2/api-docs` | 200 / **1280B** | Swagger v2 (Springfox) endpoint — same differential. Same size as openapi.json — may be same content or both stubs. READ CONTENT NEXT. |
+| `/.env` | 403 / 406B | Path-aware block (`.env` in body). App-level WAF or nginx deny rule. File may or may not exist. |
+| `/web.config` | 403 / 412B | Path-aware block — size differs from .env (6B difference = path length difference in error body). |
+| `/web.config.bak` | 403 / 420B | Path-aware block — 8B bigger = `.bak` suffix in error body. Same pattern. |
+| `SPA catch-all` | 200 / 5939-5940B | All other paths — SPA index.html served for unknown routes. |
+
+**CrafterCMS note (mgs):** `/rest/v1/delivery` found in Adobe DTM bundle (not relevant — DTM is analytics, not the app API). Uniform 404 across all paths confirms pure employee intranet with no external endpoints.
+
+**Next session:** ci-propertyconversionportal.marriott.com deep dive — read openapi.json + v2/api-docs content, probe all paths with `Accept: application/json` to bypass SPA catch-all, test discovered API endpoints for auth bypass and IDOR.
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
@@ -600,11 +632,11 @@ All record access mechanisms confirmed blocked:
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | ~~M005~~ | ~~SAP DEV gateway — actuator/swagger/debug~~ | `gatewaydsapdev2.marriott.com` | Akamai WAF uniform 404/261B on all paths (root, actuator, swagger-ui, SAP OData, Spring Boot, backup files). No path visibility. | **CLOSED — WAF-locked, no path accessible** | — |
 | M006 | CVE-2022-23855 ambiguous (500 not 200) | `ssm-marriottms.saviyntcloud.com` | `forgotpasswordstep1` → HTTP 500 | ACTIVE — try GET+query, form-encoded POST | HIGH |
-| M007 | Messaging portal auth bypass / IDOR | `mgs.marriott.com` | **200 / 19501B**, raw EC2 | ACTIVE — endpoint enum | HIGH |
+| ~~M007~~ | ~~mgs.marriott.com — employee intranet~~ | `mgs.marriott.com` | CrafterCMS, all 78 paths 404/387B. Title: "Marriott Global Source — Intranet and eTool Gateway." AWSALB = ALB not raw EC2. Requires employee creds. | **PARKED — employee intranet, no external surface** | — |
 | M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
 | M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
 | ~~M010~~ | ~~Employee identity app IDOR~~ | `eidhelp.marriott.com` | Static S3+CloudFront. All dropdowns → same `/help/index.html`. No API. Headers leak `x-amz-meta-user-agent-id: jblaney@...` (informational). | **CLOSED — static site, zero API surface** | — |
-| M011 | Property conversion portal bugs | `ci-propertyconversionportal.marriott.com` | **200 / 5939B** | ACTIVE — 1 prior report | HIGH |
+| **M011** | **Property Conversion Tool (PCT) — API spec exposure + config file signals** | `ci-propertyconversionportal.marriott.com` | Akamai SPA. `/health` → 200/0B (real endpoint). `/openapi.json` + `/v2/api-docs` → 200/1280B each (non-SPA, potential API spec — UNREAD). `/.env` → 403/406B, `/web.config` → 403/412B, `/web.config.bak` → 403/420B (app-level path-aware block). | **ACTIVE — read openapi.json + v2/api-docs; probe with Accept:application/json** | **HIGH** |
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
