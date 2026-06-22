@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 9 — M018 submitted to HackerOne (#3816825)
+**Status:** SESSION 11 — M018 submitted (#3816825), M002 report-ready for submission
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -451,12 +451,91 @@ Session 7 further confirmed: Phone + MobilePhone fields added, LWC endpoints dis
 
 ---
 
+### Session 9 — COMPLETE (2026-06-22)
+
+**Goal:** M018 submission + M002 chain elevation attempt (getConfigData, executeGraphQL, getObjectInfos batch).
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session9-M002-chain.md`
+**Status:** COMPLETE. M018 submitted. M002 chain partially tested.
+
+**Session 9 Results:**
+
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| — | M018 | Submitted to HackerOne as **#3816825** (CWE-287 + CWE-209, Medium) | **SUBMITTED** |
+| A — Bootstrap | fwuid validation | state=SUCCESS \| 203 fields — fwuid confirmed valid | Phase A complete |
+| B — Record access | getItems, getListUi, searchRecords, getCurrentUserOrGuest | All return `actions:[]` (11092B) — empty actions array | Blocked at Aura framework layer |
+| E2 — getObjectInfos batch | User + Contact + Account + Lead + Opportunity | 176674B state=SUCCESS — User=203F, all others 403 | Partial success |
+| P3 — Self-registration | NetworkSelfRegistration | returnValue=False | Self-reg disabled |
+| getConfigData | 187 objects | **187 accessible sObject names + key prefixes including OauthToken, UserLogin, NetworkMember** | **NEW EVIDENCE** |
+| executeGraphQL | User query | state=SUCCESS but ValidationError: `Id {value}` on scalar type ID! | Syntax bug — fixable |
+| getItems on 187 objects | All objects | SyntaxError in parse_items helper (`return` outside function) | **BUG — all tests failed** |
+
+**Session 9 bugs discovered (fixed in Session 10):**
+1. `parse_items` Python function had `return` at top level → SyntaxError on all getItems tests
+2. `executeGraphQL` query used `Id {value}` but `Id` is scalar type `ID!` — cannot use `{value}` wrapper
+
+---
+
+### Session 10 — COMPLETE (2026-06-22)
+
+**Goal:** Fix getItems SyntaxError + executeGraphQL scalar Id fix, re-run all record access attempts.
+**Runbook:** `runbooks/PI-RUNBOOK-marriott-session10-M002-getitems.md`
+**Status:** COMPLETE. All getItems tests run. Record access definitively blocked.
+
+**Session 10 Results:**
+
+| Phase | Target | Result | Status |
+|-------|--------|--------|--------|
+| B1-B4 — getItems Tier 1 | NetworkMember, OauthToken, UserLogin, User | **actions:[] empty (0B actionsTotal)** — Aura framework block | Record access: BLOCKED |
+| C1-C8 — getItems Tier 2 | ContentDocument, ContentVersion, CollaborationGroup, FeedItem, Network, Profile, Organization | **actions:[] empty** — all Aura-blocked | Record access: BLOCKED |
+| D — getListUi | User, NetworkMember, CollaborationGroup | 11092B actions:[] | Blocked |
+| E — executeGraphQL | User, NetworkMember, CollaborationGroup, FeedItem | state=ERROR, INVALID_INPUT "GraphQL input is required for POST" | Reachable action but wrong format |
+| F — searchRecords (SOSL) | User, NetworkMember, ContentDocument | 11092B actions:[] | Blocked |
+| G — getCurrentUserOrGuest | Guest user ID | 11092B actions:[] | Blocked |
+| H — CommLoginController | Email enumeration × 3 | 11092B actions:[] | Not accessible to guest |
+| I1 — getObjectInfos batch | NetworkMember, OauthToken, UserLogin | NetworkMember=INVALID_TYPE — not in UI API | Cannot schema-test these objects |
+
+**Key finding from Session 10:**
+- `actionsTotal=0` for ALL getItems/getListUi/searchRecords → Aura FRAMEWORK-level block (not app-level access denied)
+- `executeGraphQL` has `actionsTotal=3` (action was routed and executed) → NOT blocked at framework level, but INVALID_INPUT error persists
+
+---
+
+### Session 11 — COMPLETE (2026-06-22)
+
+**Goal:** Final executeGraphQL format investigation + getObjectInfos I2 with fixed parser + additional picklist enumeration.
+**Runbook:** `runbooks/PI-FOLLOWUP-session11-final.sh`
+**Status:** COMPLETE. All tests done. M002 evidence complete. Chain elevation closed.
+
+**Session 11 Results:**
+
+| Test | Target | Result | Status |
+|------|--------|--------|--------|
+| executeGraphQL 1a | Direct curl, bare Id, single-quoted | state=ERROR, INVALID_INPUT, actionsTotal=6 | Still fails — not a shell escaping issue |
+| executeGraphQL 1b | `document` instead of `query` param key | state=ERROR, INVALID_INPUT, actionsTotal=3 | Same error — not a param key issue |
+| executeGraphQL 1c | NetworkMember query | state=ERROR, INVALID_INPUT, actionsTotal=5 | Same error — architectural: action reads query from HTTP body, not Aura params |
+| **getObjectInfos I2 (fixed parser)** | ContentDocument, ContentVersion, FeedItem | **ACCESSIBLE: ContentDocument 27F, ContentVersion 47F, FeedItem 28F** | **NEW EVIDENCE** |
+| getObjectInfos I3 | User, Profile, Organization, Network | **User 203F, Profile 517F, Organization 41F, Network 10F** | **Profile 517F is new headline finding** |
+| getPicklistValues | LanguageLocaleKey, LocaleSidKey, TimeZoneSidKey | **SUCCESS: 18, 279, 426 values respectively** | Confirmed multiple picklist actions work |
+| getPicklistValues | ProfileId | state=ERROR (correct — reference field, not picklist) | Expected |
+
+**executeGraphQL conclusion:** Consistently fails with same INVALID_INPUT error across all format variants (both `query`/`document` param names, both curl helper and direct single-quoted curl, both User and NetworkMember objects). The action is architecturally proxying to an internal GraphQL endpoint and reading the query from the HTTP request body directly (not from Aura params), which is incompatible with the Aura form-encoded request format. **This path is definitively closed.**
+
+**M002 FINAL STATUS:**
+- 7 sObjects with accessible schemas: User (203), Profile (517), Organization (41), Network (10), ContentDocument (27), ContentVersion (47), FeedItem (28) = **873 total fields**
+- getPicklistValues confirmed working: UserType (8 values), LanguageLocaleKey (18), LocaleSidKey (279), TimeZoneSidKey (426)
+- getConfigData confirmed: 187-object inventory with key prefixes
+- All record access paths definitively blocked at Aura framework layer
+- **SUBMIT AS MEDIUM (5.3) — all chain paths exhausted**
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
 | M001 | IDOR / missing auth on supplier portal | `esupplier.marriott.com` | **200 / 54985B**, raw EC2 no WAF | ACTIVE — session 2 probe | **CRITICAL** |
-| M002 | **Salesforce Aura Guest User API Exposure — 203 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | POST→`"state":"SUCCESS"` + 203-field User schema | **REPORT-READY — Medium (5.3). Session 6 confirmed.** | **MEDIUM** |
+| M002 | **Salesforce Aura Guest User API Exposure — 7 sObject schemas, 873 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | getObjectInfo(User) 203F + getObjectInfos(Profile 517F, Org 41F, Network 10F, ContentDocument 27F, ContentVersion 47F, FeedItem 28F) + getPicklistValues SUCCESS + getConfigData 187-object inventory | **REPORT-READY — Medium (5.3). Sessions 6-11 complete. All chain paths exhausted.** | **MEDIUM** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | Meta-refresh → PingFederate SAML2 (`extranet.marriott.com/2FAmarrsso`); PartnerSpId=Marriott-SAML2-SP-EverestRCD-PROD | **BLOCKED — requires Marriott employee SAML2 auth. Inaccessible externally.** | — |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
 | M005 | SAP DEV gateway — actuator/swagger/debug | `gatewaydsapdev2.marriott.com` | 404 on `/` — probe sub-paths | ACTIVE — specific path probe | CRITICAL |
