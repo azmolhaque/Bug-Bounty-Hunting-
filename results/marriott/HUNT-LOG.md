@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 14 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: ci-propertyconversionportal (M011) deep dive
+**Status:** SESSION 15 COMPLETE — M018 submitted (#3816825), M002 submitted (#3817499). Next: M013 CT wildcard enum + M009 OWA NTLM
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -622,11 +622,42 @@ All record access mechanisms confirmed blocked:
 
 ---
 
+### Session 15 — COMPLETE (2026-06-22)
+
+**Goal:** ci-propertyconversionportal deep dive — read non-SPA differential content, JSON-Accept bypass, actuator, auth discrimination. esupplier document audit.
+**Runbook:** `runbooks/PI-RUNBOOK-session15-ci-portal-deep.sh`
+**Status:** COMPLETE. ci-portal closed; esupplier dead end confirmed.
+
+**Session 15 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| A — Read differential content | `/health`, `/openapi.json`, `/v2/api-docs`, `/robots.txt`, `/sitemap.xml` all return **Akamai 403 `cdn-cache: HIT`** | Session 14 "interesting" differentials were Akamai cache MISSes serving empty origin responses padded with 1280B RUM script. Cache flipped to HIT 403 between sessions. No real API content at those paths. |
+| B — JSON Accept probe | Root: 403/398B. All `/api/**` paths: 403 (varying sizes = path-name embedded). `/actuator/health`, `/actuator/info`, `/actuator/env`, `/actuator/mappings`: **200/5939-5940B** = SPA catch-all | Akamai blocks `/api/**` and sensitive dev-path patterns. Spring Boot actuator paths pass through as SPA HTML. No actual actuator data accessible. |
+| C — Actuator with Spring Accept header | `/actuator`, `/actuator/health`, `/actuator/env`, `/actuator/mappings`: all **403 HIT** | Akamai blocks `vnd.spring-boot.actuator.v3+json` Accept header on these paths. Different WAF trigger than generic JSON Accept. |
+| E — Auth discrimination | `no-auth=403|424` = `fake-token=403|424` for all `/api/v1/*` paths | Akamai blocks BEFORE auth evaluation — cannot distinguish 401 vs 403 at origin. No bypass available without origin IP. |
+| F — esupplier filelist.xml | `<o:MainFile HRef="../default.htm"/>` plus image/theme files | Microsoft Office manifest for Word doc support files. Root page (`default.htm`) is the same Word HTML. No application code. Email: `mercuryworkflowadministrator@marriott.com` (legacy Mercury workflow — informational). |
+| F — esupplier splash | 5 links, all relative to `esuppliersplash_files/` directory (Word doc artifacts: filelist.xml, editdata.mso, themedata.thmx) | No application links, no login forms, no API hints. Pure static Word document. |
+
+**Root cause of Session 14 "1280B differentials" (now explained):**
+- Akamai's `x-akamai-transformed: 9 1280 0 pmb=mRUM,2` confirms Akamai **injected** 1280 bytes of Real User Monitoring script into responses
+- Session 14 cache state: `cdn-cache: MISS` → origin returned empty 200 → Akamai added 1280B RUM → curl saw 1280B total  
+- Session 15 cache state: `cdn-cache: HIT` → Akamai serves cached 403 for same paths
+- There was NEVER real OpenAPI spec content at `/openapi.json` — it was an empty origin response padded by Akamai
+
+**Conclusions:**
+- **M011 ci-propertyconversionportal: CLOSED** — Akamai WAF fully blocks all API/actuator paths. SPA serves only auth-gated index.html. No origin IP to bypass with. No external attack surface.
+- **M001 esupplier: CLOSED** — All accessible documents are Microsoft Word/Office XML artifacts from 2014. No live application code, no API, no useful attack surface beyond the already-OOS PeopleSoft app at extranet.marriott.com.
+
+**Next session:** M013 (CT wildcard subdomain enum — `*.apigwc`, `*.apigatewayc`, `*gateway-apc`, `*uat.marriott.com`) + M009 (OWA NTLM autodiscover) + efast.marriott.com (401/6834B — check auth type).
+
+---
+
 ## Lead Status
 
 | ID | Class | Surface | HTTP Result | Status | Priority |
 |----|-------|---------|------------|--------|----------|
-| M001 | Static Word HTML doc; real PeopleSoft app at extranet.marriott.com/psfin (OOS) | `esupplier.marriott.com` | Root = 54985B Word 14 HTML (2014). `/trace.axd` → 403. Document sub-paths not probed. Real app at `extranet.marriott.com/psfin` is OUT-OF-SCOPE. | **PARKED — real app OOS. Document-path scan pending.** | LOW |
+| ~~M001~~ | ~~esupplier — static Word docs only~~ | `esupplier.marriott.com` | Root + all sub-paths = Microsoft Word 14 HTML documents (2014). filelist.xml = Office manifest. Real app at `extranet.marriott.com/psfin` OUT-OF-SCOPE. Email: `mercuryworkflowadministrator@marriott.com` (informational). No API, no live code. | **CLOSED — static Word docs, no attack surface** | — |
 | M002 | **Salesforce Aura Guest User API Exposure — 7 sObject schemas, 873 fields confirmed** | `cpp.marriott.com/s/sfsites/aura` | getObjectInfo(User) 203F + getObjectInfos(Profile 517F, Org 41F, Network 10F, ContentDocument 27F, ContentVersion 47F, FeedItem 28F) + getPicklistValues SUCCESS + getConfigData 187-object inventory | **SUBMITTED — HackerOne #3817499. Medium (5.3). 2026-06-22.** | **MEDIUM** |
 | M003 | Payment endpoint IDOR / logic bypass | `psp.marriott.com` | Meta-refresh → PingFederate SAML2 (`extranet.marriott.com/2FAmarrsso`); PartnerSpId=Marriott-SAML2-SP-EverestRCD-PROD | **BLOCKED — requires Marriott employee SAML2 auth. Inaccessible externally.** | — |
 | M004 | Financial portal IDOR | `marriottfranchisetransactions.marriott.com` | **200 / 12595B**, raw EC2 | ACTIVE — session 2 probe | CRITICAL |
@@ -636,7 +667,7 @@ All record access mechanisms confirmed blocked:
 | M008 | Host-header routing attack | APC cluster: auth-apc + apcgateway + gateway-apc | 000 / 503 | PENDING — probe with explicit paths | HIGH |
 | M009 | OWA NTLM hash disclosure | `owa.marriott.com` | **302→/owa/** confirmed | ACTIVE — autodiscover probe | MEDIUM |
 | ~~M010~~ | ~~Employee identity app IDOR~~ | `eidhelp.marriott.com` | Static S3+CloudFront. All dropdowns → same `/help/index.html`. No API. Headers leak `x-amz-meta-user-agent-id: jblaney@...` (informational). | **CLOSED — static site, zero API surface** | — |
-| **M011** | **Property Conversion Tool (PCT) — API spec exposure + config file signals** | `ci-propertyconversionportal.marriott.com` | Akamai SPA. `/health` → 200/0B (real endpoint). `/openapi.json` + `/v2/api-docs` → 200/1280B each (non-SPA, potential API spec — UNREAD). `/.env` → 403/406B, `/web.config` → 403/412B, `/web.config.bak` → 403/420B (app-level path-aware block). | **ACTIVE — read openapi.json + v2/api-docs; probe with Accept:application/json** | **HIGH** |
+| ~~M011~~ | ~~ci-propertyconversionportal — Akamai-locked SPA~~ | `ci-propertyconversionportal.marriott.com` | Akamai WAF fully blocks all `/api/**`, `/actuator/**`, `/openapi.json`, etc. (cdn-cache: HIT 403). Session 14 "1280B differentials" were empty origin responses padded with 1280B Akamai mRUM script (cache MISS → MISS carries RUM; now HIT blocks). No origin IP accessible. | **CLOSED — Akamai WAF fully blocks all API surface** | — |
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | — | ACTIVE — Session 2 Phase 1 | HIGH |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
