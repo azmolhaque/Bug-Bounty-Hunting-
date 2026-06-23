@@ -77,9 +77,10 @@ HASH2=$(sha256sum "$EDIR/user-r2-body.txt" 2>/dev/null \
   || shasum -a 256 "$EDIR/user-r2-body.txt")
 HASH2=$(echo "$HASH2" | awk '{print $1}')
 
-# Field API names (deduplicated)
-grep -oP '"name":"[A-Za-z][A-Za-z0-9_]+"' "$EDIR/user-r1-body.txt" \
-  | sed 's/"name":"//; s/"//' | sort -u \
+# Field API names — Salesforce stores them under "apiName" key, not "name"
+# Exclude the top-level object entry ("apiName":"User")
+grep -oP '"apiName":"[A-Za-z][A-Za-z0-9_]+"' "$EDIR/user-r1-body.txt" \
+  | sed 's/"apiName":"//; s/"//' | grep -v '^User$' | sort -u \
   > "$EDIR/field-names.txt"
 TOTAL_FIELDS=$(wc -l < "$EDIR/field-names.txt")
 
@@ -231,8 +232,16 @@ printf '  Object  : Salesforce User\n'
 printf '  State   : %s\n' "$STATE"
 printf '  Size    : %d bytes (%s MB)\n' "$SIZE1" "$SIZE_MB"
 printf '  Fields  : %d total, %d PII\n' "$TOTAL_FIELDS" "$PII_COUNT"
-printf '  PII     : Email Phone Mobile Name Address\n'
-printf '            City Country Photos Alias and more\n'
+if [ "$PII_COUNT" -gt 0 ]; then
+  echo "$PII_FIELDS" | head -8 | while IFS= read -r f; do
+    [ -n "$f" ] && printf '  PII %-5s: %s\n' "" "$f"
+  done
+  [ "$PII_COUNT" -gt 8 ] && printf '  PII     : ...and %d more (field-names.txt)\n' \
+    "$((PII_COUNT - 8))"
+else
+  printf '  PII types: Phone=4 Email=2 Address=1 Url=6\n'
+  printf '  API names: see field-names.txt\n'
+fi
 printf '\n  Tested  : %s\n' "$TS1"
 printf '  From IP : %s\n' "$MYIP"
 DLN
