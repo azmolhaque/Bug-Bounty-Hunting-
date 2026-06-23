@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 21 IN PROGRESS — Session 20 complete: gateway-apc uniform 404 (wrong path prefix), UAT hosts Akamai IP-blocked, Build ID extracted. Session 21: direct chunk downloads (pages/_app, clientVendor, all 28 chunks) + expanded gateway-apc path prefix hunt.
+**Status:** SESSION 22 IN PROGRESS — Session 21 complete: 2.3MB _app bundle downloaded, no hardcoded GraphQL endpoint (server-side proxy confirmed). New in-scope targets from bundle: gatewaydsapuat2.marriott.com (gateway*.marriott.com wildcard). apcgateway.marriott.com (explicitly in scope, 503 in S1). Session 22: probe both gateways + deep mine _app for relative URLs + loyalty page chunk download.
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -785,6 +785,49 @@ gql_docs = re.findall(r'gql`([^`]{20,500})`', js, re.DOTALL)
 BT = chr(0x60); gql_docs = re.findall(r'gql' + BT + r'([^' + BT + r']{20,500})' + BT, js, re.DOTALL)
 ```
 
+### Session 21 — COMPLETE (2026-06-23)
+
+**Goal:** Download all auth-apc JS chunks. Mine for GraphQL endpoint URL. Probe gateway-apc with expanded path prefixes.
+**Runbook:** `runbooks/PI-RUNBOOK-session21-chunk-download-gw-paths.sh`
+**Status:** COMPLETE. Endpoint not hardcoded in any chunk — server-side proxy confirmed. New in-scope hosts discovered from bundle.
+
+**Session 21 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| **A — Chunk download** | 21 JS files downloaded. `_app-28a03d1bf69a65d4.js` = **2,296,307B (2.3MB)**. `splideJs` and `_ssgManifest.js` = 404. | All priority chunks downloaded successfully. |
+| **B — Mining (0 endpoints)** | **GraphQL endpoint: 0 candidates.** Apollo client config: 0. `uri:` pattern: not found. | **Endpoint NOT hardcoded in any browser-side chunk.** App uses server-side proxy (Next.js API routes). |
+| **B — 17 Marriott hostnames** | All from `_app-28a03d1bf69a65d4.js`: `phoenix-bookdev1.ose-dev39-red.aws-use1.cloud.marriott.com`, `phoenix-searchtest1.ose-dev39-red.aws-use1.cloud.marriott.com`, `upl-gateway-green-uat-experiencelayer-uat2.ose-perf39-vxbyr.cloud.marriott.com`, **`gatewaydsapuat2.marriott.com`**, `ram-test23.ose-dev39-vxbyr.cloud.marriott.com`, `www.dev-cdn.marriott.com`, `traveler`, `activities`, `homes-and-villas`, `gifts`, `all-inclusive`, `hotel-residences`, `cache`, `insiders`, `travel-partner`, `www.espanol`. | **`gatewaydsapuat2.marriott.com` = IN-SCOPE via `gateway*.marriott.com` wildcard. Never probed. OpenShift internal hosts (`ose-*`) = OUT-OF-SCOPE (under `*.marriott.com` OOS catch-all).** |
+| **C — _buildManifest.js** | Build ID `wUhD83hKBJXisF6R7xbum` confirmed. Next.js rewrites: `/mi/account/api/getNextProps → /api/getNextProps`, `/mi/account/api/get-model → /api/get-model`. App routes include: `/activate`, `/changePassword`, `/emailPassword`, `/enroll`, `/login`, `/loyalty`, `/loyalty/createAccount/*`, `/loyalty/findReservationList`, `/loyalty/join/*`. | **`/api/getNextProps` + `/api/get-model` are the server-side API proxy routes.** These proxy calls to the backend GraphQL API — URL never exposed to browser. |
+| C — JSON parse error | `json.decoder.JSONDecodeError: Unterminated string` — manifest is a JS function call (`self.__BUILD_MANIFEST=function(...){...}`), not JSON. Raw text printed correctly. | Fix: use regex to extract page routes instead of `json.loads()`. |
+| D — gateway-apc expanded | **ALL 22 paths + POST with Bearer token = 404/261B uniform.** `/mi-account/graphql`, `/phoenix/v1/graphql`, `/bonvoy/account/graphql`, etc. all return Jetty uniform 404. | **gateway-apc.marriott.com is the WRONG HOST for the GraphQL API.** Backend calls never go there. |
+| E — auth-apc API paths | ALL paths with `Accept: application/json` + `X-Requested-With: XMLHttpRequest` = 000. `/_next/data/{buildId}/login.json` = 000. | auth-apc firewall is at CDN/Akamai level, not app level. No bypass available externally. |
+
+**Architecture conclusion:**
+```
+Browser → auth-apc.marriott.com/api/getNextProps (Next.js API route, relative URL in browser JS)
+         → Next.js server-side: proxies to backend GraphQL API
+         → [HIDDEN] internal backend URL (never in browser chunks)
+```
+The backend GraphQL URL may be:
+- In Next.js server-side code (not shipped to browser)
+- OR injected via environment variable at deploy time
+- The `upl-gateway*-experiencelayer*` hostname is the most likely candidate for the experience layer GraphQL BFF
+
+**NEW IN-SCOPE TARGET — M024: gatewaydsapuat2.marriott.com**
+- Discovered in `_app-28a03d1bf69a65d4.js` — auth-apc Bonvoy portal makes calls to this host
+- In-scope via `gateway*.marriott.com` wildcard (scope.yaml line 96)
+- SAP DSP UAT gateway — UAT = weaker auth, debug endpoints, actuator/swagger often exposed
+- `gatewaydsapdev2` (Session 13) was WAF-locked (Akamai uniform 404/261B) — UAT variant may differ
+
+**M022 (Phoenix GraphQL) — architecture update:**
+- Backend URL is NOT in browser JS — it's server-side proxied
+- The experience layer hostname (`upl-gateway-green-uat-experiencelayer-uat2.*`) is the likely API type
+- Production equivalent NOT in scope (internal `.cloud.marriott.com` under OOS catch-all)
+- Practical path to IDOR test: need valid Marriott Bonvoy session cookie to call `/api/getNextProps`
+
+---
+
 ### Session 20 — COMPLETE (2026-06-23)
 
 **Goal:** Download + mine remaining auth-apc chunks for GraphQL endpoint URL. Probe gateway-apc.marriott.com. Fingerprint UAT hosts.
@@ -860,7 +903,8 @@ db9fdea0-e729a59f8b9d38dd.js
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | crt.sh 502 in S16, DNS brute 0 results | ACTIVE — retry CT enum; expand prefix list | HIGH |
 | **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. Next.js + PingFederate confirmed (`PR_INFORMATION` header). 27 JS chunks; `graphql-chunk-793e1a2cf24c51e7.js` + `nodeForgeVendor` not yet mined. | **ACTIVE — graphql-chunk mining + OIDC probe + redirect_uri bypass** | **HIGH** |
-| **M022** | **Phoenix GraphQL API IDOR — 67 operations, endpoint unknown** | `*gateway-apc.marriott.com` (likely) | 67 `phoenixAccount*` GraphQL operations mined from auth-apc graphql-chunk (330KB). LookupCustomerProfiles, GetPersonalInformation, GetWalletPaymentInfo, GetOrderDetailsByOrderId. No endpoint URL in chunk. Mutations require `revisionToken`. | **ACTIVE — find GraphQL endpoint (mine remaining chunks + probe gateway-apc) → test unauthenticated access + customerId IDOR** | **CRITICAL** |
+| **M022** | **Phoenix GraphQL API IDOR — 67 operations, endpoint server-side proxied** | `auth-apc.marriott.com/api/getNextProps` (proxy route) | 67 `phoenixAccount*` operations mined. Endpoint URL NOT in browser JS — server-side proxy confirmed (`/api/getNextProps` → backend). gateway-apc.marriott.com = wrong host (uniform 404). Requires valid Marriott Bonvoy session cookie to test. | **ACTIVE — needs valid session to reach /api/getNextProps. Pivot to gatewaydsapuat2 (M024) as alternate path.** | **CRITICAL** |
+| **M024** | **gatewaydsapuat2.marriott.com — SAP DSP UAT gateway (referenced in Bonvoy app)** | `gatewaydsapuat2.marriott.com` | Discovered in `_app-28a03d1bf69a65d4.js` — Marriott Bonvoy APC portal references this host. In-scope via `gateway*.marriott.com` wildcard. UAT environment = likely weaker auth + debug endpoints. Not yet probed. | **ACTIVE — probe for actuator, swagger, SAP OData, API endpoints (Session 22 Phase A)** | **HIGH** |
 | ~~M021~~ | ~~efast SAML ACS probe — SP validates correctly~~ | `efast.marriott.com` | D3: POST unsigned SAMLResponse → HTTP 400 + Claresco GenericError.ctp. D4: Wrong-issuer POST → HTTP 400. Path disclosure: `/usr/local/webapps/efast/java/templates/Claresco/GenericError.ctp` (informational). | **CLOSED — SP correctly validates signature + issuer. No auth bypass. Path disclosure informational only.** | — |
 | ~~M023~~ | ~~UAT hosts — MI Commission Management Tool — Akamai IP-blocked~~ | `micmt.uat.marriott.com`, `micommissionmanagementtool.uat.marriott.com` | Both: 403/380-401B + `cdn-cache: HIT` + Akamai ref `#18.` (type 18 = IP ACL). ALL 20 paths (actuator, swagger, api, login, admin) return 403. Path-length sizes confirm Akamai is path-aware but IP-blocking before route matching. | **BLOCKED — Akamai IP/geo allowlist restricts to corporate IPs. Not reachable from Pi residential IP. Parked.** | — |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
