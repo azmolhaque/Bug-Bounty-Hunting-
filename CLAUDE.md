@@ -210,5 +210,15 @@ A finding is **done** (report-ready) when ALL are true:
 6. Deduplicated against known issues and prior findings.
 7. Report exists in `results/<target>/findings/` with: title, summary, severity,
    repro steps, proof, impact, remediation, references.
+8. **Evidence checklist complete** (mandatory after M018 closed-as-Spam incident,
+   2026-06-23). A finding cannot be submitted without ALL of the following:
+   - Researcher metadata: date, time, external IP (`curl ifconfig.me`), tool version
+   - Verbatim copy-pasteable curl command that reproduces the finding
+   - Verbatim HTTP response body pasted (not described — the actual bytes)
+   - HTTP status code + response size from the actual test
+   - Before/after differential (expected secure behavior vs. observed insecure behavior)
+   - At least one screenshot of the actual terminal showing the finding
+   - Report written in first-person human voice, not polished AI prose
+   See `results/<target>/REPORTING-STANDARDS.md` for the full template.
 
 Anything short of this is a **lead**, not a finding. Label it honestly.
