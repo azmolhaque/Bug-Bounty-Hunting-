@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 17 COMPLETE — auth-apc fingerprinted (Next.js + PingFederate), efast SAML SP confirmed (IdP OUT-OF-SCOPE). Next: SAMLRequest decode + graphql-chunk mining + CT retry (Session 18)
+**Status:** SESSION 18 PARTIAL — ACS URL decoded (`efast.marriott.com/home`, in-scope). graphql-chunk (330KB) downloaded. B3 script bug exited early. Next: fixed mining + ACS probe + CVE-2025-29927 (Session 19)
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -716,12 +716,44 @@ All record access mechanisms confirmed blocked:
 - Potential: RelayState open redirect (OOS per Marriott policy unless chains to auth bypass)
 - Test priority: decode → find ACS URL → probe ACS for unsigned POST acceptance
 
+### Session 18 — PARTIAL (2026-06-22)
+
+**Goal:** SAMLRequest decode + graphql-chunk mining + auth-apc OIDC probe + CT retry + CVE probe.
+**Runbook:** `runbooks/PI-RUNBOOK-session18-saml-graphql.sh`
+**Status:** PARTIAL — Phase A complete (ACS URL found). Phases B partially complete (bundles downloaded). B3 script crashed (backtick-in-heredoc bash bug). Phases C, D, E, G did NOT run.
+
+**Session 18 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| **A — SAMLRequest decode** | **ACS URL = `https://efast.marriott.com/home`** (IN-SCOPE). ProtocolBinding = HTTP-Artifact. SP signs its requests (RSA-SHA1, SHA1 digest — deprecated). Issuer = `clr-saml2-efast.marriott.com`. X509 cert: CN=`Claresco.eFASTTProd.SSO.marriott.com`, issued by MarriottSubCA2 (Entrust), valid 2024-11-21 → 2026-11-20. | **ACS is on efast.marriott.com (in-scope) — probe for unsigned POST acceptance in Session 19** |
+| A — Cert SAN | Three employee emails in SAN: `sally.chaupiz@marriott.com`, `preston.anderson@marriott.com`, `amy.klein@marriott.com`, `ops@claresco.com` | Informational only — not submittable standalone |
+| A — RelayState | `https://efast.marriott.com/` (RelayState sent to IdP) | Normal SP behavior |
+| B1/B2 — Bundle download | `graphql-chunk-793e1a2cf24c51e7.js` = 330KB; `nodeForgeVendor-4e937f79b0795bc3.js` = 281KB. Both downloaded to Pi `/tmp/s18/apc-chunks/`. | **Bundles ready — mine in Session 19** |
+| B3 — Mining CRASHED | Bash error: backtick character in Python regex inside unquoted heredoc interpreted as command substitution. `re.findall(r'gql\`...\`', ...)` caused `unexpected end of file`. Script exited at B3. | **Fix: use `\x60` hex escape for backtick. Session 19 restarts from B3.** |
+| C, D, E, G | DID NOT RUN — script exited at B3 | All four phases queued for Session 19 |
+
+**M021 (efast SAML) update:**
+- ACS URL confirmed: `https://efast.marriott.com/home` (in-scope)
+- HTTP-Artifact binding requested — SP expects artifact token from IdP (not raw POST)
+- HOWEVER: many SPs accept both Artifact AND POST binding on same ACS URL — must test
+- RSA-SHA1 weak signing: IdP verifying SHA1-signed requests with deprecated algo
+- Session 19: POST unsigned SAMLResponse to `/home`, probe ACS binding flexibility
+
+**B3 root cause:**
+```
+# BROKEN (bash expands backticks in unquoted heredoc):
+gql_docs = re.findall(r'gql`([^`]{20,500})`', js, re.DOTALL)
+# FIXED (hex escape for backtick, invisible to bash):
+gql_docs = re.findall(r'gql\x60([^\x60]{20,500})\x60', js, re.DOTALL)
+```
+
 **Next session priority:**
-1. **Phase A**: Decode full SAMLRequest from `/tmp/s17/efast-body.html` → extract ACS URL + SP metadata
-2. **Phase B**: Download + mine `graphql-chunk-793e1a2cf24c51e7.js` → GraphQL schema, operations, client_id
-3. **Phase C**: auth-apc OIDC/Next.js API probing (`.well-known/openid-configuration`, `/_next/data/`, redirect_uri manipulation)
-4. **Phase D**: Probe efast ACS URL (from Phase A) for unauthenticated POST acceptance
-5. **Phase E**: CT enum retry via Certspotter API or wayback CDX
+1. **Phase B3/B4**: Fixed JS mining (graphql-chunk + nodeForge, already downloaded at `/tmp/s18/apc-chunks/`)
+2. **Phase D**: Probe `https://efast.marriott.com/home` — GET baseline, POST unsigned SAMLResponse, POST minimal valid-structure response
+3. **Phase C**: auth-apc OIDC + `_buildManifest.js` route enumeration
+4. **Phase G**: CVE-2025-29927 (Next.js middleware bypass) on auth-apc
+5. **Phase E**: CT enum via Certspotter + wayback CDX
 
 ---
 
@@ -743,7 +775,7 @@ All record access mechanisms confirmed blocked:
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | crt.sh 502 in S16, DNS brute 0 results | ACTIVE — retry CT enum; expand prefix list | HIGH |
 | **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. Next.js + PingFederate confirmed (`PR_INFORMATION` header). 27 JS chunks; `graphql-chunk-793e1a2cf24c51e7.js` + `nodeForgeVendor` not yet mined. | **ACTIVE — graphql-chunk mining + OIDC probe + redirect_uri bypass** | **HIGH** |
-| **M021** | **efast SAML SP — ACS URL unknown, decode pending** | `efast.marriott.com` | SAML2 SP auto-submits AuthnRequest to `extranetcloud.marriott.com` (OUT-OF-SCOPE IdP). SP entity: `clr-saml2-efast.marriott.com`. SAMLRequest base64 captured in `/tmp/s17/efast-body.html`. ACS URL = key unknown. | **ACTIVE — decode SAMLRequest → find ACS → probe unsigned POST** | **HIGH** |
+| **M021** | **efast SAML ACS probe — `/home` in-scope, HTTP-Artifact binding** | `efast.marriott.com` | ACS URL decoded: `https://efast.marriott.com/home`. ProtocolBinding=HTTP-Artifact. SP signs with RSA-SHA1 (deprecated). Cert: Claresco.eFASTTProd.SSO.marriott.com (MarriottSubCA2). Bundles downloaded on Pi. | **ACTIVE — probe `/home` for unsigned SAMLResponse POST acceptance (Session 19)** | **HIGH** |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
 | **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 431B PHP Fatal Error w/ MysqliDb stack trace | **SUBMITTED — HackerOne #3816825. Medium (6.1). 2026-06-22.** | **MEDIUM** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
