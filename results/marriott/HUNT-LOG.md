@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 20 IN PROGRESS — Session 19 complete (ACS probe closed, UAT hosts discovered). Session 20 runbook created: GraphQL endpoint hunt on gateway-apc.marriott.com + UAT host fingerprint (micmt.uat.marriott.com).
+**Status:** SESSION 21 IN PROGRESS — Session 20 complete: gateway-apc uniform 404 (wrong path prefix), UAT hosts Akamai IP-blocked, Build ID extracted. Session 21: direct chunk downloads (pages/_app, clientVendor, all 28 chunks) + expanded gateway-apc path prefix hunt.
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -785,6 +785,61 @@ gql_docs = re.findall(r'gql`([^`]{20,500})`', js, re.DOTALL)
 BT = chr(0x60); gql_docs = re.findall(r'gql' + BT + r'([^' + BT + r']{20,500})' + BT, js, re.DOTALL)
 ```
 
+### Session 20 — COMPLETE (2026-06-23)
+
+**Goal:** Download + mine remaining auth-apc chunks for GraphQL endpoint URL. Probe gateway-apc.marriott.com. Fingerprint UAT hosts.
+**Runbook:** `runbooks/PI-RUNBOOK-session20-graphql-endpoint-idor.sh`
+**Status:** COMPLETE. GraphQL endpoint not found. Gateway-apc uniform 404. UAT hosts Akamai IP-blocked.
+
+**Session 20 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| **A1 — Build ID** | **`wUhD83hKBJXisF6R7xbum`** — extracted from `_buildManifest.js` pattern in script src tags. | Build ID now known. Can fetch `_buildManifest.js` for full route list. |
+| A2 — Chunk list | **28 chunks total**: 5 priority (framework, main, pages/_app, polyfills, webpack), 1 page (login), 22 other (graphql-chunk, clientVendor, spClientVendor, uiVendor, nodeForgeVendor, 6 numbered chunks, CSS files). | All chunk filenames now known with hashes. |
+| **A3 — Download FAILED** | Priority chunk extraction from `chunk-list.txt` produced empty result — Python regex in unquoted heredoc inside `$()` failed silently. Fallback tried `webpack.js`/`main.js`/`_app.js` (no hash suffix) → 404/10B. | **Session 21 fix: hardcode all 28 chunk URLs directly (known from A2 output). No dynamic extraction needed.** |
+| B — Mining | Scanned only S18 chunks (5 files). 6 "endpoints" found = relative `.graphql` source file paths (not HTTP URLs). No Apollo `uri:` config. No Marriott hostnames. | graphql-chunk stores GQL document strings; Apollo config in `pages/_app` or `clientVendor`. |
+| **C — gateway-apc.marriott.com** | **404/261B on ALL paths** (root, /graphql, /api/graphql, /phoenix/graphql, /account/graphql, /health, 12 paths total). Response = Jetty error HTML, same format as gatewaydsapdev2 (Session 13) Akamai WAF uniform 404. | **Wrong path prefix.** Server is live (HTTP/2 200 connection, Akamai routing) but none of our paths match. Need correct path prefix from `pages/_app` chunk. |
+| C — Gateway variants | `api-gateway-apc.marriott.com`: 000 (DNS/timeout). `phoenix-gateway-apc.marriott.com`: 000. `account-gateway-apc.marriott.com`: 000. `apigw-apc.marriott.com`: OUT-OF-SCOPE. | No alternate APC gateway hosts reachable. |
+| **E — UAT hosts** | **Both hosts: 403 + `server-timing: cdn-cache; desc=HIT` + Akamai reference `#18.`** (type 18 = IP ACL block). Root: 403/380B. ALL 20 paths: 403 with path-length-scaled sizes. | **Akamai IP/geo restriction blocks the Pi's residential IP on both UAT hosts. No bypass from current network.** |
+
+**Root cause — A3 chunk download failure:**
+The `PRIORITY_CHUNKS=$(python3 - <<PYEOF ... PYEOF)` heredoc inside `$()` command substitution fails silently when the content's `$OUTDIR` is not in the Python script context. The chunk-list.txt was written correctly but the regex extraction for the download step produced no output, triggering the fallback path.
+
+**Fix for Session 21:** Hardcode all chunk URLs directly using the exact filenames from A2:
+```
+BASE=https://auth-apc.marriott.com/mi-assets/mi-static/mi-account-renderer/web-rel-26.6.1-5d80cc6-11089/_next/static
+pages/_app-28a03d1bf69a65d4.js   ← HIGHEST PRIORITY — Next.js app init = Apollo Client uri
+main-4c5e9f87a477047b.js
+webpack-c6fb6a1372caf896.js
+framework-4d641e3b1d0b3068.js
+clientVendor-5309c39c290319bc.js  ← Apollo Client vendor bundle
+spClientVendor-957beb1d8c583658.js
+uiVendor-f5b89ff05de64d79.js
+13449-ba6af5295630255d.js
+36394-50c475f98cfa1d23.js
+69ea16bc-69275134c89eb3ee.js
+77945-045eb461b56c6fda.js
+95669-b456226df0addd98.js
+db9fdea0-e729a59f8b9d38dd.js
++ _buildManifest.js (Build ID wUhD83hKBJXisF6R7xbum)
+```
+
+**M022 (Phoenix GraphQL) status:**
+- GraphQL endpoint NOT at `gateway-apc.marriott.com/{common paths}`
+- Endpoint URL MUST be in `pages/_app` or `clientVendor` chunk (Apollo Client initialization)
+- Expanded path prefix candidates for Session 21:
+  - `/mi-account/graphql` (product name = "MI Account")
+  - `/phoenix/v1/graphql`
+  - `/bonvoy/account/graphql`
+  - `/api/mi-account/graphql`
+
+**M023 (UAT hosts) status → BLOCKED:**
+- Both UAT hosts IP-blocked by Akamai (type 18 ACL, `cdn-cache: HIT`)
+- Residential IP = not in Marriott corporate allowlist
+- Would need VPN egress via corporate IP range or Akamai Edge IP
+- Cannot test from Pi's current network position
+
 ---
 
 ## Lead Status
@@ -807,7 +862,7 @@ BT = chr(0x60); gql_docs = re.findall(r'gql' + BT + r'([^' + BT + r']{20,500})' 
 | **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. Next.js + PingFederate confirmed (`PR_INFORMATION` header). 27 JS chunks; `graphql-chunk-793e1a2cf24c51e7.js` + `nodeForgeVendor` not yet mined. | **ACTIVE — graphql-chunk mining + OIDC probe + redirect_uri bypass** | **HIGH** |
 | **M022** | **Phoenix GraphQL API IDOR — 67 operations, endpoint unknown** | `*gateway-apc.marriott.com` (likely) | 67 `phoenixAccount*` GraphQL operations mined from auth-apc graphql-chunk (330KB). LookupCustomerProfiles, GetPersonalInformation, GetWalletPaymentInfo, GetOrderDetailsByOrderId. No endpoint URL in chunk. Mutations require `revisionToken`. | **ACTIVE — find GraphQL endpoint (mine remaining chunks + probe gateway-apc) → test unauthenticated access + customerId IDOR** | **CRITICAL** |
 | ~~M021~~ | ~~efast SAML ACS probe — SP validates correctly~~ | `efast.marriott.com` | D3: POST unsigned SAMLResponse → HTTP 400 + Claresco GenericError.ctp. D4: Wrong-issuer POST → HTTP 400. Path disclosure: `/usr/local/webapps/efast/java/templates/Claresco/GenericError.ctp` (informational). | **CLOSED — SP correctly validates signature + issuer. No auth bypass. Path disclosure informational only.** | — |
-| **M023** | **UAT hosts — MI Commission Management Tool** | `micmt.uat.marriott.com`, `micommissionmanagementtool.uat.marriott.com` | wayback CDX confirmed both hosts + www-prefixed variants. In-scope via `*uat.marriott.com`. Not yet probed. | **ACTIVE — fingerprint UAT env, probe for actuator/swagger/debug endpoints (Session 20 Phase H)** | **HIGH** |
+| ~~M023~~ | ~~UAT hosts — MI Commission Management Tool — Akamai IP-blocked~~ | `micmt.uat.marriott.com`, `micommissionmanagementtool.uat.marriott.com` | Both: 403/380-401B + `cdn-cache: HIT` + Akamai ref `#18.` (type 18 = IP ACL). ALL 20 paths (actuator, swagger, api, login, admin) return 403. Path-length sizes confirm Akamai is path-aware but IP-blocking before route matching. | **BLOCKED — Akamai IP/geo allowlist restricts to corporate IPs. Not reachable from Pi residential IP. Parked.** | — |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
 | **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 431B PHP Fatal Error w/ MysqliDb stack trace | **SUBMITTED — HackerOne #3816825. Medium (6.1). 2026-06-22.** | **MEDIUM** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
