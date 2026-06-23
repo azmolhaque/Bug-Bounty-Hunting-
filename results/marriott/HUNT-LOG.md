@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 18 PARTIAL — ACS URL decoded (`efast.marriott.com/home`, in-scope). graphql-chunk (330KB) downloaded. B3 script bug exited early. Next: fixed mining + ACS probe + CVE-2025-29927 (Session 19)
+**Status:** SESSION 20 IN PROGRESS — Session 19 complete (ACS probe closed, UAT hosts discovered). Session 20 runbook created: GraphQL endpoint hunt on gateway-apc.marriott.com + UAT host fingerprint (micmt.uat.marriott.com).
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
@@ -733,27 +733,57 @@ All record access mechanisms confirmed blocked:
 | B3 — Mining CRASHED | Bash error: backtick character in Python regex inside unquoted heredoc interpreted as command substitution. `re.findall(r'gql\`...\`', ...)` caused `unexpected end of file`. Script exited at B3. | **Fix: use `\x60` hex escape for backtick. Session 19 restarts from B3.** |
 | C, D, E, G | DID NOT RUN — script exited at B3 | All four phases queued for Session 19 |
 
-**M021 (efast SAML) update:**
-- ACS URL confirmed: `https://efast.marriott.com/home` (in-scope)
-- HTTP-Artifact binding requested — SP expects artifact token from IdP (not raw POST)
-- HOWEVER: many SPs accept both Artifact AND POST binding on same ACS URL — must test
-- RSA-SHA1 weak signing: IdP verifying SHA1-signed requests with deprecated algo
-- Session 19: POST unsigned SAMLResponse to `/home`, probe ACS binding flexibility
+### Session 19 — COMPLETE (2026-06-22)
 
-**B3 root cause:**
+**Goal:** Fixed JS mining + efast ACS probe + auth-apc CVE + CT enum.
+**Runbook:** `runbooks/PI-RUNBOOK-session19-mining-acs-cve.sh`
+**Status:** COMPLETE. All phases run. ACS probe closed M021. CT enum yielded UAT hosts (M023). CVE-2025-29927 confirmed not externally reachable.
+
+**Session 19 Results:**
+
+| Phase | Finding | Conclusion |
+|-------|---------|-----------|
+| **B3 — graphql-chunk** | **67 `phoenixAccount*` GraphQL operations** including: GetPersonalInformation, GetProfileDetails, GetWalletPaymentInfo, GetOrderDetailsByOrderId, GetOrdersByCustomerId, **LookupCustomerProfiles**, GetUpcomingTripsBasicInfo, GetMemberStatusDetails, GetAirlineTransactionDetail + mutations: UpdateCustomerPaymentMethod, AddGiftCard, ManageGiftCard, RegisterPromotion, UpdateCustomerConsents. `revisionToken` used for write operations. | **Phoenix GraphQL API operations confirmed. No endpoint URL in this chunk — it's in a different bundle. `*gateway-apc.marriott.com` is the likely backend.** |
+| B4 — nodeForge | Pure crypto library. `forge.pki.rsa.publicKeyValidator` + `forge.prng` present. No embedded keys, no PEM blocks. | auth-apc likely encrypts credentials client-side with RSA via node-forge before submit. Server public key must be in another chunk. |
+| C1 — login page | 131KB page. AEM + Next.js hybrid confirmed. Build ID NOT found via regex (custom basePath blocks standard extraction). | Build ID in script src tags, not __NEXT_DATA__. Need to grep script src attributes (fixed in Session 20 runbook). |
+| C2/C3 — manifests | SKIPPED (Build ID empty) | Session 20 fixes extraction — grep `_buildManifest.js` from script src attributes. |
+| C4–C6 — OIDC/PF/API | ALL 000 (timeout) — auth-apc only exposes `/login` externally. ALL other paths firewalled. | CVE-2025-29927 not exploitable externally (confirmed in Phase G). |
+| **C7 — __NEXT_DATA__** | AEM path: `/content/mi-account/na/en-us/eaa/login/jcr:content`. Component: `mi-aem-account/components/content/signin`. `forgotPwrdCtaPath: /forgotPassword`, `activateOnlineAccountCtaPath: /activate`. `lastModifiedDate: 1760628112496` (≈Nov 2025). hreflang links → `www.marriott.com/{locale}/eaa/login.mi` = APC cluster member login. | auth-apc.marriott.com = Marriott Bonvoy member login portal for Asia-Pacific & Caribbean cluster. Post-login GraphQL API calls hit a different host. |
+| **D1 — GET /home** | HTTP 401, 6838B. `SessionIDCookie` set. `Location: /home` (redirect to SAML form auto-submit). | Normal SP behavior: unauthenticated GET triggers SAML redirect. |
+| **D2 — POST /home (empty)** | HTTP 401, 6838B — identical to D1 baseline. | Empty POST treated same as GET: no SAMLResponse → SAML redirect again. |
+| **D3 — POST /home (unsigned SAMLResponse, correct Issuer)** | **HTTP 400, 27829B** — `<!--Begin: /usr/local/webapps/efast/java/templates/Claresco/GenericError.ctp-->` — ClearTrust/Claresco SP error page. | **SP rejects unsigned SAMLResponse. Validation is enforced.** |
+| **D4 — POST /home (malformed SAMLResponse, wrong Issuer)** | **HTTP 400, 27821B** — same Claresco GenericError.ctp error page (8B smaller = shorter issuer string in error). | **SP correctly validates issuer + signature. M021 = NO AUTH BYPASS.** |
+| D — Path disclosure | `/usr/local/webapps/efast/java/templates/Claresco/GenericError.ctp` exposed in HTTP 400 response body. | Informational — absolute server path. Not submittable standalone per Hard Rejection List §3. |
+| **E — CT enum (%.uat.marriott.com)** | wayback CDX returned HTTP 200 with **6 hosts**: `micmt.uat.marriott.com`, `micommissionmanagementtool.uat.marriott.com`, `uat.marriott.com`, `www.micmt.uat.marriott.com`, `www.micommissionmanagementtool.uat.marriott.com`, `www.uat.marriott.com`. crt.sh still 502 for apigwc/apigatewayc/artifactory. | **M023 NEW — MI Commission Management Tool UAT environment. Both primary and www-prefixed hosts confirmed. In-scope via `*uat.marriott.com` wildcard.** |
+| **G — CVE-2025-29927** | ALL auth-apc paths return 000/0B with baseline headers AND with `x-middleware-subrequest: middleware` bypass header. `/dashboard`, `/profile`, `/wallet`, `/account`, `/settings`, `/admin` — all 000. | **NOT EXPLOITABLE EXTERNALLY — auth-apc firewall blocks all non-`/login` paths. CVE cannot reach protected routes from outside.** |
+| F — Decision gate | M021 CLOSED. M022 active (GraphQL endpoint unknown). M023 new (UAT hosts). CVE-2025-29927 irrelevant. | Session 20: gateway-apc.marriott.com GraphQL probe + UAT host fingerprint. |
+
+**M021 — CLOSED (no auth bypass)**
+- SP correctly validates SAMLResponse signature: unsigned POST → HTTP 400 + ClearTrust GenericError.ctp
+- Wrong-issuer POST → same 400 (issuer validation also enforced)
+- HTTP-Artifact binding means SP expects artifact token from IdP, not POST binding — additional enforcement layer
+- Path disclosure (`/usr/local/webapps/efast/java/templates/Claresco/GenericError.ctp`) is informational only
+- **Status: CLOSED — not reportable**
+
+**M022 — ACTIVE (Phoenix GraphQL IDOR)**
+- 67 named operations confirmed. Endpoint URL not yet found (not in graphql-chunk).
+- Primary hypothesis: `gateway-apc.marriott.com/graphql` (in-scope via `*gateway-apc.marriott.com`)
+- Session 20 mines remaining auth-apc chunks (app, main, webpack) + probes gateway-apc directly.
+
+**M023 — NEW (UAT Commission Management Tool)**
+- `micmt.uat.marriott.com` = "MI Commission Management Tool" UAT environment
+- `micommissionmanagementtool.uat.marriott.com` = same app, verbose hostname
+- Both in-scope via `*uat.marriott.com` wildcard
+- UAT environments: typically weaker auth, debug endpoints active, test data, Spring Boot actuators exposed
+- Session 20 adds Phase H to fingerprint these hosts.
+
+**B3 backtick fix (for future reference):**
 ```
 # BROKEN (bash expands backticks in unquoted heredoc):
 gql_docs = re.findall(r'gql`([^`]{20,500})`', js, re.DOTALL)
-# FIXED (hex escape for backtick, invisible to bash):
-gql_docs = re.findall(r'gql\x60([^\x60]{20,500})\x60', js, re.DOTALL)
+# FIXED (chr() generates backtick at runtime):
+BT = chr(0x60); gql_docs = re.findall(r'gql' + BT + r'([^' + BT + r']{20,500})' + BT, js, re.DOTALL)
 ```
-
-**Next session priority:**
-1. **Phase B3/B4**: Fixed JS mining (graphql-chunk + nodeForge, already downloaded at `/tmp/s18/apc-chunks/`)
-2. **Phase D**: Probe `https://efast.marriott.com/home` — GET baseline, POST unsigned SAMLResponse, POST minimal valid-structure response
-3. **Phase C**: auth-apc OIDC + `_buildManifest.js` route enumeration
-4. **Phase G**: CVE-2025-29927 (Next.js middleware bypass) on auth-apc
-5. **Phase E**: CT enum via Certspotter + wayback CDX
 
 ---
 
@@ -775,7 +805,9 @@ gql_docs = re.findall(r'gql\x60([^\x60]{20,500})\x60', js, re.DOTALL)
 | M012 | BPA2 portal auth bypass / IDOR | `bpa2.marriott.com` | CPWS allowlist routing: only `/Login/Login.css` (7835B) accessible; all other paths → 403/5125B "not configured." Login SQLi test incomplete (cookie-check redirect loop blocked B3-B5). | **PARKED — CPWS locked, minimal accessible surface** | LOW |
 | M013 | CT wildcard enum (apigwc, apigatewayc, uat) | `*.apigwc`, `*.apigatewayc`, `*uat.marriott.com` | crt.sh 502 in S16, DNS brute 0 results | ACTIVE — retry CT enum; expand prefix list | HIGH |
 | **M020** | **SSO portal live — auth-apc.marriott.com /login** | `auth-apc.marriott.com` | **200/137KB** on `/login`; all other paths 000. Next.js + PingFederate confirmed (`PR_INFORMATION` header). 27 JS chunks; `graphql-chunk-793e1a2cf24c51e7.js` + `nodeForgeVendor` not yet mined. | **ACTIVE — graphql-chunk mining + OIDC probe + redirect_uri bypass** | **HIGH** |
-| **M021** | **efast SAML ACS probe — `/home` in-scope, HTTP-Artifact binding** | `efast.marriott.com` | ACS URL decoded: `https://efast.marriott.com/home`. ProtocolBinding=HTTP-Artifact. SP signs with RSA-SHA1 (deprecated). Cert: Claresco.eFASTTProd.SSO.marriott.com (MarriottSubCA2). Bundles downloaded on Pi. | **ACTIVE — probe `/home` for unsigned SAMLResponse POST acceptance (Session 19)** | **HIGH** |
+| **M022** | **Phoenix GraphQL API IDOR — 67 operations, endpoint unknown** | `*gateway-apc.marriott.com` (likely) | 67 `phoenixAccount*` GraphQL operations mined from auth-apc graphql-chunk (330KB). LookupCustomerProfiles, GetPersonalInformation, GetWalletPaymentInfo, GetOrderDetailsByOrderId. No endpoint URL in chunk. Mutations require `revisionToken`. | **ACTIVE — find GraphQL endpoint (mine remaining chunks + probe gateway-apc) → test unauthenticated access + customerId IDOR** | **CRITICAL** |
+| ~~M021~~ | ~~efast SAML ACS probe — SP validates correctly~~ | `efast.marriott.com` | D3: POST unsigned SAMLResponse → HTTP 400 + Claresco GenericError.ctp. D4: Wrong-issuer POST → HTTP 400. Path disclosure: `/usr/local/webapps/efast/java/templates/Claresco/GenericError.ctp` (informational). | **CLOSED — SP correctly validates signature + issuer. No auth bypass. Path disclosure informational only.** | — |
+| **M023** | **UAT hosts — MI Commission Management Tool** | `micmt.uat.marriott.com`, `micommissionmanagementtool.uat.marriott.com` | wayback CDX confirmed both hosts + www-prefixed variants. In-scope via `*uat.marriott.com`. Not yet probed. | **ACTIVE — fingerprint UAT env, probe for actuator/swagger/debug endpoints (Session 20 Phase H)** | **HIGH** |
 | M014 | AirWatch MDM console | `mdmconsole.marriott.com` (via device.marriott.com redirect) | **SCOPE GAP** | BLOCKED — need scope confirmation | — |
 | **M018** | **Auth Bypass + Path Disclosure on /ajax.php (Franchise Portal)** | `marriottfranchisetransactions.marriott.com/ajax.php` | `module=user&function=list` → 431B PHP Fatal Error w/ MysqliDb stack trace | **SUBMITTED — HackerOne #3816825. Medium (6.1). 2026-06-22.** | **MEDIUM** |
 | M015 | Partner privileges IDOR | `mipartnerprivileges.marriott.com` | 403 | PENDING — try with auth | MEDIUM |
