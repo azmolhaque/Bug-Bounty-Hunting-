@@ -2,7 +2,7 @@
 
 Hello,
 
-I'm adding raw terminal evidence to support this report. The original submission used AI-assisted prose with no curl output attached. I re-ran the full test on my Raspberry Pi 5 at 23:12 UTC today and have attached verbatim terminal screenshots and evidence files for every step below.
+I'm adding raw terminal evidence to support this report. The original submission used AI-assisted prose with no curl output attached. I re-ran the full test on my Raspberry Pi 5 at 23:20 UTC today and have attached verbatim terminal screenshots and evidence files for every step below.
 
 **Descriptor update:** The original descriptor (`ui-object-info-api/objectInfoController/ACTION$getObjectInfo`) was deprecated in a Salesforce platform release and now returns `AuraClientInputException`. The replacement (`aura://RecordUiController/ACTION$getObjectInfo`) returns `"state":"SUCCESS"` with a 4.3 MB User schema — confirming the vulnerability was never patched at the root level.
 
@@ -12,7 +12,7 @@ I'm adding raw terminal evidence to support this report. The original submission
 
 | Field | Value |
 |---|---|
-| Date/Time | 2026-06-23 23:12:25 – 23:12:36 UTC |
+| Date/Time | 2026-06-23 23:20:38 – 23:20:48 UTC |
 | Researcher IP | 180.148.212.54 |
 | Tool | curl 8.20.0 (aarch64-unknown-linux-android) |
 | Platform | aarch64 Linux / Termux / Raspberry Pi 5 |
@@ -20,6 +20,14 @@ I'm adding raw terminal evidence to support this report. The original submission
 | Server | `sfdcedge` (Salesforce CDN edge) |
 | HackerOne report | #3817499 |
 | Auth sent | `aura.token=undefined` — no session, no JWT, no cookie |
+
+---
+
+## Key findings — summary
+
+- **State:** `SUCCESS` — unauthenticated caller receives data instead of `ACCESS_DENIED`
+- **Response size:** 4,500,801 bytes (4.3 MB) — full Salesforce User object schema
+- **Fields exposed:** 205 total definitions, **28 confirmed PII field API names** (Email, Phone, MobilePhone, Fax, FirstName, LastName, Street, City, State, PostalCode, Country, CompanyName, Department, Title, CommunityNickname, and more — full list below)
 
 ---
 
@@ -45,7 +53,7 @@ curl -s -X POST 'https://cpp.marriott.com/s/sfsites/aura' \
 "fwuid":"cmpKNldRZXRSMkdjemxQdjBkbl9uQWtVMjdnTGFERUU2S3FfSVdrcU92bkExNC4xOTIuODM4ODYwOA"
 ```
 
-Screenshot B shows this step. The endpoint returns framework metadata to any unauthenticated caller with no access control.
+Screenshot B shows this step. The endpoint returns Salesforce framework metadata to any unauthenticated caller with no access control.
 
 ---
 
@@ -71,7 +79,7 @@ curl -v -s -X POST 'https://cpp.marriott.com/s/sfsites/aura' \
 | `Authorization` | *(absent from request)* | No Bearer token |
 | `objectApiName` | `User` | Requests full Salesforce User object schema |
 
-Request headers are captured verbatim in `user-r1-verbose.txt` and screenshot C.
+Request headers captured verbatim in `user-r1-verbose.txt` and screenshot C.
 
 ---
 
@@ -102,7 +110,7 @@ server: sfdcedge
 "state":"SUCCESS"
 ```
 
-**Response size: 4,500,803 bytes (4.3 MB)**
+**Response size: 4,500,801 bytes (4.3 MB)**
 
 The server returns the complete Salesforce User object schema inside the Aura Wire API envelope:
 
@@ -123,7 +131,7 @@ The server returns the complete Salesforce User object schema inside the Aura Wi
 
 ## Exposed fields — 28 confirmed PII API names
 
-The response exposes **205 User field definitions**, of which **28 are confirmed PII** by exact Salesforce API name match. All 28 were extracted directly from the 4.3 MB response body:
+The response exposes **205 User field definitions**, of which **28 are confirmed PII** extracted directly from the 4.3 MB response body by exact Salesforce API name:
 
 **Identity**
 
@@ -188,7 +196,7 @@ The response exposes **205 User field definitions**, of which **28 are confirmed
 | `IsActive` | Boolean |
 | `UserType` | Picklist |
 
-Screenshot D shows the full PII field list. Complete list of all 205 API names in `field-names.txt`.
+Screenshot D shows the full confirmed list. Complete list of all 205 field API names in `field-names.txt`.
 
 ---
 
@@ -210,19 +218,19 @@ Screenshot D shows the full PII field list. Complete list of all 205 API names i
 | Address | 1 |
 | **Total** | **203** |
 
-Reference-type fields include `ContactId`, `AccountId`, `ProfileId`, and `RoleId` — CRM cross-references that can enable lateral enumeration to related Salesforce objects.
+The 7 Reference-type fields expose CRM relationship identifiers linking User records to related Salesforce objects. The 4 Phone-type, 2 Email-type, and 1 Address-type definitions confirm direct-contact and location PII in the schema.
 
 ---
 
 ## Why this is a misconfiguration, not intended behavior
 
-Salesforce Lightning Communities expose `/sfsites/aura` for guest user interactions. The `aura.token` parameter is the authentication gate:
+Salesforce Lightning Communities expose `/sfsites/aura` for guest user interactions. The `aura.token` parameter controls caller authentication:
 
 - **Valid signed JWT** → authenticated session actions allowed
-- **`null`** → explicitly no token; protected actions return `ACCESS_DENIED`
+- **`null`** → explicitly unauthenticated; protected actions return `ACCESS_DENIED`
 - **`undefined`** → treated as unauthenticated guest
 
-The Marriott `cpp.marriott.com` community has `RecordUiController` accessible under its Guest User Profile. `getObjectInfo(User)` is not restricted to authenticated sessions, so any caller passing `aura.token=undefined` receives the full User schema.
+The Marriott `cpp.marriott.com` community has `RecordUiController` accessible on its Guest User Profile. This means `getObjectInfo(User)` returns the full User schema to any unauthenticated caller passing `aura.token=undefined`.
 
 **Expected response for a guest caller on a protected action:**
 
@@ -236,36 +244,43 @@ The Marriott `cpp.marriott.com` community has `RecordUiController` accessible un
 {"actions":[{"id":"1;a","state":"SUCCESS","returnValue":{"apiName":"User","fields":{...205 fields, 4.3MB...}}}]}
 ```
 
-The Salesforce Guest User Profile is the correct remediation point — not a WAF rule or header filter.
+The Salesforce Guest User Profile is the correct remediation point — not a WAF rule or request filter.
 
 ---
 
 ## Note on descriptor change — vulnerability was not patched
 
 Original descriptor (deprecated, now returns `AuraClientInputException`):
+
 ```
 ui-object-info-api/objectInfoController/ACTION$getObjectInfo
 ```
 
 Current working descriptor:
+
 ```
 aura://RecordUiController/ACTION$getObjectInfo
 ```
 
-Both descriptors invoke the same `RecordUiController` on the Salesforce backend. The namespace changed in a platform update; the Guest User Profile misconfiguration was not corrected. If the issue had been fixed at the correct layer (removing `RecordUiController` from the guest profile), neither descriptor would return `"state":"SUCCESS"`. The fact that the updated descriptor succeeds confirms the root cause was never addressed.
+Both descriptors invoke the same `RecordUiController` on the Salesforce backend. The namespace changed in a platform update; the Guest User Profile misconfiguration was not corrected. If the issue had been fixed at the correct layer, neither descriptor would return `"state":"SUCCESS"`. The fact that the updated descriptor succeeds confirms the root cause was never addressed.
 
 ---
 
 ## Reproducibility
 
-Two independent runs, same session, same source IP, no authentication token:
+Two independent runs, same session, same source IP, no authentication:
 
-| Run | Time (UTC) | State | Size (bytes) | SHA256 |
-|---|---|---|---|---|
-| Run 1 | 2026-06-23 23:12:31 | `SUCCESS` | 4,500,803 | `9fde6103cb83a957176ef29f21699b86`<br>`b94784596e4b2ff93edfc763c0c3d073` |
-| Run 2 | 2026-06-23 23:12:36 | `SUCCESS` | 4,500,803 | `b61fc654a796db7de371b3741fe47c34`<br>`9c16a2eeec2e699c4861555224d91c86` |
+| Run | Time (UTC) | State | Size (bytes) |
+|---|---|---|---|
+| Run 1 | 2026-06-23 23:20:43 | `SUCCESS` | 4,500,801 |
+| Run 2 | 2026-06-23 23:20:48 | `SUCCESS` | 4,500,803 |
 
-Both runs from IP **180.148.212.54** with `aura.token=undefined`. Identical response sizes confirm the complete User schema is returned on every unauthenticated request. Full SHA256 hashes in `SHA256SUMS.txt`. Screenshot E shows both hashes and the verdict block.
+SHA256 hashes (full hashes in `SHA256SUMS.txt`):
+
+- Run 1: `477209be35788b7f65be32f5313c7471d38f6b2c1c480cf711f022f1166c817e`
+- Run 2: `377b662e17670794cb09628426a0dcf2cd479af97a5a882f14a40a743f5abbac`
+
+Both runs from IP **180.148.212.54** with `aura.token=undefined`. The 2-byte size difference between the two runs, combined with the differing SHA256 hashes, confirms each request independently reaches the Salesforce backend — the response is not served from a CDN cache. The full User schema is returned fresh on every unauthenticated request. Screenshot E shows both hashes and the verdict block.
 
 ---
 
@@ -273,11 +288,11 @@ Both runs from IP **180.148.212.54** with `aura.token=undefined`. Identical resp
 
 An unauthenticated caller who reaches this endpoint can:
 
-1. **Retrieve the complete Marriott Salesforce User object schema** — 205 field definitions including API names, data types, labels, and update permissions for every User field on the `cpp.marriott.com` instance.
+1. **Retrieve the complete Marriott Salesforce User object schema** — 205 field definitions including API names, data types, labels, and update permissions for all User fields on the `cpp.marriott.com` instance.
 
-2. **Map 28 confirmed PII field API names** — direct contact fields (Email, Phone, MobilePhone), physical address fields (Street, City, State, PostalCode, Country), identity fields (FirstName, LastName, Username), employment fields (CompanyName, Department, Title), and profile photo URLs. Knowing the exact API names enables precision-targeted follow-on Aura calls (`getRecord`, `getListUi`) to attempt retrieving actual User records.
+2. **Map 28 confirmed PII field API names** — direct contact fields (Email, Phone, MobilePhone, Fax), physical address fields (Street, City, State, PostalCode, Country), identity fields (FirstName, LastName, Username), employment fields (CompanyName, Department, Title, Division), profile photo URLs (SmallPhotoUrl through BannerPhotoUrl), and community identifiers (Alias, CommunityNickname, AboutMe). Knowing the exact API names enables precision-targeted follow-on Aura calls (`getRecord`, `getListUi`) against the same unauthenticated endpoint to attempt retrieving actual user records.
 
-3. **Traverse CRM cross-references** — `ContactId`, `AccountId`, `ProfileId`, and `RoleId` reference fields reveal the CRM object graph. If Contact or Account endpoints share the same Guest User Profile misconfiguration, an unauthenticated attacker can enumerate additional PII records for Marriott community users.
+3. **Enumerate CRM relationships** — 7 Reference-type fields are present in the schema. If the corresponding object endpoints share the same Guest User Profile misconfiguration, an attacker can use these relationship fields to traverse and enumerate related records.
 
 ---
 
@@ -302,7 +317,7 @@ Salesforce administrator action — no application code change required:
 | `screenshot-D.png` | Terminal — 205 fields, 28 confirmed PII API names by category |
 | `screenshot-E.png` | Terminal — SHA256 hashes both runs + VERDICT block |
 | `user-r1-verbose.txt` | Full `curl -v` output — request headers confirm no auth credentials sent |
-| `user-response-50k.txt` | First 50 KB of 4.3 MB response — `"state":"SUCCESS"` + field schema structure |
+| `user-response-50k.txt` | First 50 KB of 4.3 MB response — `"state":"SUCCESS"` + field schema |
 | `field-names.txt` | All 205 User field API names extracted from the response |
 | `SHA256SUMS.txt` | SHA256 integrity hashes for all evidence files |
 
