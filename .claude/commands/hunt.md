@@ -103,9 +103,23 @@ For each PURSUING candidate:
    - OOB DNS/HTTP for blind SSRF
    - No real user data, no destructive operations
 
-5. Write to `results/<target>/04-verified/<id>/`:
+5. **Collect evidence (mandatory — CLAUDE.md §9 #8):**
+   Before writing the verified finding, capture ALL of the following:
+   - `date -u` + `curl -s ifconfig.me` → researcher metadata
+   - Verbatim reproduction command (curl or numbered steps, copy-pasteable)
+   - Verbatim response body (paste actual bytes, not a summary)
+   - HTTP status + response size (`wc -c`)
+   - Before/after differential (what a secure endpoint returns vs. what you got)
+   - Terminal screenshot covering the key request/response
+   - `sha256sum` of key evidence files → `SHA256SUMS.txt`
+
+   A finding without all 7 items is a **lead**, not a verified finding.
+   See `results/<target>/REPORTING-STANDARDS.md` for the per-program template.
+
+6. Write to `results/<target>/04-verified/<id>/`:
    - `verification.txt` with VERDICT: CONFIRMED | NOT_CONFIRMED
    - `poc.txt` with minimal request/response
+   - `evidence/` folder with all 7 checklist items
    - `chain-queue.txt` (auto-populated in step 7)
 
 ## Step 7 — Chain Elevation

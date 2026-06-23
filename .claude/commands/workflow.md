@@ -17,6 +17,26 @@ hunt targeting `$ARGUMENTS`. Drive the pipeline end-to-end.
    `.orchestrator-state.json` exist, **resume** from last completed phase.
 4. Check Pi resources: `./scripts/pi-resource-guard.sh --report`.
 
+## Step 0 — Pre-Flight State Check (run before every session)
+
+Before writing a single probe, audit open work across both programs:
+
+```bash
+# Google VRP — submitted reports awaiting triage
+grep -r "SUBMITTED\|Status: New\|awaiting triage" results/*/HUNT-LOG.md 2>/dev/null
+
+# HackerOne (Marriott) — open reports, appeals, supplement comments
+grep -r "OPEN\|APPEAL\|supplement\|#38" results/marriott/HUNT-LOG.md 2>/dev/null
+
+# Active chains — STILL LIVE items that need a trial account or specific setup
+grep -r "STILL LIVE\|needs trial\|PURSUE" results/*/HUNT-LOG.md 2>/dev/null | head -20
+```
+
+Triage the pre-flight output before picking this session's target:
+- Any open report needing a response or additional evidence → handle FIRST
+- Any STILL LIVE chain with its prerequisite now met → pick THAT chain
+- Only then pick a fresh target from the priority list
+
 ## Deployment Command (what to run on the Pi)
 
 ```bash
@@ -128,11 +148,30 @@ Writes `05-triage/triage.md`.
 
 ### Phase 6 — Reporting → `report-writer`
 
+**Evidence gate (mandatory — CLAUDE.md §9 #8):**
+Before calling `report-writer`, confirm all 7 evidence items exist in `04-verified/<id>/`:
+
+| # | Item | Required |
+|---|------|---------|
+| 1 | Researcher metadata (date, UTC time, external IP, tool version) | ✓ |
+| 2 | Verbatim copy-pasteable reproduction command | ✓ |
+| 3 | Verbatim HTTP response body (actual bytes, not described) | ✓ |
+| 4 | HTTP status code + response size | ✓ |
+| 5 | Before/after differential (expected vs. actual) | ✓ |
+| 6 | Terminal screenshot or equivalent visual | ✓ |
+| 7 | SHA256 hash of key evidence files | ✓ |
+
+If ANY item is missing: go back to Phase 4 and collect it. Do not write the report without it.
+
 For each report-ready finding, delegate to **report-writer** to produce a
 triager-grade writeup from `templates/report.md` into `findings/`.
 
+See `results/<target>/REPORTING-STANDARDS.md` for the per-program template (HackerOne
+vs. Google VRP have different submission fields and attachment requirements).
+
 **Submit immediately** when report passes all gates — first valid report wins.
-Target: bughunters.google.com → search "wiz.io" → TIER1.
+- Google VRP: bughunters.google.com → Find your product → Submit
+- Marriott HackerOne: hackerone.com/marriott → New Report
 
 ## Intelligence Loop (after every phase)
 

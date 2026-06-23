@@ -243,8 +243,27 @@ already identified a confirmed chain link to Medium+ impact. Log a one-line note
 - Every claim in the impact section must be backed by a specific artifact
   (request/response, screenshot, DNS/HTTP interaction log).
 
+**Evidence collection (mandatory — CLAUDE.md §9 #8):**
+
+A finding cannot be submitted without ALL of the following captured during Phase 4:
+
+1. Researcher metadata: date, exact time (UTC), external IP (`curl ifconfig.me`), tool + version
+2. Verbatim copy-pasteable reproduction command (curl, script, or numbered UI steps)
+3. Verbatim HTTP response body (pasted, not described — the actual bytes)
+4. HTTP status code + response size from the actual test
+5. Before/after differential (expected secure behavior vs. observed insecure behavior)
+6. At least one screenshot or terminal capture showing the finding
+7. SHA256 hash of key evidence files for integrity
+
+For repeated-descriptor / deprecated-endpoint bugs: confirm the vulnerability is in
+the *logic* (access control, configuration), not just the API path. A namespace change
+(`ui-object-info-api/` → `aura://RecordUiController/`) that still succeeds proves the
+root cause was never patched — document the before/after descriptor comparison explicitly.
+
+See `results/<target>/REPORTING-STANDARDS.md` for the per-program evidence template.
+
 **Output:** `results/<target>/04-verified/` → one folder per confirmed bug with
-PoC, sanitized evidence, CVSS vector, and impact note.
+PoC, sanitized evidence, CVSS vector, impact note, and evidence checklist (all 7 items).
 
 ---
 
@@ -296,6 +315,13 @@ one clearly demonstrates impact.
 ## Phase 6 — Reporting
 
 **Goal:** A report that a triager rewards in under 5 minutes.
+
+**Evidence gate (run before writing the report):**
+
+Verify every item in the Phase 4 evidence checklist is captured. A report without
+verbatim curl output, a reproduction command a triager can copy-paste, and at least
+one terminal screenshot will be flagged as AI-generated prose and closed as Spam.
+This is not optional — it is the minimum bar since the M018 Spam closure (2026-06-23).
 
 **Anatomy of a winning report:**
 
