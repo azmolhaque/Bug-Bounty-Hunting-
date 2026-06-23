@@ -119,6 +119,9 @@ grep '^< ' "$EDIR/bypass-verbose-r1.txt" \
   | sed 's/^< //' \
   | grep -iE '^(HTTP|content-length|content-type|server)' \
   | sed 's/^/    /'
+printf '    Response size : %d bytes (%s MB)\n' "$SIZE_R1" "$SIZE_MB"
+printf '    (HTTP/2 omits content-length header; size\n'
+printf '     confirmed from saved response body)\n'
 DLN
 } | tee "$EDIR/section-B.txt"
 PAUSE "B/4 (request headers -- no auth)"
@@ -135,11 +138,13 @@ printf '  Fields : %d User object definitions\n' "$FIELDS"
 printf '\n  Run 2: %s\n' "$TS3"
 printf '  State  : %s\n' "$STATE_R2"
 printf '  Size   : %d bytes\n' "$SIZE_R2"
-printf '\n  Sample sensitive fields in response:\n'
+printf '\n  High-value PII fields confirmed in response:\n'
 grep -oP '"label":"[^"]+' "$EDIR/bypass-body-r1.txt" \
   | sed 's/"label":"//' | sort -u \
-  | grep -iE '(address|city|country|company|alias|nickname|photo|phone|email|mobile|name|about)' \
+  | grep -ivE '^(Dis[a-zA-Z]|Disable|Chatter|Notification|.*Frequency|.*Highlights)' \
+  | grep -iE '^(about me|address|alias|city|company|country|email$|email address|fax|first name|last name|mobile|name$|nickname|phone|photo|url.*photo|zip|postal|state$|username|birth)' \
   | head -15 | sed 's/^/    /'
+printf '\n  All 354 field names saved to bypass-body-r1.txt\n'
 DLN
 } | tee "$EDIR/section-C.txt"
 PAUSE "C/4 (state:SUCCESS + field count)"
