@@ -1,5 +1,5 @@
 # Next Hunt Session — Priority Queue
-**Updated:** 2026-06-23
+**Updated:** 2026-06-24
 **Programs:** Google VRP (bughunters.google.com) + Marriott (HackerOne)
 
 ---
@@ -11,7 +11,7 @@
 | M002 #3817499 | Marriott HackerOne | OPEN | Post evidence supplement comment + 9 attachments (DONE — ready to post) |
 | M018 #3816825 | Marriott HackerOne | CLOSED/SPAM | Post appeal comment + evidence attachments |
 | VT F001 #523823039 | Google VRP | Submitted/New | Monitor — no action until triage responds |
-| Wiz F001 #524181553 | Google VRP | Submitted/New | Monitor — if closed as Low, escalate with CSP/OAuth chain evidence |
+| Wiz F001 #524181553 | Google VRP | **TRIAGING — P2** | Priority upgraded P4→P2 (2026-06-24). Component routed to Wiz product security team (3 hops). DO NOT comment — wait for triager response. |
 | AppSheet F003 | Google VRP | Submitted | Monitor |
 
 ---

@@ -1,11 +1,11 @@
 # Hunt Log — wiz.io (Google VRP TIER1)
-Started: 2026-06-11 | Last updated: 2026-06-19
+Started: 2026-06-11 | Last updated: 2026-06-24
 
-## CURRENT STATUS (2026-06-19)
+## CURRENT STATUS (2026-06-24)
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ **SUBMITTED** — Issue #524181553 — Status: New (P4/S4 auto-triage, awaiting human review) |
+| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ **TRIAGING** — Issue #524181553 — **Priority P4→P2 (2026-06-24)**; Component routed to Wiz product security (3 hops: 310426→310543→1609699→1610896). Assignee removed = team queue, not rejected. DO NOT add comments. |
 | 2 | Chain 1 (F001 → CSP bypass) | ❌ CLOSED — no win-test in script-src on app.wiz.io or www.wiz.io |
 | 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first |
 | 4 | Chain 11 (AI Remediation cross-tenant PR injection) | ❌ DEAD — `isAIRemediationRecommendationEnabled: False` + `WIZ_SYSTEM_OPEN_REMEDIATION_PULL_REQUEST` in disabledWorkflowIntegrationActions (LD flags confirmed 2026-06-19) |
@@ -19,8 +19,9 @@ Started: 2026-06-11 | Last updated: 2026-06-19
 | 12 | LaunchDarkly flag enumeration | ✅ DONE — 300+ flags extracted; Chain 11/14 killed; forensics/webhook chains confirmed live |
 | 13 | S3 wizio-public CloudFormation IAM | ✅ DONE — bucket listing denied; CFN permissions scoped with conditions; not reportable |
 
-**SUBMITTED 2026-06-15:** Issue **#524181553** — Wiz.io subdomain takeover; Status: New; awaiting human triage.
-**NEXT ACTION:** Monitor Issue #524181553 for triage decision. If confirmed valid: watch for P1/S1 upgrade (subdomain takeover with proven cookie theft usually lands High in VRP). If closed as informational/WAI: investigate whether Wiz has since deleted the CNAME (takeover window may have been patched before triage).
+**SUBMITTED 2026-06-15:** Issue **#524181553** — Wiz.io subdomain takeover.
+**TRIAGE UPDATE 2026-06-24:** Priority upgraded P4→P2. Component routing 310426→1609699→1610896 = Wiz product security team now holds the issue. Severity S4 is auto-assigned at intake; VRP panel sets reward independently of S-value.
+**NEXT ACTION:** Monitor for triager comment (expected within days at P2). Do NOT add comments or follow up. If they ask for clarification → respond same day with the pre-collected evidence (CNAME dig, DEPLOYMENT_NOT_FOUND, cookie domain proof from extension source).
 
 ---
 
