@@ -138,47 +138,59 @@ sleep 1
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
 echo "================================================================"
-echo "PHASE B — Unauthenticated /api/getNextProps probe"
+echo "PHASE B — /api/v1/graph/query probe (confirmed accessible, returns 403)"
 echo "================================================================"
+# NOTE: /api/getNextProps returns 000 (firewalled externally).
+# /api/v1/graph/query returns 403 (auth-gated but publicly reachable) — this is the target.
+# APOLLOGRAPHQL_PUBLIC_HIGHER_ENV_PATH = /mi/query is also tested.
 
-echo "--- B1: GET /api/getNextProps (no auth) ---"
+GQL_PATH="/api/v1/graph/query"
+
+echo "--- B1: GET /api/v1/graph/query (no auth) — confirm 403 ---"
+touch "$OUTDIR/b1-headers.txt" "$OUTDIR/b1-body.txt"
 curl -sv --max-time 15 \
   -A "$UA" \
   -D "$OUTDIR/b1-headers.txt" \
-  "${BASE}/api/getNextProps" \
-  -o "$OUTDIR/b1-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver|< [Ww]ww-[Aa]uth|< [Ll]ocation" | head -8 || true
+  "${BASE}${GQL_PATH}" \
+  -o "$OUTDIR/b1-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver|< [Ww]ww-[Aa]uth|< [Ll]ocation|< [Xx]-" | head -10 || true
 B1_CODE=$(grep -m1 "^HTTP" "$OUTDIR/b1-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
 B1_SIZE=$(wc -c < "$OUTDIR/b1-body.txt" 2>/dev/null || echo 0)
-echo "B1: GET /api/getNextProps (no auth): $B1_CODE (${B1_SIZE}B)"
+echo "B1: GET ${GQL_PATH} (no auth): $B1_CODE (${B1_SIZE}B)"
 head -c 300 "$OUTDIR/b1-body.txt" 2>/dev/null || true
 sleep 2
 
 echo ""
-echo "--- B2: POST /api/getNextProps — GraphQL __typename (no auth) ---"
+echo "--- B2: POST /api/v1/graph/query — __typename (no auth) ---"
+touch "$OUTDIR/b2-headers.txt" "$OUTDIR/b2-body.txt"
 curl -sv --max-time 15 \
   -A "$UA" \
   -H "Content-Type: application/json" \
   -H "Origin: ${BASE}" \
+  -H "x-application-name: account" \
+  -H "x-client-name: phoenix_account" \
+  -H "x-client-version: v1" \
   -X POST \
   -d '{"query":"{__typename}"}' \
   -D "$OUTDIR/b2-headers.txt" \
-  "${BASE}/api/getNextProps" \
-  -o "$OUTDIR/b2-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver" | head -5 || true
+  "${BASE}${GQL_PATH}" \
+  -o "$OUTDIR/b2-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver|< [Ww]ww-[Aa]uth" | head -8 || true
 B2_CODE=$(grep -m1 "^HTTP" "$OUTDIR/b2-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
 B2_SIZE=$(wc -c < "$OUTDIR/b2-body.txt" 2>/dev/null || echo 0)
-echo "B2: POST GraphQL __typename (no auth): $B2_CODE (${B2_SIZE}B)"
-head -c 300 "$OUTDIR/b2-body.txt" 2>/dev/null || true
+echo "B2: POST __typename (no auth): $B2_CODE (${B2_SIZE}B)"
+head -c 400 "$OUTDIR/b2-body.txt" 2>/dev/null || true
 sleep 2
 
 echo ""
-echo "--- B3: POST /api/getNextProps — introspection (no auth) ---"
+echo "--- B3: POST /api/v1/graph/query — introspection (no auth) ---"
+touch "$OUTDIR/b3-headers.txt" "$OUTDIR/b3-body.txt"
 curl -s --max-time 15 \
   -A "$UA" \
   -H "Content-Type: application/json" \
+  -H "x-application-name: account" \
   -X POST \
   -d '{"query":"{ __schema { queryType { name } types { name kind } } }"}' \
   -D "$OUTDIR/b3-headers.txt" \
-  "${BASE}/api/getNextProps" \
+  "${BASE}${GQL_PATH}" \
   -o "$OUTDIR/b3-body.txt" 2>/dev/null || true
 B3_CODE=$(grep -m1 "^HTTP" "$OUTDIR/b3-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
 B3_SIZE=$(wc -c < "$OUTDIR/b3-body.txt" 2>/dev/null || echo 0)
@@ -187,11 +199,23 @@ head -c 400 "$OUTDIR/b3-body.txt" 2>/dev/null || true
 sleep 2
 
 echo ""
-echo "--- B4: GET /api/getNextProps/login (Next.js route pattern) ---"
+echo "--- B4: Alternate GraphQL paths probe ---"
 for path in \
-  "/api/getNextProps/login" \
-  "/api/getNextProps?page=/login" \
-  "/api/__nextjs_launch-editor" \
+  "/mi/query" \
+  "/query" \
+  "/api/query" \
+  "/api/v1/graph/query" \
+  "/v1/graph/query" \
+  "/mi/account/api/v1/graph/query"
+do
+  touch "$OUTDIR/b4-$(echo "$path" | tr '/' '-').txt"
+  resp=$(curl -s -o /dev/null -w "%{http_code}|%{size_download}" --max-time 8 \
+    -A "$UA" "${BASE}${path}" 2>/dev/null || echo "000|0")
+  code=$(echo "$resp" | cut -d'|' -f1)
+  size=$(echo "$resp" | cut -d'|' -f2)
+  echo "B4 ${path}: ${code}/${size}B"
+  sleep 1
+done
   "/api/auth" \
   "/api/v1/graph/query"
 do
@@ -223,31 +247,42 @@ if [ -z "$BONVOY_COOKIE" ]; then
   echo "      -d 'username=<email>&password=<pass>' \\"
   echo "      '${BASE}/api/auth/login' 2>&1 | head -30"
 else
-  echo "--- C1: GET /api/getNextProps with session ---"
+  echo "--- C1: POST /api/v1/graph/query — __typename (auth) ---"
+  touch "$OUTDIR/c1-headers.txt" "$OUTDIR/c1-body.txt"
   curl -sv --max-time 15 \
     -A "$UA" \
+    -H "Content-Type: application/json" \
     -H "Cookie: ${BONVOY_COOKIE}" \
     -H "Origin: ${BASE}" \
+    -H "x-application-name: account" \
+    -H "x-client-name: phoenix_account" \
+    -H "x-client-version: v1" \
+    -X POST \
+    -d '{"query":"{__typename}"}' \
     -D "$OUTDIR/c1-headers.txt" \
-    "${BASE}/api/getNextProps" \
-    -o "$OUTDIR/c1-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver|< [Ss]et-[Cc]ookie" | head -8 || true
+    "${BASE}${GQL_PATH}" \
+    -o "$OUTDIR/c1-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver|< [Ss]et-[Cc]ookie|< [Ww]ww-[Aa]uth" | head -8 || true
   C1_CODE=$(grep -m1 "^HTTP" "$OUTDIR/c1-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
   C1_SIZE=$(wc -c < "$OUTDIR/c1-body.txt" 2>/dev/null || echo 0)
-  echo "C1: GET /api/getNextProps (auth): $C1_CODE (${C1_SIZE}B)"
+  echo "C1: POST __typename (auth): $C1_CODE (${C1_SIZE}B)"
   head -c 400 "$OUTDIR/c1-body.txt" 2>/dev/null || true
   sleep 2
 
   echo ""
   echo "--- C2: POST phoenixAccountProfile (auth) ---"
+  touch "$OUTDIR/c2-headers.txt" "$OUTDIR/c2-body.json"
   curl -s --max-time 20 \
     -A "$UA" \
     -H "Content-Type: application/json" \
     -H "Cookie: ${BONVOY_COOKIE}" \
     -H "Origin: ${BASE}" \
+    -H "x-application-name: account" \
+    -H "x-client-name: phoenix_account" \
+    -H "x-client-version: v1" \
     -X POST \
-    -d '{"operationName":"phoenixAccountProfile","query":"query phoenixAccountProfile { me { id firstName lastName email membershipLevel } }","variables":{}}' \
+    -d '{"operationName":"phoenixAccountProfile","query":"query phoenixAccountProfile { me { id firstName lastName email membershipLevel points { total } } }","variables":{}}' \
     -D "$OUTDIR/c2-headers.txt" \
-    "${BASE}/api/getNextProps" \
+    "${BASE}${GQL_PATH}" \
     -o "$OUTDIR/c2-body.json" 2>/dev/null || true
   C2_CODE=$(grep -m1 "^HTTP" "$OUTDIR/c2-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
   C2_SIZE=$(wc -c < "$OUTDIR/c2-body.json" 2>/dev/null || echo 0)
