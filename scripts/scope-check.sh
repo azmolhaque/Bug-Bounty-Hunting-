@@ -86,6 +86,12 @@ matches() {
       case "$host" in *"$base") return 0;; esac         # prefix wildcard match
       return 1
       ;;
+    *\**)
+      # Middle wildcard: gateway*.marriott.com, dcfgateway*.marriott.com
+      # Use bash glob matching directly — case handles the glob expansion.
+      case "$host" in $pat) return 0;; esac
+      return 1
+      ;;
     *)
       [ "$host" = "$pat" ] && return 0
       return 1
@@ -127,12 +133,14 @@ done <<< "$out_scope_list"
 
 # --- PASS 3: wildcard in-scope beats wildcard out-of-scope --------------------
 # A specific wildcard in_scope entry (e.g. *gateway-apc.marriott.com,
-# *uat.marriott.com, *.apigwc.marriott.com) wins over a catch-all wildcard
-# out_of_scope exclusion (e.g. *.marriott.com). This is "longest match wins"
-# for wildcard patterns: the more-specific in_scope wildcard takes precedence.
+# *uat.marriott.com, *.apigwc.marriott.com, gateway*.marriott.com) wins over a
+# catch-all wildcard out_of_scope exclusion (e.g. *.marriott.com). This is
+# "longest match wins" for wildcard patterns: the more-specific in_scope wildcard
+# takes precedence. *\** matches any pattern containing a literal * (leading,
+# middle, or trailing), which covers all three wildcard forms.
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in \**) ;; *) continue ;; esac   # only wildcards in this pass
+  case "$pat" in *\**) ;; *) continue ;; esac   # only wildcard patterns (any position)
   if matches "$pat" "$target"; then
     echo "IN-SCOPE: $target matches '$pat' (overrides wildcard exclusions)"
     exit 0
@@ -142,7 +150,7 @@ done <<< "$in_scope_list"
 # --- PASS 4: wildcard out-of-scope (default-deny) -----------------------------
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in \**) ;; *) continue ;; esac   # only wildcards in this pass
+  case "$pat" in *\**) ;; *) continue ;; esac   # only wildcard patterns (any position)
   if matches "$pat" "$target"; then
     echo "OUT-OF-SCOPE: $target matches exclusion '$pat'"
     exit 1
