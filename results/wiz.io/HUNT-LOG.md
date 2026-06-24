@@ -20,8 +20,9 @@ Started: 2026-06-11 | Last updated: 2026-06-24
 | 13 | S3 wizio-public CloudFormation IAM | ✅ DONE — bucket listing denied; CFN permissions scoped with conditions; not reportable |
 
 **SUBMITTED 2026-06-15:** Issue **#524181553** — Wiz.io subdomain takeover.
-**TRIAGE UPDATE 2026-06-24:** Priority upgraded P4→P2. Component routing 310426→1609699→1610896 = Wiz product security team now holds the issue. Severity S4 is auto-assigned at intake; VRP panel sets reward independently of S-value.
-**NEXT ACTION:** Monitor for triager comment (expected within days at P2). Do NOT add comments or follow up. If they ask for clarification → respond same day with the pre-collected evidence (CNAME dig, DEPLOYMENT_NOT_FOUND, cookie domain proof from extension source).
+**TRIAGE UPDATE 2026-06-18:** Assigned to wo...@google.com (human pickup, 3 days after submission).
+**TRIAGE UPDATE 2026-06-24:** Priority P4→P2. Component routed to Wiz product security (1610896). Second reviewer ca...@google.com touched the issue today — two engineers have now reviewed. Status still "New" = deliberating, not rejected.
+**NEXT ACTION:** Monitor for verdict comment (expected 1–3 days). Do NOT add comments. If they ask to re-verify the CNAME is still live → respond same day with fresh `dig` output + `curl -sI` showing DEPLOYMENT_NOT_FOUND.
 
 ---
 
