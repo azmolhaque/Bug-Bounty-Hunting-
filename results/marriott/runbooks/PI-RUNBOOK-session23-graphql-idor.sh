@@ -141,10 +141,10 @@ echo "================================================================"
 echo "PHASE B — /api/v1/graph/query probe (confirmed accessible, returns 403)"
 echo "================================================================"
 # NOTE: /api/getNextProps returns 000 (firewalled externally).
-# /api/v1/graph/query returns 403 (auth-gated but publicly reachable) — this is the target.
-# APOLLOGRAPHQL_PUBLIC_HIGHER_ENV_PATH = /mi/query is also tested.
+# /api/v1/graph/query returns Akamai 403 type #18 (IP ACL block — not auth).
+# /mi/query returns 500/1115B on GET — ORIGIN REACHED. Primary target for POST.
 
-GQL_PATH="/api/v1/graph/query"
+GQL_PATH="/mi/query"
 
 echo "--- B1: GET /api/v1/graph/query (no auth) — confirm 403 ---"
 touch "$OUTDIR/b1-headers.txt" "$OUTDIR/b1-body.txt"
@@ -216,16 +216,58 @@ do
   echo "B4 ${path}: ${code}/${size}B"
   sleep 1
 done
-  "/api/auth" \
-  "/api/v1/graph/query"
-do
-  resp=$(curl -s -o /dev/null -w "%{http_code}|%{size_download}" --max-time 8 \
-    -A "$UA" "${BASE}${path}" 2>/dev/null || echo "000|0")
-  code=$(echo "$resp" | cut -d'|' -f1)
-  size=$(echo "$resp" | cut -d'|' -f2)
-  echo "B4 ${path}: ${code}/${size}B"
-  sleep 1
-done
+
+echo ""
+echo "--- B5: POST /mi/query — GraphQL probe (no auth) ---"
+# /mi/query returned 500/1115B on GET — origin reached. Now test with POST + query body.
+touch "$OUTDIR/b5-typename-headers.txt" "$OUTDIR/b5-typename-body.txt"
+curl -sv --max-time 20 \
+  -A "$UA" \
+  -H "Content-Type: application/json" \
+  -H "Origin: ${BASE}" \
+  -H "x-application-name: account" \
+  -H "x-client-name: phoenix_account" \
+  -H "x-client-version: v1" \
+  -X POST \
+  -d '{"query":"{__typename}"}' \
+  -D "$OUTDIR/b5-typename-headers.txt" \
+  "${BASE}/mi/query" \
+  -o "$OUTDIR/b5-typename-body.txt" 2>&1 | grep -E "HTTP/|< [Cc]ontent|< [Ss]erver|< [Ww]ww-[Aa]uth|< [Xx]-" | head -10 || true
+B5T_CODE=$(grep -m1 "^HTTP" "$OUTDIR/b5-typename-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
+B5T_SIZE=$(wc -c < "$OUTDIR/b5-typename-body.txt" 2>/dev/null || echo 0)
+echo "B5 POST /mi/query __typename (no auth): $B5T_CODE (${B5T_SIZE}B)"
+head -c 600 "$OUTDIR/b5-typename-body.txt" 2>/dev/null || true
+sleep 2
+
+echo ""
+echo "--- B6: POST /mi/query — introspection (no auth) ---"
+touch "$OUTDIR/b6-introspect-headers.txt" "$OUTDIR/b6-introspect-body.txt"
+curl -s --max-time 20 \
+  -A "$UA" \
+  -H "Content-Type: application/json" \
+  -H "x-application-name: account" \
+  -X POST \
+  -d '{"query":"{ __schema { queryType { name } mutationType { name } types { name kind } } }"}' \
+  -D "$OUTDIR/b6-introspect-headers.txt" \
+  "${BASE}/mi/query" \
+  -o "$OUTDIR/b6-introspect-body.txt" 2>/dev/null || true
+B6_CODE=$(grep -m1 "^HTTP" "$OUTDIR/b6-introspect-headers.txt" 2>/dev/null | tr -d '\r' || echo "000")
+B6_SIZE=$(wc -c < "$OUTDIR/b6-introspect-body.txt" 2>/dev/null || echo 0)
+echo "B6 POST /mi/query introspection (no auth): $B6_CODE (${B6_SIZE}B)"
+head -c 800 "$OUTDIR/b6-introspect-body.txt" 2>/dev/null || true
+sleep 2
+
+echo ""
+echo "--- B7: GET /mi/query — full 500 response body ---"
+touch "$OUTDIR/b7-get-body.txt"
+curl -s --max-time 15 \
+  -A "$UA" \
+  -H "Accept: application/json" \
+  "${BASE}/mi/query" \
+  -o "$OUTDIR/b7-get-body.txt" 2>/dev/null || true
+B7_SIZE=$(wc -c < "$OUTDIR/b7-get-body.txt" 2>/dev/null || echo 0)
+echo "B7 GET /mi/query full body (${B7_SIZE}B):"
+cat "$OUTDIR/b7-get-body.txt" 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
@@ -236,16 +278,14 @@ echo "================================================================"
 if [ -z "$BONVOY_COOKIE" ]; then
   echo "SKIP Phase C: BONVOY_COOKIE not set."
   echo ""
-  echo "  To test authenticated GraphQL:"
-  echo "  1. Create free Marriott Bonvoy account at marriott.com"
-  echo "  2. Log in from browser → DevTools → Application → Cookies"
-  echo "  3. Copy Cookie header value"
-  echo "  4. Re-run: BONVOY_COOKIE='...' bash $0"
+  echo "  PRIMARY GraphQL endpoint: POST ${BASE}/mi/query (returned 500 on GET = origin live)"
   echo ""
-  echo "  OR capture from curl login:"
-  echo "    curl -sv -c /tmp/bonvoy-cookies.txt \\"
-  echo "      -d 'username=<email>&password=<pass>' \\"
-  echo "      '${BASE}/api/auth/login' 2>&1 | head -30"
+  echo "  To test authenticated GraphQL:"
+  echo "  1. Sign up: https://www.marriott.com/loyalty/enrollment/enrollmentStart.mi"
+  echo "     OR: https://www.marriott.com/loyalty/enrollment/enrollmentLanding.mi"
+  echo "  2. Log in at: https://auth-apc.marriott.com/login"
+  echo "  3. Browser DevTools → Network tab → any request → copy 'Cookie:' header"
+  echo "  4. Re-run: BONVOY_COOKIE='MI_USER=...;' bash $0"
 else
   echo "--- C1: POST /api/v1/graph/query — __typename (auth) ---"
   touch "$OUTDIR/c1-headers.txt" "$OUTDIR/c1-body.txt"
