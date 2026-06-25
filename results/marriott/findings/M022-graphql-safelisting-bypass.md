@@ -52,28 +52,47 @@ The SHA-256 signature `57767ee56647...` corresponds to the full registered body 
 
 The signature check has two enforcement modes, revealed by testing:
 
-**Mode A — declaration-only check (bypassable):**
-When `$startYear` is declared but not used in the query body, the server validates
-only the variable type declarations, not the field selections. An attacker can
-select arbitrary fields while keeping the variable declaration identical to a
-registered operation.
+**Three-state differential (confirmed S23 + S24g):**
+
+| Variable declaration | Variable used in body? | Safelisting result |
+|---------------------|----------------------|-------------------|
+| `$customerId: ID!` alone (partial match — correct name, missing `$startYear`) | n/a | **FORBIDDEN** — partial-match detection fires |
+| `$customerId: ID!, $startYear: Int` (exact registered signature) | `$startYear` unused | **BYPASS** — declaration matches, body not verified |
+| `$customerId: ID!, $startYear: Int` (exact registered signature) | `$startYear` used | **FORBIDDEN** — variable usage triggers body hash check |
+| `$totally: String` (completely unrelated variable) | unused | **BYPASS** — no match found, falls through to Apollo |
+| `$notCustomerId: Boolean` on mutation | unused | **BYPASS** — mutations bypass with any unrecognized variable |
+
+**The check has two broken paths:**
+
+**Mode A — exact declaration match, body not verified:**
+Send the registered variable declaration (`$customerId: ID!, $startYear: Int`) but select
+completely different fields. Declaration matches → safelisting passes → body is not hash-checked.
+Arbitrary field selection succeeds.
 
   - ✅ Operation name must match
-  - ✅ Variable type declarations must match (`$customerId: ID!, $startYear: Int`)
+  - ✅ Variable type declarations must match exactly
   - ❌ Field selections / query body NOT checked
-  - ❌ Whether all declared variables are used NOT checked
+  - ❌ Whether declared variables are actually used NOT checked
 
-**Mode B — argument-fingerprint check (triggered when `$startYear` used):**
-When `$startYear` is actually bound in the query body (e.g., `yearly(startYear: $startYear)`),
-the server switches to a stricter check that validates the argument usage fingerprint or
-the full body hash. Queries that use `$startYear` are rejected unless they match the
-registered operation exactly.
+**Mode B — unrecognized variable declaration falls through (confirmed S24g):**
+Send completely unrelated variables (`$totally: String`, `$x: Boolean`, anything) that don't
+match any registered operation. The safelisting middleware finds no matching registry entry
+and passes the request to Apollo unchanged. This is simpler than Mode A — no need to know
+the registered variable signatures.
 
-**Net effect:** The bypass works against all fields that do NOT require `$startYear` as
-an argument — which includes the highest-value data: profile (name, birthday),
-contactInformation (email, phone), and loyaltyInformation.rewards (tier, points, lifetime
-revenue, enrollment date). The only inaccessible sub-field via bypass is
-`rewardsSummary.yearly(startYear:...)` (stay-night statistics), which is lower sensitivity.
+  - ✅ Variable MUST be declared but not used in body
+  - ❌ Variable name and type are NOT checked — any name/type bypasses
+  - ❌ Operation name is not checked against a registration when variables are unrecognized
+
+**Partial-match detection (the only working check):**
+The safelisting correctly returns FORBIDDEN only when the variable declaration is a PARTIAL
+match of a registered signature — i.e., correct variable names but missing some required
+variables. This is the narrowest possible protection.
+
+**Net effect:** Any authenticated client can bypass safelisting on ALL `phoenixAccount*`
+operations and ALL mutation operations by either (a) using the exact registered variable
+declaration with an unused extra variable, or (b) using any completely different variable
+name that doesn't match the registered signature.
 
 ---
 
@@ -351,7 +370,11 @@ Session 24b determines the exact registered variable signatures for these mutati
 
 ### LookupCustomerProfiles safelisting bypass + IDOR — ACTIVE TESTING 🔴
 
-`phoenixAccountLookupCustomerProfiles` has no registered safelisting (all variable declarations bypass — confirmed S24b). The resolver is `lookupCustomerProfiles` at Query root (not under `customer`).
+`phoenixAccountLookupCustomerProfiles` has the **same safelisting bypass vulnerability** as
+all other `phoenixAccount*` operations (confirmed S24b, S24g). The bypass works via
+Mode A or Mode B (any unused variable declaration). When ALL variables ARE used in the
+body, FORBIDDEN is returned (S24g V8) — confirming safelisting is present but bypassable.
+The resolver is `lookupCustomerProfiles` at Query root (not under `customer`).
 
 **S24c/S24d confirmed `LookupCustomerProfilesInput` schema (COMPLETE — all required fields):**
 ```
