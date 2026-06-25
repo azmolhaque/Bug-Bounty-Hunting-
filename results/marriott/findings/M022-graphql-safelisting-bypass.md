@@ -317,9 +317,104 @@ selection set + all fragments), not just the operation name and variable types.
 
 ---
 
+## Chain elevation analysis (Session 23 deep research + Session 24 testing)
+
+### Chain A: Error-based schema field enumeration (no auth needed)
+
+**Testable now — no credentials required.**
+
+The bypass (Mode A) passes the safelisting layer without ANY authentication headers.
+GraphQL validation then runs and produces a differential oracle:
+
+| Condition | GraphQL error message | Interpretation |
+|-----------|----------------------|----------------|
+| Field does NOT exist on type | `Cannot query field "X" on type "Y"` | Field absent from schema |
+| Field DOES exist, upstream rejects data | `1012100 - Credentials invalid or missing` | Field is in schema |
+| Field DOES exist, resolves directly | Data or `GRAPHQL_VALIDATION_FAILED` | Field is in schema |
+
+This oracle lets us enumerate every field on `Customer`, `CustomerProfile`,
+`ContactInformation`, `LoyaltyInformation` without introspection or authentication.
+If sensitive fields are found (e.g. `ssn`, `passportNumber`, `taxId`, `internalFlags`,
+`adminRole`), that is an independent information-disclosure finding.
+
+**Session 24 runbook:** `runbooks/PI-RUNBOOK-session24-chain-elevation.sh` Chain 1
+
+---
+
+### Chain B: GraphQL introspection bypass
+
+**Testable now — no credentials required.**
+
+If the server has introspection enabled (common in improperly hardened GraphQL gateways),
+the bypass (Mode A) may allow full schema dump via `__schema` / `__type` meta-fields.
+Introspection bypassing safelisting would immediately reveal the complete Customer type
+definition, all resolver arguments, and any internal/undocumented types.
+
+**Session 24 runbook:** Chain 2
+
+---
+
+### Chain C: Cross-operation bypass
+
+**Testable now — no credentials required for the safelisting check.**
+
+All 67 `phoenixAccount*` operations were confirmed in the JS chunk (Session 19).
+The same bypass pattern works when the variable signature matches the registered operation.
+Operations to test:
+- `phoenixAccountGetWalletPaymentInfo` — payment method data (High if bypass works)
+- `phoenixAccountGetOrdersByCustomerId` — order history
+- `phoenixAccountGetUpcomingTripsBasicInfo` — reservation/travel data
+- `phoenixAccountLookupCustomerProfiles` — potential cross-user search (Critical if returns other users)
+- Mutation operations: `UpdateCustomerConsents`, `RegisterPromotion` — write bypass (High)
+
+**Session 24 runbook:** Chain 3 and 4
+
+---
+
+### Chain D: JWT audience confusion → upstream auth bypass
+
+**Research path — confirmed attack class, application-specific testing required.**
+
+Deep research (Session 23) confirmed the JWT audience confusion attack class:
+CVE-2023-22482 (ArgoCD CVSS 9.0) demonstrates that tokens without proper `aud` validation
+can be cross-service reused. The `authStateToken` has `aud: ["marriott_mcom",
+"api.marriott.com"]` — scoped to www.marriott.com. The upstream services `upl-customer`
+and `upl-loyalty` return `1012100` when they receive this token.
+
+If `upl-customer` / `upl-loyalty` do NOT validate the `aud` claim, presenting the
+`authStateToken` via a different mechanism (e.g., `Authorization: Bearer` header instead
+of the gateway cookie relay) might bypass the audience check and return real data.
+However, this requires understanding the gateway relay mechanism — the gateway translates
+the session cookie into a bearer token before forwarding to upstreams.
+
+**Current status:** BLOCKED — auth-apc.marriott.com's gateway rejects our
+`www.marriott.com`-scoped token before it can relay to upstreams with an upstream-accepted
+credential. Unblocking requires logging in directly via auth-apc.marriott.com `/login`
+(currently blocked by Akamai geo/IP restriction for this Pi's network).
+
+---
+
+### Severity matrix
+
+| Chain | Status | Incremental CVSS | Combined Severity |
+|-------|--------|-----------------|-------------------|
+| Safelisting bypass alone (confirmed) | CONFIRMED | 4.3 Medium | 4.3 Medium |
+| + schema field enumeration | Session 24 testing | +1.5 if sensitive fields | 5.8 Medium |
+| + introspection bypass | Session 24 testing | +2.0 if __schema returned | 6.3–7.5 High |
+| + cross-op bypass (read ops) | Session 24 testing | +1.0 | 5.3–6.5 Medium |
+| + cross-op bypass (mutation ops) | Session 24 testing | +2.0 | 6.3–7.5 High |
+| + LookupCustomerProfiles cross-user | Session 24 testing | **+4.0** | **8.3–9.3 Critical** |
+| + IDOR confirmed (any cross-user read) | Blocked pending auth | +3.0 | 7.7 High |
+
+---
+
 ## References
 
 - `graphql-chunk-793e1a2cf24c51e7.js` (330,874 bytes) — extracted from
   `auth-apc.marriott.com/mi-assets/.../web-rel-26.6.1-5d80cc6-11089/_next/static/chunks/`
 - Registered signature confirmed: `57767ee56647bd91d76e2dd58a4633a42e7937145fb163a1e2e5778d799764af`
 - Session 23 test transcripts in `/tmp/s23/` on Pi (NOT committed to git — contains tokens)
+- Session 24 chain elevation transcripts in `/tmp/s24/` on Pi (NOT committed to git)
+- CVE-2023-22482 (ArgoCD JWT audience bypass, CVSS 9.0) — same attack class as upl-customer/upl-loyalty auth failure
+- Escape Technologies graphql-wordlist (GitHub) — field name corpus for schema enumeration
+- nikitastupin/clairvoyance — GraphQL schema enumeration without introspection

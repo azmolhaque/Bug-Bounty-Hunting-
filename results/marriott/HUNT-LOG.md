@@ -3,7 +3,7 @@
 **Program:** Marriott Bug Bounty (HackerOne — hackerone.com/marriott)
 **Platform:** HackerOne
 **Started:** 2026-06-21
-**Status:** SESSION 23 ACTIVE (2026-06-25). M022 SAFELISTING BYPASS CONFIRMED. IDOR authorization test pending (cookie auth). Key findings: (1) GraphQL endpoint = /mi/query/<operationName> on auth-apc.marriott.com; (2) safelisting checks variable type declaration only, not full query body — bypass works without any signature header; (3) upstream services (upl-customer, upl-loyalty) require cookie auth, not Bearer header; (4) fresh session captured from www.marriott.com (OUT OF SCOPE for testing), cookies being replayed against auth-apc.marriott.com (IN SCOPE).
+**Status:** SESSION 24 ACTIVE (2026-06-25). M022 SAFELISTING BYPASS CONFIRMED (S23). S24 chain elevation in progress: (A) error-based schema enumeration oracle (no auth); (B) introspection bypass test; (C) cross-op bypass on 67 operations; (D) LookupCustomerProfiles IDOR candidate. IDOR via auth-apc-scoped credentials blocked by Akamai geo restriction. See runbooks/PI-RUNBOOK-session24-chain-elevation.sh.
 **Scope file:** `config/marriott-scope.yaml`
 **Scope check:** `SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>`
 
