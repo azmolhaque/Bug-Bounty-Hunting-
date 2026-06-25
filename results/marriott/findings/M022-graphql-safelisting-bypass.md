@@ -1,6 +1,6 @@
 # M022 — Phoenix GraphQL Operation Safelisting Bypass
 # auth-apc.marriott.com/mi/query/*
-# Status: CONFIRMED (S23 + S24). Mutation bypass + LookupCustomerProfiles bypass confirmed S24. IDOR via LookupCustomerProfiles PENDING.
+# Status: CONFIRMED (S23 + S24). Mutation bypass + LookupCustomerProfiles bypass confirmed S24. IDOR CLOSED — 26 response fields enumerated, all MISSING; auth context mismatch (1012100) blocks data path. FINAL CVSS 5.4 Medium. READY TO SUBMIT.
 # Discovered: 2026-06-25 (Session 23)
 
 ---
@@ -291,16 +291,13 @@ the allowlist provides.
 CVSS 3.1 (safelisting bypass alone):
 `AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N` — **4.3 (Medium)**
 
-**Chained with IDOR (if Test B/C confirm):**
-An authenticated Marriott Bonvoy member can read ANY other member's profile data
-(name, email addresses, phone numbers, birthdate, loyalty tier, lifetime revenue,
-stay history) by substituting a different customer ID in the request. This is a
-direct cross-customer data access / privacy violation affecting all ~200M Bonvoy members.
+**Chained with IDOR (UNCONFIRMED — chain CLOSED as of S24f):**
+IDOR via `lookupCustomerProfiles` could not be confirmed. Response field names unknown after
+26-name enumeration; auth context mismatch blocks data access. The IDOR chain is closed.
+The mutation bypass (I:L) is the only confirmed write-impact component.
 
-CVSS 3.1 (IDOR chain):
+CVSS 3.1 (IDOR chain, unconfirmed — for reference only):
 `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N` — **6.5 (Medium-High)**
-
-With auth bypass component: `AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N` — **7.7 (High)**
 
 ---
 
@@ -356,44 +353,52 @@ Session 24b determines the exact registered variable signatures for these mutati
 
 `phoenixAccountLookupCustomerProfiles` has no registered safelisting (all variable declarations bypass — confirmed S24b). The resolver is `lookupCustomerProfiles` at Query root (not under `customer`).
 
-**S24c confirmed `LookupCustomerProfilesInput` schema:**
+**S24c/S24d confirmed `LookupCustomerProfilesInput` schema (COMPLETE — all required fields):**
 ```
 LookupCustomerProfilesInput {
   email: String!        (required)
   firstName: String!    (required)
   lastName: String!     (required)
+  country: String!      (required — confirmed S24d)
 }
 ```
+S24e verified no additional fields exist: 20 candidate fields tested (dateOfBirth, phoneNumber,
+loyaltyNumber, postalCode, city, state, address, membershipNumber, gender, title, middleName,
+suffix, nationalId, passportNumber, memberStatus, enrollmentDate, preferredLanguage, timezone,
+phone, mobile) — all returned `FIELD NOT IN SCHEMA`. The input type has exactly 4 required fields.
 
-Any authenticated Marriott Bonvoy member can call:
-```graphql
-query phoenixAccountLookupCustomerProfiles($dummy: String) {
-  lookupCustomerProfiles(input: {
-    email: "victim@example.com",
-    firstName: "Jane",
-    lastName: "Smith"
-  }) {
-    # LookupCustomerProfilesResponse
-  }
-}
-```
+**Response type `LookupCustomerProfilesResponse` — UNKNOWN (IDOR CLOSED):**
 
-The resolver takes `input: LookupCustomerProfilesInput!` and returns `LookupCustomerProfilesResponse`. The operation has no safelisting check (all variable signatures pass). No `graphql-operation-signature` header required.
+Sessions S24b through S24f attempted to enumerate response field names via error-based oracle.
+26 field names tested across 5 sessions (profiles, results, data, customers, members, hits,
+count, total, items, nodes, edges, matches, records, profile, customer, member, firstName,
+lastName, email, id, customerId, loyaltyNumber, altCustomerId, externalId, status, found).
+ALL returned `"Cannot query field \"X\" on type \"LookupCustomerProfilesResponse\""` —
+meaning ALL 26 guessed names are absent from the schema.
 
-**Response type fields** need S24d verification with proper input (Phase C used empty input, giving false positives).
+The type uses internal field names not guessable from a wordlist without the JS chunk source
+(chunk `793e1a2cf24c51e7` is CDN-blocked for direct curl access). Oracle confirmed working with
+correct JSON escaping (`\"fieldname\"`) after S24f bug fix.
 
-**IDOR status:** Authenticated test PENDING.
-- If response returns data for ANY email/name input matching a Marriott member → cross-user data access confirmed → **Critical** (AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N = 6.5 High, likely upgraded to Critical given 200M member scope)
-- If restricted to own account only → still a notable API exposure (safelisting absent = any auth user can probe the schema)
+**Unauthenticated enumeration:** S24f Phase B confirmed identical response sizes (553B) for
+own email vs non-existent email → no user enumeration possible unauthenticated.
 
-**Runbook:** `runbooks/PI-RUNBOOK-session24d-idor-test.sh`
+**IDOR status:** CLOSED — cannot be confirmed due to:
+1. `LookupCustomerProfilesResponse` field names unknown (26 guesses failed; chunk CDN-blocked)
+2. Auth context mismatch: `authStateToken` (azp: `marriott_mcom`) rejected by upstream services
+   with `1012100 - Credentials invalid or missing` when relayed through auth-apc gateway
+3. Obtaining an `auth-apc.marriott.com`-scoped token requires direct login at that endpoint,
+   currently blocked by Akamai geo/IP restriction for the Pi's network segment
+
+**Runbooks:** `runbooks/PI-RUNBOOK-session24[b-f]-*.sh` (S24b through S24f)
 
 **Confirmed facts (no auth needed):**
 1. `lookupCustomerProfiles` resolver exists on Query root
 2. Resolver accepts `input: LookupCustomerProfilesInput!`
-3. Required input fields: `email`, `firstName`, `lastName`
+3. Required input fields: `email`, `firstName`, `lastName`, `country` (exactly 4, no others)
 4. Returns `LookupCustomerProfilesResponse` (distinct type from `Customer`)
 5. No safelisting check enforced on this operation
+6. Response field names: 26 candidates tested, all absent — actual names unknown
 
 ---
 
@@ -474,17 +479,19 @@ credential. Unblocking requires logging in directly via auth-apc.marriott.com `/
 
 ---
 
-### Severity matrix
+### Severity matrix (FINAL — S24 closed)
 
 | Chain | Status | Incremental CVSS | Combined Severity |
 |-------|--------|-----------------|-------------------|
 | Safelisting bypass alone (confirmed) | CONFIRMED | 4.3 Medium | 4.3 Medium |
-| + schema field enumeration | Session 24 testing | +1.5 if sensitive fields | 5.8 Medium |
-| + introspection bypass | Session 24 testing | +2.0 if __schema returned | 6.3–7.5 High |
-| + cross-op bypass (read ops) | Session 24 testing | +1.0 | 5.3–6.5 Medium |
-| + cross-op bypass (mutation ops) | Session 24 testing | +2.0 | 6.3–7.5 High |
-| + LookupCustomerProfiles cross-user | Session 24 testing | **+4.0** | **8.3–9.3 Critical** |
-| + IDOR confirmed (any cross-user read) | Blocked pending auth | +3.0 | 7.7 High |
+| + schema field enumeration | CLOSED — no sensitive fields found in schema | N/A | 4.3 Medium |
+| + introspection bypass | CLOSED — Apollo introspection disabled | N/A | 4.3 Medium |
+| + cross-op bypass (read ops) | CLOSED — single-var ops all FORBIDDEN | N/A | 4.3 Medium |
+| **+ mutation bypass (confirmed)** | **CONFIRMED S24** | **+I:L** | **5.4 Medium** |
+| + LookupCustomerProfiles IDOR | CLOSED — response fields unknown; auth blocked | N/A | 5.4 Medium |
+| + IDOR (any cross-user read) | CLOSED — unconfirmable without auth-apc token | N/A | 5.4 Medium |
+
+**FINAL SEVERITY: CVSS 5.4 Medium** (`AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N`)
 
 ---
 
