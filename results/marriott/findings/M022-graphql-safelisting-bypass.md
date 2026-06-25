@@ -1,6 +1,6 @@
 # M022 — Phoenix GraphQL Operation Safelisting Bypass
 # auth-apc.marriott.com/mi/query/*
-# Status: CONFIRMED (unauthenticated bypass proven 2026-06-25); IDOR authorization test PENDING
+# Status: CONFIRMED (S23 + S24). Mutation bypass + LookupCustomerProfiles bypass confirmed S24. IDOR via LookupCustomerProfiles PENDING.
 # Discovered: 2026-06-25 (Session 23)
 
 ---
@@ -314,6 +314,55 @@ declarations but a different selection set produces the same match key.
 
 Fix: hash the full normalized query document (operation name + variable declarations +
 selection set + all fragments), not just the operation name and variable types.
+
+---
+
+## Session 24 chain elevation results (2026-06-25)
+
+### Schema enumeration oracle — CONFIRMED (S24)
+
+Oracle works cleanly. `"Cannot query field X"` = field absent; `GRAPHQL_VALIDATION_FAILED` (207B, `$startYear never used`) = field exists.
+
+**Customer root type fields confirmed to exist:** `id`
+**CustomerProfile fields confirmed to exist:** `name`, `localizedName`, `birthday`, `gender`, `preferredLanguage`
+**ContactInformation fields confirmed to exist:** `emails`, `phones`, `addresses`
+
+**No admin/internal fields found.** All probed sensitive fields (`ssn`, `passportNumber`, `taxId`, `adminRole`, `fraudFlags`, `internalNotes`, `passwordHash`, `linkedAccounts`) are absent from the schema. The safelisting bypass is therefore limited to standard consumer-facing PII fields.
+
+---
+
+### Introspection bypass — BLOCKED (S24)
+
+Apollo Server has introspection disabled in production. The bypass STILL passed safelisting and reached Apollo's validation layer — the error is from Apollo (`INTROSPECTION_DISABLED`), not from the safelisting FORBIDDEN check. This is additional independent evidence that the bypass routes requests past the safelisting gateway to the GraphQL engine.
+
+---
+
+### Mutation safelisting bypass — CONFIRMED (S24) 🔴
+
+Both tested mutation operations bypass safelisting with `$customerId: ID!` variable declaration + arbitrary body. Both returned `GRAPHQL_VALIDATION_FAILED`, not `FORBIDDEN`:
+
+- `phoenixAccountUpdateCustomerConsents`: **BYPASS WORKS**
+- `phoenixAccountRegisterPromotion`: **BYPASS WORKS**
+
+Write operations can invoke arbitrary field selections past the safelisting check. This is the same vulnerability class as the read bypass but adds an `I:L` component to CVSS for the mutation path.
+
+**CVSS update (mutation bypass):** `AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N` → **5.4 Medium**
+
+Session 24b determines the exact registered variable signatures for these mutations from the chunk file.
+
+---
+
+### LookupCustomerProfiles safelisting bypass — CONFIRMED (S24) 🔴
+
+`phoenixAccountLookupCustomerProfiles` returned `GRAPHQL_VALIDATION_FAILED: "$query is never used"` when sent with `$query: String` variable declaration — confirming bypass works on this cross-user search operation.
+
+This is a **CRITICAL escalation path**:
+- `LookupCustomerProfiles` is a search operation (search by name, email, or loyalty number)
+- If it returns profile data for OTHER Marriott Bonvoy members, it is a direct IDOR/cross-account data access
+- The bypass removes the safelisting protection, making the operation's schema accessible
+- Session 24b tests the full variable signature and what data is returned
+
+**Pending:** Session 24b runbook at `runbooks/PI-RUNBOOK-session24b-lookup-mutations.sh`
 
 ---
 
