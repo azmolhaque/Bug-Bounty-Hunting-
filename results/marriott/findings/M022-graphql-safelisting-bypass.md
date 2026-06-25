@@ -22,7 +22,7 @@ by any authenticated user.
 
 - Date tested: 2026-06-25
 - Testing time: ~13:30–14:30 UTC (session 23)
-- Researcher IP: [run `curl ifconfig.me` on Pi before final submission]
+- Researcher IP: 180.148.212.54 (confirmed via `curl ifconfig.me` on Pi)
 - Tool: curl 7.88.1 (Raspberry Pi 5, ARM64)
 - Test account: Marriott Bonvoy #845440472 (own test account — "True Tester")
 - Endpoint confirmed IN-SCOPE: `auth-apc.marriott.com` (scope-check.sh returns IN-SCOPE)
@@ -209,7 +209,7 @@ HTTP 400 | 207B
 
 ## Evidence checklist
 
-- [ ] 1. Researcher IP + date/time (run `curl ifconfig.me` on Pi, record timestamp — PENDING)
+- [x] 1. Researcher IP: 180.148.212.54 — date: 2026-06-25, testing time ~13:30–14:30 UTC
 - [x] 2. Verbatim curl commands — exact commands used, copy-pasteable, in Steps 1–3
 - [x] 3. Verbatim HTTP response bodies — actual bytes pasted in Steps 1–3
 - [x] 4. HTTP status code + response sizes — HTTP 400; 111B (mismatch) vs 207B (bypass)
