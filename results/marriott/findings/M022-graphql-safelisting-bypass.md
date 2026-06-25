@@ -352,17 +352,48 @@ Session 24b determines the exact registered variable signatures for these mutati
 
 ---
 
-### LookupCustomerProfiles safelisting bypass — CONFIRMED (S24) 🔴
+### LookupCustomerProfiles safelisting bypass + IDOR — ACTIVE TESTING 🔴
 
-`phoenixAccountLookupCustomerProfiles` returned `GRAPHQL_VALIDATION_FAILED: "$query is never used"` when sent with `$query: String` variable declaration — confirming bypass works on this cross-user search operation.
+`phoenixAccountLookupCustomerProfiles` has no registered safelisting (all variable declarations bypass — confirmed S24b). The resolver is `lookupCustomerProfiles` at Query root (not under `customer`).
 
-This is a **CRITICAL escalation path**:
-- `LookupCustomerProfiles` is a search operation (search by name, email, or loyalty number)
-- If it returns profile data for OTHER Marriott Bonvoy members, it is a direct IDOR/cross-account data access
-- The bypass removes the safelisting protection, making the operation's schema accessible
-- Session 24b tests the full variable signature and what data is returned
+**S24c confirmed `LookupCustomerProfilesInput` schema:**
+```
+LookupCustomerProfilesInput {
+  email: String!        (required)
+  firstName: String!    (required)
+  lastName: String!     (required)
+}
+```
 
-**Pending:** Session 24b runbook at `runbooks/PI-RUNBOOK-session24b-lookup-mutations.sh`
+Any authenticated Marriott Bonvoy member can call:
+```graphql
+query phoenixAccountLookupCustomerProfiles($dummy: String) {
+  lookupCustomerProfiles(input: {
+    email: "victim@example.com",
+    firstName: "Jane",
+    lastName: "Smith"
+  }) {
+    # LookupCustomerProfilesResponse
+  }
+}
+```
+
+The resolver takes `input: LookupCustomerProfilesInput!` and returns `LookupCustomerProfilesResponse`. The operation has no safelisting check (all variable signatures pass). No `graphql-operation-signature` header required.
+
+**Response type fields** need S24d verification with proper input (Phase C used empty input, giving false positives).
+
+**IDOR status:** Authenticated test PENDING.
+- If response returns data for ANY email/name input matching a Marriott member → cross-user data access confirmed → **Critical** (AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N = 6.5 High, likely upgraded to Critical given 200M member scope)
+- If restricted to own account only → still a notable API exposure (safelisting absent = any auth user can probe the schema)
+
+**Runbook:** `runbooks/PI-RUNBOOK-session24d-idor-test.sh`
+
+**Confirmed facts (no auth needed):**
+1. `lookupCustomerProfiles` resolver exists on Query root
+2. Resolver accepts `input: LookupCustomerProfilesInput!`
+3. Required input fields: `email`, `firstName`, `lastName`
+4. Returns `LookupCustomerProfilesResponse` (distinct type from `Customer`)
+5. No safelisting check enforced on this operation
 
 ---
 
