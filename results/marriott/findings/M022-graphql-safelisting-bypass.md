@@ -219,32 +219,62 @@ HTTP 400 | 207B
 
 ---
 
-## IDOR authorization test (PENDING cookie auth)
+## IDOR authorization test — INCONCLUSIVE (auth context mismatch)
 
-The safelisting bypass enables testing cross-customer data access. The bypass payload
-reaches the upstream resolver services (`upl-customer`, `upl-loyalty`). To test if
-server-side authorization is enforced independently:
+IDOR testing was attempted on 2026-06-25 using a fresh session captured from
+`www.marriott.com/loyalty/myAccount/default.mi` (token `iat=1782397475, exp=1782399275`,
+AltCustID `580EF43FAD482F46B04E29FE433CC4828.U1`, loyalty# 845440472).
 
-**Test A** — Baseline: own customerId with cookie session
-- payload: `customerId=580EF43FAD482F46B04E29FE433CC4828.U1`
-- expected: returns own profile data (name, email, loyalty info)
+Four customer IDs were tested against `auth-apc.marriott.com/mi/query/`:
 
-**Test B** — IDOR probe: adjacent loyalty number as customerId
-- payload: `customerId=845440471` (one less than own loyalty# 845440472)
-- expected secure: 403 / FORBIDDEN / unauthorized error
-- expected insecure (IDOR): returns another user's profile data
+| Test | customerId | Expected (IDOR exists) | Expected (secure) | Actual |
+|------|-----------|----------------------|-------------------|--------|
+| A | `580EF43FAD482F46B04E29FE433CC4828.U1` (own) | own profile data | own profile data | 1012100 UNAUTHORIZED |
+| B | `845440471` (loyalty# -1) | other user's data | FORBIDDEN | 1012100 UNAUTHORIZED |
+| C | `845440473` (loyalty# +1) | other user's data | FORBIDDEN | 1012100 UNAUTHORIZED |
+| D | `580EF43FAD482F46B04E29FE433CC4827.U1` (adjacent AltCustID) | other user's data | FORBIDDEN | 1012100 UNAUTHORIZED |
 
-**Test C** — IDOR probe: modified AltCustID
-- payload: `customerId=580EF43FAD482F46B04E29FE433CC4827.U1`
-- expected secure: 403 / unauthorized
-- expected insecure (IDOR): returns another user's data
+All four tests returned **identical** responses: HTTP 200, 1452B,
+`1012100 - Credentials invalid or missing` from both `upl-customer` and `upl-loyalty`.
 
-**Key distinction:**
-- `{"customer": null}` without an error = ambiguous (user not found vs. access denied)
-- HTTP 403 or `{"errors":[{"extensions":{"code":"FORBIDDEN"}}]}` = authorization check present
-- `{"data":{"customer":{"profile":{"name":{"givenName":"..."}}}}}` with a different person's name = IDOR confirmed
+**Root cause of auth failure:** The `authStateToken` JWT was issued with
+`azp: marriott_mcom` / `aud: ["marriott_mcom", "api.marriott.com"]` — scoped to the
+www.marriott.com OAuth client. When presented to `auth-apc.marriott.com`, the upstream
+microservices (`upl-customer`, `upl-loyalty`) reject it because the token audience does
+not match the auth-apc.marriott.com context. The gateway successfully resolves the
+`customer` GraphQL object (all four tests return `"__typename":"Customer"`) but every
+upstream resolver call fails before returning data.
 
-[PASTE TEST A/B/C RESULTS HERE WHEN AVAILABLE]
+**What the identical responses confirm:**
+- The `customer(id: $customerId)` resolver accepts all four IDs without error
+- Auth failure occurs at the upstream data-fetch layer, before any ownership check
+- It is not possible to determine from these results whether server-side IDOR protection
+  exists, because the auth layer blocks all data access uniformly
+
+**IDOR status:** UNCONFIRMED. Cannot be tested from `auth-apc.marriott.com` using
+www.marriott.com session credentials. Would require either:
+1. Auth tokens issued in the `auth-apc.marriott.com` context (direct login via that SSO
+   portal — currently blocked by Akamai geo/IP restriction for this Pi's network)
+2. A second Marriott Bonvoy test account to provide a known valid cross-user customerId
+
+**Implication for severity:** The safelisting bypass finding stands independently at
+Medium. IDOR chain elevation requires separate confirmation.
+
+**Verbatim response for all four IDOR tests (example — Test A):**
+```
+{"errors":[
+  {"message":"\"1012100 - Credentials invalid or missing.\"","path":["customer","contactInformation"],"extensions":{"code":"UNAUTHORIZED","httpStatus":401,"serviceName":"upl-customer"}},
+  {"message":"\"1012100 - Credentials invalid or missing.\"","path":["customer","profile","birthday"],"extensions":{"code":"UNAUTHORIZED","httpStatus":401,"serviceName":"upl-customer"}},
+  {"message":"\"1012100 - Credentials invalid or missing.\"","path":["customer","profile","localizedName"],"extensions":{"code":"UNAUTHORIZED","httpStatus":401,"serviceName":"upl-customer"}},
+  {"message":"\"1012100 - Credentials invalid or missing.\"","path":["customer","profile","name"],"extensions":{"code":"UNAUTHORIZED","httpStatus":401,"serviceName":"upl-customer"}},
+  {"message":"\"1012100 - Credentials invalid or missing.\"","path":["customer","loyaltyInformation","rewards"],"extensions":{"code":"UNAUTHORIZED","httpStatus":401,"serviceName":"upl-loyalty"}},
+  {"message":"\"1012100 - Credentials invalid or missing.\"","path":["customer","loyaltyInformation","rewardsSummary","yearly"],"extensions":{"code":"UNAUTHORIZED","httpStatus":401,"serviceName":"upl-loyalty"}}
+],
+"data":{"customer":{"__typename":"Customer","contactInformation":null,"loyaltyInformation":{"__typename":"LoyaltyInformation","rewards":null,"rewardsSummary":{"__typename":"RewardsSummary","yearly":null}},"profile":{"__typename":"CustomerProfile","birthday":null,"localizedName":null,"name":null}}}}
+
+HTTP 200 | 1452B
+```
+Tests B, C, D returned byte-for-byte identical responses (1452B).
 
 ---
 
