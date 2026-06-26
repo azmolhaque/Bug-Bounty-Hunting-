@@ -1,6 +1,6 @@
 # M022 — Phoenix GraphQL Operation Safelisting Bypass
 # auth-apc.marriott.com/mi/query/*
-# Status: CONFIRMED (S23 + S24). Mutation bypass + LookupCustomerProfiles bypass confirmed S24. IDOR CLOSED — 26 response fields enumerated, all MISSING; auth context mismatch (1012100) blocks data path. FINAL CVSS 5.4 Medium. READY TO SUBMIT.
+# Status: CONFIRMED bypass (S23-S26). IDOR/PII path CLOSED ON THE MERITS (S26): LookupCustomerProfilesResponse is a 2-member union; CustomerProfileFound exposes ONLY `code`, zero PII. No demonstrated data/state impact through the bypass. Safelisting bypass is real but DEFENSE-IN-DEPTH ONLY — high risk of informational/low close at Marriott's bar. SUBMISSION DECISION PENDING (see verdict).
 # Discovered: 2026-06-25 (Session 23)
 
 ---
@@ -414,12 +414,30 @@ Confirmed union members so far: `CustomerProfileFound`, `UserInputError`. The re
 selects only `code` on each. The registered variable signature is a single
 `$input: LookupCustomerProfilesInput!` (not four separate variables as earlier tests assumed).
 
-**Why this matters:** `CustomerProfileFound` is the success branch of an email+name+country
-lookup. (1) The union discriminator is an **existence oracle** — `CustomerProfileFound` vs
-`UserInputError` confirms whether a given identity is a Bonvoy member. (2) If `CustomerProfileFound`
-exposes identifying fields beyond `code` (name, email, loyalty/customer ID), a successful lookup
-is a cross-user PII disclosure. Both are enumerable unauthenticated via the Apollo error oracle
-(union-member + field enumeration). Tested in `runbooks/PI-RUNBOOK-session26-union-enum.sh`.
+**S26 RESULT — IDOR / PII path DEFINITIVELY CLOSED (negative confirmed):**
+
+Full union + field enumeration (unauthenticated, Apollo error oracle,
+`runbooks/PI-RUNBOOK-session26-union-enum.sh`, 2026-06-26):
+
+- **Union members (complete):** exactly two — `CustomerProfileFound` and `UserInputError`.
+  All 18 other candidate members (CustomerProfileNotFound, MultipleProfilesFound, CustomerProfile,
+  TooManyResults, etc.) returned "cannot be spread" → absent.
+- **`CustomerProfileFound` fields (complete):** exactly one — `code`. All 36 probed PII/ID
+  fields ABSENT: id, customerId, consumerId, altCustomerId, externalId, loyaltyId, loyaltyNumber,
+  membershipId, rewardsId, memberNumber, firstName, lastName, fullName, name, email, emailAddress,
+  maskedEmail, phone, phoneNumber, country, address, postalCode, birthday, dateOfBirth, gender,
+  status, memberLevel, tier, profile, customer, matchScore, matchType, gnr, marshaCode.
+
+**Conclusion:** `lookupCustomerProfiles` returns ONLY a status `code` (found/not-found/error
+discriminator). It exposes **no PII whatsoever**. There is no cross-user data to read — this is a
+deliberately privacy-safe lookup. The IDOR/data-disclosure chain elevation is closed on the merits,
+not merely blocked by auth.
+
+The only residual property is a possible unauthenticated **membership existence oracle**
+(`CustomerProfileFound` vs `UserInputError`). It is weak: the caller must already supply the
+target's email AND first name AND last name AND country and learns only a yes/no membership bit
+plus a `code`. This falls under the Hard Rejection List (§3, user enumeration without demonstrated
+impact) and is not independently submittable.
 
 **Unauthenticated enumeration:** S24f Phase B confirmed identical response sizes (553B) for
 own email vs non-existent email → no user enumeration possible unauthenticated.
