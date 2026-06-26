@@ -1,6 +1,6 @@
 # M022 — Phoenix GraphQL Operation Safelisting Bypass
 # auth-apc.marriott.com/mi/query/*
-# Status: CONFIRMED bypass (S23-S26). IDOR/PII path CLOSED ON THE MERITS (S26): LookupCustomerProfilesResponse is a 2-member union; CustomerProfileFound exposes ONLY `code`, zero PII. No demonstrated data/state impact through the bypass. Safelisting bypass is real but DEFENSE-IN-DEPTH ONLY — high risk of informational/low close at Marriott's bar. SUBMISSION DECISION PENDING (see verdict).
+# Status: SHELVED — NOT SUBMITTED (decision 2026-06-26). Safelisting bypass CONFIRMED (S23-S26) but DEFENSE-IN-DEPTH ONLY: no PII (CustomerProfileFound exposes only `code`), no sensitive schema fields, no demonstrated data/state impact (real authz holds upstream, 1012100). Does not clear the submission bar. Reopen only if a valid auth-apc-scoped session is obtained to demonstrate real impact through the bypass.
 # Discovered: 2026-06-25 (Session 23)
 
 ---
