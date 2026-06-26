@@ -390,18 +390,36 @@ loyaltyNumber, postalCode, city, state, address, membershipNumber, gender, title
 suffix, nationalId, passportNumber, memberStatus, enrollmentDate, preferredLanguage, timezone,
 phone, mobile) — all returned `FIELD NOT IN SCHEMA`. The input type has exactly 4 required fields.
 
-**Response type `LookupCustomerProfilesResponse` — UNKNOWN (IDOR CLOSED):**
+**Response type `LookupCustomerProfilesResponse` — RESOLVED (S25): it is a UNION.**
 
-Sessions S24b through S24f attempted to enumerate response field names via error-based oracle.
-26 field names tested across 5 sessions (profiles, results, data, customers, members, hits,
-count, total, items, nodes, edges, matches, records, profile, customer, member, firstName,
-lastName, email, id, customerId, loyaltyNumber, altCustomerId, externalId, status, found).
-ALL returned `"Cannot query field \"X\" on type \"LookupCustomerProfilesResponse\""` —
-meaning ALL 26 guessed names are absent from the schema.
+The 26 field-name probes in S24b–S24f all returned "Cannot query field X" not because the
+fields were wrong but because `LookupCustomerProfilesResponse` is a **GraphQL union type**, not
+an object — you cannot select fields on it directly; you must use inline fragments
+(`... on TypeName { ... }`). All prior "field MISSING" results were false negatives from
+probing a union as an object.
 
-The type uses internal field names not guessable from a wordlist without the JS chunk source
-(chunk `793e1a2cf24c51e7` is CDN-blocked for direct curl access). Oracle confirmed working with
-correct JSON escaping (`\"fieldname\"`) after S24f bug fix.
+The real registered operation (extracted from `graphql-chunk-793e1a2cf24c51e7.js`, retrieved
+via browser in S25) is:
+
+```graphql
+query phoenixAccountLookupCustomerProfiles($input: LookupCustomerProfilesInput!) {
+  lookupCustomerProfiles(input: $input) {
+    ... on CustomerProfileFound { code }
+    ... on UserInputError { code }
+  }
+}
+```
+
+Confirmed union members so far: `CustomerProfileFound`, `UserInputError`. The registered query
+selects only `code` on each. The registered variable signature is a single
+`$input: LookupCustomerProfilesInput!` (not four separate variables as earlier tests assumed).
+
+**Why this matters:** `CustomerProfileFound` is the success branch of an email+name+country
+lookup. (1) The union discriminator is an **existence oracle** — `CustomerProfileFound` vs
+`UserInputError` confirms whether a given identity is a Bonvoy member. (2) If `CustomerProfileFound`
+exposes identifying fields beyond `code` (name, email, loyalty/customer ID), a successful lookup
+is a cross-user PII disclosure. Both are enumerable unauthenticated via the Apollo error oracle
+(union-member + field enumeration). Tested in `runbooks/PI-RUNBOOK-session26-union-enum.sh`.
 
 **Unauthenticated enumeration:** S24f Phase B confirmed identical response sizes (553B) for
 own email vs non-existent email → no user enumeration possible unauthenticated.
