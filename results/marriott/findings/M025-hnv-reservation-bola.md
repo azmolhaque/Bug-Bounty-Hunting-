@@ -69,6 +69,35 @@ confirmation number to settle.
 
 ---
 
+## Client-controlled `isMyTrip` authorization flag (S46–S47)
+
+The real resolver signature (extracted verbatim from the HnV JS bundle, S46):
+
+```graphql
+reservationDetails(
+  confirmation_id: ID!,      # only required arg
+  checkin_date: String,
+  last_name: String,
+  email: String,
+  locale: String,
+  switchToPlatformAPI: Boolean,
+  isMyTrip: Boolean          # CLIENT-CONTROLLED auth-flow flag
+)
+```
+
+One resolver serves two flows, switched by the client-supplied `isMyTrip`:
+- `isMyTrip: true`  → authenticated "My Trips" (a logged-in user reads their own
+  reservation, authorized by SESSION — no `last_name` needed)
+- `isMyTrip: false` → public "find reservation" (guest supplies `last_name`/`checkin_date`)
+
+**S47 result:** sending `isMyTrip: true` UNAUTHENTICATED returns **no auth/session
+error** — identical null response to baseline. The privileged path does not reject
+unauthenticated callers (the session check, if any, runs only after a reservation
+is found). This is consistent with broken object-level authorization but is NOT
+proof — a synthetic id returns null before any post-lookup `last_name`/session
+check could fire. 10 flag variants (isMyTrip true/false, last_name, checkin_date,
+email, switchToPlatformAPI, full-client) all returned byte-identical 224B nulls.
+
 ## What is NOT confirmed (the critical step)
 
 Does `confirmation_id` **alone** (without a matching `last_name`/`email`) return a
