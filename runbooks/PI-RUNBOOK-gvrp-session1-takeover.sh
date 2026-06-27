@@ -28,9 +28,26 @@ if [ -z "${OUTDIR:-}" ]; then
 fi
 export OUTDIR; mkdir -p "$OUTDIR"
 UA='Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-SCOPEFILE="config/acquisitions_domains_tiers.asciipb"
-[ -f "$SCOPEFILE" ] || SCOPEFILE="$HOME/bbh/config/acquisitions_domains_tiers.asciipb"
-[ -f "$SCOPEFILE" ] || { echo "scope file not found: $SCOPEFILE"; exit 1; }
+# Robustly locate the scope file: env override, cwd, repo-relative-to-this-script,
+# and common clone paths. Works regardless of where the script is invoked from.
+BASEF="acquisitions_domains_tiers.asciipb"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
+SCOPEFILE=""
+for cand in "${SCOPEFILE:-}" "config/$BASEF" "$PWD/config/$BASEF" \
+            "$SCRIPT_DIR/../config/$BASEF" "$HOME/bbh/config/$BASEF" \
+            "$HOME/bug-bounty-hunting-/config/$BASEF" "$HOME/Bug-Bounty-Hunting-/config/$BASEF"; do
+  [ -n "$cand" ] && [ -f "$cand" ] && { SCOPEFILE="$cand"; break; }
+done
+if [ -z "$SCOPEFILE" ]; then
+  echo "ERROR: scope file '$BASEF' not found. Diagnostics:"
+  echo "  cwd=$PWD"; echo "  script_dir=$SCRIPT_DIR"
+  echo "  ls config/ :"; ls -la config/ 2>/dev/null | head
+  echo "  ls \$SCRIPT_DIR/../config/ :"; ls -la "$SCRIPT_DIR/../config/" 2>/dev/null | head
+  echo "  -> If the file is missing, run: git -C \"\$SCRIPT_DIR/..\" checkout origin/$(git -C "$SCRIPT_DIR/.." rev-parse --abbrev-ref HEAD 2>/dev/null) -- config/$BASEF"
+  echo "  -> Or pass it explicitly: SCOPEFILE=/path/to/$BASEF OUTDIR=\$HOME/gv1 bash \$0"
+  exit 1
+fi
+echo "scope file: $SCOPEFILE"
 MAX="${MAXHOSTS:-100000}"
 
 echo "============================================================"
