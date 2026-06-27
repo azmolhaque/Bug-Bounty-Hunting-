@@ -98,6 +98,35 @@ proof — a synthetic id returns null before any post-lookup `last_name`/session
 check could fire. 10 flag variants (isMyTrip true/false, last_name, checkin_date,
 email, switchToPlatformAPI, full-client) all returned byte-identical 224B nulls.
 
+## Authenticated path + request-encryption (S48–S51) — observation, not a bug
+
+Captured an authenticated HnV `/gateway/graphql` request (own Bonvoy session).
+The sensitive operations (`F=[doBook,quote,getTotalReservationData,
+reservationDetails,getProfileDetails,registerPromo]`) do NOT send plaintext
+GraphQL — they send `{"encData":"U2FsdGVkX1..."}` (CryptoJS AES, Salted__).
+
+Reverse-engineered scheme (from the JS):
+```
+realKey = AES.decrypt(page.data.encKey, x.gp)   # encKey per-page (__NEXT_DATA__,
+                                                 #   itself Salted__); x.gp = static JS key
+encData = AES.encrypt(graphql_json, realKey)
+```
+This is **client-side encryption with a client-reachable key** = security-through-
+obscurity (the browser must hold the key). On its own this is informational/low,
+NOT a fundable finding — it is only request obfuscation, not an auth control
+(the real gate is the session cookie + CSRF token).
+
+S49–S51 attempts to recover `x.gp` for offline testing FAILED: `encKey` is
+per-session (so a stale capture can't be decrypted with a fresh page's key), and
+`x.gp` is not a plain JS string literal (brute of 5,365 literals over the live
+encKey produced no clean passphrase — it is assembled/computed). Without `x.gp`
+we cannot craft `getProfileDetails` requests offline to test the **authenticated
+profile IDOR** hypothesis. That avenue is therefore UNRESOLVED and parked.
+
+NOTE: it is unknown whether `getProfileDetails` even takes an IDOR-able id
+argument (it may derive the user from the session) — so the authenticated IDOR
+is doubly speculative.
+
 ## What is NOT confirmed (the critical step)
 
 Does `confirmation_id` **alone** (without a matching `last_name`/`email`) return a
