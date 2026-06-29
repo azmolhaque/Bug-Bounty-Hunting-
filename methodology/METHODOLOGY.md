@@ -473,3 +473,83 @@ These are **consistently rejected or downgraded** by Google VRP triagers:
 - Subdomain takeover with confirmed cookie sharing or OAuth redirect
 - Active credential leaks (API keys, JWT secrets, cloud access keys)
 - Broken authorization on sensitive admin/billing/security functions
+
+---
+
+## Field Operations — Hard-Won Lessons (campaign 2026-06)
+
+These are codified from real engagements. They override optimism. Read before
+every Google-VRP-style session.
+
+### FO-1. Target Expected-Value ranking (pick targets in this order)
+Mature, well-resourced programs harden their *reachable* surface; easy bugs are
+long gone. Empirically this campaign, every mature Google consumer/acquisition
+surface came back hardened, intended, migrated, or wound-down; the only confirmed
+valid bug came from a **soft VDP** (UNICEF). Therefore rank candidate targets:
+
+1. **Soft VDP / smaller program / NGO / gov** — highest conversion for solo
+   remote testing. Default here unless a fresh angle exists elsewhere.
+2. **Recently-acquired or recently-shipped product/feature** — fresh, less-reviewed
+   code. Look for 2024–2026 launches, new subdomains, new API versions.
+3. **Self-service multi-tenant SaaS with email/Google signup** — IDOR/BOLA surface
+   reachable with two test accounts + curl.
+4. **Mature consumer/core product unauth surface** — LOWEST EV. Only touch with a
+   specific, fresh hypothesis; do not breadth-scan it expecting easy wins.
+
+### FO-2. The catch-all 200 control (kill false positives instantly)
+Before reporting ANY "exposure" (`/.git/config`, `/.env`, `/server-status`, an
+admin path) returning 200: **request a guaranteed-bogus path** (e.g.
+`/zzz-<rand>-doesnotexist`) with the same method. If the bogus path ALSO returns
+200 with the same/similar body, the host is an **IAP login page, SPA router, or
+LB catch-all** — every 200 is the same page, NOT a real file. Confirmed false-
+positive sources this campaign: `internal.photomath.com` (Google IAP login),
+`www.elastifile.com` (Cloud marketing SPA), `forum.waze.com` (Discourse/GFE
+catch-all). Only a body that is *actually* the artifact (`[core]` for git,
+`KEY=VALUE` for .env) counts.
+
+### FO-3. Negative-test validity gate (never record a false "secure")
+Before concluding "no IDOR / properly authorized," PROVE your own auth worked:
+the **baseline self-read must succeed** (e.g. `A reads A's own object = 200`). A
+`401/403` on a cross-account request means NOTHING if your own baseline is also
+`401` — that's a rejected/expired token, not enforced authorization. This nearly
+produced a false "Nest is secure" verdict until the baseline-200 check exposed a
+malformed `Authorization` header. Always: baseline-200 first, THEN interpret the
+cross-account result.
+
+### FO-4. Non-root mobile interception playbook (Android + Termux, no PC)
+- **Websites are interceptable; pinned native apps are not (on ARM/Termux).**
+- WEB app: `pip install mitmproxy` (use `python-cryptography` prebuilt) →
+  `mitmdump -s addon.py -p 8080` → Android Wi-Fi proxy `127.0.0.1:8080` (DHCP, not
+  Static; clear the "Bypass proxy for" field or Save stays greyed; saved networks
+  require re-entering the Wi-Fi password to enable Save) → install CA via
+  `http://mitm.it` (Settings → Encryption & credentials → Install a CA cert).
+  Chrome trusts user CAs for *browsing*, so this decrypts website API calls.
+- NATIVE app with cert pinning: **`apk-mitm` is ARM-incompatible and Termux has no
+  `apktool` package — on-device patching is a DEAD END.** Needs a PC (run apk-mitm
+  on x64, copy patched APK back) or a rooted device. Do not burn time on it.
+- Migrated APIs (e.g. `api.fitbit.com`) now sit behind Google's gateway and need
+  restricted-scope Google OAuth — effectively unreachable for a quick hunt.
+
+### FO-5. Token-capture → curl-replay (authenticated IDOR without a proxy per-request)
+1. mitmdump addon prints the live `Authorization` header + object IDs as you browse.
+2. Save the token to a FILE (`cat > tok.txt <<'EOF' … EOF`) — never inline a
+   1000+ char token in a shell var (paste mangling, `read -p` unsupported on
+   Termux). Auto-prepend the scheme (`Basic `/`Bearer `) in the script.
+3. Replay with `curl -H "Authorization: <scheme> <token>"`, varying the object ID.
+4. Tokens are short-lived (~50 min) — capture fresh right before the test; if the
+   baseline self-read 401s, the token expired, recapture.
+
+### FO-6. Live-app vs migrated-husk fingerprint (do this first, save hours)
+Many acquisitions are dead shells. Flag a husk when the homepage: redirects to
+`*.google.com` / `store.google.com`; says "use the <X> app" with App/Play badges;
+is a Google Sites page with a closed Google Form; returns the same catch-all 200
+everywhere; or 404/500/502 on the app subdomain. A LIVE target has a real SPA
+build stamp (e.g. Nest `build 5.87.0-20260429`), a real auth API returning clean
+`401 {"error":...}` (not HTML) on protected endpoints, and distinct responses per
+path. Only invest authenticated effort in confirmed-live targets.
+
+### FO-7. Honest-negative discipline
+Record clean negatives in `results/<target>/` with the evidence (codes, baseline
+proof). A rigorous "no bug here, and here's why" is professional output and stops
+the next session re-walking dead ground. Never upgrade a negative into a
+speculative report. Zero rejected reports beats one rejected report.

@@ -37,6 +37,18 @@ Triage the pre-flight output before picking this session's target:
 - Any STILL LIVE chain with its prerequisite now met → pick THAT chain
 - Only then pick a fresh target from the priority list
 
+### Target-Selection EV Gate (METHODOLOGY FO-1 — apply before committing a session)
+Rank candidate targets by realistic conversion, not by prestige. Empirically,
+mature programs' reachable surfaces are hardened; the cheap bugs are gone. Order:
+1. **Soft VDP / smaller program** — highest solo-remote conversion (default).
+2. **Recently-acquired / newly-shipped product or feature** — fresh code (look for
+   2024–2026 launches, new subdomains, new API versions).
+3. **Self-service multi-tenant SaaS (email/Google signup)** — IDOR with 2 accounts.
+4. **Mature consumer/core unauth surface** — LOWEST EV; only with a specific fresh
+   hypothesis, never a breadth-scan-for-easy-wins.
+Record the chosen target's EV tier + rationale in `00-plan.md`. If the only
+candidates are tier-4 husks, switch programs rather than grind low-EV ground.
+
 ## Deployment Command (what to run on the Pi)
 
 ```bash
@@ -121,6 +133,20 @@ Every candidate goes through the 5-question gate before Phase 4 work:
 Or delegate to **lead-qualifier** subagent for batches.
 
 ### Phase 4 — Verification, PoC & Chain Elevation  ← you (orchestrator)
+
+**False-positive / false-negative gates (METHODOLOGY FO-2, FO-3 — run FIRST, every candidate):**
+- **Catch-all 200 control (FO-2):** for any "exposure" returning 200, re-request a
+  guaranteed-bogus path with the same method. If the bogus path also returns 200
+  with the same body, it's an IAP/SPA/LB catch-all → FALSE POSITIVE → AUTO_CLOSE.
+  Only the actual artifact bytes (`[core]`, `KEY=VALUE`) count.
+- **Negative-test validity gate (FO-3):** before recording "no IDOR / authorized",
+  prove your own auth works — baseline self-read MUST be 200. A 401/403 on a
+  cross-account/cross-object request is meaningless if your own baseline is also
+  401 (rejected/expired token). Baseline-200 first, THEN interpret.
+- **Live-vs-husk (FO-6):** confirm the target is a live app (real SPA build stamp,
+  clean JSON 401 on protected endpoints, distinct per-path responses) before
+  investing authenticated effort; husks (redirects to *.google.com, "use the app",
+  closed Google Form, uniform catch-all) get AUTO_CLOSED.
 
 For each PURSUE candidate:
 
