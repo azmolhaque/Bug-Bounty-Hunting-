@@ -102,3 +102,6 @@ results/*/recon/
 !results/**/00-plan.md
 results/**/recon.log
 results/**/orchestrator.log
+
+vt1/
+*.vtkey
