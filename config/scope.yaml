@@ -283,6 +283,9 @@ in_scope:
   # Fitbit (TIER1 subdomains; apex fitbit.com is TIER3)
   # 50 bugs paid in 2023; health data = max sensitivity; Mobile VRP also in scope
   - "accounts.fitbit.com"
+  - "api.fitbit.com"        # Web API (OAuth2) — authoritative in acquisitions_domains_tiers.asciipb
+  - "www.fitbit.com"        # web dashboard — authoritative in acquisitions file
+  - "m.fitbit.com"          # mobile web — authoritative in acquisitions file
   - "health-admin.fitbit.com"
   - "ngw.fitbit.com"
   - "mgmt.fitbit.com"
