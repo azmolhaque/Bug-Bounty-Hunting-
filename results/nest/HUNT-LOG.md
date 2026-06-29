@@ -48,9 +48,16 @@ data from a non-member = cross-account BOLA.
       (baseline A->A app_launch = 200); A->B user/app_launch = 401; A->B
       subscribe user.{B} = 403. Nest enforces per-object authz on user-keyed
       endpoints. N001 CLOSED — not a bug.
-- [ ] (Optional, unverified) structure-keyed endpoints + /v5/put write not
-      exhaustively tested — would need B's structure UUID + a fresh capture.
-      Same authz model observed on the user object.
+- [~] Structure-keyed endpoints: attempted but INCOMPLETE. B's structure UUID
+      was never captured (B's app_launch only ever showed user.243212371, no
+      structure bucket), and operator placeholder substitution failed twice. One
+      observation worth a future check: GET /api/0.1/structure/<bogus>/entitlements
+      returned HTTP 200 with a 13-byte (empty) body even for a non-existent id —
+      likely a permissive-but-empty endpoint, NOT a leak; would need B's real
+      structure UUID to confirm it returns no real data for non-owned structures.
+- [x] INVESTIGATION CONCLUDED (2026-06-29, ~00:15). Primary IDOR surface
+      (user object + user bucket) conclusively SECURE. /v5/put write + structure
+      entitlements/members left for a future session if revisited. No bug filed.
 
 ## Safety / ethics
 Own two accounts only. Read-only (app_launch/subscribe are reads; /v5/put NOT
