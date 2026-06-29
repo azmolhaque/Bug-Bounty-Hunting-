@@ -30,7 +30,12 @@
 # =============================================================================
 set -o pipefail
 OUTDIR="${OUTDIR:-$HOME/nest3}"; export OUTDIR; mkdir -p "$OUTDIR"
-: "${NEST_TOKEN_A:?set NEST_TOKEN_A='Basic g.0...' (account A token, keep private)}"
+# token can come from a FILE (paste-safe) or env; "Basic " prefix auto-added
+if [ -n "${NEST_TOKEN_A_FILE:-}" ] && [ -f "$NEST_TOKEN_A_FILE" ]; then
+  NEST_TOKEN_A="$(tr -d '\r\n' < "$NEST_TOKEN_A_FILE")"
+fi
+: "${NEST_TOKEN_A:?set NEST_TOKEN_A='Basic g.0...' OR NEST_TOKEN_A_FILE=/path/to/token.txt}"
+case "$NEST_TOKEN_A" in Basic\ *) : ;; *) NEST_TOKEN_A="Basic $NEST_TOKEN_A";; esac
 : "${NEST_UID_A:?set NEST_UID_A=<A numeric userid>}"
 : "${NEST_UID_B:?set NEST_UID_B=<B numeric userid>}"
 NEST_STRUCT_A="${NEST_STRUCT_A:-}"          # optional
