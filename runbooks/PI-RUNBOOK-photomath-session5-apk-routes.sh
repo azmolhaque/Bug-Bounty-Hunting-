@@ -66,17 +66,34 @@ elif command -v pm >/dev/null 2>&1; then
     done
   fi
 fi
+is_zip(){ [ -s "$1" ] && [ "$(head -c2 "$1" 2>/dev/null)" = "PK" ]; }
 if [ ! -s "$OUTDIR/apks.list" ]; then
-  echo "  trying best-effort mirror download (apkcombo)..."
+  echo "  trying mirror downloads (apkpure direct, then xapk)..."
   for P in com.microblink.photomath com.google.android.apps.photomath; do
-    U="https://apkcombo.com/downloader/?package=$P"
-    curl -s -L --max-time 25 -A "$UA" "$U" -o "$OUTDIR/dl.html" 2>/dev/null
-    LINK=$(grep -oE 'https://[^"]+\.apk[^"]*' "$OUTDIR/dl.html" 2>/dev/null | head -1)
-    if [ -n "$LINK" ]; then
-      curl -s -L --max-time 120 -A "$UA" "$LINK" -o "$OUTDIR/apk/base.apk" 2>/dev/null
-      [ -s "$OUTDIR/apk/base.apk" ] && { echo "$OUTDIR/apk/base.apk" >> "$OUTDIR/apks.list"; echo "  downloaded $P"; break; }
+    # APKPure direct APK
+    curl -s -L --max-time 180 -A "$UA" "https://d.apkpure.com/b/APK/$P?version=latest" \
+         -o "$OUTDIR/apk/dl.bin" 2>/dev/null
+    if is_zip "$OUTDIR/apk/dl.bin"; then
+      mv "$OUTDIR/apk/dl.bin" "$OUTDIR/apk/dl.apk"
+      echo "$OUTDIR/apk/dl.apk" >> "$OUTDIR/apks.list"
+      echo "  apkpure APK ok: $P ($(wc -c < "$OUTDIR/apk/dl.apk") bytes)"; break
     fi
+    # APKPure XAPK (split bundle, itself a zip)
+    curl -s -L --max-time 180 -A "$UA" "https://d.apkpure.com/b/XAPK/$P?version=latest" \
+         -o "$OUTDIR/apk/dl.bin" 2>/dev/null
+    if is_zip "$OUTDIR/apk/dl.bin"; then
+      mv "$OUTDIR/apk/dl.bin" "$OUTDIR/apk/dl.xapk"
+      echo "$OUTDIR/apk/dl.xapk" >> "$OUTDIR/apks.list"
+      echo "  apkpure XAPK ok: $P ($(wc -c < "$OUTDIR/apk/dl.xapk") bytes)"; break
+    fi
+    echo "  apkpure miss for $P (got $(wc -c < "$OUTDIR/apk/dl.bin" 2>/dev/null) bytes, not a zip)"
   done
+fi
+# drop any non-zip entries that slipped in
+if [ -s "$OUTDIR/apks.list" ]; then
+  : > "$OUTDIR/apks.valid"
+  while read -r A; do is_zip "$A" && echo "$A" >> "$OUTDIR/apks.valid"; done < "$OUTDIR/apks.list"
+  mv "$OUTDIR/apks.valid" "$OUTDIR/apks.list"
 fi
 if [ ! -s "$OUTDIR/apks.list" ]; then
   echo ""
@@ -92,8 +109,14 @@ echo ""
 echo "═══ 2: UNPACK + STRING-EXTRACT ═══"
 while read -r A; do
   [ -z "$A" ] && continue
-  d="$OUTDIR/ex/$(basename "$A" .apk)"; mkdir -p "$d"
+  [ "$(head -c2 "$A" 2>/dev/null)" = "PK" ] || { echo "  (not a zip, skipping: $A)"; continue; }
+  d="$OUTDIR/ex/$(basename "$A")"; mkdir -p "$d"
   unzip -o -qq "$A" -d "$d" 2>/dev/null || echo "  (unzip failed: $A)"
+  # XAPK / split bundle: unpack any nested .apk too
+  find "$d" -maxdepth 2 -name '*.apk' 2>/dev/null | while read -r nested; do
+    nd="$d/nested-$(basename "$nested" .apk)"; mkdir -p "$nd"
+    unzip -o -qq "$nested" -d "$nd" 2>/dev/null || true
+  done
 done < "$OUTDIR/apks.list"
 # concatenate text-ish content from dex/so/arsc/assets via grep -a (no binutils needed)
 : > "$OUTDIR/strings.txt"
