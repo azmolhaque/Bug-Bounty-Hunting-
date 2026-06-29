@@ -105,3 +105,4 @@ results/**/orchestrator.log
 
 vt1/
 *.vtkey
+vt2/
