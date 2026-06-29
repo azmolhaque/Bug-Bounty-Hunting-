@@ -279,6 +279,20 @@ in_scope:
   - "adsapi-staging.waze.com"
   - "proxy.waze.com"
   - "proxy-staging.waze.com"
+  # additional authoritative Waze hosts (present in acquisitions_domains_tiers.asciipb)
+  - "api.waze.com"
+  - "wam-api.waze.com"          # Waze Ad Manager API (multi-tenant advertiser data)
+  - "mobile-web.waze.com"
+  - "mobile-web-new.waze.com"
+  - "inbox.waze.com"
+  - "web-login-oauth.waze.com"
+  - "forum.waze.com"
+  - "wiki.waze.com"
+  - "wazeopedia.waze.com"
+  - "new-wazeopedia.waze.com"
+  - "embed.waze.com"
+  - "gapi.waze.com"
+  - "sdk.waze.com"
 
   # Fitbit (TIER1 subdomains; apex fitbit.com is TIER3)
   # 50 bugs paid in 2023; health data = max sensitivity; Mobile VRP also in scope
