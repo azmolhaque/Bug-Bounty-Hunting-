@@ -110,3 +110,6 @@ vt3/
 vt4/
 fb1/
 wz1/
+pm10/
+*.har
+token.txt
