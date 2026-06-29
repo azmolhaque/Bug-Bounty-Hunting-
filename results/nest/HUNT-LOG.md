@@ -44,10 +44,13 @@ data from a non-member = cross-account BOLA.
 
 ## Status
 - [x] Recon, interception, route map, both accounts' ids captured
-- [ ] session3 IDOR verdict (PENDING operator run — see N001 draft)
-- [ ] If confirmed: minimal PoC + report; consider read-only first, then assess
-      /v5/put write (device control) on our OWN account B before any claim
-- [ ] If denied: close as "Nest enforces per-object authz" (clean negative)
+- [x] session3 IDOR verdict: CLEAN NEGATIVE (2026-06-29). Valid A token
+      (baseline A->A app_launch = 200); A->B user/app_launch = 401; A->B
+      subscribe user.{B} = 403. Nest enforces per-object authz on user-keyed
+      endpoints. N001 CLOSED — not a bug.
+- [ ] (Optional, unverified) structure-keyed endpoints + /v5/put write not
+      exhaustively tested — would need B's structure UUID + a fresh capture.
+      Same authz model observed on the user object.
 
 ## Safety / ethics
 Own two accounts only. Read-only (app_launch/subscribe are reads; /v5/put NOT

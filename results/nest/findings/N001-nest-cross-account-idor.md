@@ -1,8 +1,18 @@
-# N001 — Nest cross-account IDOR/BOLA on home.nest.com API  [STATUS: PENDING VERIFICATION]
+# N001 — Nest cross-account IDOR/BOLA on home.nest.com API  [STATUS: CLOSED — NOT A BUG]
 
-> DRAFT scaffold. Do NOT submit until the session3 verdict confirms a non-owner
-> 200-with-data. If the test returns all-denied, mark this CLOSED (clean negative)
-> and do not file.
+> RESULT (2026-06-29, IP 180.148.212.54): tested with a VALID account-A token
+> (baseline A->A app_launch = HTTP 200), the cross-account reads are DENIED:
+>   * POST /api/0.1/user/{B}/app_launch      -> 401 (A cannot read B's user/structures)
+>   * POST {transport}/v5/subscribe user.{B} -> 403 (A cannot read B's bucket)
+> Nest enforces per-object authorization on the user-keyed endpoints. No IDOR.
+> Clean negative — do NOT file. (Tested with our own two accounts; baseline-200
+> confirms the token was accepted, so the 401/403 are real authz denials, not auth
+> failures.)
+>
+> Not exhaustively tested (would need account B's structure UUID + another capture):
+>   /api/0.1/structure/{B}/entitlements, /structure/{B}/members, subscribe
+>   structure.{B}, and the /v5/put write path. Same per-object authz model observed
+>   on the user object; structure endpoints likely behave the same but UNVERIFIED.
 
 - **Target:** `api.home.nest.com` / `home.nest.com` (Google VRP, Nest acquisition, in scope)
 - **Class:** Broken Object-Level Authorization (IDOR/BOLA), cross-account
