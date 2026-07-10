@@ -553,3 +553,76 @@ Record clean negatives in `results/<target>/` with the evidence (codes, baseline
 proof). A rigorous "no bug here, and here's why" is professional output and stops
 the next session re-walking dead ground. Never upgrade a negative into a
 speculative report. Zero rejected reports beats one rejected report.
+
+---
+
+## Submission Discipline — Report-Quality Post-Mortem (the rejection lessons)
+
+Codified after a run of real closes: 1 Spam ("AI-generated content"), 2 N/A
+("names not contents" / "insufficient impact"), 2 WAI ("intended behavior"), 1
+Won't-Fix. Every one shared the same root causes. These rules are non-negotiable
+before ANY submission. Overclaiming and low-boundary reports don't just get
+rejected — Spam/N/A closes **damage your platform reputation/signal** and make
+every future report read skeptically.
+
+### FO-8. The Impact Ledger — headline severity MUST equal PROVEN impact
+Before writing a title, fill this in with ONLY what you demonstrated:
+- **What sensitive data did I actually read?** (bytes, not field names, not a hash)
+- **What access/credential/token did I actually obtain and could use?**
+- **Whose data was it?** (another user's = boundary crossed; my own / my own OOB
+  server / metadata = NOT crossed)
+The title and CVSS come from this ledger, never from what *would* be possible.
+Killed us: an "Authentication Bypass exposing financial data" title backed by a
+PHP crash → closed **Spam**. If your evidence is a weird error, the finding is
+"verbose error / anomaly", not "auth bypass". **Claim exactly what you proved.**
+
+### FO-9. Boundary-Cross Proof Gate — precondition ≠ finding
+A misconfiguration, a reachable endpoint, a dangling CNAME, an SSRF that hits your
+own server, IMDS *root* returning non-sensitive bytes, or a schema/field-name dump
+is a **precondition**, not a vulnerability. You MUST demonstrate the boundary
+cross with real evidence:
+- IDOR/BOLA → the actual record of ANOTHER account (redacted), with baseline-200
+  proving your auth worked (FO-3).
+- SSRF → the actual sensitive internal response/credential read (not "reachable").
+- Subdomain takeover → you CLAIMED it and served a benign canary you screenshotted
+  (`DEPLOYMENT_NOT_FOUND` alone does NOT prove claimability — modern Vercel/Netlify
+  block claiming domains still bound to another team).
+- Auth bypass → the actual protected data returned by the unauthenticated request
+  (a *different error* only proves a different code path, not a bypass).
+Killed us: Salesforce "873 fields" (names, `getItems`/`searchRecords` returned
+empty = no records) → N/A; Cameyo `/about` diagnostics → Won't-Fix; VT SSRF root
+(no creds) → capped Low. If the boundary isn't crossed, **do not submit.**
+
+### FO-10. Plain human voice — kill the AI-report tells
+Triagers now auto-flag AI-generated reports as Spam. Remove every tell:
+- **No** "VERDICT block", "differential table", "smoking gun", "Executive Summary".
+- **No** CVSS self-scoring argued up to High/Critical — state facts; let the
+  triager assign severity.
+- **No** speculative escalation chains ("one header from Critical", "if the handler
+  passes to executeScript", "would expose data if the bug were fixed", "systemic",
+  "race-condition oracle").
+- **No** wall-of-tables/emoji/bold-everything formatting.
+Write it as a human: "I sent this request with no cookie. I got this response.
+Here is the actual data it exposed. Here is why that's a problem." Short, factual,
+first-person, real terminal output. AI may assist drafting; you must manually
+verify every claim and strip the tells before sending.
+
+### FO-11. The Submit/Drop gate (run before every submission)
+Answer in ONE sentence: **"What does an attacker concretely GET?"**
+- Answer is *another user's data / a usable credential / code execution / a proven
+  auth bypass / cross-tenant access* → PROCEED (with FO-8/9/10 satisfied).
+- Answer is *a hostname / version / connection count / trace ID / my own OOB
+  request / field names / a precondition / "it would be possible if…"* → **DROP.
+  Do not submit.** These are informational and burn your signal.
+One verified High beats ten polished informational rejections — and beats the
+reputation damage they cause.
+
+### FO-12. Don't argue rejections; run ONE decisive test instead
+N/A / WAI / Spam close: do NOT re-argue with the same evidence (it cements the
+label and, on a Spam close, worsens standing). Either accept it, OR run the single
+decisive NEW test that would cross the boundary (FO-9) — and only re-engage if that
+test produces real, new, boundary-crossing proof. Never "schedule a live demo" or
+append more of the same. A good rebuttal (rare) addresses the triager's exact
+stated standard with NEW evidence and honest limits — see the VT link-local
+clarification that earned a reopen; contrast the Cameyo "race-condition oracle"
+appeal that stayed rejected.

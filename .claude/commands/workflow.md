@@ -174,6 +174,26 @@ Writes `05-triage/triage.md`.
 
 ### Phase 6 — Reporting → `report-writer`
 
+**SUBMISSION GATE (METHODOLOGY FO-8…FO-12 — run BEFORE the evidence gate; a hard
+STOP). A report that fails any of these is NOT submitted — it is dropped or sent
+back to Phase 4.** These exist because real closes cost reputation: 1 Spam
+("AI-generated content"), 2 N/A, 2 WAI, 1 Won't-Fix — all from the same failures.
+
+1. **Boundary-cross proof (FO-9):** does `04-verified/<id>/` contain evidence of
+   an *actual* boundary cross — another user's data (redacted), a usable
+   credential, code exec, a proven auth bypass returning protected data, a claimed
+   takeover with a served canary? If it's only a precondition / metadata /
+   field-names / own-OOB-hit / verbose error / "would be possible" → **DROP. Do not
+   submit.** (This is the Submit/Drop one-sentence test, FO-11.)
+2. **Impact = evidence (FO-8):** the title and severity describe ONLY what was
+   proven, never what *would* be possible. No "would expose data if…".
+3. **Plain-voice check (FO-10):** the writeup has NO VERDICT blocks, differential
+   tables, "smoking gun / Executive Summary", self-scored CVSS argued to High, or
+   speculative escalation chains. First-person, factual, real terminal output.
+   These AI-tells get reports closed as **Spam** — strip them.
+
+Only if all three pass, proceed to the evidence gate.
+
 **Evidence gate (mandatory — CLAUDE.md §9 #8):**
 Before calling `report-writer`, confirm all 7 evidence items exist in `04-verified/<id>/`:
 
@@ -198,6 +218,17 @@ vs. Google VRP have different submission fields and attachment requirements).
 **Submit immediately** when report passes all gates — first valid report wins.
 - Google VRP: bughunters.google.com → Find your product → Submit
 - Marriott HackerOne: hackerone.com/marriott → New Report
+
+**After submission — reputation discipline (FO-12):**
+- **Never argue a rejection with the same evidence.** N/A / WAI / Spam closes:
+  accept, or run the ONE decisive new test that would cross the boundary (FO-9)
+  and re-engage only if it yields real new proof. Re-arguing cements the label and
+  a Spam-appeal worsens your platform signal. No "schedule a live demo".
+- **Rate-limit submissions to preserve signal.** Each N/A/Spam close lowers the
+  trust your future reports get. Prefer one verified boundary-crossing report over
+  several informational ones. When a program has closed 2+ of your reports as
+  N/A/Spam, STOP submitting there and rebuild with a single clean, high-impact,
+  plainly-written finding.
 
 ## Intelligence Loop (after every phase)
 
