@@ -39,6 +39,23 @@ canary, then RELEASE. Two honest outcomes:
     Looker Studio H1 (owner-credential retention on Copy).
 Run pre-check first; only proceed to the claim if still DEPLOYMENT_NOT_FOUND.
 
+**FO-9 VERDICT (2026-07-10T20:38Z, IP 180.148.212.32) — CLAIMABILITY NOT PROVEN;
+treat F001 as precondition-only. STOP DEFENDING.** Pre-check re-ran clean:
+CNAME still `37e7f43d8158e70f.vercel-dns-013.com`, body still `DEPLOYMENT_NOT_FOUND`,
+but the served TLS cert is UNCHANGED — serial `06D355B91521BADCB06BBEB409F290FC5094`,
+SAN `DNS:win-test.wiz.io`, notBefore Sep 17 2025 / notAfter Dec 16 2025. A domain
+that has been RELEASED from Vercel does not keep serving the original owner's
+certificate — Vercel presents its own fallback. That Wiz's own expired cert for
+this exact host is STILL being served is strong evidence the domain remains BOUND
+to Wiz's Vercel team, i.e. `DEPLOYMENT_NOT_FOUND` = "attached, no deployment," NOT
+"free to claim." Under modern Vercel a free-account claim of a still-bound domain
+is refused ("already in use by another team"). Decision (FO-1 EV + FO-12): do not
+sink more time proving the negative; the P2 report's takeover link is unproven and
+we will NOT argue it if the triager closes it. If the triager asks us to re-verify,
+answer honestly: CNAME dangles, but the host still serves Wiz's own cert so the
+domain appears still-bound and we could not demonstrate a claim. PIVOT to the
+higher-EV fresh hunt: Looker Studio H1 (cross-tenant owner-credential retention).
+
 ---
 
 | Time | Phase | Action | Finding |
