@@ -153,10 +153,10 @@ post)
   else
     echo "  Not yet proven. If Vercel refused the domain, the takeover is NOT"
     echo "  exploitable — say so honestly in the report (FO-9/FO-12). If it just"
-    echo "  needs TLS time, wait 2-3 min and re-run `post`."
+    echo "  needs TLS time, wait 2-3 min and re-run the post phase."
   fi
   echo "     -> Vercel: Project → Settings → Domains → Remove win-test.wiz.io"
-  echo "     -> then delete the project. Then run the `release` phase to confirm."
+  echo "     -> then delete the project. Then run the release phase to confirm."
   ;;
 # ---------------------------------------------------------------------------
 release)
