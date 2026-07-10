@@ -645,10 +645,16 @@ it superficially reads as "unauthenticated admin access on a Tier-1 asset."
 - **Appeals need a NEW concrete fact, not louder adjectives** (ties to FO-12).
   Restating "brand/phishing potential" in stronger words is speculative secondary
   impact; it won't (and shouldn't) move a credit-only decision.
-Reference case: `rip.photomath.net` exposed IAM frontend (Google VRP, 2026-05) —
-default creds + any-password login + unauth `GET /api/roles`, triaged P2/S2, Fixed
-in ~9 days (endpoint decommissioned → NXDOMAIN), reward panel: **credit-only**,
-appeal upheld. Correctly not rewarded: non-prod sandbox, root cause = stale DNS not
-an app vuln, strongest impact claim was speculative. Calibrating that gap honestly
-*before* submitting is the skill — and writing it up honestly afterward builds more
-signal than a padded "critical" would have.
+Reference case: `rip.photomath.net` exposed IAM frontend (Google VRP issue
+**509594209**, reported 2026-05-05) — default creds + any-password login (CWE-287)
++ unauth `GET /api/roles` → `200 []`, triaged **P2/S2**, accepted in ~1 day, marked
+**Fixed** ~9 days later (endpoint decommissioned → NXDOMAIN), reward panel
+**Honorable Mention / credit-only** (#9), appeal (#10) sent back (#11) and **upheld**
+(#12, 2026-06-02). Panel's verbatim rationale: *"not located within a Google
+application, but the result of stale DNS records… did not affect a system under our
+direct operational control."* Correctly not rewarded: non-prod sandbox, root cause =
+stale DNS not an app vuln, and the appeal's strongest new argument was a **speculative
+brand/phishing vector** (#10 pt 2) — adjectives, not a new concrete fact (FO-12).
+Calibrating that gap honestly *before* submitting is the skill — and writing it up
+honestly afterward (see the published `security-writeups` post) builds more signal
+than a padded "critical" would have.
