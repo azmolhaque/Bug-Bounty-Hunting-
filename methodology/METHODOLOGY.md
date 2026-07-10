@@ -626,3 +626,29 @@ append more of the same. A good rebuttal (rare) addresses the triager's exact
 stated standard with NEW evidence and honest limits — see the VT link-local
 clarification that earned a reopen; contrast the Cameyo "race-condition oracle"
 appeal that stayed rejected.
+
+### FO-13. Severity track ≠ reward track — pre-set expectations on hygiene finds
+A "Fixed" from the product team is an **engineering** signal ("worth cleaning up"),
+NOT a **reward** signal ("exposed real risk in a system we operate"). The two panels
+answer different questions and routinely disagree. Before writing ANY report whose
+root cause is *infrastructure hygiene* — dangling DNS, a stale/sandbox endpoint, an
+orphaned host that merely resolves through the vendor's edge — set the honest
+expectation up front: this class is frequently **valid-but-credit-only**, even when
+it superficially reads as "unauthenticated admin access on a Tier-1 asset."
+- **Tier describes a domain's *potential* sensitivity, not a finding's severity.**
+  The data actually at risk is what counts. An admin panel over an empty sandbox
+  (placeholder text, `/api/roles` → `[]`, no real records) is a hygiene problem,
+  not a data breach — say so yourself before the panel does.
+- **Two-layer reasoning still matters** even on hygiene finds: check whether the
+  backend independently enforces authz (not just the login form). It makes the
+  finding complete regardless of the reward outcome.
+- **Appeals need a NEW concrete fact, not louder adjectives** (ties to FO-12).
+  Restating "brand/phishing potential" in stronger words is speculative secondary
+  impact; it won't (and shouldn't) move a credit-only decision.
+Reference case: `rip.photomath.net` exposed IAM frontend (Google VRP, 2026-05) —
+default creds + any-password login + unauth `GET /api/roles`, triaged P2/S2, Fixed
+in ~9 days (endpoint decommissioned → NXDOMAIN), reward panel: **credit-only**,
+appeal upheld. Correctly not rewarded: non-prod sandbox, root cause = stale DNS not
+an app vuln, strongest impact claim was speculative. Calibrating that gap honestly
+*before* submitting is the skill — and writing it up honestly afterward builds more
+signal than a padded "critical" would have.
