@@ -69,7 +69,13 @@ I confirmed this deliberately (login with random characters) rather than assumin
 
 ## 3. The API layer behind it
 
-A UI-level bypass is a weak finding if the backend still enforces authorization independently. So the next question — the one that separates a screenshot from an actual finding — was: **does the API behind this UI check auth on its own?** It did not.
+First, the destination itself: logging in with a junk password landed on the full administrative dashboard.
+
+![Administrative dashboard at rip.photomath.net/dashboard with a Roles/Users sidebar, a "New role" button, and "Welcome, administrator" in the header, reached without valid credentials](./images/rip-photomath-dashboard.png)
+
+*The IAM dashboard (`/dashboard`) reached with no valid credentials — note "Welcome, administrator", the Roles/Users management sidebar, the "New role" write control, and the complete absence of real records (an empty sandbox).*
+
+But a UI-level bypass is a weak finding if the backend still enforces authorization independently. So the next question — the one that separates a screenshot from an actual finding — was: **does the API behind this UI check auth on its own?** It did not.
 
 An unauthenticated `GET /api/roles` returned a valid (empty) JSON array — `200 OK`, body `[]` — not a `401`/`403`:
 
