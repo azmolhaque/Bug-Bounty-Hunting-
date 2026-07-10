@@ -24,6 +24,21 @@ Started: 2026-06-11 | Last updated: 2026-06-24
 **TRIAGE UPDATE 2026-06-24:** Priority P4→P2. Component routed to Wiz product security (1610896). Second reviewer ca...@google.com touched the issue today — two engineers have now reviewed. Status still "New" = deliberating, not rejected.
 **NEXT ACTION:** Monitor for verdict comment (expected 1–3 days). Do NOT add comments. If they ask to re-verify the CNAME is still live → respond same day with fresh `dig` output + `curl -sI` showing DEPLOYMENT_NOT_FOUND.
 
+**FO-9 CLAIMABILITY GAP (2026-07-10) — the report's one unproven link.** The
+submitted POC (Section 2.1) *asserts* the free-Vercel claim "verifies ownership
+→ passes immediately," but we never actually attempted the claim. `DEPLOYMENT_NOT_FOUND`
+is only the PRECONDITION. The persistent EXPIRED Wiz cert (serial `06D355…`,
+notAfter Dec 16 2025) is a strong tell the domain is **still bound to Wiz's Vercel
+team** — in which case a free-account claim is REFUSED and the takeover is NOT
+exploitable (precondition-only). Built `runbooks/PI-RUNBOOK-wiz-takeover-verify.sh`
+(pre/post/release phases) to settle it decisively per FO-9: attempt the real claim,
+serve a BENIGN canary ("PoC 524181553", no cookie capture), screenshot fresh-cert +
+canary, then RELEASE. Two honest outcomes:
+  * claim succeeds → report confirmed with self-made proof (respond to triager with it);
+  * claim refused → report is precondition-only; do NOT defend it (FO-12), pivot to
+    Looker Studio H1 (owner-credential retention on Copy).
+Run pre-check first; only proceed to the claim if still DEPLOYMENT_NOT_FOUND.
+
 ---
 
 | Time | Phase | Action | Finding |
