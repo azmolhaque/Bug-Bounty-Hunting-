@@ -65,36 +65,55 @@ That alone is CWE-1188 (default credentials). But probing further revealed somet
 
 I confirmed this deliberately (login with random characters) rather than assuming it, because "default creds work" and "auth is entirely absent" are different severities and I wanted to claim only the one I could prove.
 
+> 🎥 **Proof:** [`rip-auth-bypass.mp4`](./images/rip-auth-bypass.mp4) — an unedited screen recording of a successful login using a random password string, then landing on the authenticated Roles dashboard. Zero valid credentials, full admin UI.
+
 ## 3. The API layer behind it
 
 A UI-level bypass is a weak finding if the backend still enforces authorization independently. So the next question — the one that separates a screenshot from an actual finding — was: **does the API behind this UI check auth on its own?** It did not.
 
-```http
-GET /api/roles HTTP/1.1
-Host: rip.photomath.net
-# no auth headers, no session cookie
+An unauthenticated `GET /api/roles` returned a valid (empty) JSON array — `200 OK`, body `[]` — not a `401`/`403`:
 
+![Unauthenticated GET rip.photomath.net/api/roles returning an empty JSON array in the browser](./images/rip-api-roles-unauth.png)
+
+*`https://rip.photomath.net/api/roles` loaded directly in a browser — no cookie, no token — returns `[]` with a `200`. An authorization-enforcing API returns `401`/`403` here.*
+
+Then I checked what methods the endpoint advertised. An unauthenticated `OPTIONS` on the same path returned the full write-capable method set:
+
+```console
+$ curl -i -s -k -X OPTIONS "http://rip.photomath.net/api/roles" -H "Accept: application/json"
 HTTP/1.1 200 OK
-[]
+Allow: POST,GET,HEAD,OPTIONS
+Accept-Patch:
+Content-Length: 0
+Date: Mon, 04 May 2026 20:53:27 GMT
+Via: 1.1 google
 ```
 
-An unauthenticated GET returned a valid (empty) JSON array, not a `401`/`403`. An `OPTIONS` probe advertised `GET, POST, HEAD` — the endpoint was built to accept writes as well as reads. Whitelabel error pages identified the backend as Java Spring Boot.
+![Terminal showing the OPTIONS request returning Allow: POST,GET,HEAD,OPTIONS and Via: 1.1 google](./images/rip-api-options-allow.png)
+
+The `Allow: POST,GET,HEAD,OPTIONS` header is the important line: the endpoint was built to accept **writes** (`POST`), not just reads — and it did so with no authentication in front of it. (`Via: 1.1 google` also confirms the request traversed Google's edge, a detail Section 5 returns to.)
+
+Finally, a `404` on a non-existent path returned the framework's stock error page, fingerprinting the backend as **Java Spring Boot**:
+
+![Spring Boot Whitelabel Error Page returned by rip.photomath.net for an unmapped path](./images/rip-spring-boot-whitelabel.png)
+
+*Spring Boot's default "Whitelabel Error Page" (`This application has no explicit mapping for /error…`) confirms the stack — useful for reasoning about the auth model that was missing.*
 
 So two independent controls — frontend authentication and backend authorization — were both absent on the same surface. That is the architecturally interesting part, and it is why the finding was *complete*: I didn't stop at "the login is fake," I demonstrated the data layer itself was open.
 
-![Authenticated admin dashboard showing the Roles section and an open "Create role" form, with "Welcome, administrator" in the header](./images/rip-photomath-dashboard.png)
-
-*The admin dashboard, reached without valid credentials. Note the empty "Create role" form (a write surface) and the complete absence of real user data — consistent with a non-production/sandbox instance.*
-
-**Scope of testing.** I confirmed read reachability and the advertised method set. I did **not** issue writes, create roles, or modify any state. Demonstrating reachability was sufficient to prove the control failure, and stopping there is what safe-harbor expectations require. Claiming the write path *worked* without exercising it would have been overclaiming; noting it was *advertised* is fact.
+**Scope of testing.** I confirmed read reachability (`GET` → `200 []`) and the advertised method set (`OPTIONS` → `Allow: POST,…`). I did **not** issue any `POST`, create roles, or modify state. Demonstrating reachability was sufficient to prove the control failure, and stopping there is what safe-harbor expectations require. Claiming the write path *worked* without exercising it would have been overclaiming; noting that it was *advertised* is exactly what the `Allow` header shows, and nothing more.
 
 ## 4. Remediation
 
 Google's handling was fast and clean:
 
 - **Accepted within ~24 hours** and filed to the responsible product team.
-- **Marked Fixed nine days after acceptance** — the endpoint was decommissioned and the hostname began returning `NXDOMAIN`. I independently re-verified the `NXDOMAIN` and reported back.
+- **Marked Fixed nine days after acceptance** — the endpoint was decommissioned and the hostname began returning `NXDOMAIN`. I independently re-verified and reported back.
 - Triaged internally as **P2 / S2**.
+
+![Chrome showing rip.photomath.net unreachable with DNS_PROBE_FINISHED_NXDOMAIN](./images/rip-nxdomain-fixed.png)
+
+*Post-remediation: `rip.photomath.net` no longer resolves (`DNS_PROBE_FINISHED_NXDOMAIN`). The record was pulled, not the code patched.*
 
 Note *how* it was fixed: not a code patch, not an auth middleware change — the record was pulled and the host stopped resolving. That detail is the whole key to the reward decision, and it's the subject of the next section.
 

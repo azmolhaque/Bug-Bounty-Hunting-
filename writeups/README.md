@@ -31,6 +31,16 @@ Reconciled against the real IssueTracker thread (509594209):
 - **§6** adds a concrete *"what would have crossed the reward bar"* counterfactual table.
 - **§7 "If I were defending this"** adds the blue-team detection/prevention lens.
 
-## Before publishing to the public repo
-Add the two real PoC screenshots under `./images/`:
-`rip-photomath-dashboard.png` (referenced in §3) and the empty-`[]` unauth-API shot.
+## Embedded evidence (added 2026-07-10)
+Real PoC artifacts are committed under `images/` and embedded inline (verbatim
+terminal + browser captures per CLAUDE.md §9.8):
+- `rip-api-roles-unauth.png` — unauth `GET /api/roles` → `200 []` in a browser (§3)
+- `rip-api-options-allow.png` — `OPTIONS` → `Allow: POST,GET,HEAD,OPTIONS`, `Via: 1.1 google` (§3)
+- `rip-spring-boot-whitelabel.png` — Spring Boot Whitelabel Error Page fingerprint (§3)
+- `rip-nxdomain-fixed.png` — post-fix `DNS_PROBE_FINISHED_NXDOMAIN` (§4)
+- `rip-auth-bypass.mp4` — screen recording: random-password login → admin dashboard (§2)
+
+Corrections made against the actual captures: the `Allow` header is
+`POST,GET,HEAD,OPTIONS` (not "GET, POST, HEAD"); the Spring Boot fingerprint came
+from a `404` on an unmapped path; removed the placeholder `rip-photomath-dashboard.png`
+reference (the auth-bypass video covers the dashboard visual).
