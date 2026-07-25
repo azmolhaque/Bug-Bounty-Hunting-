@@ -1,5 +1,16 @@
 # Next Hunt Session — Priority Queue
-**Updated:** 2026-06-24
+**Updated:** 2026-07-25 (see `results/google-vrp/2026-07-25-report-status-review.md`)
+
+> **2026-07-25 corrections:**
+> - **Session C (AppSheet F004 connector sweep) is KILLED.** Two prior external bugs
+>   (377539803, 374568427) closed the class WAI; AppSheet also strips `Metadata-Flavor`.
+>   Do not test more connectors.
+> - **Looker Studio H1 demoted** — Tenable LeakyLooker (Mar 2026) got all 9 remediated,
+>   incl. the Sticky-Credential copy flow H1 targets. Timebox to 45 min if run at all.
+> - **New #1: `AI-VRP-1-PROCEDURE.md`** (Google AI VRP, S1/S2, up to $30K).
+> - All three open Google VRP reports are in a legitimate wait state: **no action, no comments.**
+
+**Previously updated:** 2026-06-24
 **Programs:** Google VRP (bughunters.google.com) + Marriott (HackerOne)
 
 ---
