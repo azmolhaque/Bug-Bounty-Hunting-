@@ -5,7 +5,7 @@ three. All are in a legitimate wait state; commenting again would violate FO-12.
 
 ---
 
-## 1. VirusTotal SSRF — #523823039 → **CLOSED: Intended Behavior** (final, 2026-07-26)
+## 1. VirusTotal SSRF — #523823039 → **CLOSED: Won't fix (Intended behavior)** (final, 2026-07-28)
 
 | Date | Event |
 |---|---|
@@ -29,13 +29,13 @@ actions the user couldn't perform on their own"):
 **Realistic outcome:** the reopen is the win; the reward ceiling stays low. Our own FO-11 gate
 says SSRF that reaches IMDS but reads nothing sensitive is Low. P4/S4 is consistent with that.
 
-### FINAL OUTCOME (update 2026-07-26)
+### FINAL OUTCOME (confirmed from thread, close dated 2026-07-28 02:06)
 
 | Date | Event |
 |---|---|
 | Jun 24 | Reopened after the clarification |
 | Jun 30 | Google Cloud VRP queue |
-| **Jul 26** | **Status: New → Intended Behavior.** Closed. |
+| **Jul 28 02:06** | **Status: New → Won't fix (Intended behavior).** Closed by `as...@google.com`. No further comments. Final metadata: P4/S4. |
 
 Cloud VRP's stated rationale:
 > *"Our team has analyzed this report and decided not to track it as a security bug… the
