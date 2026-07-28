@@ -158,3 +158,28 @@ a finding.
   belong to a real customer tenant.
 - If a response ever contains data belonging to a **third party**, stop immediately, do not
   save it, and report that fact — that is a live production leak, not a lab result.
+
+---
+
+## STATUS 2026-07-25 — **BLOCKED at Phase 1 (no self-serve tenant)**
+
+`app.wiz.io/signup` resolves to `app.wiz.io/login/email-challenge` — a **login** flow, not a
+signup. Wiz is enterprise / sales-led; there is no self-serve trial that yields a tenant.
+Submitting an address returns *"If your individual email is associated with one or more Wiz
+tenants, we've sent a sign in link… If your organization's email domain is [associated], we've
+notified your Wiz admins."*
+
+**Two consequences:**
+
+1. **Chain 4 cannot be run.** Cross-tenant isolation cannot be tested with fewer than two
+   tenants, and there is no honest substitute. Per the drop condition above: STOP, do not
+   force it. Chains 3 and 13 are blocked by the same wall (all need a tenant).
+
+2. **Do not iterate on that form.** By Wiz's own message, submitting addresses can notify the
+   Wiz admins of whatever organisation owns the domain. Repeated submissions across addresses
+   are effectively **tenant enumeration directed at third parties** — outside authorised
+   scope, and it generates noise for real customers. One attempt on our own domain was fine;
+   a sweep is not. **No further probing of this endpoint.**
+
+**Unblock condition:** a legitimately provisioned Wiz tenant (e.g. an employer/client
+engagement with written authorisation). Until then Chains 3/4/13 stay parked.
