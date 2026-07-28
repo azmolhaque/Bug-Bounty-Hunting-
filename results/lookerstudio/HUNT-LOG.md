@@ -44,7 +44,14 @@ The copy dialog *does* carry the data-source **reference** across — both "Orig
 Source" and "New Data Source" read `ls-source-8kq3wm - Sheet1`, each flagged with a ⚠️.
 
 But B's resulting copy fails closed:
-> **"Data Set Configuration Error — Data Studio cannot connect to your data set."**
+> **"Data Set Configuration Error — Data Studio cannot connect to your data set.
+> The sheet to which you are trying to connect no longer exists."** (Error ID `401370b3`)
+
+Note the wording: **not** "access denied" or "credentials required" — Looker tells B the sheet
+**does not exist**. From B's position A's private sheet is indistinguishable from a deleted
+one, so the error itself does not leak existence. Same design as Drive's
+*"the file you have requested does not exist"* seen at the Phase 0 gate. Fail closed **and**
+no existence oracle.
 
 B ends up holding a report that *points at* A's sheet and **cannot read it**. The owner
 credential did not travel with the copy.
