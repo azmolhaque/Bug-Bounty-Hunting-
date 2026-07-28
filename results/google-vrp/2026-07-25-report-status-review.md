@@ -5,7 +5,7 @@ three. All are in a legitimate wait state; commenting again would violate FO-12.
 
 ---
 
-## 1. VirusTotal SSRF — #523823039 → **reopened, in Cloud VRP queue** (P4/S4, New)
+## 1. VirusTotal SSRF — #523823039 → **CLOSED: Intended Behavior** (final, 2026-07-26)
 
 | Date | Event |
 |---|---|
@@ -29,7 +29,41 @@ actions the user couldn't perform on their own"):
 **Realistic outcome:** the reopen is the win; the reward ceiling stays low. Our own FO-11 gate
 says SSRF that reaches IMDS but reads nothing sensitive is Low. P4/S4 is consistent with that.
 
-**Action: NONE. Do not comment.** The record is complete and the honest limit is already stated.
+### FINAL OUTCOME (update 2026-07-26)
+
+| Date | Event |
+|---|---|
+| Jun 24 | Reopened after the clarification |
+| Jun 30 | Google Cloud VRP queue |
+| **Jul 26** | **Status: New → Intended Behavior.** Closed. |
+
+Cloud VRP's stated rationale:
+> *"Our team has analyzed this report and decided not to track it as a security bug… the
+> security risk described in this report does not meet the threshold that we require for this
+> type of escalation on behalf of the security team."*
+
+Note what is **not** contested: the link-local unreachability, the `x-cloud-trace-context`
+in-GCP scanner identity, the SHA256-verified IMDS bodies, the 6-of-7 encoding bypasses. The
+facts stood. **The impact did not clear the bar**, because nothing sensitive was ever read —
+`Metadata-Flavor` is absent, so every credential path returned 403.
+
+**Action: NONE. Do NOT appeal (FO-12).** The clarification already earned one reopen — that
+was the single legitimate rebuttal and it was spent well. A second appeal on the same evidence
+would cement the label and cost standing. Accept and move on.
+
+### The lesson — we predicted this ourselves and submitted anyway
+
+CLAUDE.md §3 Hard Rejection List, written *before* this submission:
+> *"SSRF that only reaches attacker-owned infrastructure, or reaches IMDS/internal hosts but
+> reads NOTHING sensitive (no creds/token/data — VT IMDS-root → Low ceiling)."*
+
+The class was on our own reject list, by name, with this exact target as the example. The
+report was submitted regardless, and the honest ceiling (403, no credentials) was stated
+inside the report itself. **The failure was not triage; it was the decision to submit a
+finding we had already classified as below the bar.**
+
+That is precisely the discipline that held on 2026-07-25, when the Gemini and Looker hunts
+both came back defended and neither was written up.
 
 ---
 
