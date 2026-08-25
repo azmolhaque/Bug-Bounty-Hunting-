@@ -1,8 +1,16 @@
 # Draft — scope disclosure for issue 509911655 (Looker XFF IP-allowlist bypass)
 
-**Status: HOLD.** Send only if the Cloud-console check across all accounts confirms the
-instance was never provisioned by us. If it turns out to be ours, discard this file and send
-`DRAFT-509911655-status-ping.md` instead.
+**Status: CONFIRMED — SEND.** Operator confirmed 2026-08-25 that the tenant was
+**discovered via subdomain enumeration of `cloud.looker.com`**, not provisioned by us.
+Combined with the absent provisioning email, the "locate a Looker tenant" repro wording, the
+non-admin block page, and live dedicated eu-west-1 infrastructure 3.5 months on, ownership is
+settled. `DRAFT-509911655-status-ping.md` is now VOID — do not send it.
+
+**Root cause of the error:** `*.looker.com` is in the scope file, so subdomain enumeration
+returned this host alongside genuine Google assets. Enumeration output does not distinguish
+"vendor infrastructure" from "a customer's private tenant" — they are indistinguishable
+hostnames. The scope file governs which *product* may be tested, never whose *tenant* the
+data belongs to. See FO-14.
 
 ---
 
@@ -17,6 +25,7 @@ Evidence that `09a2ceda-8736-4308-941f-1fa63a87f960.cloud.looker.com` is a third
 | Our own report's repro step | *"**Locate** a Looker tenant with an active IP Allowlist"* — found, not provisioned |
 | The block page seen | *"contact your **Looker admin**"* — the message shown to non-admins |
 | DNS (passive) | CNAME → dedicated AWS ELB `…eu-west-1.elb.amazonaws.com`, **still live 3.5 months later** — a trial would have been deprovisioned |
+| **Operator recollection (decisive)** | **Host was found by subdomain enumeration of `cloud.looker.com`** — i.e. discovered, never provisioned |
 
 **What was accessed on that instance:** the `/login` response (200, with session cookies issued
 to us), and `/api/4.0/swagger.json` (~1021 KB of live API schema). Both were attached to the

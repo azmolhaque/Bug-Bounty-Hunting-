@@ -1,3 +1,12 @@
+# ⛔ VOID — DO NOT SEND
+
+**2026-08-25:** ownership resolved — the tenant was discovered via
+subdomain enumeration, not provisioned by us. A status ping chasing triage on a report tested
+against a third party's production instance would be exactly the wrong action. Send
+`DRAFT-509911655-scope-disclosure.md` instead.
+
+---
+
 # Draft — status ping for issue 509911655 (Looker XFF IP-allowlist bypass)
 
 **Send only after confirming `09a2ceda-8736-4308-941f-1fa63a87f960.cloud.looker.com`
