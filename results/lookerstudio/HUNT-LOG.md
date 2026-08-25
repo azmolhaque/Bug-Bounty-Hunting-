@@ -75,3 +75,19 @@ submittable (FO-9/FO-11), and here there is not even retention.
   Looker treats it as a column name and no data renders. Do not mistake that for a defence.
 - H2 (field/alias SQLi) and H3 (cross-tenant report/datasource IDOR) remain untested — but
   both need request interception, now feasible on the laptop rig.
+
+## 2026-08 — H1 closed, pivoting to H3
+
+H1 (owner-credential retention on copy) is CLOSED/defended — see the 2026-07-25 entry.
+H3 (cross-tenant IDOR on report/datasource objects) is now the active hypothesis:
+`H3-PROCEDURE.md`.
+
+Rationale for choosing H3 over H2 (field/alias SQLi): the one report in this portfolio that
+earned P2 and real triage traction is the Looker XFF allowlist bypass — a *control bypass
+proven by a differential*. H3 has that same shape (B's session returns A's private object, or
+it does not) with no informative middle state. H2 needs generated-SQL visibility we do not
+reliably have.
+
+**Setup note carried forward:** do NOT reuse the H1 objects. A's report `68285b28-…` was
+shared with B during H1, so B has legitimate access and it cannot demonstrate anything. H3
+requires a freshly created, never-shared report in A.
