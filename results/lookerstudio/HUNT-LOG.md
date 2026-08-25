@@ -91,3 +91,55 @@ reliably have.
 **Setup note carried forward:** do NOT reuse the H1 objects. A's report `68285b28-…` was
 shared with B during H1, so B has legitimate access and it cannot demonstrate anything. H3
 requires a freshly created, never-shared report in A.
+
+## 2026-08-26 — H3 executed: report-ID swap → **DEFENDED (PERMISSION_DENIED)**
+
+Accounts: A=`kaseym484@gmail.com`, B=`azmolhaque95@gmail.com`.
+Objects (both freshly created; A's report **never shared**):
+
+| | Report ID | Datasource | Canary |
+|---|---|---|---|
+| A (private) | `07b120ce-1c62-4a5c-824b-c561b106ccee` | `ls-h3-src-9wt4kp` | `H3SECRET-9wt4kp` |
+| B (own) | `76c73896-f100-4188-900b-257c62ba14b1` | `af13982f-924b-4cb3-8526-2b2703164b5a` | `BOWN-9wt4kp` |
+
+### Gates
+- **0A — human boundary:** B loading A's report URL → *"Can't access report… your current account
+  azmolhaque95@gmail.com can't access this report"*, B's email in frame. Screenshot held.
+- **0B — query shape valid:** B's captured `batchedDataV2` cURL replayed → returns `BOWN-9wt4kp`
+  (`grep -c` = 1). **Re-verified after the cross test — still 1**, so the session was live
+  throughout and the cross result is not session death.
+
+### Endpoint
+`POST https://datastudio.google.com/u/0/batchedDataV2?appVersion=…`, cookie-authenticated,
+`x-rap-xsrf-token` header. Body carries **two** independent identifiers:
+`reportContext.reportId` and `datasetSpec.dataset[].datasourceId`, plus field IDs
+(`sourceFieldName: _n906277200_` — appears to be derived from the column name `secret`).
+
+### Cross test 1 — swap `reportId` only (B's cookies + A's report ID)
+```
+sed 's/<B_REPORT_ID>/<A_REPORT_ID>/g' b.sh > x.sh
+```
+Response (278 bytes):
+```json
+{"dataResponse":[{"dataSubset":[{"requestId":"","jobRequestUrl":[]}],
+"errorStatus":{"code":7,"reason":4,"reasonStr":"PERMISSION_DENIED",
+"uniqueErrorCode":"0cc43aa0","category":1,"errorCategoryStr":"ACCESS",
+"errorDetails":{"permissionDeniedErrorDetails":{"aclModes":2}}}}]}
+```
+**gRPC code 7 / PERMISSION_DENIED / category ACCESS, with ACL evaluation details
+(`aclModes:2`).** This is an *authorization* denial — the backend resolved A's report and
+evaluated B's access against its ACL — not a malformed-request rejection.
+
+**Verdict: report-level object authorization is enforced. Clean negative.**
+
+### Still untested — the genuinely different question
+The swap above kept **B's `datasourceId`**, so it only proves the *report* ACL is checked.
+The data source is a **separate object with its own ACL**. The classic bug shape is:
+> keep B's own `reportId` (report ACL passes) but point it at **A's `datasourceId`** — if the
+> backend authorizes on the container and then fetches the referenced object without
+> re-checking, B reads A's data through B's own report.
+
+That is one `sed` away once A's datasource ID is captured. Also pending: FO-2 catch-all control
+(garbage report ID) to confirm `PERMISSION_DENIED` is not the generic response for everything —
+and to check whether a *nonexistent* ID returns a different code (which would be a minor
+existence oracle, informational only, not a finding).
