@@ -150,6 +150,34 @@ public-data endpoint.
 
 **Cost:** 0.00 CHF consumed. Balance unchanged at 20.00 CHF; no billable resource created.
 
+---
+
+## COST DISCIPLINE — binding for every Exoscale session
+
+The account is **post-paid with no hard spending cap**. The operator is funding this
+personally and cannot absorb an unexpected bill. These rules are not advisory.
+
+1. **No compute instances, ever.** Instances bill per hour, continuously, used or not.
+   They are the only thing here that burns money at a meaningful rate. **No hypothesis in
+   H1, H2 or H3 requires one.**
+2. **State the cost before creating anything.** If the cost is unknown, find it out first.
+   Never "create it and see."
+3. **Delete in the same session as you create.** Not "later", not "next time".
+4. **Check the balance at the start AND end of every session.** If it moved at all — stop,
+   find out why, before any further testing.
+5. **SOS objects for H3 must be a few KB each.** Priced per GB-month; a handful of small
+   objects is a fraction of a centime against 20.00 CHF of credit.
+6. **If the operator stops testing, close the organisation.** A dormant post-paid account is
+   an open liability, not a neutral state.
+
+**Activation charge, 2026-08-26 02:46:** CHF 20.00 to DBBL card, Exoscale Lausanne.
+Not yet established whether this is an authorisation hold (reverses in ~7–30 days) or a
+capture converted to the 20.00 CHF account credit. Check portal Billing for an invoice;
+`support@exoscale.com` for a refund on closure. **Do not use the portal ticket form** —
+it calls `portal.exoscale.com/api/tickets`, which the program rules prohibit.
+
+**Consumed to date: 0.00 CHF.**
+
 ## Next
 
 H3 (SOS bucket ACLs). S3-compatible implementations have a far richer history of ACL and
