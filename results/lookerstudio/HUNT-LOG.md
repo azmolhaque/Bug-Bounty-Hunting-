@@ -143,3 +143,47 @@ That is one `sed` away once A's datasource ID is captured. Also pending: FO-2 ca
 (garbage report ID) to confirm `PERMISSION_DENIED` is not the generic response for everything —
 and to check whether a *nonexistent* ID returns a different code (which would be a minor
 existence oracle, informational only, not a finding).
+
+### Cross tests 2–4 — full matrix → **H3 DEFENDED, CLOSED**
+
+A's datasource (embedded in A's report, **Owner's credentials / Kasey Murray**):
+`29545b0f-aafc-4006-bdbf-78de76293092`.
+Note: A's and B's `sourceFieldName` are **identical** (`_n906277200_`) because both sheets use
+the column `secret` — so the field ID is derived from the column name. This mattered: it means
+a datasource-only swap was **structurally valid**, and any rejection is a real control firing,
+not a schema mismatch.
+
+| # | B's cookies + … | Response | Control that fired |
+|---|---|---|---|
+| control | B's own report + B's own datasource | **200 + `BOWN-9wt4kp`** | — (gate 0B, verified twice) |
+| 1 | **A's** reportId + B's datasource | `code 7 PERMISSION_DENIED` / ACCESS / `aclModes:2` | **Report ACL** |
+| 2 | B's reportId + **A's** datasourceId | `code 3 BROKEN_CLAIM` / USER_CONFIGURATION | **Report↔datasource binding** |
+| 3 | **A's** reportId + **A's** datasourceId (fully consistent) | `code 7 PERMISSION_DENIED` / ACCESS / `aclModes:2` | **Report ACL** |
+| FO-2 | garbage reportId `00000000-…` | `PERMISSION_DENIED` / ACCESS / **empty** `permissionDeniedErrorDetails` | — |
+
+**Two independent controls close the class:**
+1. **Report-level ACL** — B cannot query A's report object, even with a perfectly formed,
+   internally consistent request using all of A's own identifiers.
+2. **Report↔datasource binding** — B cannot graft A's data source onto B's own report; the
+   backend rejects the pairing as `BROKEN_CLAIM` *before* reaching authorization.
+
+Test 2 is the important one for the classic bug shape (authorize on container, fetch referenced
+object without re-checking). Looker Studio blocks it structurally: you cannot even express the
+request, so the ACL question never arises.
+
+**Owner's-credentials made no difference** — A's datasource was switched from Viewer's to
+Owner's credentials precisely so that a successful cross would have executed as A and returned
+A's rows. It still denied.
+
+### Minor observation — existence oracle (informational, NOT reportable)
+`permissionDeniedErrorDetails` is `{"aclModes":2}` for a **real** report B cannot access, but
+`{}` for a **nonexistent** ID. That distinguishes "exists but denied" from "does not exist".
+Per the Hard Rejection List (enumeration without record access — cf. Salesforce "873 fields"
+→ N/A) this is **informational only. Do not submit.**
+
+### VERDICT — H3 CLOSED, no submission
+Coverage: 3 cross-tenant permutations + 1 catch-all control + a verified-before-and-after
+positive control. **No data crossed. B never saw `H3SECRET-9wt4kp`.**
+Logged as an honest negative (FO-7). Object-level authorization on `batchedDataV2` is sound.
+
+H2 (calculated-field / alias SQLi) remains the only untested Looker Studio hypothesis.
