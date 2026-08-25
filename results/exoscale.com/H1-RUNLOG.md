@@ -87,6 +87,71 @@ the Windows **Trusted Root** store or `exo` (Go, uses the OS trust store) fails 
 
 ---
 
+## H1 RESULT — **CLEAN NEGATIVE. Closed 2026-08-26.**
+
+Three independent axes, ~120 requests, no bypass. Enforcement is sound.
+
+### Axis 1 — service coverage (`h1-sweep.py`, 42 endpoints)
+
+**41 of 42 denied.** Only `/v2/dns-domain` — the single allowed service — returned 200.
+Every sensitive class refused: `iam`, `kms`, `organization`, `sos`, `compute`,
+`block-storage`, `dbaas`, `ai`. Endpoint list taken from egoscale v3 `operations.go`
+(371 operations, 134 GET, 51 with no path parameter), so **no resource ID was ever
+constructed or guessed** — customer resources were unreachable by construction, not by care.
+
+### Axis 2 — zone consistency (free, via the CLI's own fan-out)
+
+`GET /v2/instance` → 403 in **all 8 zones** including the new `hr-zag-1`. No per-zone
+policy-cache drift.
+
+### Axis 3 — path normalisation vs policy mapping (`h1-pathvariants.py`, 32 requests)
+
+16 variants each against `/v2/api-key` and `/v2/instance` — traversal, double slash,
+percent-encoding, semicolon params, case, trailing dot/space/null, overlong UTF-8.
+**Nothing reached a handler.** Every variant resolved to 403, 404 or 400.
+
+**Notable — the system fails closed.** Normalised variants returned a **39-byte** 403 where
+the baseline returned 46/50 bytes. The shorter body drops the service name, i.e. those
+requests were denied by *default-deny before the service was resolved*, rather than by a
+matching rule. Unrecognised paths cannot fall through. That is deliberate design, not luck.
+
+---
+
+## Side observation — unauthenticated endpoint allowlist (`h1-noauth.py`)
+
+Three endpoints answer with **no `Authorization` header at all**, while returning **403 to
+our authenticated restricted key**:
+
+| Path | No auth | Restricted key |
+|---|---|---|
+| `/v2/zone` | 200, 1312 b | 403 |
+| `/v2/instance-type` | 200, 9643 b | 403 |
+| `/v2/template` | 200, 17002 b | 403 |
+
+This explains the `/v2/zone` contradiction we saw between the CLI and our signed request:
+egoscale performs zone discovery unauthenticated, and that path never reaches the policy engine.
+
+**NOT REPORTED — deliberately.** Every byte returned is already public: zone names and
+endpoints, instance-type specs (the pricing page), and the OS/marketplace template catalogue.
+Attacker gain is **nil**, so Quality Bar #1 fails and the Hard Rejection List (information
+disclosure with no exploitable data) applies. Submitting it would earn an informational close
+and cost signal on a program where we have none banked.
+
+The *inversion* is architecturally odd — a valid-but-restricted credential gets **less** than
+no credential — but no privilege is gained, so it stays a note, not a report.
+
+---
+
 ## Findings
 
-_None yet. A denied operation that returns 200 and takes effect, or nothing (FO-9)._
+**None.** No denied operation ever succeeded. Per FO-7 this is logged as a negative result,
+not padded into a report. Per FO-9, a precondition is not a finding and neither is a
+public-data endpoint.
+
+**Cost:** 0.00 CHF consumed. Balance unchanged at 20.00 CHF; no billable resource created.
+
+## Next
+
+H3 (SOS bucket ACLs). S3-compatible implementations have a far richer history of ACL and
+policy-parsing bugs than a policy engine that has now survived three separate attacks.
+H2 (cross-org) remains blocked on a second organisation.
