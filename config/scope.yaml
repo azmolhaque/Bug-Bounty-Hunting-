@@ -233,6 +233,20 @@ in_scope:
   - "wiz.io"
   - "app.wiz.io"
 
+  # ==========================================================================
+  # EXOSCALE (Intigriti) — Swiss/EU cloud provider. Public/Open program.
+  # Tier2 EUR 50-5,000. MANDATORY: @intigriti.me signup email;
+  # X-Intigriti-Username header on EVERY request; max 10 req/sec;
+  # blacklist portal.exoscale.com/api/tickets; CUSTOMER RESOURCES OUT OF SCOPE.
+  # ==========================================================================
+  - "portal.exoscale.com"
+  - "api-*.exoscale.com"
+  - "sos-*.exo.io"
+  - "sks-*.exo.io"
+  - "*.internal.exoscale.ch"
+  - "www.exoscale.com"
+  - "community.exoscale.com"
+
   # Looker SaaS (TIER1) — cross-tenant BI; 9 vulns patched 2026; look for bypasses
   - "looker.com"
   - "lookerstudio.google.com"
