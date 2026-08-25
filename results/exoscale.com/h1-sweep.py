@@ -151,7 +151,8 @@ def main():
                 mark = "deny"
 
             print(f"  [{mark}] {status!s:>4} {len(body):>7}b  {path:<42} ({svc})")
-            print(f"          {snippet}") if mark in ("HIT!", "ERR ") else None
+            if mark in ("HIT!", "ERR "):
+                print(f"          {snippet}")
             time.sleep(REQ_INTERVAL)
 
     print(f"\nfull responses -> {out}")
