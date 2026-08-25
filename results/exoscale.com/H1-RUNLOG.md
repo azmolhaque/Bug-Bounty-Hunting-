@@ -178,6 +178,22 @@ it calls `portal.exoscale.com/api/tickets`, which the program rules prohibit.
 
 **Consumed to date: 0.00 CHF.**
 
+### Billing state verified in portal — 2026-08-26 04:23
+
+| Page | Reading |
+|---|---|
+| **Invoices** | **"No resource available"** — nothing invoiced |
+| **Usage Details** | **0.00 CHF** total. Sole line item: `Key Management Service - default key`, 0.00 CHF/hour × 1.41 h = **free** |
+| **Current balance** | 20.00 CHF, unchanged |
+| **Billing mode** | POST-PAID (monthly invoice, default card charged for the due amount) |
+| **Credit threshold** | was 15 CHF → **set to 19 CHF** so any real consumption trips an alert immediately |
+
+No invoice exists behind the card authorisation, so it should reverse (typically 7–30 days).
+If it has not reversed by late September, email `support@exoscale.com` with the date and amount.
+
+**Tripwire in place:** balance alert at 19 CHF. Combined with "no instances, ever", a
+surprise bill would require both the alert to fail and a billable resource to exist.
+
 ## Next
 
 H3 (SOS bucket ACLs). S3-compatible implementations have a far richer history of ACL and
