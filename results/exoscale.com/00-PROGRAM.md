@@ -94,8 +94,29 @@ Primary: Org A's API key + Org B's resource ID → does it return B's data?
 Secondary: SOS bucket ACLs (S3-compatible services are historically ACL-buggy).
 Tertiary: IAM role/policy escalation *within* an org (restricted key → privileged action).
 
-## Blockers before any active testing
-- [ ] Obtain the `@intigriti.me` email alias(es) from the Intigriti profile
-- [ ] Confirm the exact Intigriti username string for the `X-Intigriti-Username` header
-- [ ] Create **two** Exoscale orgs with `@intigriti.me` addresses
-- [ ] Confirm free tier / trial credit is sufficient to create resources
+## Setup — RESOLVED 2026-08-26
+
+| Item | Value |
+|---|---|
+| Intigriti username | **`gorib`** |
+| Required header | **`X-Intigriti-Username: gorib`** |
+| Org A signup email | **`gorib+exoA@intigriti.me`** |
+| Org B signup email | **`gorib+exoB@intigriti.me`** |
+
+**`@intigriti.me` aliases support wildcards.** Per Intigriti's KB, `nickname@intigriti.me`,
+`nickname+anything@intigriti.me` and `nickname-anything@intigriti.me` all forward to the
+registered address. Intigriti provides this *specifically* so researchers can create multiple
+compliant test accounts on one program. **This removes the two-account blocker that killed
+Wiz Chains 3/4/13.**
+
+**A Personal Access Token is NOT needed.** The Intigriti PAT is for their Researcher API
+(managing our own submissions programmatically) and is unrelated to testing Exoscale. Do not
+create one — it is an unnecessary credential.
+
+## Remaining blockers
+- [ ] Create Org A with `gorib+exoA@intigriti.me`
+- [ ] Confirm trial credit covers a small instance + bucket + DNS zone
+- [ ] Install a header-injection extension (e.g. ModHeader) set to add
+      `X-Intigriti-Username: gorib` on `*.exoscale.com` and `*.exo.io` — so **every**
+      browser request carries it automatically and we cannot forget
+- [ ] Org B (only needed for H2)
