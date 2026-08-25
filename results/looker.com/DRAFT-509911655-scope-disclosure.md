@@ -1,6 +1,9 @@
 # Draft — scope disclosure for issue 509911655 (Looker XFF IP-allowlist bypass)
 
-**Status: CONFIRMED — SEND.** Operator confirmed 2026-08-25 that the tenant was
+**Status: NOT SENT — operator decision, 2026-08-25.** Operator elected not to comment and to
+let triage proceed. Draft retained on file, unsent, in case that changes.
+
+**Original assessment (unchanged):** Operator confirmed 2026-08-25 that the tenant was
 **discovered via subdomain enumeration of `cloud.looker.com`**, not provisioned by us.
 Combined with the absent provisioning email, the "locate a Looker tenant" repro wording, the
 non-admin block page, and live dedicated eu-west-1 infrastructure 3.5 months on, ownership is
