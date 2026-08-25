@@ -62,6 +62,16 @@ export HTTP_PROXY=http://127.0.0.1:8080
 ```
 Verify once in the mitmdump output that the header is present before testing anything.
 
+> ⚠️ **CA trust is a prerequisite, not an optional step.** `exo` is a Go binary and validates
+> TLS against the OS trust store. Until mitmproxy's CA is installed there, every call fails with
+> a certificate error. On Windows: start `mitmdump`, browse to `http://mitm.it` **through the
+> proxy**, download the Windows cert, and install it into **Trusted Root Certification
+> Authorities**. **A TLS error is a rig failure, not a test result.**
+
+> ⚠️ **Read the HTTP status from the mitmdump log, not the CLI text.** With no DNS zones created,
+> `exo dns list` prints an empty table — which looks similar to a refusal in the terminal but is a
+> `200`. Gate 0A passes on the **status code**, not on whether rows appeared.
+
 **Option B: capture and replay.** Run one `exo` command through mitmproxy, copy the fully
 signed request, and replay with curl — adding the header by hand. Signatures are
 time-bound, so re-capture when they expire. **An expired-signature error is not a negative
