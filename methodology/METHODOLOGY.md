@@ -658,3 +658,30 @@ brand/phishing vector** (#10 pt 2) — adjectives, not a new concrete fact (FO-1
 Calibrating that gap honestly *before* submitting is the skill — and writing it up
 honestly afterward (see the published `security-writeups` post) builds more signal
 than a padded "critical" would have.
+
+
+### FO-14. Test-target OWNERSHIP is a Phase 0 gate — scope ≠ tenancy
+An in-scope *product* is not the same as an in-scope *tenant*. Before demonstrating anything
+against a hosted multi-tenant service (Looker Cloud, Wiz, any per-customer SaaS instance),
+**prove the instance is ours** — a provisioning email, an admin login, an entry in our own
+cloud console. If none of those exist, it is somebody's production tenant and their data is
+not ours to touch, even when the *vulnerability* is genuinely in the vendor's product.
+
+Warning signs that a "target" is actually a stranger's tenant:
+- The repro step says **"locate an instance"** rather than "the instance I provisioned"
+- The error page addresses you as a non-admin (*"contact your administrator"*)
+- No provisioning record anywhere in your mail or console
+- The host is still live long after any trial you might have created would have expired
+- Per-customer dedicated infrastructure (dedicated LB, customer-specific region)
+
+**Reference case — Looker XFF allowlist bypass (509911655, 2026-05):** a genuine ingress flaw
+(client-supplied `X-Forwarded-For` trusted for access-control decisions on Google-operated
+`cloud.looker.com`) was demonstrated against `09a2ceda-…cloud.looker.com`, a tenant that was
+**never provisioned by us**. The PoC obtained that customer's session cookies and ~1 MB of
+their `swagger.json`. Right finding, wrong target. Correct response: **stop all traffic,
+disclose the scope error voluntarily in the report thread, offer to re-validate against a
+vendor-designated instance, expect the report to close.** Voluntary disclosure of a scope
+error is treated very differently from one a triager discovers.
+
+The cost of this gate is one minute. The cost of skipping it is unauthorized access to a real
+company's production environment.
