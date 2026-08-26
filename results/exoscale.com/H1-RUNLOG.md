@@ -194,6 +194,60 @@ If it has not reversed by late September, email `support@exoscale.com` with the 
 **Tripwire in place:** balance alert at 19 CHF. Combined with "no instances, ever", a
 surprise bill would require both the alert to fail and a billable resource to exist.
 
+---
+
+## H4 session 1 — role assumption. 2026-08-26 07:50–08:02 UTC
+
+Key `zt-dns-only-key`, zone `ch-gva-2`, external IP `180.148.212.32`, balance 20.00 CHF (unchanged).
+
+### Controls
+
+| Request | Result |
+|---|---|
+| `GET /v2/dns-domain` | **200**, `{"dns-domains": []}` — key live, signing correct |
+| `GET /v2/iam-role` | **403**, `Forbidden by role policy for iam` — no `iam` access, on the record |
+
+### `POST /v2/iam-role/{id}/assume`
+
+| Target | Body | Result |
+|---|---|---|
+| `zt-dns-only` `538cf5fe-…` | `{"ttl":3600}` | **500** `server error` |
+| `Billing` `55c3473d-…` | `{"ttl":3600}` | **500** `server error` |
+| `Owner` `fd475130-…` | `{"ttl":3600}` | **500** `server error` |
+| sentinel `00000000-…0000` | `{"ttl":3600}` | **404** `not found` |
+| `zt-dns-only` | `{}` | **400** `missing keys 'ttl'` |
+
+All role IDs copied from our own portal. The sentinel is an all-zero UUID that cannot be a
+real role — no identifier was guessed (FO-14).
+
+### What this establishes
+
+- The 500 is **not** generic (sentinel → clean 404) and **not** a body-parsing crash
+  (`{}` → clean 400). It occurs only when a real role and a valid body reach the handler.
+- It faults for **every** role in the organisation, including the built-ins — so it is not
+  caused by our role specifically.
+- Most likely reading: `AssumeRolePolicy` is `null` on every role here, because nothing that
+  created them ever set one (the portal form has no such field), and the handler faults
+  instead of evaluating.
+
+### Ordering observation
+
+Sentinel UUID returns **404**, not 403, while `GET /v2/iam-role` with the same key returns
+**403**. On the assume endpoint, **role lookup precedes the policy decision** — an existence
+oracle. Weak in practice (role IDs are UUIDs; we will not enumerate), recorded for completeness.
+
+### Verdict
+
+**Not reportable.** A 500 with a bare `"server error"` body is an unhandled service defect, not
+a boundary crossing. No credential was issued, nothing escalated. Quality Bar #1 fails and the
+Hard Rejection List (verbose/error responses with no exploitable data) applies.
+
+### Still untested — and this is the actual security question
+
+Whether an `AssumeRolePolicy`, **when set**, is enforced. We have only probed a feature no role
+in this org is configured for. Testing it needs a role created *through the API* with a trust
+policy attached, which needs an Owner-scoped key. See `H4-PROCEDURE.md` phase 2.
+
 ## Next
 
 H3 (SOS bucket ACLs). S3-compatible implementations have a far richer history of ACL and
