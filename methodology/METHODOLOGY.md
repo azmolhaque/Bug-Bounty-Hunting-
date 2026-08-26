@@ -607,6 +607,28 @@ Here is the actual data it exposed. Here is why that's a problem." Short, factua
 first-person, real terminal output. AI may assist drafting; you must manually
 verify every claim and strip the tells before sending.
 
+**AMENDMENT, 2026-08-27 — this rule was written too absolutely.**
+The AppSheet systemic-SSRF report (525815004 / 525815219) opens with a literal
+**"EXECUTIVE SUMMARY"**, contains a **differential table** of prior fixes, and uses the word
+**"systemic"** throughout — every tell this rule bans. It was raised to **P2**.
+
+So the causal claim in the original rule is wrong. Formatting is not what gets reports
+auto-closed as Spam. **What gets closed is unverified claims dressed in confident
+formatting** — a speculative chain, a self-argued CVSS, or an escalation that was never
+demonstrated, presented as though it had been. The AppSheet report survives its own
+formatting because every element under the headings is a *thing that was actually tested*:
+three named surfaces, four network clients, real OOB hits, real GCP-origin IPs, dated runs.
+
+Restated correctly:
+
+> **Every claim must be verified, and the formatting must not imply more than was verified.**
+> Structure is fine — a table of what you tested and what happened is genuinely useful to a
+> triager. The tell that kills a report is the gap between what the presentation asserts and
+> what the evidence shows.
+
+M018 (closed as Spam) failed the *evidence* test, not the *formatting* test. Do not spend
+effort stripping headings; spend it deleting sentences you cannot prove.
+
 ### FO-11. The Submit/Drop gate (run before every submission)
 Answer in ONE sentence: **"What does an attacker concretely GET?"**
 - Answer is *another user's data / a usable credential / code execution / a proven
@@ -685,3 +707,46 @@ error is treated very differently from one a triager discovers.
 
 The cost of this gate is one minute. The cost of skipping it is unauthorized access to a real
 company's production environment.
+
+
+### FO-15. Systemic framing can rescue a class that is WAI in isolation
+A behaviour that a triager will close as **intended** when shown once can become a genuine
+finding when shown as a **pattern of missing control across independent surfaces** — provided
+the pattern is demonstrated, not asserted.
+
+**The AppSheet case (525815004 / 525815219, P2, 2026-08).** A connector that fetches a
+user-supplied URL and forwards user-supplied credentials to it is *intended behaviour*. It is
+on this file's own Hard Rejection List, and a prior AppSheet SSRF report closed exactly that
+way. The same underlying behaviour, reframed, drew **P2**:
+
+| Weak framing (closes as WAI) | Systemic framing (drew P2) |
+|---|---|
+| "This connector fetches a URL I supplied" | "The connector *framework* has **no centralized egress filter**" |
+| One surface | **Three independent surfaces**, four distinct network clients, HTTP **and** raw TCP |
+| No history | **Two prior point-fixes** (2021 webhook, ~$6,267; ~2022–24 Apigee) that never generalised |
+| Implicit ask | "Every unreviewed connector is a new instance of the same root cause" |
+
+The argument stops being *"this feature behaved as designed"* and becomes *"you have fixed
+this three times without building the shared control, so the next one is open by default."*
+That is a claim about architecture, and it is much harder to close as intended.
+
+**Requirements — all four, or it is padding:**
+1. **Multiple surfaces actually tested.** Named, dated, with evidence per surface. Not "and
+   presumably others".
+2. **Prior fixes documented.** Public advisories, changelogs, previous VRP IDs. The history is
+   what proves the point-fix pattern.
+3. **A distinct root cause named** — the *missing shared control*, not the individual symptom.
+4. **Each surface independently reproducible.** If one is shaky the whole pattern argument
+   collapses with it.
+
+**The limit — and this matters more than the technique.** Systemic framing defeats the
+**"intended behaviour"** objection. It does **not** defeat the **impact** bar (§2, FO-8/9/11).
+The AppSheet report reached P2 while its requests still only arrived at *our own* server, with
+no internal data read — so the fix is likely and the reward is genuinely uncertain. Two
+different questions:
+
+- *"Will they fix it?"* — systemic framing moves this a great deal.
+- *"What did the attacker actually GET?"* — systemic framing moves this **not at all**.
+
+Use it to rescue a real missing control from a lazy WAI close. Never use it to inflate a
+finding with no demonstrated impact into one — that is the padding FO-10 exists to prevent.
