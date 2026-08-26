@@ -307,7 +307,67 @@ closed, so no impact).
 
 ---
 
-## Running tally — Exoscale authorization, 4 independent attacks
+## H5 — SOS parameter binding. 2026-08-26 15:05–15:30 UTC+6
+
+Role `zt-sos-nobravo`: broad `sos` access with **one bucket explicitly denied** —
+`{"action":"deny","expression":"parameters.bucket == 'zt-bravo-ipvfmx1q'"}` then
+`{"action":"allow","expression":"true"}`. Deny-rule design chosen deliberately: an allow-list
+would only re-test the fail-closed behaviour already established in H4.
+
+Two buckets, one canary object each. Both deleted at session end.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| 0A `GET alpha/alpha-canary.txt` | **200** `ALPHA-ipvfmx1q-OK` |
+| 0B `GET bravo/bravo-canary.txt` | **403** `AccessDenied` |
+
+### Phase 1 — addressing and name binding (15 requests)
+
+| Variant | Result |
+|---|---|
+| path-style baseline | 403 |
+| **virtual-host** (`bravo.sos-….exo.io`) | **403** — bucket bound from the **Host** header too |
+| vhost + `:443` | 403 |
+| **bravo host, alpha path** | **403** — host wins, still denied |
+| **alpha host, bravo path** | **404 NoSuchKey** — correctly treated as a *key* inside alpha |
+| uppercase / mixed case | 404 `NoSuchBucket` — case-sensitive, no fold mismatch |
+| vhost trailing dot · double slash | 400 — rejected at the protocol layer |
+| pct-encoded bucket name | 403 `SignatureDoesNotMatch` — **rig artifact, not a result** |
+| ListBuckets (no bucket param) | 200 — correct; not an operation *on* a bucket |
+
+Both addressing modes derive the bucket identically. The parameter-binding hypothesis is dead
+for object reads.
+
+*Untested, not negative:* dot-segment paths. `curl` refuses `--path-as-is` together with
+`--aws-sigv4`, so those rows normalised to the baseline before signing.
+
+### Phase 2 — operations the read matrix never touched (13 probes)
+
+| Operation | Result |
+|---|---|
+| **CopyObject, bravo as SOURCE** | **403** — the *source* bucket is bound, not just the request bucket |
+| **Presigned URL redemption** | **403** — query-string auth enforced, not only header auth |
+| list objects · head object · head bucket | 403 |
+| get bucket acl / policy / location / versioning / tagging / cors | 403 |
+| list multipart uploads · create multipart upload | 403 |
+
+Copy-source and presigned redemption are the two places S3-compatible implementations most
+often miss. Both are covered.
+
+### Verdict
+
+**Clean negative. No finding.** Enforcement is uniform across addressing modes, name encodings,
+auth mechanisms and 11 distinct operations.
+
+### Cleanup
+
+Both buckets, `zt-sos-nobravo-key` and `zt-sos-nobravo` deleted. Balance 20.00 CHF. 0 instances.
+
+---
+
+## Running tally — Exoscale authorization, 5 independent attacks
 
 | Attack | Requests | Result |
 |---|---|---|
@@ -315,10 +375,39 @@ closed, so no impact).
 | Zone consistency, 8 regions | 8 | Uniform |
 | Path normalisation, 16 variants × 2 targets | 32 | Fails closed on unrecognised paths |
 | CEL expression errors, 3 classes | 7 | Fails closed, distinct messaging |
+| **SOS binding + operation coverage** | **28** | Uniform across addressing, encoding, auth path, 11 operations |
+
+**~117 requests, two distinct surfaces (API control plane and S3 gateway), zero findings.**
 
 This is a well-engineered authorization stack, and that is now an evidenced conclusion rather
 than an assumption. It is consistent with the programme's 0.16 accepted-reports-per-researcher
 figure recorded in `00-PROGRAM.md`.
+
+---
+
+## DECISION — 2026-08-26: stop hunting Exoscale
+
+Called in advance, before H5 ran, and honoured on the result. Two surfaces attacked five ways
+with no finding is evidence about the target, not about the testing.
+
+**What remains, and why it is not pursued:**
+
+- **H6 (portal cross-tenant)** and **H2 (cross-org API)** both require a second organisation.
+  Activating one means a second card authorisation. The operator is funding this personally and
+  cannot absorb that on a hypothesis — the cost is real and the odds are now demonstrably poor.
+- Everything else on this target routes back through the policy engine we have already
+  established is sound.
+
+**Not a wasted engagement.** Produced: a working EXO2 signer, an SOS/SigV4 harness, a complete
+endpoint map from the vendor SDK, five reusable probe scripts, and a documented negative that
+would stop any future hunter repeating it. **0.00 CHF consumed.** No report submitted that
+would have returned N/A — Intigriti signal intact.
+
+**Next:** program selection pass. Criteria — free self-serve accounts, multi-tenant with
+teams/orgs, large authenticated surface, real bounty table, and *low* researcher saturation.
+The setup now in hand (multi-account capability, request signing, this methodology) is built
+for cross-tenant authorization work; pick a target where that surface is broad and less picked
+over.
 
 ## Next
 
