@@ -242,11 +242,83 @@ oracle. Weak in practice (role IDs are UUIDs; we will not enumerate), recorded f
 a boundary crossing. No credential was issued, nothing escalated. Quality Bar #1 fails and the
 Hard Rejection List (verbose/error responses with no exploitable data) applies.
 
-### Still untested — and this is the actual security question
+## H4 session 2 — trust policies and the CEL evaluator. 2026-08-26 08:22–08:50 UTC
 
-Whether an `AssumeRolePolicy`, **when set**, is enforced. We have only probed a feature no role
-in this org is configured for. Testing it needs a role created *through the API* with a trust
-policy attached, which needs an Owner-scoped key. See `H4-PROCEDURE.md` phase 2.
+Owner-scoped key `zt-owner-key` created for the session and **deleted afterwards**.
+
+### Correction to session 1
+
+The `iam` service policy **does** gate `POST /assume`. On roles created via the API the
+restricted key gets a clean `403 Forbidden by role policy for iam`. The earlier 500s were old
+roles faulting *before* that check, not the check being absent.
+
+### `assume-role-policy` is persisted and enforced
+
+Roles created via API with a trust policy (the portal cannot set one; `resources: []` is
+rejected — the validator wants a non-empty set, so omit the field):
+
+| Role | Trust rule | `owner` assume result |
+|---|---|---|
+| `zt-assume-deny` | `action: deny, expression: "true"` | **403** `Forbidden by resource policy for iam - A deny rule matched. Rule index: 0` |
+| `zt-assume-allow` | `action: allow, expression: "true"` | **404**, 9 bytes, **plain text**, no Content-Type |
+
+`GET /v2/iam-role/{id}` does **not** display `assume-role-policy` or `max-session-ttl` — but
+they clearly persist. A read-back gap, not a data-loss bug. (Worth noting: an administrator
+cannot verify a trust policy they configured. Not reportable — no attacker gain.)
+
+### The 404 oracle
+
+The plain-text 404 differs from the API's JSON 404 (`{"message":"not found"}`, 23 b, with
+Content-Type). Two different layers. Authorization **passed** and the request forwarded to a
+role-assumption backend that is not deployed — which also explains the session-1 500s.
+
+**Useful by-product:** `403` = denied, `404` plain = authorization passed. A clean decision oracle.
+
+### CEL evaluator — write-time validation vs runtime behaviour
+
+| Expression | Create | Assume |
+|---|---|---|
+| `this is not valid cel` | **400** — parse error with caret | — |
+| `nosuchvar.x == 1` | **200 accepted** | **403** `Forbidden by resource policy for iam` |
+| `1/0 == 1` | **200 accepted** | **403** (same) |
+| `"a" + 1 == "a1"` | **200 accepted** | **403** (same) |
+
+The validator **parses but does not type-check**: CEL is statically typed, so an unbound
+variable and `"a" + 1` should both fail compilation, and all three were accepted as security
+rules.
+
+**But evaluation fails CLOSED**, and deliberately so — the message for an erroring rule
+(50 b, no rule index) is *distinct* from a genuine match (87 b, `Rule index: 0`). Someone
+handled the error path on purpose and chose deny.
+
+### Verdict
+
+**Clean negative. No finding.** The fail-open hypothesis — the highest-ceiling item in
+`02-STRATEGY-2026-08.md` — is dead for the IAM evaluator.
+
+Residual observations, all **not reportable** (no attacker gain, Hard Rejection List):
+500 on roles lacking a trust policy · undeployed assume backend returning a bare 404 ·
+`GET` not returning `assume-role-policy` · write-time validation not type-checking (fails
+closed, so no impact).
+
+### Cleanup
+
+5 test roles deleted; `zt-owner-key` deleted. Balance 20.00 CHF, unchanged. 0 instances.
+
+---
+
+## Running tally — Exoscale authorization, 4 independent attacks
+
+| Attack | Requests | Result |
+|---|---|---|
+| Service coverage, 42 endpoints | 42 | 41/42 denied |
+| Zone consistency, 8 regions | 8 | Uniform |
+| Path normalisation, 16 variants × 2 targets | 32 | Fails closed on unrecognised paths |
+| CEL expression errors, 3 classes | 7 | Fails closed, distinct messaging |
+
+This is a well-engineered authorization stack, and that is now an evidenced conclusion rather
+than an assumption. It is consistent with the programme's 0.16 accepted-reports-per-researcher
+figure recorded in `00-PROGRAM.md`.
 
 ## Next
 
