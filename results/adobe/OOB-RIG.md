@@ -72,6 +72,45 @@ evidence of no fetch.** The Funnel host is the primary; interactsh is corroborat
 
 ---
 
+---
+
+## RIG VERIFIED — 2026-08-27 01:38–01:45
+
+**OOB host: `https://cindrasec-node.tail754bde.ts.net`** → Tailscale Funnel → Pi 5 `127.0.0.1:8080`.
+Local port 8000 was occupied by an unrelated `uvicorn` service; 8080 used instead.
+`simplehttpserver` lives at `~/.pdtm/go/bin/` and is not on `$PATH` by default.
+
+External round-trip confirmed from a phone on mobile data (`X-Forwarded-For: 180.149.9.102`,
+then `45.86.27.215`). Full headers, source IP and User-Agent captured locally.
+
+### ⚠️ Third-party crawler hit within ~60 seconds of exposure
+
+```
+01:39:44  X-Forwarded-For: 158.69.55.82   (OVH Canada)
+          UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0
+          GET /  ->  GET /p3.txt  ->  GET /p1.png  ->  GET /p2.txt
+```
+
+**Cause:** Tailscale Funnel hostnames appear in **Certificate Transparency logs** as soon as the
+certificate is issued, and CT logs are scraped continuously. Compounding it,
+`simplehttpserver` served a **directory listing at `/`**, which handed the crawler every probe path.
+
+**Why this matters more than it looks.** A third-party fetch of a probe URL is
+indistinguishable from a target fetch. Left unfixed, background noise would have been read as
+"P1 confirmed — markdown images are auto-fetched". That is the FO-2 catch-all failure, in a new
+costume, and a gate caught it before it cost anything.
+
+### Rules adopted
+
+1. **Unguessable probe paths.** Every probe lives under a random 16-hex token directory:
+   `/<TOKEN>/p1.png`. A hit can then only come from somewhere we handed the URL.
+2. **No directory listing.** Place an `index.html` at the web root so `/` reveals nothing.
+3. **One path per probe, never reused across hypotheses.** Attribution is the whole point.
+4. **Baseline the noise.** Expect unsolicited scans. Any hit whose source IP or User-Agent does
+   not match the target's fetcher is noise until proven otherwise — record both, always.
+5. **Funnel down between sessions:** `tailscale funnel --https=443 off`. The hostname is public
+   and, as demonstrated, found within a minute.
+
 ## Evidence hygiene
 
 - **One unique path per probe.** `/p1.png`, `/p2.txt` … never reuse a path across hypotheses —
