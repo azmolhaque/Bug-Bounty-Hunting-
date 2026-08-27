@@ -171,10 +171,30 @@ personally and cannot absorb an unexpected bill. These rules are not advisory.
    an open liability, not a neutral state.
 
 **Activation charge, 2026-08-26 02:46:** CHF 20.00 to DBBL card, Exoscale Lausanne.
-Not yet established whether this is an authorisation hold (reverses in ~7–30 days) or a
-capture converted to the 20.00 CHF account credit. Check portal Billing for an invoice;
-`support@exoscale.com` for a refund on closure. **Do not use the portal ticket form** —
-it calls `portal.exoscale.com/api/tickets`, which the program rules prohibit.
+
+**RESOLVED — 2026-08-26, Exoscale support ticket #1185793.** It is a **pre-authorisation, not
+a charge.** Support (verbatim): *"we did not charge your credit card… a pre-authorization, same
+process as when you rent a car, book a hotel… The pre-authorization will expire naturally, with
+no final charge on your card. In exchange for saving your credit card and proving your identity
+we have granted you a free credit of 20 EUR."*
+
+**Total cost of the Exoscale engagement: 0.00.**
+
+### Lesson — bank statements do not distinguish a hold from a charge
+
+The DBBL mini-statement rendered it as `Purchase −3,161.31 ৳`, identical to a settled
+transaction, and it was read here as a capture. **A line item in a statement is not evidence of
+a capture.** Before concluding money was taken:
+
+1. Check the **provider's** invoices page — no invoice means nothing was billed.
+2. Ask the **bank** whether the item is pending/unposted or settled.
+3. Ask the **provider** directly. One email settled this in under a day.
+
+Cloud providers routinely pre-authorise a small amount at signup for identity and fraud
+checks. Expect it, and do not treat it as a cost.
+
+**Contact route:** `support@exoscale.com` by email. **Never the portal ticket form** — it calls
+`portal.exoscale.com/api/tickets`, which the programme rules prohibit.
 
 **Consumed to date: 0.00 CHF.**
 
