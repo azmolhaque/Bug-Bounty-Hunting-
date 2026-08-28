@@ -31,6 +31,78 @@ added files and links to generate summaries, answer questions, and surface key i
 
 ---
 
+## The PDF Spaces permission model (from Adobe's public documentation, 2026-08-27)
+
+**No requests were made to any Adobe asset to obtain this.**
+
+| Access level | Who can reach the Space |
+|---|---|
+| **Private** | Invited collaborators only |
+| **Organization** | Anyone in the owner's organisation |
+| **Public** | **Anyone with the link — no sign-in required** |
+
+| Role | Capability |
+|---|---|
+| Viewer | Read files |
+| Reviewer | Read + comment |
+| **Contributor** | **Add, update or delete content — *including files added by the owner*** |
+
+### ⚠️ GATE — verify before committing the engagement
+
+PDF Spaces is marketed under **Acrobat Studio**, which is a paid product. **Confirm on day one
+that a free Adobe account can create a Space, add a link, and use AI Assistant.** If it is
+paywalled, this target is unreachable for us and we switch to **Express AI Assistant**
+(`new.express.adobe.com`), which is free-tier. Do not spend a session discovering this.
+
+### The sentence worth the whole engagement
+
+> *"when the link access level is set to Anyone with the link, users can only be assigned Viewer
+> or Reviewer permissions, as **Contributor permissions are not supported** for public access links."*
+
+A **stated restriction**. Restrictions enforced in the UI and forgotten in the backend are among
+the most reliable findings available. **H6 below tests exactly this.**
+
+### What the model changes about H1
+
+The original H1 assumed we must persuade a victim to add our link. We do not:
+**a Contributor can add links to someone else's Space.** The realistic chain is therefore
+
+> low-privileged collaborator adds an attacker link → the **owner's** AI Assistant ingests it →
+> injection executes in the **owner's** context → exfiltration via the sink from Phase 0
+
+That is a legitimate, low-privilege, remote attack — not a social-engineering premise.
+
+---
+
+## H6 — public-link role restriction bypass  ⭐⭐ NEW, and the sharpest test we have
+
+> **Assign `Contributor` to a public ("anyone with the link") Space through the API, and have an
+> unauthenticated request then add, modify or delete content.**
+
+Why this is the best-shaped hypothesis in the plan:
+
+- The restriction is **documented**, so intended behaviour is unambiguous — no "working as
+  designed" argument is available to the triager.
+- The boundary is **binary**: either an unauthenticated request mutated the Space or it did not.
+- Impact is concrete: **unauthenticated write/delete on another user's content.** Adobe's own
+  CVSS table puts I:H authorization failures at 7.5, and `PR:N` (public self-signup / guest)
+  keeps privileges-required at None.
+- It needs **no AI reasoning at all**, so none of the AI-specific exclusions apply.
+- It chains straight into H1: a public Contributor can add the malicious link.
+
+**Procedure:** create a Space as A → set access to *anyone with the link* → capture the
+share/permission API call from DevTools → replay it with `Contributor` substituted → then, from a
+**signed-out** browser or plain `curl`, attempt add / update / delete.
+
+**Gates:** (0A) a public Viewer link works read-only as documented · (0B) the UI genuinely refuses
+to offer Contributor for a public link · (0C) an invalid role string is rejected — if the API
+accepts arbitrary role values, the "bypass" is just unvalidated input and needs re-framing.
+
+**Not a finding:** the API accepting the role but the capability not actually working. The proof
+is a **mutation performed by an unauthenticated request**, not a 200 on the permission call.
+
+---
+
 ## PHASE 0 — capability probes. **RUN THESE BEFORE ANY PAYLOAD.**
 
 > **The lesson from the Google AI VRP campaign** (`results/google-vrp/AI-VRP-1-HUNT-LOG.md`):
@@ -150,11 +222,15 @@ only `new.express.adobe.com`.
 
 | Session | Work | Gate to continue |
 |---|---|---|
-| **0 (pre-1 Sep)** | Read Intigriti scope on day one. Create accounts A and B with the **correct** alias. Map the product surface as an ordinary user. Stand up the OOB host | Scope confirmed, accounts eligible |
-| **1** | Phase 0 capability probes P1–P8 | A sink exists (P1–P5) **or** the retrieval boundary looks testable (P6) |
-| **2** | H2 cross-tenant retrieval — gates first, then the cross | A canary crosses, or a clean negative |
-| **3** | H1 XPIA to the sink found in session 1 | Boundary crossed, or drop |
-| **4** | H3 artifact pipelines / H4 SSRF depth | — |
+| **0 (pre-1 Sep)** | Read Intigriti scope on day one. Create accounts A and B with the **correct** alias. **Confirm PDF Spaces works on a free account.** Map the sharing UI as an ordinary user. OOB host already built | Scope confirmed · accounts eligible · **Spaces reachable free** |
+| **1** | **H6 public-link role bypass** — gates first, then the substitution | Needs no AI, no sink, binary result. Run it first |
+| **2** | Phase 0 capability probes P1–P8 | A sink exists (P1–P5) **or** the retrieval boundary looks testable (P6) |
+| **3** | H2 cross-tenant retrieval — gates first, then the cross | A canary crosses, or a clean negative |
+| **4** | H1 XPIA via a Contributor-added link, to the sink from session 2 | Boundary crossed, or drop |
+
+**H6 moved ahead of the AI work deliberately.** It requires no exfiltration sink, no model
+behaviour, and none of the AI exclusions apply to it. If the sink probes come back empty, H6 is
+still live — so it must not depend on them.
 
 **Timebox: 4 sessions**, as agreed. No confirmed boundary crossing by session 4 → reassess the
 asset, not the methodology.
