@@ -43,7 +43,30 @@ Confirmed in the bundle:
 | Task store | `this._taskStore.getTask(e.params.taskId, t.sessionId)` | Retrieval keyed by **taskId + sessionId** — an authorization boundary worth testing |
 | Error surface | `class McpError`, `cn.InvalidParams`, `cn.UrlElicitationRequired` | Distinguishable failure modes = a clean oracle |
 
-**Questions to answer first (in order):**
+### RESOLVED — the architecture is in-page, not outbound
+
+`WebMCP` uses a **CallbackTransport** (`[CallbackTransport] Sending:` → `this._options.onSend`),
+with `getMessageHandler()` returning `_genAIAnswerCallbacks`. So Acrobat does **not** dial out to
+external MCP servers. The GenAI answer pipeline is the peer and **the browser exposes tools the
+model invokes**, dispatched through `callBootstrapMethod(dropin, "reviewAgenticAction", …)`.
+
+That kills "connect a rogue MCP server" and replaces it with something better aligned to Adobe's
+own wanted list: **injected content → model output → `tools/call` → action in the victim's
+session.** Full analysis and procedure in `H7-PROCEDURE.md`.
+
+**Tool definitions are bundled locally** (`acrobat-web.json`, variable `sa`) — both branches of
+the try/catch use it, so the complete registry with descriptions and schemas ships in the public
+bundle. 28 tools in the implemented allowlist `oa`, including `sendforviewing`,
+`verb-sendforsignature`, `verb-sendinbulk` (exfiltration), `verb-ocr-pdf` (read),
+`verb-delete-pages` / `verb-redact-only` / `verb-protect-pdf` (destructive), and an
+`asset_url_or_urn` parameter on nearly every tool that **the model supplies** — the parameter-
+injection surface Adobe names explicitly.
+
+**Open question that decides severity:** `reviewAgenticAction` implies a user-review step, and
+several tool descriptions say *"handled in ui"* / *"the user reviews candidates"*. Whether any
+tool executes **without** a click is Phase 0 of H7 and must be measured, not assumed.
+
+**Superseded questions (kept for the record):**
 1. **Can a user point Acrobat Web at an arbitrary MCP server?** If yes, we control a server that
    registers tools, uses sampling against the victim's model, and elicits URL opens. If no,
    which servers are permitted and how is that list obtained (*"Unauthorized MCP Server
