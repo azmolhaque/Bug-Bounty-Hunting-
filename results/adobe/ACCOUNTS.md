@@ -19,6 +19,27 @@ account… This is a required step to be eligible for bounty."*
 verified successfully. So **both** accounts are bounty-eligible, not just A. Worth reusing on any
 future programme that mandates a platform alias but needs multiple test identities.
 
+### ⚠️ Forwarded mail lands in Gmail Spam by default
+
+Mail arrives from `mail-forwarder@wearehackerone.com` (Reply-To preserved) and Gmail classified
+it as spam on first delivery. **Fixed** with a filter on
+`from:mail-forwarder@wearehackerone.com` → *Never send it to Spam*.
+
+**Why this matters beyond convenience.** H7a's whole proof is *"the document arrived at an address
+we control."* A spam-filtered notification would read as "the attack was blocked" when it in fact
+succeeded — a false negative indistinguishable from a real one. Same failure mode as the Gemini
+campaign, where we could not separate "defended" from "never delivered."
+
+Apply the same filter to Adobe's senders before H7a, and **check Spam before recording any
+negative result that depends on receiving mail.**
+
+### Exfiltration target ≠ account address
+
+Adobe's alias requirement covers **account registration** only — *"when registering your account"*.
+The recipient inside a test can be any address we own. For H7a use a **plain Gmail address**
+(e.g. `azmolhaque95+adobeexfil@gmail.com`) so delivery is direct and unambiguous, with no
+forwarder in the path to muddy a negative.
+
 ## Operating rules
 
 - **Separate browser profiles** for A and B — or one normal window and one private window. A
