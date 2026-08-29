@@ -225,8 +225,26 @@ Test order in the browser, cheapest first:
 3. `https://acrobat.adobe.com/bench/knowledgeworkspace?isGuestAllowed=true`
 4. Any `/bench/*` route that renders signed-out — check DevTools for a `tools/list`
 
-**Gate:** if a `/bench/*` route renders for a guest **and** the MCP tool registry initialises,
-then H7 is testable unauthenticated — `PR:N`, and a much stronger report.
+### H9 RESULT — **CLEAN NEGATIVE. Closed 2026-08-27.**
+
+All four routes redirect to `auth.services.adobe.com` sign-in:
+
+```
+/link/discover/chat-pdf                          -> sign in
+/bench/ai-playground?isGuestAllowed=true         -> sign in
+/bench/knowledgeworkspace?isGuestAllowed=true    -> sign in
+/bench/ask-ai?isGuestAllowed=true                -> sign in
+```
+
+`isGuestAllowed` configures the **IMS client** in the browser; it does not grant server-side
+access. The `/bench/*` family and the anonymous chat route both require an authenticated user.
+Correct behaviour, and no finding.
+
+**Consequence:** H7 will be an **authenticated** finding (`PR:L`), not `PR:N`. Established in
+four browser loads, before anything was built on the assumption.
+
+**Original gate (not met):** if a `/bench/*` route rendered for a guest **and** the MCP tool
+registry initialised, H7 would have been testable unauthenticated.
 
 **Not a finding on its own:** a route rendering, a 200, a playground existing. The finding is
 what a guest can *do* — read another user's asset, invoke a tool, reach an internal endpoint.
