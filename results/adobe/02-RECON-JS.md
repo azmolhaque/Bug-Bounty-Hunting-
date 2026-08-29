@@ -161,3 +161,73 @@ MCP and Spaces work.
 
 **No account has been created yet.** Nothing above required one — which is itself the useful
 result: two new hypotheses came out of static assets alone.
+
+---
+
+## Finding 6 — guest mode is a URL parameter, and there are 96 client-side routes
+
+### `?isGuestAllowed=true`
+
+```js
+i.isGuestAllowed = Boolean(/isGuestAllowed=true/.test(window.location.search))
+api_parameters: { check_token: { guest_allowed: true } }
+enableGuestTokenForceRefresh: true
+dcapi({ identityAccess: { getSessionToken: () => auth2.getSessionToken({isGuestAllowed: h}) },
+        allowAnonymous: !$() })          // $() = URL contains ?enable_meteriq
+```
+
+Appending `?isGuestAllowed=true` to any Acrobat Web route puts the app into **guest-token**
+authentication (IMS profile name `Anonymous`, user id falls back to `anonymous_user`,
+floodgate keyed on `useAnonymousUUID`).
+
+**This is very probably intended** — it is how shared-link and try-before-signup flows work.
+Flipping it is not a finding. Its value is that it gives us a deliberate **unauthenticated
+testing posture**: the question becomes *what can a guest token reach?* An unauthenticated
+finding scores `PR:N`, materially above the same bug behind a login.
+
+### The route table — 96 routes (`routes.txt`)
+
+**Anonymous entry points:**
+```
+home2-anonymous          ->  /
+home2-anonymous-try-ai   ->  /link/discover/chat-pdf     ← anonymous chat-with-PDF
+logged-out-home          ->  /
+```
+
+**`/bench/*` — an internal-looking workbench family shipping in production:**
+```
+/bench/ai-playground              /bench/ask-ai            /bench/acrobat-search-qna
+/bench/knowledgeworkspace         /bench/workspaces        /bench/studyspace
+/bench/creation                   /bench/pdf-to-video      /bench/yantra
+/bench/playbook-contract-review
+/bench/combine  /bench/delete  /bench/rotate  /bench/split
+```
+
+**Other surfaces worth a look:**
+```
+/link/salesspaces      /studentspaces/home    /studentspaces/collection
+/link/contextboard     /link/artifacts        /insights      /link/rgai      /ai
+/link/spaces           /link/documents/spaces /link/documents/shared_by_others
+```
+
+> Every one of these resolves **client-side** — the terminal gets the same 637 KB SPA shell for
+> all of them. The route table is the map; walking it requires a browser.
+
+### H9 (new) — guest reach
+
+> **What can `?isGuestAllowed=true` reach, and does any AI surface load its tool registry
+> without a signed-in user?**
+
+Test order in the browser, cheapest first:
+
+1. `https://acrobat.adobe.com/link/discover/chat-pdf` — signed out. Does an assistant load?
+2. `https://acrobat.adobe.com/bench/ai-playground?isGuestAllowed=true` — signed out
+3. `https://acrobat.adobe.com/bench/knowledgeworkspace?isGuestAllowed=true`
+4. Any `/bench/*` route that renders signed-out — check DevTools for a `tools/list`
+
+**Gate:** if a `/bench/*` route renders for a guest **and** the MCP tool registry initialises,
+then H7 is testable unauthenticated — `PR:N`, and a much stronger report.
+
+**Not a finding on its own:** a route rendering, a 200, a playground existing. The finding is
+what a guest can *do* — read another user's asset, invoke a tool, reach an internal endpoint.
+A `/bench/` page that loads and does nothing is an informational close (FO-9).
