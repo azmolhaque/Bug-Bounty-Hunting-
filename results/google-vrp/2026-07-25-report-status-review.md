@@ -132,3 +132,59 @@ a crossed boundary.
 The next finding must **land on the far side of the boundary**: another account's data in our
 hands, or a state change we were never authorised to make. That is what the AI VRP work
 (`results/_research/2026-07-25-restart-attack-vectors.md`) is designed to produce.
+
+---
+
+## AppSheet systemic SSRF — CLOSED, no reward. 2026-09-21
+
+**Issues 525815004 / 525815219** — *"AppSheet: Systemic SSRF — 3 surfaces (OData, Apigee
+OpenAPI Spec, Cloud Database)"*. Filed 2026-06-20.
+
+**Final: `Status: Duplicate of 1469` · P4 · S4 · no reward, no credit.**
+
+### Timeline
+
+| Date | Event |
+|---|---|
+| Jun 20 | Filed |
+| **Jul 04** | **AI VRP Agent** posts disqualification rationale: `WAI`, `DUPLICATE of 377539803`, severity **LOW**, *"recommend disqualifying"* |
+| Jul 06 | Google retracts — *"a configuration error in our internal tooling… accidentally published… disregard… still open and actively reviewed by our human security engineering team"* |
+| Aug 25 | Priority swept to **P2** — read at the time as a positive signal |
+| **Sep 21** | Closed **Duplicate of 1469**. Final priority **P4**, severity **S4** |
+
+**The accidentally-published AI note predicted the outcome exactly.** Human review took three
+months and landed in the same place, citing a different duplicate ID.
+
+### Google's reasoning, verbatim (worth keeping)
+
+- *"AppSheet connectors are explicitly designed to integrate with external, user-supplied data
+  sources. Initiating an outbound network request to a provided URL/hostname and transmitting
+  the configured credentials … is the fundamental, intended purpose of these endpoints."*
+- Template/credential chain → *"requires the victim to voluntarily install an untrusted template
+  and manually input their own credentials. This is a social engineering/phishing vector…
+  it falls under the customer's purview."* (Shared Responsibility)
+- *"they explicitly confirmed that no GCP Metadata Service (IMDS) token could be extracted…
+  This successfully mitigates the critical risk of IMDS exploitation and privilege escalation."*
+- Port scanning / egress IP+DNS leakage → *"repeatedly evaluated by the Cloud VRP team and
+  deemed to have insufficient security impact"*, citing **377539803** (Apigee IP/DNS leakage,
+  WAI, no reward) and **374568427** (vhost discovery via AppSheet SSRF, closed for lack of impact).
+
+### What this settles
+
+1. **The original assessment was right.** This file recorded the AppSheet SSRF class as dead
+   on the strength of 377539803 and 374568427. It was. Reversing that on a P2 label was the error.
+2. **Systemic framing did not defeat WAI.** Three surfaces, four network clients and two
+   documented prior point-fixes did not move a behaviour that is the product's stated purpose.
+   `METHODOLOGY.md` FO-15 has been rewritten accordingly.
+3. **SSRF at Google is Low unless IMDS data is actually extracted.** Cross-scheme redirects are
+   blocked and `Metadata-Flavor: Google` is not injectable on these paths. Without extraction the
+   class is permanently closed.
+4. **Google VRP screens with an AI triage agent at L2** that cross-references historical VRP data
+   for duplicates and WAI patterns. **Search prior VRP IDs for the behaviour, not the endpoint,
+   before writing anything.**
+
+### Portfolio effect
+
+Another N/A-equivalent close. Running total on this programme remains heavily weighted to
+*intended behaviour* / *informational* / *duplicate*. The corrective is unchanged and now has one
+more data point behind it: **only submit a crossed boundary with data in hand.**

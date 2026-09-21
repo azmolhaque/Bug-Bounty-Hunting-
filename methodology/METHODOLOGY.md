@@ -709,44 +709,67 @@ The cost of this gate is one minute. The cost of skipping it is unauthorized acc
 company's production environment.
 
 
-### FO-15. Systemic framing can rescue a class that is WAI in isolation
-A behaviour that a triager will close as **intended** when shown once can become a genuine
-finding when shown as a **pattern of missing control across independent surfaces** — provided
-the pattern is demonstrated, not asserted.
+### FO-15. Systemic framing does NOT rescue a class that is WAI — and a priority label is not an acceptance
 
-**The AppSheet case (525815004 / 525815219, P2, 2026-08).** A connector that fetches a
-user-supplied URL and forwards user-supplied credentials to it is *intended behaviour*. It is
-on this file's own Hard Rejection List, and a prior AppSheet SSRF report closed exactly that
-way. The same underlying behaviour, reframed, drew **P2**:
+**This rule was written backwards on 2026-08-27 and is corrected here on 2026-09-21.**
 
-| Weak framing (closes as WAI) | Systemic framing (drew P2) |
+The original version claimed that reframing an intended behaviour as a *pattern of missing
+control across independent surfaces* could rescue it from a WAI close, and cited the AppSheet
+systemic-SSRF report (525815004 / 525815219) reaching **P2** as evidence. **That evidence was
+void and the conclusion was wrong.**
+
+### What actually happened
+
+| Date | Event |
 |---|---|
-| "This connector fetches a URL I supplied" | "The connector *framework* has **no centralized egress filter**" |
-| One surface | **Three independent surfaces**, four distinct network clients, HTTP **and** raw TCP |
-| No history | **Two prior point-fixes** (2021 webhook, ~$6,267; ~2022–24 Apigee) that never generalised |
-| Implicit ask | "Every unreviewed connector is a new instance of the same root cause" |
+| 2026-06-20 | Report filed. Three connector surfaces, four network clients, two documented prior point-fixes |
+| 2026-07-04 | **AI VRP Agent** posts a disqualification rationale: `WAI`, `DUPLICATE of 377539803`, severity **LOW**, *"recommend disqualifying"* |
+| 2026-07-06 | Google retracts it — *"a configuration error in our internal tooling… accidentally published… Your submission is still open and actively reviewed by our human security engineering team"* |
+| 2026-08-25 | Priority swept to **P2** ← read at the time as a good sign |
+| 2026-09-21 | **Status: Duplicate of 1469.** No reward, no credit. Final **P4 / S4** |
 
-The argument stops being *"this feature behaved as designed"* and becomes *"you have fixed
-this three times without building the shared control, so the next one is open by default."*
-That is a claim about architecture, and it is much harder to close as intended.
+The accidentally-published AI note **predicted the final outcome exactly.** Three months of
+human review reached the same destination, citing a different duplicate ID.
 
-**Requirements — all four, or it is padding:**
-1. **Multiple surfaces actually tested.** Named, dated, with evidence per surface. Not "and
-   presumably others".
-2. **Prior fixes documented.** Public advisories, changelogs, previous VRP IDs. The history is
-   what proves the point-fix pattern.
-3. **A distinct root cause named** — the *missing shared control*, not the individual symptom.
-4. **Each surface independently reproducible.** If one is shaky the whole pattern argument
-   collapses with it.
+### The three corrections
 
-**The limit — and this matters more than the technique.** Systemic framing defeats the
-**"intended behaviour"** objection. It does **not** defeat the **impact** bar (§2, FO-8/9/11).
-The AppSheet report reached P2 while its requests still only arrived at *our own* server, with
-no internal data read — so the fix is likely and the reward is genuinely uncertain. Two
-different questions:
+1. **Systemic framing did not defeat the WAI objection.** Google's stated reasoning:
+   *"AppSheet connectors are explicitly designed to integrate with external, user-supplied data
+   sources. Initiating an outbound network request to a provided URL/hostname and transmitting
+   the configured credentials … is the fundamental, intended purpose of these endpoints."*
+   Three surfaces did not change that. **The Hard Rejection List entry was right the first
+   time.** A behaviour that is the product's purpose stays intended however many places it appears.
 
-- *"Will they fix it?"* — systemic framing moves this a great deal.
-- *"What did the attacker actually GET?"* — systemic framing moves this **not at all**.
+2. **A priority bump is not an acceptance — and this file already said so (FO-13).** P2 arrived
+   from a queue sweep, not a panel. The same issue ended at **P4/S4**. Reversing a correct prior
+   assessment on the strength of a priority label violated FO-13 on the same day FO-13 was cited.
 
-Use it to rescue a real missing control from a lazy WAI close. Never use it to inflate a
-finding with no demonstrated impact into one — that is the padding FO-10 exists to prevent.
+3. **Never write a methodology rule from an in-flight signal.** The original FO-15 was authored
+   while the report was still open, from a label, with no outcome. **Rules get written from
+   closed outcomes only.**
+
+### What the rejection actually teaches (keep this part)
+
+Google's reasoning names the real bars, and they are worth memorising:
+
+- **Shared Responsibility kills the template/phishing chain.** *"requires the victim to
+  voluntarily install an untrusted template and manually input their own credentials. This is a
+  social engineering/phishing vector… it falls under the customer's purview."*
+- **SSRF without IMDS extraction is Low, permanently.** *"they explicitly confirmed that no GCP
+  Metadata Service (IMDS) token could be extracted… This successfully mitigates the critical
+  risk."* Cross-scheme redirects blocked, `Metadata-Flavor: Google` not injectable.
+- **Port scanning and egress IP/DNS leakage are settled law at Google.** *"repeatedly evaluated
+  by the Cloud VRP team and deemed to have insufficient security impact"* — citing 377539803
+  (Apigee IP/DNS leakage, WAI, no reward) and 374568427 (vhost discovery via AppSheet SSRF,
+  closed for lack of impact).
+
+> **The operative test is unchanged and was always sufficient: what did the attacker actually
+> GET?** Our own OOB server receiving a request is not an answer. If IMDS is blocked and no
+> internal data is read, the class is closed at Google regardless of how many surfaces exhibit it.
+
+### Operational note — Google VRP now screens with an AI triage agent
+
+L2 triage runs through an *"AI VRP Agent"* that cross-references historical VRP data for
+duplicates and WAI patterns before a human sees it. Practical consequence: **search prior VRP
+IDs for the behaviour, not just the endpoint, before writing anything.** If a close relative was
+closed WAI, a new framing will not survive the same check.
