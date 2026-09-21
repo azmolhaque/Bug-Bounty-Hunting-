@@ -188,3 +188,22 @@ months and landed in the same place, citing a different duplicate ID.
 Another N/A-equivalent close. Running total on this programme remains heavily weighted to
 *intended behaviour* / *informational* / *duplicate*. The corrective is unchanged and now has one
 more data point behind it: **only submit a crossed boundary with data in hand.**
+
+### The twin ticket — an accidental controlled experiment
+
+The report was filed twice by Google's own intake. As of 2026-09-21:
+
+| Issue | Comments | Status | Priority | Severity |
+|---|---|---|---|---|
+| **525815004** | 5 — ack, AI note, retraction, closure | **Duplicate of 1469** | **P4** | S4 |
+| **525815219** | 1 — acknowledgement only | **New** (never worked) | **P2** | S4 |
+
+**Identical content, two different priority labels.** The one that was actually analysed ended
+at P4 with no reward; the one nobody read still carries P2.
+
+This is the cleanest possible evidence for FO-13: **priority is queue metadata, not a verdict.**
+The August reversal was driven by a P2 that had no assessment behind it whatsoever.
+
+**Action on 525815219: none.** Do not comment, do not nudge. The content is identical to a report
+already analysed and closed; Google's dedup will reach it. A ticket sitting at `New` for months
+carries no signal in either direction.
