@@ -570,3 +570,73 @@ against the v23.0 baseline.
 not on the current one is a legacy route still reachable, and legacy routes are where an
 authorization check added later may never have been applied. "ONLY on v23.0" is expected
 (endpoints added since) and low interest.
+
+### t3 result — legacy routing is identical. The version axis is demoted
+
+```
+-- v1.0 recognised: 37   v23.0 recognised: 37
+== ONLY on v1.0  : (empty)
+== ONLY on v23.0 : (empty)
+```
+
+The same 525 names produce the **same 37 recognised root paths** on a 2010 version and on
+the current one, with no difference in either direction.
+
+**Root-level routing does not vary by version.** The version string is validated against a
+precise allowlist and then, at least for path resolution, ignored.
+
+This is a useful negative because it costs us work rather than earning it. The plan said to
+re-run every one of T1–T7 against a legacy version — roughly doubling the authenticated test
+matrix. On this evidence that is mostly wasted effort.
+
+**The axis is not dead, but it is demoted and gated.** Root-path recognition is a coarse
+probe; a version could still change *field availability* or *behaviour* on an authenticated
+request while routing identically. That is untestable without a token. So:
+
+> **Gate first.** One cheap check at the start of the authenticated session — `GET` our own
+> business on v1.0 and on v23.0 and diff the returned fields. If they differ, version
+> selects different handler behaviour and the axis is real, so run it. If identical, drop
+> the version axis entirely and halve the test matrix.
+
+One request pair decides it. Do not run the doubled matrix on spec.
+
+### Raw codegen specs — no additional surface
+
+`github.com/facebook/facebook-business-sdk-codegen`, `api_specs/specs/*.json`, 1105 spec
+files parsed recursively for every `endpoint` value:
+
+```
+raw-spec endpoints: 525   python-SDK edges: 525   NEW: 0
+```
+
+Exactly identical. The Python SDK is a complete rendering of Meta's own spec, so the edge
+list already in hand is the whole generated surface. `versions.json` and `version_path.json`
+in that repo are codegen feature flags and SDK release paths — nothing to do with API
+versions. `EndpointDecodeDict.txt` is a 461-word dictionary for splitting endpoint names.
+
+Checked and closed rather than assumed.
+
+---
+
+## Terminal work: complete
+
+Stated with justification this time rather than as an assertion. The phase was declared
+finished twice and was wrong twice; each remaining idea has now been run rather than
+dismissed:
+
+| Idea | Result |
+|---|---|
+| Version allowlist | 50 accepted, boundaries proven |
+| Root paths @ v23.0 | 37 of 525, six response classes |
+| Root paths @ v1.0 | identical to v23.0 — version axis demoted |
+| `generatepreviews` chain | auth enforced after parameter validation — closed |
+| Payment / `comments` errors | stable, no data — closed |
+| Raw codegen specs | identical to the SDK — no new surface |
+| SDK read surface | mapped: four asset families, 12-state agreement |
+| SDK write surface | mapped: `asset` list, `two_factor_type`, the grant params |
+
+**Five closed negatives** now carry their reasoning: the vocabulary idea, the
+version-validation assumption, `generatepreviews`, the P2/P3 errors, and the legacy-routing
+axis. None of them gets re-walked.
+
+Everything remaining requires a token. Next session opens with account creation.
