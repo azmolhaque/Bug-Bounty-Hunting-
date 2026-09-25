@@ -429,3 +429,63 @@ what `/businesses` returns with a token, and whether it scopes to the caller.
 **Discipline note:** none of the above is a finding. Every one is an error message, and an
 error message is a precondition (FO-8/11). They are ranked leads for the authenticated
 session, and P1 is the only one testable further without an account.
+
+### P1 `generatepreviews` — CLOSED, clean negative. 2026-09-25
+
+The parameter chain advanced exactly as an unauthenticated walk would:
+
+| Request | Response |
+|---|---|
+| `?` (nothing) | `(#100) The parameter ad_format is required` |
+| `?ad_format=INVALID_XYZ` | `(#100) ad_format must be one of: AUDIENCE_NETWORK_INSTREAM_VIDEO, …` |
+| `?ad_format=DESKTOP_FEED_STANDARD` | `(#100) The parameter creative is required` |
+| `?ad_format=DESKTOP_FEED_STANDARD&creative={}` | **`(#104) An access token is required to request this resource.`** |
+| `?ad_format=…&creative={"x":1}` | **`(#104) An access token is required to request this resource.`** |
+
+The enum error on `INVALID_XYZ` proves the parameter was genuinely parsed rather than
+echoed, so the walk was real. But once the required parameters are satisfied, the route
+demands a token.
+
+**Auth is enforced. It simply runs after parameter validation.** That is error ordering, not
+an authorization gap. Nothing is disclosed by it — the enum values it leaks are public
+documentation.
+
+Closed. No finding, nothing to report, and the planned authenticated follow-up (preview our
+own creative with no token) is dropped with it — the answer is already known.
+
+### P2 / P3 — CLOSED, stable errors with no data
+
+`payment_configuration`, `payment_transactions`, `light_campaigns` returned
+`(#2) Service temporarily unavailable, is_transient:true` **identically across three runs
+each**, and `comments` returned `(#1) An unknown error has occurred` identically across
+three. `is_transient` is therefore inaccurate — these are not load failures, they are how
+those routes fail. No data is returned and nothing is disclosed. Not findings. Dropped.
+
+---
+
+## Unauthenticated phase: exhausted
+
+Second and final close, this time with every lead resolved rather than merely listed.
+
+**Findings: zero.** That is the expected outcome. A fifteen-year-old program with thousands
+of full-time researchers does not leave an unauthenticated bug on a root path. The phase
+existed to build a map and a set of baselines, and it did.
+
+**What it produced, all of which transfers to the authenticated session:**
+
+1. Seven ranked targets (T1–T7), each against a published payout tier.
+2. T1 reduced to one request — `POST /<agreement_id>` with `request_response`, both directions.
+3. A confirmed version axis — 50 accepted versions, precise allowlist, boundaries proven.
+4. 37 recognised root paths out of 525, sorted into six response classes by how deep the
+   request travels. **P4 survives as a real authenticated target**: `/businesses`, `/pages`
+   and `/subscriptions` exist as root collections returning `(#104)`. What `/businesses`
+   returns with a token, and whether it scopes to the caller, bears directly on T1–T7.
+5. Error baselines for recognising a later bypass: `2500` (no token), `104` (token required),
+   `100/33` (Meta's unified does-not-exist-or-not-permitted), `200` (app ID required).
+
+**Closed negatives recorded rather than left implied:** the `PermittedTasks`/`Tasks`
+vocabulary idea, the assumption that version strings were unvalidated, `generatepreviews`,
+and the P2/P3 transient errors. Four dead ends written down with their reasoning, so none of
+them gets re-walked.
+
+**Blocker: account creation. There is no further unauthenticated work worth doing.**
