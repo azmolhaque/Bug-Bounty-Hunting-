@@ -23,7 +23,7 @@ set -u
 OUT="${OUT:-$HOME/h13}"
 mkdir -p "$OUT"
 
-GROUPS="Activity AnalyticsAdmin AuthorizationServer CatalogManagement CommerceService
+APIGROUPS="Activity AnalyticsAdmin AuthorizationServer CatalogManagement CommerceService
 Connectivity ContextApiService CustomerServiceApi DocumentLogs Event Extension Field Index
 KnowledgeGenerativeAI MLConfig Migration Notification Organization Platform PushApi Reveal
 RevealModelGenerator SchemaService SearchApi SearchInterfaceService SearchPagesService
@@ -32,7 +32,7 @@ UsageAnalyticsRead UsageAnalyticsWrite Workspace"
 
 specs() {
   echo "== fetching specs -> $OUT/spec-*.json"
-  for g in $GROUPS; do
+  for g in $APIGROUPS; do
     code=$(curl -s -o "$OUT/spec-$g.json" -w '%{http_code}' --max-time 25 \
       "https://platform.cloud.coveo.com/api-docs/$g?group=public")
     printf '  %-26s [%s] %s bytes\n' "$g" "$code" "$(wc -c < "$OUT/spec-$g.json")"
