@@ -181,3 +181,64 @@ yet meaningful.
 The agent container's egress proxy denies `graph.facebook.com`, so **no request to Meta can
 originate from the agent side.** All live probing runs from the operator's terminal. Source
 mining, which is where the value has been, is unaffected.
+
+---
+
+## Unauthenticated probe — API version liveness. 2026-09-25, operator terminal
+
+Nine requests, no auth, no account, no user data touched.
+`GET https://graph.facebook.com/v<X>/me` with no token.
+
+| Version | Response |
+|---|---|
+| v3.0 · v5.0 · v8.0 · v10.0 · v12.0 · v15.0 · v18.0 · v20.0 · v23.0 | **all identical** |
+
+```json
+{"error":{"message":"An active access token must be used to query information about the current user.",
+          "type":"OAuthException","code":2500,"fbtrace_id":"..."}}
+HTTP 400
+```
+
+**Every version back to v3.0 (April 2018) is accepted.** None is rejected as unsupported —
+the API asks for a token rather than refusing the version.
+
+Also recorded, from the bare root with no version and no path:
+
+```json
+{"error":{"message":"Unsupported get request. ...","type":"GraphMethodException",
+          "code":100,"error_subcode":33}}
+```
+
+### What this proves, and what it does not
+
+**Proves:** the version path is accepted, at least eight years back.
+
+**Does not prove:** that old *semantics* are served. Meta may route every one of these to the
+current backend and merely tolerate the version string in the path. That distinction cannot
+be resolved without a token, so this is a **mapped precondition, not a finding** (FO-8/11 —
+a reachable endpoint is not a boundary crossing).
+
+### Why it is worth having
+
+It adds a **version axis** to every target T1–T7. `BusinessAssetSharingAgreement` and the
+partner-sharing model postdate v3.0 by years. Each hypothesis therefore gets run twice —
+against v23.0 and against the oldest accepted version — on the theory that an authorization
+check added to the current handler may not exist on the legacy path.
+
+This doubles the test matrix for no extra account cost and is the kind of
+operation-others-skip that the selection rubric identifies as the operator's edge.
+
+### Two baselines banked for later
+
+Both are needed to recognise a bypass when one appears:
+
+- `OAuthException / code 2500` — no token supplied.
+- `GraphMethodException / code 100 / error_subcode 33` — Meta's **unified** "object does not
+  exist **or** you cannot see it". They deliberately collapse those two cases so the API
+  cannot be used as an existence oracle. Any response that *differs* from subcode 33 on an
+  object we should not be able to see is itself the signal.
+
+### Open
+
+Find the floor — probe v1.0, v2.0, v2.5, v2.8, v2.12. Anything below v3.0 predates Meta's
+post-2018 permissions lockdown entirely.
