@@ -332,3 +332,52 @@ Carried into the authenticated session:
    vocabulary idea, and the initial assumption that version strings were unvalidated.
 
 Blocker is account creation. Nothing further can be learned without it.
+
+---
+
+## t1 — full version allowlist enumerated. 2026-09-25
+
+**50 accepted versions**, matching Meta's real release history exactly for v1 and above:
+
+```
+v1.0
+v2.0 … v2.12     (13)
+v3.0 … v3.3      (4)
+v4.0 … v25.0     (22, majors only)
+v0.0 … v0.9      (10)   <-- anomaly
+```
+
+Boundary rejections already confirmed: `v2.13`, `v3.4`, `v7.1`, `v7.3`, `v42.9`, `v99.0`.
+The allowlist is precise. Two observations worth carrying:
+
+- **v0.0 through v0.9 all accepted**, and no v0.x was ever released. Major version 0 accepts
+  any minor. Still not a finding — it almost certainly resolves to current — but the
+  routing question stands for the authenticated session.
+- **v24.0 and v25.0 accepted.** Check these against Meta's published current version. If
+  either is undocumented, an unreleased version is routable, which can expose pre-release
+  fields on objects. Cheap to confirm, worth confirming.
+
+## t2 — root path recognition. Filter was wrong; three response classes found
+
+The probe filtered on `Unknown path components`, which is the error for a bad *version*
+segment. At the root Meta answers differently, so the filter passed nearly all 525 names.
+Author error, corrected in the script.
+
+The noise was still informative. Root paths fall into **three** classes, not two:
+
+| Class | Response | Meaning |
+|---|---|---|
+| 1 | `Unsupported get request. Object with ID 'x' does not exist, cannot be loaded…` (100 / 33) | string treated as an unknown **node ID** — noise |
+| 2 | `Unsupported get request. Please read the Graph API documentation` (GraphMethodException, **no** object-ID text) | recognised, GET unsupported |
+| 3 | `(#200) Provide valid app ID` (OAuthException 200) | **recognised as a real root endpoint** |
+
+Class 3 hits so far: `adlabels`, `advideos`, `audiences`.
+Class 2 hits so far: `ad_custom_derived_metrics`, `adaccount`.
+
+Class 3 is the target. Those are root-level endpoints the API genuinely resolves and which
+ask for an app ID rather than denying the path — meaning there is a handler behind them that
+was reached before authentication was demanded. Enumerating the full class-3 set gives the
+list of root endpoints reachable without a node ID, which is where an authorization check is
+most likely to have been attached to the node rather than the route.
+
+Filter corrected to exclude class 1 only. Re-run pending.

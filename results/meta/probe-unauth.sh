@@ -58,7 +58,14 @@ t2_rootpaths() {
     [ -z "$e" ] && continue
     n=$((n+1))
     body=$(probe "v23.0/$e")
-    if ! printf '%s' "$body" | grep -q 'Unknown path components'; then
+    # Class 1 (noise): "Object with ID 'x' does not exist, cannot be loaded..."
+    #   = code 100 / subcode 33, the string is treated as an unknown NODE ID.
+    # Everything else is signal:
+    #   Class 2  GraphMethodException "Please read the Graph API documentation"
+    #            -> recognised, GET unsupported
+    #   Class 3  "(#200) Provide valid app ID"
+    #            -> recognised as a real root endpoint wanting an app ID
+    if ! printf '%s' "$body" | grep -q 'does not exist, cannot be loaded'; then
       printf '%-40s %s\n' "$e" "$(printf '%s' "$body" | head -c 150)" \
         | tee -a "$OUT/rootpaths.txt"
     fi
