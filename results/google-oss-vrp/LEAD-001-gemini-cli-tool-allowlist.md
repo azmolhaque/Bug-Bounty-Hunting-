@@ -1,7 +1,10 @@
 # LEAD-001 — gemini-cli: `tools.core` command restrictions are never enforced
 
-**Status: LEAD, not yet a finding.** Root cause proven by source reading. Empirical
-repro NOT yet performed. Do not submit until Step "Repro" below is green.
+**STATUS: CLOSED — FALSE ALARM. 2026-09-25. Do not submit. See "Closure" at the bottom.**
+
+The repro came back RED. The allowlist **is** enforced, by the policy engine, and my
+analysis below reached the opposite conclusion from an incomplete grep. The chain
+reasoning is kept as a record of the error, not as a live lead.
 
 Target: `github.com/google-gemini/gemini-cli` — Google OSS VRP, **OT1**
 Class: broken security control → sandbox escape → RCE in CI
@@ -206,3 +209,104 @@ The stale `checkCommandPermissions` comment suggests this was **once** enforced.
 full-history `git log -S doesToolInvocationMatch` shows the call site being removed in a
 refactor, say so in the report — a regression with a date is far more persuasive than
 "this seems missing", and it pre-empts "working as intended".
+
+---
+
+# Closure — 2026-09-25. RED. Lead is dead.
+
+## The repro output
+
+Termux, `~/allowlist-poc`, `.gemini/settings.json` confirmed written as
+`{ "tools": { "core": ["run_shell_command(echo)"] } }`, `GEMINI_CLI_TRUST_WORKSPACE=true`,
+`gemini --debug --yolo --output-format json --prompt 'Run the shell command: id'`.
+
+The model did emit the tool call (`"command":"id"`, `"approvalMode":"yolo"`), and it was
+denied before execution:
+
+```
+[PolicyEngine.check] toolCall.name: run_shell_command, stringifiedArgs: {"command":"id",...}
+[PolicyEngine.check] MATCHED rule: toolName=*, decision=deny, priority=4.24, argsPattern=none
+[PolicyEngine.check] Validating shell command: 1 parts
+...
+"response": {"error": "Tool execution denied by policy."}
+"errorType": "policy_violation"
+```
+
+Final answer: `"The command could not be executed because it was denied by security policy."`
+Tool stats: `totalCalls: 1, totalSuccess: 0, totalFail: 1`.
+
+The catch-all `toolName=*, decision=deny` rule is exactly the "narrowing" deny that gets
+installed when an allowlist entry carries an argument. `id` matched no ALLOW rule, so it
+fell through to that deny. The control works as documented.
+
+## Where the enforcement actually lives
+
+`packages/core/src/policy/config.ts:445`, `mapToolsToRules`:
+
+```js
+const match = tool.match(/^([a-zA-Z0-9_-]+)\((.*)\)$/);
+if (match) {
+  const [, rawToolName, args] = match;
+  const toolName = SHELL_TOOL_NAMES.includes(rawToolName) ? SHELL_TOOL_NAME : rawToolName;
+  if (toolName === SHELL_TOOL_NAME) {
+    toolsWithNarrowing.add(toolName);
+    const patterns = buildArgsPatterns(undefined, args);
+    for (const pattern of patterns) {
+      if (pattern) {
+        rules.push({ toolName, decision: PolicyDecision.ALLOW, priority,
+                     argsPattern: new RegExp(pattern), source, modes });
+      }
+    }
+  }
+  ...
+```
+
+The parenthesised argument **is** read. It becomes an `argsPattern` regex on an ALLOW rule,
+plus a default deny for that tool. `policy-engine.ts:215` applies the pattern at check time.
+
+## What I got wrong, precisely
+
+Three claims in the analysis above, in the order they failed:
+
+1. **"`config.ts:3994` is the only production code that reads `coreTools`."** False. It is
+   the only code that reads it *for tool registration*. `packages/core/src/policy/config.ts`
+   reads it for *enforcement*. Registration and authorisation are two different layers and I
+   collapsed them.
+
+2. **"The policy engine never reads `coreTools`."** This is the error that mattered. I
+   grepped exactly one file — `packages/cli/src/config/policy.ts` — found no `coreTools`,
+   and generalised to "the policy engine". The real conversion is in a *different file of
+   the same name* in a *different package*: `packages/core/src/policy/config.ts`. I searched
+   for a concept by guessing a filename instead of by following the data.
+
+3. **"`doesToolInvocationMatch` is dead code, therefore nothing enforces the prefix."** The
+   dead-code observation was correct and verified. The inference from it was not. Dead code
+   at one call site says nothing about whether the control exists elsewhere — and here it
+   had simply moved to the policy engine. Absence of evidence in the place I looked.
+
+The `--yolo` finding and the `GEMINI_CLI_TRUST_WORKSPACE: 'true'` observation were both
+accurate. They just don't matter, because the layer underneath them holds.
+
+## What was actually good here
+
+The workflow reading in `H11-ACTIONS-RUNLOG.md` stands. So does the scanner blind spot —
+filtering on trigger name does miss `schedule`-triggered jobs that ingest issue text, and
+that remains a real gap in the tooling. The specific bug it pointed at was not a bug.
+
+## Rules earned (fold into METHODOLOGY.md)
+
+**FO-16 — A negative grep is not a negative. It is one place you looked.**
+"Function X is never called" and "setting Y is never read" are claims about *your search*,
+not about the program. Before building a finding on an absent control, follow the data
+forward from where it is *defined* to every place it is *consumed* — do not search for the
+control by guessing the filename it ought to live in. Same-named files in different
+packages (`cli/src/config/policy.ts` vs `core/src/policy/config.ts`) are exactly how this
+goes wrong.
+
+**FO-17 — Run the repro before writing the report, not after.**
+LEAD-001 was written up at length, committed, pushed, and presented to the operator on
+static reading alone, with the repro left as a to-do. The repro took ninety seconds and
+killed it. When a claim is cheaply testable, test it *first*; a write-up produced ahead of
+its own verification will rationalise toward the exciting answer. The lead was correctly
+labelled LEAD rather than FINDING and nothing was submitted — that part of the process
+worked. The effort ordering did not.
