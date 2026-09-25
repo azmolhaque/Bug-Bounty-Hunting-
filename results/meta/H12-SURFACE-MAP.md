@@ -125,3 +125,59 @@ else stays unshared as negative controls.
 Then T1–T7 in order, one variable at a time, with the positive control, negative baseline,
 token-debugger provenance and catch-all sentinel from Phase 2 in place before the first
 attack request.
+
+---
+
+## Addendum — 2026-09-25, second SDK pass
+
+### T1 is a one-request test
+
+`BusinessAssetSharingAgreement.api_update` exists, and its entire parameter spec is:
+
+```python
+param_types = { 'request_response': 'string' }
+request = FacebookRequest(node_id=self['id'], method='POST', endpoint='/')
+```
+
+So approving or declining a business asset sharing agreement is:
+
+```
+POST /v23.0/<agreement_id>
+     request_response=<...>
+```
+
+**One string parameter, on a node addressed by ID alone.** Nothing in the request states
+who the caller is relative to the agreement — the `initiator` / `recipient` split is
+entirely implicit in the token. That is exactly the shape where a server checks *"are you a
+party to this agreement"* rather than *"are you the party entitled to make this
+transition."*
+
+This upgrades T1 from a hypothesis to a minimal, single-request PoC. If the recipient can
+POST `request_response` and drive the agreement to approval, that is an unauthorized
+cross-business grant — *business & page take-over, up to $50k*.
+
+Test order once tokens exist: B attempts the transition that only A should be able to make,
+and A attempts the one that only B should. Both directions, because the check may exist on
+one side only.
+
+### Permission vocabulary — hypothesis checked, comes back weak
+
+`Page` exposes two enum classes, `PermittedTasks` and `Tasks`. Both hold **29 entries**,
+both include the same **14** `PROFILE_PLUS_*` values. They are mirrors used in different
+parameter positions (granting versus filtering), not two competing vocabularies.
+
+So the "grant in one vocabulary, check in the other" idea does **not** hold. Recorded as a
+closed negative rather than left implied — it looked promising on first read and it is not.
+
+The 29-value task list is still useful as the granularity axis for T1/T2: it is a wide
+surface, and `PROFILE_PLUS_FULL_CONTROL` sitting in the same enum as `ANALYZE` means the
+distance between the narrowest and widest grant is large.
+
+`business.py` carries `PermittedTasks` but no `Tasks` class — a small asymmetry, noted, not
+yet meaningful.
+
+### Environment limit
+
+The agent container's egress proxy denies `graph.facebook.com`, so **no request to Meta can
+originate from the agent side.** All live probing runs from the operator's terminal. Source
+mining, which is where the value has been, is unaffected.
