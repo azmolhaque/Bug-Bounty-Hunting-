@@ -79,3 +79,85 @@ sweep against.
 **Sweep design:** for every path containing `{organizationId}`, issue a **GET only**, with the
 org-A key, substituting org B's ID. Report anything that is **not** the 403 denial signature.
 Read-only; no writes against any organization during the sweep.
+
+---
+
+## Sweep result — 196 paths, 25 services. CLEAN NEGATIVE. 2026-09-25
+
+Org-A API key against org B's ID, GET only, across every path whose sole placeholder is
+`{organizationId}`. 32 of 34 specs fetched (`DocumentLogs` and `SocialProof` 404 — slugs
+unresolved).
+
+The filter reported 111 "anomalies", but that was **my filter being too narrow**: it
+recognised only `403 ACCESS_DENIED`, and Coveo uses three denial formats —
+`ACCESS_DENIED` (platform), `MissingPrivilegesException` (most services), and
+`AccessDeniedException` (SearchApi). Reclassified:
+
+| Code | Count | What it is |
+|---|---|---|
+| 405 | 63 | path exists, GET unsupported — noise |
+| 403 | 26 | correct denial in one of the other two formats |
+| 412 / 422 / 400 | 18 | missing or invalid query parameter |
+| 404 | 3 | routing |
+| **200** | **1** | `/members/privileges` — investigated below |
+
+**True anomaly count: zero.** Every response resolves to correct behaviour.
+
+### The three follow-ups, all closed
+
+**A — `/rest/organizations/{id}/members/privileges` returned `200 []` against org B.**
+It returns *the caller's own privileges in the named organization*:
+
+```
+org A  + keyA  -> [{"type":"VIEW","targetDomain":"ORGANIZATION","targetId":"*","owner":"PLATFORM"}]
+org B  + keyA  -> []
+FAKE   + keyA  -> []          <-- identical to org B
+org B  + user  -> [ …full list… ]
+```
+
+A real organization the key cannot see and an organization that does not exist return the
+**same** empty array. No existence oracle, no data. "Your privileges here: none" rendered as
+`200 []` rather than `403`. A design inconsistency with zero attacker gain — and explicitly
+on Coveo's out-of-scope list as *"low impact inconsistencies between documentation and
+actual platform/api privileges."* Dead.
+
+**B — `salesforce/trial/licenseStatus` echoing the org ID** is plain string interpolation.
+The fake org gets the same sentence with the fake ID in it. No oracle. Dead.
+
+**C — parameter validation before the authorization check.** `access/apikeys` returns an
+identical `412 MISSING_PARAMETER` for org B and for the nonexistent org. The ordering is
+real (same pattern as Meta's `generatepreviews`) but it discriminates nothing. Dead.
+
+### Verdict on the path-scoped surface
+
+**Coveo's path-based organization scoping is sound.** 196 endpoints across 25 backend
+services, all correctly denying a cross-org key, with no existence oracle anywhere and no
+response that distinguishes a hidden organization from an imaginary one.
+
+This is a real result rather than an absence of one: it says where *not* to keep looking.
+
+## Phase 2 — the query-parameter surface
+
+The sweep deliberately covered the easier half. The large specs contributed almost nothing:
+
+```
+SearchApi            563 KB  ->  5 paths
+UsageAnalyticsRead   368 KB  ->  0 paths
+PushApi              400 KB  ->  0 paths
+SearchPagesService   144 KB  ->  0 paths
+```
+
+Not because they are small, but because **they take the organization as a query parameter**
+(`?organizationId=`, `?org=`) or live on other hostnames (`search.cloud`, `analytics.cloud`,
+`api.cloud`). My filter only matched `{organizationId}` in the path.
+
+That is the more promising half, and for a structural reason: when the tenant ID is a path
+segment, the router sees it and a framework-level check can cover every route at once. When
+it is a query parameter, **the check has to be written by hand in each handler** — so it is
+exactly the kind of place where one handler gets missed.
+
+This is also the same shape as the Exoscale `parameters.bucket` work: a tenant identifier
+carried as a parameter rather than as part of the resource path.
+
+Next: extract every endpoint taking an org-ish query parameter across the 32 specs, plus the
+non-platform hostnames, and sweep those with the org-A key against org B.
