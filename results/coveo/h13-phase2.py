@@ -30,7 +30,7 @@ CAND = os.path.join(OUT, "phase2-candidates.tsv")
 FAKE = "zzznotarealorgzzz999"
 ORG_NAMES = {"organizationid", "org", "orgid", "organization"}
 DENY_MARKERS = ("ACCESS_DENIED", "MissingPrivileges", "AccessDenied",
-                "Forbidden", "INVALID_TOKEN")
+                "Forbidden", "INVALID_TOKEN", "UnauthorizedOrg")
 
 
 def resolve(spec, node):
@@ -86,7 +86,7 @@ def extract():
                     orgparam = name
                 elif p.get("required"):
                     required.append(name)
-            if orgparam:
+            if orgparam and "{" not in path:
                 rows.append((group, base, path, orgparam, ",".join(required)))
 
     rows = sorted(set(rows))
@@ -121,7 +121,8 @@ def fetch(url, key):
 
 
 def denied(code, body):
-    return code in (401, 403) and any(m in body for m in DENY_MARKERS)
+    # Coveo denies with 401, 403 AND 400 (UnauthorizedOrg on the analytics API).
+    return code in (400, 401, 403) and any(m in body for m in DENY_MARKERS)
 
 
 def sweep():
@@ -148,7 +149,11 @@ def sweep():
         c2, b2 = fetch(f"{host}{path}?{urllib.parse.urlencode({orgparam: FAKE})}", key)
         time.sleep(0.3)
 
-        same = (c1 == c2 and b1[:160] == b2[:160])
+        # Normalise the echoed org id out before comparing, otherwise every
+        # response that quotes its input looks like a difference.
+        n1 = b1.replace(orgb, "<ORG>")
+        n2 = b2.replace(FAKE, "<ORG>")
+        same = (c1 == c2 and n1[:200] == n2[:200])
         # Not denied AND behaves differently for a real vs imaginary org.
         flag = "DIFFERS" if not same else "same-as-fake"
         if not same or c1 == 200:
