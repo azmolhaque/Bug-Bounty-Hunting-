@@ -35,7 +35,22 @@ gemini --debug --yolo --prompt "${PROMPT}" --output-format json
 gemini --yolo --prompt "${PROMPT}" --output-format json
 ```
 
-`--yolo` = no confirmation gate on any tool call. So the allowlist is the *only* control.
+`--yolo` = no confirmation gate on any tool call.
+
+There is one further gate: the **trusted-folders** check. In an untrusted workspace the CLI
+prints `Approval mode overridden to "default" because the current folder is not trusted`
+and refuses to run headless. (Observed 2026-09-25 on Termux during repro attempt 1.)
+
+Google's own workflows disable it. `gemini-automated-issue-triage.yml` and
+`gemini-automated-issue-dedup.yml` both set:
+
+```yaml
+env:
+  GEMINI_CLI_TRUST_WORKSPACE: 'true'
+```
+
+With the workspace trusted, `--yolo` stands and the allowlist is the *only* remaining
+control. Any repro must export `GEMINI_CLI_TRUST_WORKSPACE=true` to match CI conditions.
 
 ### 2. The allowlist argument is discarded
 
