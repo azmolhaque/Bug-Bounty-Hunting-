@@ -87,9 +87,46 @@ setup() {
   echo "-- edges.txt: $(wc -l < "$OUT/edges.txt") names"
 }
 
+# ---------------------------------------------------------------- test 3
+# Same 525 names, but against an OLD version. t2 only ever tested v23.0.
+# A root path recognised on a legacy version but NOT on v23.0 is a legacy
+# endpoint still routable — which is the whole point of the version axis.
+#
+#   bash probe-unauth.sh t3 1.0
+t3_rootpaths_at() {
+  V="${1:-1.0}"
+  [ -f "$OUT/edges.txt" ] || { echo "!! run setup first"; return 1; }
+  [ -f "$OUT/rootpaths.txt" ] || { echo "!! run t2 first (need the v23.0 baseline)"; return 1; }
+  echo "== test 3: root paths at v$V  -> $OUT/rootpaths-v$V.txt"
+  : > "$OUT/rootpaths-v$V.txt"
+  n=0
+  while read -r e; do
+    [ -z "$e" ] && continue
+    n=$((n+1))
+    body=$(probe "v$V/$e")
+    printf '%s' "$body" | grep -q 'does not exist, cannot be loaded' || \
+      printf '%-40s %s\n' "$e" "$(printf '%s' "$body" | head -c 150)" \
+        >> "$OUT/rootpaths-v$V.txt"
+    [ $((n % 100)) -eq 0 ] && echo "   ...$n checked"
+    sleep 0.4
+  done < "$OUT/edges.txt"
+
+  echo
+  echo "-- v$V recognised: $(wc -l < "$OUT/rootpaths-v$V.txt")   v23.0 recognised: $(wc -l < "$OUT/rootpaths.txt")"
+  echo
+  echo "== ONLY on v$V (legacy-only routes — this is the interesting set):"
+  comm -23 <(awk '{print $1}' "$OUT/rootpaths-v$V.txt" | sort -u) \
+           <(awk '{print $1}' "$OUT/rootpaths.txt"      | sort -u)
+  echo
+  echo "== ONLY on v23.0 (added since v$V — expected, low interest):"
+  comm -13 <(awk '{print $1}' "$OUT/rootpaths-v$V.txt" | sort -u) \
+           <(awk '{print $1}' "$OUT/rootpaths.txt"      | sort -u)
+}
+
 case "${1:-}" in
   setup) setup ;;
   t1)    t1_versions ;;
   t2)    t2_rootpaths ;;
-  *)     echo "usage: bash probe-unauth.sh {setup|t1|t2}" ;;
+  t3)    t3_rootpaths_at "${2:-1.0}" ;;
+  *)     echo "usage: bash probe-unauth.sh {setup|t1|t2|t3 [version]}" ;;
 esac

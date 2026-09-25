@@ -489,3 +489,84 @@ and the P2/P3 transient errors. Four dead ends written down with their reasoning
 them gets re-walked.
 
 **Blocker: account creation. There is no further unauthenticated work worth doing.**
+
+---
+
+## Write-side parameters, mined from the SDK — sharpens T5, T6, T7
+
+The read surface was mapped first; these are the **grant** operations, and they are where the
+authorization decisions actually get made.
+
+### `POST /{business-id}/client_pages` — `create_client_page`
+
+```
+page_id         : int
+permitted_tasks : list<permitted_tasks_enum>
+```
+
+A business claims a client page by **caller-supplied `page_id`**, with a caller-supplied task
+list. The direct question for the authenticated session: can business B post a `page_id` it
+was never granted? This is a write, so it runs only against a Page we own, from the business
+that was **not** given it.
+
+### `POST /{business-id}/access_token` — `create_system_user_access_token` · **strongest T5 refinement**
+
+```
+asset          : list<unsigned int>
+scope          : list<Permission>
+system_user_id : unsigned int
+fetch_only     : bool
+```
+
+**`asset` is a caller-supplied list of asset IDs**, and `scope` a caller-supplied permission
+list. This is structurally identical to the Exoscale `parameters.bucket` binding problem:
+does the server verify that every ID in `asset` is genuinely assigned to that system user, or
+does it mint a token against the list it was handed? Same question for `scope` against what
+the system user actually holds.
+
+Test with our own assets only: mint a token naming an asset the system user was never
+assigned, then check with the Access Token Debugger what the resulting token actually carries.
+
+### `POST /{business-id}/share_preverified_numbers` — `create_share_pre_verified_number` · T7
+
+```
+partner_business_id : string
+preverified_id      : string
+```
+
+Two caller-supplied IDs and no third binding. Cross-business phone-number sharing where both
+sides of the relationship are parameters. Contact point deanonymization pays $10k separately
+from the access-control angle.
+
+### `POST /{business-id}/managed_partner_businesses` — T6
+
+Large parameter set, including `credit_limit`, `line_of_credit_id`, `catalog_id` and
+`active_ad_account_id`. **`line_of_credit_id` is caller-supplied** — whether a child business
+can be created referencing a credit line belonging to someone else is worth one careful test
+against our own line.
+
+### `POST /{business-id}` — `Business.api_update`
+
+```
+entry_point · name · primary_page · timezone_id · two_factor_type · vertical
+```
+
+**`two_factor_type` is a security control** — it governs whether business users must use 2FA.
+If an agency can write it on a client business, that is a security-control downgrade across a
+tenant boundary. `primary_page` is also writable.
+
+---
+
+## t3 — root paths on legacy versions. Added 2026-09-25
+
+t2 only ever ran against v23.0. With 50 accepted versions this was an obvious gap, and
+calling the phase exhausted before closing it was premature — the same error as claiming a
+control absent after searching one file (FO-16).
+
+`bash probe-unauth.sh t3 1.0` re-runs the 525 names against a legacy version and diffs
+against the v23.0 baseline.
+
+**The interesting set is "ONLY on v1.0"** — a root path that resolves on a legacy version and
+not on the current one is a legacy route still reachable, and legacy routes are where an
+authorization check added later may never have been applied. "ONLY on v23.0" is expected
+(endpoints added since) and low interest.
