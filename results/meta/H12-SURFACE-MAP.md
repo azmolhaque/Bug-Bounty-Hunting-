@@ -381,3 +381,51 @@ list of root endpoints reachable without a node ID, which is where an authorizat
 most likely to have been attached to the node rather than the route.
 
 Filter corrected to exclude class 1 only. Re-run pending.
+
+### t2 re-run — 37 of 525 root paths recognised. 2026-09-25
+
+Six response classes, not the three predicted. The class tells us **how far into the stack
+the unauthenticated request travelled**, which is the whole point:
+
+| Class | Endpoints | Depth reached |
+|---|---|---|
+| `(#200) Provide valid app ID` | adlabels · advideos · audiences · batch · captions · children · collaborators · destinations · flows · health · history · lightads · shops · steps · tagged | route resolved, app ID demanded |
+| `(#104) An access token is required` | **businesses · pages · subscriptions** · fundraisers · notification_messages_dev_support | root-level collection, user token demanded |
+| `GraphMethodException` (no object-ID text) | adaccount · feed · photos · threads · status · sharedposts · commerce_merchant_settings · partner_account_linking · cpas_lsb_image_bank · ad_custom_derived_metrics · third_party_measurement_report_dataset | recognised, GET unsupported |
+| `(#2) Service temporarily unavailable`, `is_transient:true` | **payment_configuration · payment_configurations · payment_transactions** · light_campaigns | reached a backend that then failed |
+| `(#1) An unknown error has occurred` | comments | unhandled exception |
+| `(#100) For field 'generatepreviews': The parameter ad_format is required` | **generatepreviews** | **past auth, into parameter validation** |
+
+#### P1 — `generatepreviews`
+
+The only endpoint of 525 that answered an unauthenticated GET with a **parameter**
+complaint rather than an auth complaint. It did not ask for a token or an app ID; it asked
+for `ad_format`. Either the auth check runs after parameter validation, or it does not run
+on this route.
+
+Next: supply `ad_format` and see what the following error is. If it then demands a token or
+a creative, this is merely error ordering and it dies. If it proceeds, it is an
+unauthenticated ad-preview generation endpoint.
+
+#### P2 — payment endpoints returning `(#2) is_transient`
+
+`payment_configuration`, `payment_configurations`, `payment_transactions` and
+`light_campaigns` return a transient backend failure rather than an auth denial. An
+unauthenticated request that reaches a payment backend far enough to make it fail is worth
+establishing as stable or genuinely transient. Retry several times: if it is stable, the
+route is dispatching to a payment service before authenticating.
+
+#### P3 — `comments` returning `(#1) An unknown error has occurred`
+
+An unhandled exception on an unauthenticated request. Same question as P2 — stable or not.
+
+#### P4 — root collections at `(#104)`
+
+`/v23.0/businesses`, `/v23.0/pages`, `/v23.0/subscriptions` exist as **root** collections and
+demand a user token. Normally these are reached as `/me/businesses`. A root-level collection
+of businesses is directly relevant to T1–T7: the question for the authenticated session is
+what `/businesses` returns with a token, and whether it scopes to the caller.
+
+**Discipline note:** none of the above is a finding. Every one is an error message, and an
+error message is a precondition (FO-8/11). They are ranked leads for the authenticated
+session, and P1 is the only one testable further without an account.
