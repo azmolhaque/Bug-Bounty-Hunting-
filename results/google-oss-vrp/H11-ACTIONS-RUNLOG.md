@@ -203,3 +203,32 @@ evaluation. `${{ contains(toJson(body), 'x') }}` renders as `true`/`false` and i
 inert; an input declared and never consumed is inert. Score is triage. Two of three
 top hits died on the first honest read — count a candidate only after reading what the
 value actually becomes.
+
+---
+
+## C3 CLOSED (2026-09-25)
+
+Operator ran the environments query. Result:
+
+```
+{ "name": "integration-test", "rules": ["required_reviewers"] }
+```
+
+The gate is real. The stale `ci:ready` label cannot reach code execution without a
+human clicking approve. C3 is a clean negative. **The dangerous-trigger axis is closed.**
+
+## Post-close pass — scanner blind spot
+
+Before abandoning the class I re-read my own scanner and found it filtered on
+*trigger name*. A `schedule`- or `push`-triggered workflow that pulls issue/PR text
+through the API is exactly as attacker-controlled as a `pull_request_target` one, and
+neither my scan nor zizmor's dangerous-trigger rules look at it.
+
+That pass found **LEAD-001** — see `LEAD-001-gemini-cli-tool-allowlist.md`. The
+`tools.core` allowlist that every gemini-cli bot workflow relies on is not enforced at
+all: the parenthesised argument is read only as "register this tool or not", and
+`doesToolInvocationMatch`, the function that implements the prefix check, is referenced
+solely by its own test file. The action runs `gemini --yolo`, so there is no second gate.
+
+Lesson to fold into the methodology: **the trigger is not the trust boundary — the data
+is.** Filter on where untrusted text enters the model or the shell, not on the event name.
