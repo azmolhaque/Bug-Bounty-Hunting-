@@ -242,3 +242,42 @@ Both are needed to recognise a bypass when one appears:
 
 Find the floor — probe v1.0, v2.0, v2.5, v2.8, v2.12. Anything below v3.0 predates Meta's
 post-2018 permissions lockdown entirely.
+
+### Control test — is the version string actually validated? 2026-09-25
+
+The v1.0-is-live result looked too good, so it was controlled before being carried forward.
+A version from 2010 answering is more plausibly *no validation* than *fifteen-year-old
+semantics still served*. Four requests with versions that have never existed:
+
+| Probe | Response | Reading |
+|---|---|---|
+| `v99.0`, `v7.3`, `v42.9` | `Unknown path components: \/me` (OAuthException 2500) | **not** parsed as a version — the string is taken as a node, and `/me` beneath it is unknown |
+| `v0.1` | `An active access token must be used…` | parsed as a **valid version** |
+| no version at all | `An active access token must be used…` | defaults to current |
+
+**Validation is real.** The earlier liveness result therefore stands on its own terms:
+v1.0 through v23.0 are genuinely accepted versions, not path normalisation. The version axis
+on T1–T7 is worth the doubled test matrix.
+
+The prediction going in was the opposite — that `v99.0` would answer like the rest and the
+legacy hypothesis would die. It did not. Four requests turned a guess into a fact, which is
+FO-17 working as intended rather than being learned the expensive way.
+
+#### A free enumeration oracle
+
+The two error strings discriminate cleanly, with no token:
+
+- `Unknown path components: \/me` → version string not recognised
+- `An active access token must be used…` → version recognised
+
+That enumerates Meta's entire accepted-version set unauthenticated. It is **not** a finding —
+supported API versions are public documentation, so nothing is disclosed that is not already
+published. It is a mapping tool for choosing which legacy paths to re-run T1–T7 against.
+
+#### Open — the `v0.1` anomaly
+
+`v0.1` parses as a version. Either it is a real ancient entry, or low/unrecognised versions
+clamp to the oldest supported. Discriminator: `v2.12` was the last v2 release and `v3.3` the
+last v3. If `v2.13` and `v3.4` are rejected while `v2.12` and `v3.3` are accepted, the set is
+a precise allowlist of real versions and `v0.1` is a genuine target. If they are accepted, it
+is a range clamp and `v0.1` means nothing.
