@@ -281,3 +281,54 @@ clamp to the oldest supported. Discriminator: `v2.12` was the last v2 release an
 last v3. If `v2.13` and `v3.4` are rejected while `v2.12` and `v3.3` are accepted, the set is
 a precise allowlist of real versions and `v0.1` is a genuine target. If they are accepted, it
 is a range clamp and `v0.1` means nothing.
+
+#### Resolved — precise allowlist, with one anomaly at major version 0
+
+| Accepted | Rejected | Known release history |
+|---|---|---|
+| `v2.12` | `v2.13` | v2.12 was the last v2 release |
+| `v3.3` | `v3.4` | v3.3 was the last v3 release |
+| `v7.0` | `v7.1` | v7.0 was the only v7 |
+| `v0.0`, `v0.9` | — | **no v0.x has ever existed** |
+
+Three clean boundary pairs. The set is a **precise allowlist of genuinely released
+versions** — Meta rejects plausible-but-nonexistent minors exactly. So the liveness result is
+confirmed a second time: v1.0 through v23.0 are really served, and the version axis on T1–T7
+is worth running.
+
+The anomaly: the allowlist is exact for v1 and above, and **loose for major version 0** —
+any minor is accepted.
+
+**This is not a finding.** Attacker gain is nil: `v0.x` almost certainly resolves to the
+default, i.e. the *current* version, which is the most restrictive path available. Nothing is
+bypassed and there is nothing to report. Recorded only because it implies one concrete
+authenticated test.
+
+**The test it implies:** does `v0.0` route to *current* or to *oldest*? If it silently
+resolves to the oldest supported version, it is an undocumented route into legacy semantics
+and belongs in front of every T1–T7 legacy run. Settle it in three requests once a token
+exists — compare field availability across `v0.0`, `v1.0` and `v23.0` and see which `v0.0`
+matches.
+
+---
+
+## Unauthenticated phase: closed
+
+Everything testable without an account has now been tested. Result: **no findings, and no
+leads left open that a token would not be required to pursue.** That is the correct outcome —
+the phase existed to build the map and the baselines, not to produce a bug.
+
+Carried into the authenticated session:
+
+1. Seven ranked targets (T1–T7), each against a published payout tier.
+2. T1 reduced to a single request: `POST /<agreement_id>` with `request_response`, run in
+   **both** directions.
+3. A confirmed version axis — every target re-run against a legacy version.
+4. Two error baselines: `OAuthException 2500` (no token) and `GraphMethodException 100 /
+   subcode 33` (Meta's unified does-not-exist-or-not-permitted). A deviation from subcode 33
+   on an object we should not see is itself the signal.
+5. One open routing question on `v0.0`.
+6. Two closed negatives recorded rather than left implied: the `PermittedTasks`/`Tasks`
+   vocabulary idea, and the initial assumption that version strings were unvalidated.
+
+Blocker is account creation. Nothing further can be learned without it.
