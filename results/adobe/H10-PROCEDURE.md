@@ -153,3 +153,70 @@ is not proof. A screenshot without the avatar is not proof.
   stops there (FO-14).
 - No destructive action on anything shared or collaborative.
 - If any view ever shows a **third party's** content: stop, do not save it, report that fact.
+
+---
+
+# H10 RESULT — **CLEAN NEGATIVE. Closed 2026-09-25.**
+
+Accounts A/B · canary `4dc09wuc` · phone browser + Pi terminal.
+
+## Gates
+
+| Gate | Test | Result |
+|---|---|---|
+| **0A** | A opens `alpha-4dc09wuc` | 200, canary visible ✅ |
+| **0B** | B opens A's never-shared project URL | **404 "Page not found"** ✅ |
+| 0C | one-character-altered project ID | error |
+
+**0B is better than a plain denial.** A `404` rather than "access denied" gives no existence
+oracle — an unauthorised visitor cannot distinguish a real project from a fabricated ID.
+
+## Embed link — the main test
+
+Express offers **Share / Publish / Embed**. Embed was badged *NEW*, so it got priority.
+
+**Controls Adobe got right, all recorded as negatives:**
+
+1. **Email verification required** before an embed link can be created at all.
+2. **Separate URN.** The embed URN (`77bd9b83-…`, then `88c978cd-…`) is *not* the project URN.
+   The private document's identifier is never exposed.
+3. **No identity leakage.** The embed page HTML contains **no** URN of any kind, no owner e-mail,
+   no account name, no canary. Content is fetched client-side after the URN is parsed from the path.
+4. **Revocation is enforced server-side.** After *Delete embed link*, the same URL returns:
+
+   > **"File unavailable — The linked file was removed and can't be restored."**
+
+   The backend distinguishes *removed* and refuses. The product's stated promise —
+   *"Links can be deleted anytime"* — holds.
+
+## A methodological trap this run walked into
+
+The terminal probe of the embed URL returned **`200 303747`** both before *and* after deletion —
+**byte-identical**. That is the static SPA bundle, which serves for any `/embedLink/<anything>`
+path whether the link exists or not.
+
+> **A 200 on a JavaScript application's shell is not evidence the resource exists.** Identical
+> response sizes across a state change prove the response is static. The real state lived in the
+> rendered view, not the status code.
+
+Read off `curl` alone, the conclusion would have been the exact opposite of the truth.
+
+**Positive control never obtained, stated honestly.** The embed link is a *"Smart embed link
+(supported platforms)"*, designed to be unfurled by a host site or loaded in the supplied
+`<iframe>`. Opened directly in a mobile browser it produced a guest sign-in flow and
+*"Can't save — You no longer have access to Adobe Express"* — for the **live** link and the
+deleted one alike. So the canary was never watched rendering through a live embed.
+**The negative rests on the server-side "File unavailable" response, not on an inferred
+comparison.** A fuller run would host the supplied iframe on the Tailscale Funnel rig and view it
+anonymously.
+
+## Not pursued, and why
+
+**An embed link serving content publicly is intended** — *"Embed your design anywhere on the
+web."* The owner opts in explicitly. Reporting that would close WAI exactly as the AppSheet
+connector SSRF did. The only question worth asking was whether the advertised *revocation* works,
+and it does.
+
+## Verdict
+
+**No finding.** Express's sharing surface enforced every boundary tested.
