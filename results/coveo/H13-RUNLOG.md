@@ -337,3 +337,69 @@ u3ee7e3ytbr6tspxifzyixsnxm  PUBLIC   h13-anon-base
 ```
 
 Delete both once phase 3 concludes.
+
+---
+
+## CORRECTION — phase 1's negatives were weaker than recorded. 2026-09-26
+
+The phase 1 sweep used an API key holding **only `ORGANIZATION:VIEW`**. When it returned 403
+against org B on `/sources`, `/fields`, `/catalogs` and the rest, that key would have returned
+403 against **org A** too — it had no privilege in those domains at all.
+
+The only positive control run was on `/rest/organizations/{id}`. There was **no per-endpoint
+control**. So a large share of those 196 "correct denials" were **privilege denials, not
+org-scope denials**, and recording them as evidence that org scoping holds was wrong.
+
+The verdict "path-based organization scoping is sound across 25 backend services" is
+**not supported** by the evidence that was collected. It may still be true; it was not shown.
+
+This is the same error as FO-16, in a new costume: a negative result that was really a fact
+about the instrument rather than about the system. The five invalid controls in phase 3 were
+caught because the positive control was checked explicitly each time. Phase 1 had one global
+control and it masked the problem for 196 endpoints.
+
+### The fix — `h13-sweep2.py`
+
+Re-runs the same 196 paths with the 137-privilege key, calling **org A and org B for every
+path**, so the control is per-endpoint:
+
+| org A | org B | meaning |
+|---|---|---|
+| 200 | 200 | **cross-org read** — the finding |
+| 200 | denied | genuinely enforced — counts as evidence |
+| ≠200 | — | no privilege in our own org; **discarded, proves nothing** |
+
+The third bucket is the whole point: those were previously being counted as wins. The
+re-sweep reports the three counts separately, so the denominator is honest — "N endpoints
+where we *had* access in org A and were refused in org B" rather than "N endpoints that
+returned 403 for some reason".
+
+## 3b — resource-level identifiers. CLEAN NEGATIVE, properly controlled.
+
+Sources created in both orgs. Note the ID shape: `<organizationId>-<random>`, so the owning
+org is embedded in the resource identifier.
+
+Test: org A in the path, org B's source id in the resource slot — the confused-deputy shape,
+where the org you are entitled to is combined with a resource you are not.
+
+```
+GET /rest/organizations/{ORGA}/sources/{SRCA}   -> 200, full source object   (control PASSED)
+GET /rest/organizations/{ORGA}/sources/{SRCB}   -> SOURCE_DOES_NOT_EXIST
+```
+
+The handler scopes the lookup to the organization in the path. `DOES_NOT_EXIST` is also the
+correct disclosure answer — from org A's standpoint that source genuinely does not exist, so
+nothing is confirmed about org B.
+
+**This is the first phase 3 test with a positive control that actually passed**, and it is a
+real negative rather than a blocked one.
+
+## 3a — search querying. BLOCKED, not negative.
+
+`POST /rest/search/v2` returns `503 SERVER_UNAVAILABLE` for org A, org B and the fake org
+alike, both before and after creating a source. The response arrives before any authorization
+decision and is identical for all three, so it discriminates nothing. Search may simply not be
+provisioned on this organization tier.
+
+Parked rather than pursued: reaching a valid control would mean pushing documents and waiting
+on index builds to reach a test that may be structurally unavailable here.
