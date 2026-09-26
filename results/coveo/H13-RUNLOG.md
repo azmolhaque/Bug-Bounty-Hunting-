@@ -161,3 +161,86 @@ carried as a parameter rather than as part of the resource path.
 
 Next: extract every endpoint taking an org-ish query parameter across the 32 specs, plus the
 non-platform hostnames, and sweep those with the org-A key against org B.
+
+---
+
+## Phase 2 result — query-parameter surface. CLEAN NEGATIVE. 2026-09-26
+
+72 candidates after the extractor fixes (org as a query parameter, GET, no other path
+placeholders), each called twice — once with org B's id, once with an id that cannot exist.
+
+**2 flagged, both resolved to nothing.**
+
+### `featureActiveState` — closed
+
+`/rest/search/admin/pipelines/featureActiveState?organizationId=` was the one endpoint of
+128 that returned `200` for a foreign org *and* for a nonexistent one, with no denial.
+
+Sorted comparison settles it:
+
+```
+org A                    -> 20 features
+org B                    -> 20 features   identical
+zzznotarealorgzzz999     -> 20 features   identical
+```
+
+Byte-for-byte the same list, including the same `active` values, for an org the key owns, an
+org it does not, and an org that does not exist. It is a **static default feature list** that
+reads no organization state whatsoever. Nothing is disclosed.
+
+My comparator fired only because the JSON array comes back in **nondeterministic order** —
+the same trap as the Meta version-liveness result, where the interesting-looking thing was an
+artifact of the measurement rather than the system. Two orderings of an identical set read as
+a difference until you sort.
+
+### `strictValidationTest` — closed
+
+`/v15/admin/account/strictValidationTest?org=` returns `{"dimensionName":null,
+"validationTestResults":[]}` identically for org B and for the fake org. Empty, no
+discrimination, no data.
+
+### Verdict
+
+**Coveo's cross-organization authorization holds on the query-parameter surface too.**
+
+Combined with phase 1 that is **~270 endpoints across 25 backend services**, covering both
+the path-segment and query-parameter shapes, with no cross-org read and no existence oracle
+anywhere. The `UnauthorizedOrg` denials on the analytics tier were correct enforcement my
+detector had miscategorised.
+
+The structural hypothesis — that a hand-written per-handler check would be missed somewhere —
+did not pay out. Coveo appears to enforce org scope centrally on both shapes.
+
+## Phase 3 — where the remaining surface actually is
+
+Two directions, neither covered so far, in priority order.
+
+### 3a — Search token minting · the highest-value remaining test
+
+Coveo's search tokens are how customers grant scoped search to end users:
+`POST /rest/search/v2/token` with `userIds`, `filter`, `searchHub`.
+
+The question: **can an API key scoped to org A mint a search token for org B?** If it can,
+that is cross-tenant *data* access — the token then queries org B's index — which is exactly
+the bar Coveo named. The boundary under test is the key's org scope, not ownership, so the
+fact that both orgs belong to the same identity does not weaken it.
+
+Also worth testing on the minted token: whether a supplied `filter` can be widened or
+bypassed, and whether `userIds` can be set to an identity the minter should not speak for.
+
+Coveo's own out-of-scope text calls anonymous search tokens for demo orgs "public by design",
+which implies this surface is understood — so check known-issues carefully before writing
+anything up.
+
+### 3b — Resource-level identifiers
+
+Everything so far tested *organization*-level checks. Resource-level checks (a specific
+source, report, field, catalog) are typically written per handler and are where BOLA usually
+survives.
+
+Requires org B to actually contain resources — a fresh `BugBountyCoveo` org is empty. So:
+create a source and a report **in org B** using the user token, take their IDs, then attempt
+to read them **with org A's key**. Both orgs are ours, so nothing touches another tenant.
+
+This is also what unlocks the endpoints skipped in phases 1 and 2 for carrying extra path
+placeholders.
