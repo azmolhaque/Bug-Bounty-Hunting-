@@ -482,3 +482,22 @@ never tested."
 Corollary: **when two arms of a comparison are both empty, the comparison has not run.** The
 six 200/200 endpoints looked like a lead and were indistinguishable from nothing until org B
 was made non-empty. Plant a canary before believing an empty negative.
+
+## Cleanup — 2026-09-26
+
+- `se5lbkepjegleygxgkhfp4smh4` (h13-sweep, PRIVATE) — deleted, 204
+- `u3ee7e3ytbr6tspxifzyixsnxm` (h13-anon-base, PUBLIC) — deleted, 204
+- `vmfq2dnvefiez4ptdjut7psit4` (h13-admin, 137 privileges) — deleted; its value appeared in
+  an operator paste, so it was not kept for reuse
+- trusted-uri canary `9198591c-24ae-4762-b26e-dd2d85ee701c` — removed from org B, 204
+- `bugbountygoribb2ics0l883` (spare third org) — deleted, 204
+
+Retained: org A `bugbountygoriba9hyg0ttn`, org B `bugbountygoribbcsq3h50g`, and one push
+source in each. Those are the working environment and cost nothing to keep.
+
+**Credential hygiene, carried forward.** Four live credentials were pasted into the session
+transcript across the engagement (a Gemini API key, a Coveo user token, and two Coveo API
+keys). All are now revoked or expired. The habit to fix is the paste, not the cleanup: read
+the value into a shell variable and send only status codes. It cost nothing here because
+every credential was scoped to disposable test organizations — it would not be free on a
+target holding real data.
