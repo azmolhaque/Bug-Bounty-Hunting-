@@ -244,3 +244,96 @@ to read them **with org A's key**. Both orgs are ours, so nothing touches anothe
 
 This is also what unlocks the endpoints skipped in phases 1 and 2 for carrying extra path
 placeholders.
+
+---
+
+## Phase 3a — search credentials. Privilege model mapped; core test still BLOCKED. 2026-09-26
+
+### Coveo's privilege model, learned from rejections
+
+Five privileges are a **"public" class** that a hand-built key may not carry. Verbatim:
+
+```
+custom api key cannot have public privileges:
+  SEARCH_API      / IMPERSONATE
+  SEARCH_API      / EXECUTE_QUERY
+  SEARCH_API      / VIEW_ALL_CONTENT
+  USAGE_ANALYTICS / IMPERSONATE
+  USAGE_ANALYTICS / EDIT ANALYTICS_DATA
+```
+
+Two more are rejected outright on custom keys: `SEARCH_API/QUERY_PIPELINE_PREVIEW` and
+`SEARCH_API/REPLAY_ANY_QUERY`.
+
+`privacyLevel` is **not** a field on `ApiKeyCreationRequest` — it appears only in responses
+and on templates. A key's privacy is therefore derived, not requested. Public keys come from
+**templates**: `POST /rest/organizations/{orgId}/apikeys?apiKeyTemplateId=<id>`.
+
+Org A exposes **20 templates**; `AnonymousSearch` and `AnonymousCaseAssist` are
+`privacy: PUBLIC` and `canGenerate: true` for this account.
+
+### `overrideTemplatePrivileges` — CLEAN NEGATIVE
+
+`ApiKeyCreationRequest.overrideTemplatePrivileges` is documented as *"the privileges that
+will be used to override the privileges of the template"*. The hypothesis: generate from a
+PUBLIC template while overriding with administrative privileges, yielding an
+anonymously-usable key holding elevated rights — a credential meant to sit in a public web
+page, carrying `ORGANIZATION:EDIT`.
+
+Rejected:
+
+```
+The following privileges are not allowed:
+  [PLATFORM/SOURCE:EDIT, PLATFORM/API_KEY:EDIT, PLATFORM/ORGANIZATION:EDIT]
+```
+
+The wall between the public and custom privilege classes is enforced in the override path
+too. **Closed.**
+
+### The public key generated cleanly
+
+`AnonymousSearch` with no override produced exactly the credential customers embed in public
+web pages:
+
+```
+privacy: PUBLIC
+privileges: SEARCH_API/EXECUTE_QUERY, USAGE_ANALYTICS/EDIT ANALYTICS_DATA,
+            USAGE_ANALYTICS/IMPERSONATE
+```
+
+### The core test is BLOCKED, not negative
+
+`POST /rest/search/v2?organizationId=…` returned **503 SERVER_UNAVAILABLE for all three**
+targets — org A included. A fresh `BugBountyCoveo` organization has no sources, therefore no
+index, therefore nothing for the search service to answer with.
+
+**The positive control failed, so [2] and [3] prove nothing.** Recorded as blocked.
+
+This is the fifth invalid control in phase 3, each for a different legitimate reason: the
+first key lacked `IMPERSONATE`; the full-privilege key was refused for carrying public
+privileges; then for two more disallowed ones; `KEYA` could not read templates; and now no
+index exists. Every one was caught by insisting the positive control pass first. Without
+that rule, four of the five would have been written down as clean negatives.
+
+### Unblocking it — populate the organizations
+
+Both orgs need a source with at least one document before any search-scoping question can be
+asked. Push API, in organizations we own:
+
+1. Create a push source in org A and in org B.
+2. Push one benign document into each, with distinguishable content so a cross-org read is
+   unambiguous in the response body.
+3. Re-run: org-A public key queries org A (control), then org B, then the fake org.
+
+Populating also unblocks **phase 3b** — resource-level identifiers. Every endpoint skipped in
+phases 1 and 2 for carrying a second path placeholder (`{sourceId}`, `{reportId}`,
+`{fieldId}`) becomes testable once real IDs exist in org B.
+
+### Live keys in org A (housekeeping)
+
+```
+se5lbkepjegleygxgkhfp4smh4  PRIVATE  h13-sweep
+u3ee7e3ytbr6tspxifzyixsnxm  PUBLIC   h13-anon-base
+```
+
+Delete both once phase 3 concludes.
