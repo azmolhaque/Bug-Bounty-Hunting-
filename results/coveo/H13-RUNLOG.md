@@ -403,3 +403,82 @@ provisioned on this organization tier.
 
 Parked rather than pursued: reaching a valid control would mean pushing documents and waiting
 on index builds to reach a test that may be structurally unavailable here.
+
+---
+
+## Re-sweep result — the correction was worth it. 2026-09-26
+
+196 paths, 137-privilege key, org A **and** org B called for every path:
+
+```
+ENFORCED  (200 in org A, denied in org B) :  88   <- actual evidence
+DISCARDED (no access in org A either)     : 102   <- proves nothing
+CROSS-ORG READS (200 in both)             :   6
+```
+
+**Over half of phase 1's "clean negative" had never been tested.** The earlier verdict —
+"path-based organization scoping is sound across 25 backend services" — rested on 196
+responses of which 102 were the instrument, not the system. The honest figure is **88
+endpoints demonstrably enforced**.
+
+### The six 200/200 endpoints — closed with a canary
+
+```
+AuthorizationServer  /members/privileges
+SearchApi            /authentication
+SearchApi            /authentication/saml
+SearchApi            /authentication/sharepoint
+SearchApi            /authentication/trusteduris
+SearchApi            /authentication/trusteduris/recentuntrusted
+```
+
+All six returned `200` with **empty** bodies for both organizations. Empty-for-both cannot
+distinguish "reads org B and org B is empty" from "ignores the org entirely" — so the
+distinguishing test was to make org B non-empty.
+
+```
+POST /rest/organizations/{ORGB}/authentication/trusteduris     (user token)
+  {"trustedUri":{"uriPrefix":"https://h13-canary-orgb.example.com"}}
+  -> 201, id 9198591c-24ae-4762-b26e-dd2d85ee701c
+
+GET  /rest/organizations/{ORGB}/authentication/trusteduris     USER token  -> totalCount: 1
+GET  /rest/organizations/{ORGA}/authentication/trusteduris     org-A key   -> totalCount: 0
+GET  /rest/organizations/{ORGB}/authentication/trusteduris     org-A key   -> totalCount: 0
+```
+
+**Org B provably holds the canary. Org A's key cannot see it.** Not a cross-tenant read.
+
+The `200 []` instead of `403` is a disclosure-shape inconsistency across these six endpoints,
+and Coveo's out-of-scope list names that class directly — *"low impact inconsistencies between
+documentation and actual platform/api privileges."* Nothing to report.
+
+Side observation, not security: the user token's own read returned `{"totalCount":1,"items":[]}`
+— a count/items mismatch on the caller's own organization. A product bug, not a boundary one.
+
+### Coveo status
+
+| Phase | Scope | Result |
+|---|---|---|
+| 1 (re-run) | 196 path-scoped endpoints, per-endpoint control | **88 enforced**, 102 untestable, 0 leaks |
+| 2 | 72 query-parameter endpoints | clean negative |
+| 3a | search querying / token minting | **BLOCKED** — 503 for all targets, not a negative |
+| 3a | `overrideTemplatePrivileges` escalation | clean negative — rejected by name |
+| 3b | resource-level ids (source swap) | clean negative, control passed |
+| 3b | authentication config, canary | clean negative, control passed |
+
+**No findings.** The cross-organization boundary held everywhere it could actually be tested.
+
+### The methodological lesson, which is the real output of this session
+
+**FO-19 — A negative result is only as good as its positive control, and one global control
+does not cover a sweep.**
+
+Phase 1 ran 196 endpoints behind a single control taken on one endpoint. 102 of those 196
+were measuring the key's privileges rather than Coveo's scoping. Phase 3 caught five invalid
+tests in a row precisely because the control was re-checked every time — and the same
+discipline, applied backwards to phase 1, turned a "clean negative" into "half of it was
+never tested."
+
+Corollary: **when two arms of a comparison are both empty, the comparison has not run.** The
+six 200/200 endpoints looked like a lead and were indistinguishable from nothing until org B
+was made non-empty. Plant a canary before believing an empty negative.
