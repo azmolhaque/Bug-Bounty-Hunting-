@@ -480,3 +480,77 @@ The recon script carried "max 2 requests/sec" in its own header and then issued 
 per host with no delay between them — roughly 5 req/s against Personio's published cap.
 Caught before the 56-host run, but only by reading the implementation rather than trusting
 the comment. Constraints belong in the code path, not the documentation.
+
+## T5 — v1 / v2 scope parity. CLEAN NEGATIVE. 2026-09-30
+
+Positive control asserted first and passed (`first_name, id, last_name` — exactly the grant).
+
+18 v2 collections probed with a credential holding **Employees:Read only**:
+
+```
+enforced (401/403)   compensations · absence-periods · attendance-periods
+                     projects · cost-centers · legal-entities
+absent (404)         employments · documents · custom-reports · departments · teams
+                     offices · positions · employees · company · goals · trainings
+other                org-units 400 (missing parameter)
+```
+
+v1 baseline unchanged: `attendances`, `time-offs`, `document-categories` → 403.
+
+`/v2/persons` field check: `employments, first_name, id, last_name` — **nothing beyond the
+grant**.
+
+**Zero reached.** The hypothesis — that two API generations with different error envelopes
+means authorization written twice, and twice means differently — was reasonable and did not
+pay out. Personio enforces scope identically across both.
+
+### Two anomalies, neither a finding
+
+- **`/v2/compensations` returns 401** where every other enforced v2 endpoint returns 403.
+  A different code path for the most sensitive collection, but no data either way, and 401
+  is if anything the more conservative answer.
+- **`/v2/org-units` returns 400**, wanting a parameter, rather than deciding authorization
+  first. Parameter validation ahead of the auth check — the same ordering seen on Meta's
+  `generatepreviews` — and equally inert, since it discriminates nothing.
+
+## Personio: five axes closed
+
+| Axis | Requests | Result |
+|---|---|---|
+| T3 API credential scoping | 8 | clean negative |
+| T1 salary, UI + direct route | 3 | clean negative |
+| T4 unauthenticated estate recon | 62 | clean negative |
+| T5 v1/v2 scope parity | 25 | clean negative |
+| **T2 vertical escalation** | — | **not started** |
+
+Roughly 100 authorized requests, every one with a passing positive control behind it. No
+finding. That is a well-built authorization layer, and saying so is the honest read.
+
+## T2 is a different question and is the one left
+
+Everything above asks *"can this credential read data it was not granted?"* — and the answer
+is consistently no.
+
+T2 asks something else: *"can this identity perform an **action** it was not granted?"*
+`Assigning roles to employees` is **Off** for `All employees`. If LOWPRIV can drive the
+endpoint the admin UI uses to assign itself a role, that is Personio's own
+**High — "making yourself admin"**, Tier 2 **€1,125**.
+
+Different class, different code, and untouched.
+
+### Getting the request shape
+
+Role assignment is **not** in the public v1/v2 API — it is an internal XHR on
+`sectestgorib01.app.personio.com`. So:
+
+1. In the **admin** session (Kiwi, normal window), open DevTools → **Network**.
+2. Assign any role to LOWPRIV through the UI.
+3. Find the request that carries it, **Copy as cURL**.
+4. Replay it from the terminal with **LOWPRIV's** session instead of the admin's.
+
+Step 4 is the test. Step 2 is setup performed as the legitimate admin, which is allowed —
+we own the tenant.
+
+Rule for it: if the replay succeeds, **revert the role immediately** and record the two
+requests. A privilege escalation demonstrated once is proof; leaving it in place is changing
+the tenant's security state for no evidential gain.
