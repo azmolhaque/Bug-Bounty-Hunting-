@@ -34,19 +34,18 @@ SLEEP=0.6
 
 OOS='^(www\.personio\.(com|de|es)|support\.personio\.de|statuspage\.personio\.de|personio\.slack\.com)$'
 
-hit() { # $1 = host
-  case "$1" in
-    *" "*|"") return ;;
-  esac
+hit() { # $1 = host   — ONE request per host, not three
+  case "$1" in *" "*|"") return ;; esac
   if printf '%s' "$1" | grep -qE "$OOS"; then
-    printf '  %-48s SKIPPED (out of scope)\n' "$1"; return
+    printf '  %-52s SKIPPED (out of scope)\n' "$1"; return
   fi
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -H "$UA" "https://$1/" 2>/dev/null)
-  srv=$(curl -s -I --max-time 15 -H "$UA" "https://$1/" 2>/dev/null \
-        | tr -d '\r' | awk -F': ' 'tolower($1)=="server"{print $2}' | head -1)
-  ttl=$(curl -s --max-time 15 -H "$UA" "https://$1/" 2>/dev/null \
-        | grep -oiE '<title>[^<]{0,70}' | head -1 | sed 's/<title>//I')
-  printf '  %-48s [%s] %-14s %s\n' "$1" "${code:-000}" "${srv:-—}" "${ttl:-}"
+  # Single GET: headers to a temp file, body to stdout. Three separate curls here
+  # would have been ~5 req/s against the 2 req/s cap in the rules of engagement.
+  body=$(curl -s -D "$OUT/.hdr" -o - --max-time 15 -H "$UA" "https://$1/" 2>/dev/null | head -c 4000)
+  code=$(awk 'NR==1{print $2}' "$OUT/.hdr" 2>/dev/null)
+  srv=$(tr -d '\r' < "$OUT/.hdr" 2>/dev/null | awk -F': ' 'tolower($1)=="server"{print $2}' | head -1)
+  ttl=$(printf '%s' "$body" | grep -oiE '<title>[^<]{0,60}' | head -1 | sed 's/<title>//I')
+  printf '  %-52s [%s] %-12s %s\n' "$1" "${code:-000}" "${srv:-—}" "${ttl:-}"
   sleep "$SLEEP"
 }
 
