@@ -554,3 +554,60 @@ we own the tenant.
 Rule for it: if the replay succeeds, **revert the role immediately** and record the two
 requests. A privilege escalation demonstrated once is proof; leaving it in place is changing
 the tenant's security state for no evidential gain.
+
+## T6 — SPA bundle mining. NOT POSSIBLE, and session stopped on a 429. 2026-09-30
+
+The Adobe play — read the app's JavaScript for its internal API routes — does not work here.
+
+```
+https://sectestgorib01.app.personio.com/                     401, 0 bytes
+https://sectestgorib01.app.personio.com/staff/details/...    401, 0 bytes
+https://sectestgorib01.app.personio.com/login                302
+```
+
+**Personio serves no HTML and therefore no script references to an unauthenticated caller.**
+On Adobe the entire agentic tool registry came out of a public login page's bundle; here
+there is no public bundle to read. That is a clean negative and good posture.
+
+The bundle URLs would still be obtainable from an authenticated page, so T6 is deferred
+rather than closed — but it needs the browser, which is where T2 already sits.
+
+### Two reasons this session stopped here
+
+**Rate limited.** `login.personio.com` returned **429**. After a full session of authorised
+requests Personio pushed back, and the rules of engagement cap tooling at 2 req/sec
+precisely so this does not happen. Backing off is the correct response, not tuning around it.
+
+**A redirect crossed the scope boundary.** `login.personio.com` 302s to **`personio.com`**,
+and `www.personio.com` is explicitly out of scope. The `-L` flag followed it. One GET against
+a marketing page, no harm — but I wrote that flag without checking where the redirect led.
+
+### Rule earned
+
+**FO-22 — Know where a redirect goes before following it.**
+`-L` delegates the choice of target to the server. On an engagement with an explicit
+out-of-scope list, that is the server deciding what you test. Resolve the `Location` first,
+check it against scope, then fetch it deliberately. The same class of slip put us on
+`adobeioruntime.net` earlier in this engagement.
+
+## Personio — session close, 2026-09-30
+
+| Axis | Requests | Result |
+|---|---|---|
+| T3 API credential scoping | 8 | clean negative |
+| T1 salary, UI + direct route | 3 | clean negative |
+| T4 unauthenticated estate recon | 62 | clean negative |
+| T5 v1/v2 scope parity | 25 | clean negative |
+| T6 SPA bundle exposure | 3 | not possible unauthenticated |
+| **T2 vertical escalation** | — | **not started, needs browser** |
+| Cross-tenant (Critical, €3,000) | — | blocked, second tenant unprovisionable |
+| Legal-entity override claim | — | not started, needs a second legal entity |
+
+**~100 authorised requests. Zero findings. Zero false positives.**
+
+Every negative recorded here has a passing positive control behind it. That is the
+difference from the Coveo runlog, where 102 of 196 endpoints were written up as clean and
+had in fact never been tested.
+
+Environment persists: tenant A, 35 employees, LOWPRIV identity with a known password, an
+API credential, and 13 days of trial remaining.
