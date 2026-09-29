@@ -10,7 +10,7 @@
 Both registered to `gorib@intigriti.me` per the program's own instructions. Created
 2026-09-30; **14-day trial expiry — note the date, instances must be rebuilt after.**
 
-Tenant A confirmed **preloaded with 1152 employees** of realistic demo data. This is the
+Tenant A confirmed **preloaded with 34 employees** of realistic demo data. This is the
 single biggest advantage over the last two engagements: Coveo's orgs were empty, so every
 comparison was empty-vs-empty and proved nothing until a canary was planted by hand.
 
@@ -45,7 +45,7 @@ Personio's published severity table:
 - **Critical** — *"Multi-tenant PII access"*, *"access to all users or accounts"*
 - **High** — *"access to one user or account"*, *"gaining access to salary info"*
 
-1152 records × that field set. There is no version of this where the impact has to be
+34 records × that field set. There is no version of this where the impact has to be
 argued, which is the failure mode that closed the Google VRP and AppSheet reports.
 
 ## Hard rule — the identifiers
@@ -92,7 +92,7 @@ is checked by hand per handler and is structurally weaker than the path surface.
 If any cross-tenant read works, the severity is decided by which tab it reaches. Salary,
 Payroll information, Bank details and Documents are the ones that move it from High to
 Critical. Test the *least* sensitive route that proves the boundary is broken, then stop —
-one record is proof, 1152 is exfiltration.
+one record is proof, 34 is exfiltration.
 
 ## Standing constraints
 
@@ -214,3 +214,18 @@ The company id is small and sequential-looking. **Adjacent ids belong to real Pe
 customers.** They are never to be probed — that is not testing, it is unauthorised access to
 another company's HR data. The second tenant exists precisely so that no id ever has to be
 guessed; until it is provisioned, the cross-tenant axis stays parked.
+
+### Correction — employee count
+
+The Organization dialog showed "1152 people" on first open and that figure was recorded.
+The People list itself ends with *"You've reached the end of the list (34 people)"*, and the
+header count reads 34. **34 is the real number**; the 1152 was a stale or unfiltered counter
+in that dialog. Corrected throughout.
+
+Thirty-four demo employees with complete HR records is ample for the test — the count was
+never the point, the field coverage is.
+
+### Add-employee affordance located
+
+`Organization → People` → **Add people ▾** → *"Add a new person"* (or *"Import new people
+data"*). `/staff/new` returns 404 — that guess was wrong, and the UI path is the correct one.

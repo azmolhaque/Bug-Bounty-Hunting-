@@ -156,7 +156,7 @@ All our targets sit on Tier 2 assets (`*.app.personio.com`, `api.personio.com`).
 ## Environment status — 2026-09-30
 
 **Tenant A: LIVE.** `sectestgorib01.app.personio.com`, identity `CANARY-TENANT-A`,
-registered `gorib@intigriti.me`, **1152 preloaded employee records**. Trial expires
+registered `gorib@intigriti.me`, **34 preloaded employee records**. Trial expires
 ~14 Oct 2026.
 
 **Tenant B: BLOCKED.** Personio refuses a second trial on the same address, and
@@ -178,7 +178,7 @@ their severity table, verbatim:
 > **High** — *"Privilege escalation within the same account with account take-over or similar
 > (making yourself admin, gaining access to salary info)"*
 
-Tenant A already has 1152 employees and a full roles system. Next session:
+Tenant A already has 34 employees and a full roles system. Next session:
 
 1. Create a low-privilege employee in tenant A (own data only).
 2. Log in as that employee — **this is the positive control**: confirm it sees its own record.
