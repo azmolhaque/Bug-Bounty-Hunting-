@@ -69,19 +69,34 @@ ct() {
   echo "== passive subdomain discovery (crt.sh — no traffic to Personio)"
   : > "$OUT/subs.txt"
   for d in personio-internal.de personio.tools personio-dev.com \
-           personiowhistleblowing.com app.personio.com personio.de; do
+           personiowhistleblowing.com personio.com personio.de; do
     printf '  %-32s ' "$d"
-    n=$(curl -s --max-time 40 "https://crt.sh/?q=%25.$d&output=json" \
-        | tr ',' '\n' | grep -oE '"(common_)?name_value":"[^"]+' \
-        | sed 's/.*":"//' | tr 'A-Z' 'a-z' | tr '\\n' '\n' \
-        | sed 's/^\*\.//' | sort -u | tee -a "$OUT/subs.txt" | wc -l)
+    curl -s --max-time 60 "https://crt.sh/?q=%25.$d&output=json" > "$OUT/ct-$d.json"
+    # JSON parsing in python: name_value holds newline-separated SANs.
+    # (A previous tr-based version split on the letter 'n' and mangled every name.)
+    n=$(python3 - "$OUT/ct-$d.json" <<'PYEOF' | tee -a "$OUT/subs.txt" | wc -l
+import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit()
+out=set()
+for r in d:
+    for k in ("name_value","common_name"):
+        for v in str(r.get(k,"")).split("\n"):
+            v=v.strip().lower().lstrip("*.")
+            if v and " " not in v: out.add(v)
+print("\n".join(sorted(out)))
+PYEOF
+)
     echo "$n names"
     sleep 2
   done
   sort -u -o "$OUT/subs.txt" "$OUT/subs.txt"
   grep -vE "$OOS" "$OUT/subs.txt" > "$OUT/subs-inscope.txt" || true
   echo "-- total unique: $(wc -l < "$OUT/subs.txt")  in-scope: $(wc -l < "$OUT/subs-inscope.txt")"
-  echo "-- review $OUT/subs-inscope.txt BEFORE running probe"
+  echo
+  echo "-- most interesting (mcp / agent / llm / dev / internal / sec / gitlab):"
+  grep -iE 'mcp|agent|llm|copilot|rag|gitlab|internal|\bsec\.|bi-dev|bi-prod|stge|uat|test' \
+    "$OUT/subs-inscope.txt" | head -60
 }
 
 probe() {
