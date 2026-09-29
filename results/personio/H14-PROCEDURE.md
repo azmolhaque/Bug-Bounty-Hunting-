@@ -338,3 +338,67 @@ this session a test was run in the wrong session; the banner is the cheapest gua
 
 Stop immediately. One record is proof; reading more is exfiltration. Personio's own wording:
 **High — "gaining access to salary info"**, Tier 2 = **€1,125**.
+
+---
+
+## T1 — horizontal read via the UI. CLEAN NEGATIVE, controls valid. 2026-09-30
+
+Session identity confirmed on every screenshot by the banner reading
+**"LOWPRIV, welcome to your Personio"** — the guard that six earlier attempts lacked.
+
+### The profile view is filtered, not just hidden
+
+As **admin**, `/staff/details/39463216` (Alan Foster) shows:
+`About · Personal information · Salary · Documents · Attendance · Time off · Onboarding ·
+History · Roles · More`
+
+As **LOWPRIV**, the same URL shows **only**:
+`About · Personal information`
+
+Consistent with `Public profile: All` and everything else `Self`. The tab set itself is
+server-driven, not merely CSS-hidden.
+
+### The direct salary route
+
+The UI hiding a tab proves nothing — that was the Adobe H10 lesson, where a 200 on a JS
+shell nearly produced the opposite conclusion. Salary lives on its **own route**, found from
+LOWPRIV's own profile:
+
+```
+/salary/employee-salary/<id>
+```
+
+| Request as LOWPRIV | Result |
+|---|---|
+| `/salary/employee-salary/39494707` (own) | **200**, compensation components render — **positive control PASSED** |
+| `/salary/employee-salary/39463216` (Alan Foster) | **"Your session has ended"** — session terminated |
+| `/staff/details/1` (sentinel) | "Restricted access", identical to the admin baseline |
+
+**No salary data was disclosed.** The route is protected — aggressively so: requesting
+another employee's salary page does not return 403, it tears down the session.
+
+That response is blunt and slightly odd (most applications return 403), but it is a defence,
+not a leak. The forced logout harms only the caller, so it is not reportable either.
+
+### Verdict
+
+**T1 is a clean negative.** Personio enforces the `Self` scope on salary at the route level,
+not merely in the rendered tab set.
+
+This is the first test in the whole engagement where the positive control passed on the
+first attempt and the negative was therefore trustworthy immediately.
+
+## Personio status
+
+| Axis | Result |
+|---|---|
+| T3 — API credential scoping (8 requests) | clean negative |
+| T1 — horizontal read, UI + direct route | clean negative |
+| **T2 — vertical escalation (self-assign role)** | **not started** |
+| Documents / Attendance direct routes | not started |
+| Cross-tenant (Critical, €3,000) | blocked — second tenant cannot be provisioned |
+| Legal-entity override claim | not started, needs a second legal entity |
+
+`Assigning roles to employees` is **Off** for `All employees`. T2 asks whether LOWPRIV can
+assign itself a role through the endpoint the admin UI uses — "making yourself admin" in
+Personio's own severity wording, and the same €1,125 band.
