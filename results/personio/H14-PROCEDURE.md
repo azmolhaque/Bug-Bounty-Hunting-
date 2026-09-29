@@ -611,3 +611,55 @@ had in fact never been tested.
 
 Environment persists: tenant A, 35 employees, LOWPRIV identity with a known password, an
 API credential, and 13 days of trial remaining.
+
+## T7 — single-resource and sub-resource paths. CLEAN NEGATIVE. API axis exhausted.
+
+Not rate limited after all: the 429 came from `personio.com`, a marketing host behind a WAF
+that answers non-browser user agents that way. `api.personio.de` authenticated normally
+(91-char token) and answered every request. Generalising from that 429 to "we are limited"
+would have been wrong.
+
+The collection endpoint had been tested; the **single-resource** handler never had. Those are
+usually different code, and a filter applied to a list but not to `GET /thing/{id}` is a
+common gap.
+
+| Request | Fields returned |
+|---|---|
+| `/v1/company/employees?limit=1` (control) | `first_name, id, last_name` |
+| `/v1/company/employees/39463216` | **same three** |
+| `/v2/persons/39463216` | same three + an employment id reference |
+| `/v2/persons/39463216/employments` | employment id, person ref, links only |
+| `/v2/employments/{employment-id}` | 404 — no top-level route |
+| `/v2/persons/{id}/employments/{employment-id}` | **id, person, links — no contract, no salary, no dates** |
+| `/v1/company/employees/attributes` | **`first_name`, `last_name` — nothing else** |
+
+That last row is the strongest evidence in the whole engagement. The **attribute catalogue
+itself is filtered to the grant** — Personio will not even enumerate which other attributes
+exist. Most systems leak their schema freely; this one treats the schema as part of the
+protected surface.
+
+### The API axis is exhausted, and that is a conclusion rather than fatigue
+
+The same control has now been tested along **seven distinct paths**: the collection, the
+single resource on v1 and on v2, a sub-resource, a nested sub-resource, an explicit request
+naming forbidden attributes, and the attribute catalogue. It holds on all seven, plus
+endpoint scoping across 18 v2 collections and 5 v1 equivalents.
+
+There is no remaining shape of "read data you were not granted" left to try against this API
+from a terminal. Saying so is a finding about the target, not about my imagination — and the
+distinction matters, because twice in this engagement I called something exhausted when it
+was not (FO-16).
+
+## What genuinely remains — none of it terminal-only
+
+| Test | Blocker | Value |
+|---|---|---|
+| **T2 — self-assign a role** | needs the admin UI's XHR captured in DevTools | **€1,125**, different bug class entirely |
+| T6 — authenticated bundle mining | bundle URLs only obtainable from a logged-in page | would unblock T2 without DevTools |
+| Legal-entity override claim | needs a second legal entity created in the UI | vendor's own written promise |
+| Cross-tenant | second tenant unprovisionable; program asked | **€3,000** |
+
+T2 remains the best bet, and it is a different question from everything closed so far:
+**not "can this credential read what it was not granted" but "can this identity perform an
+action it was not granted."** Every test to date has answered the first question. None has
+touched the second.
