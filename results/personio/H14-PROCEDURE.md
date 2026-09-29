@@ -100,3 +100,117 @@ one record is proof, 1152 is exfiltration.
 - No automated scanning against the tenants; build and test at human pace (FO-20).
 - Do not touch real users. Only the two tenants we own.
 - Trial expires in 14 days; record tenant names and creation dates in this file.
+
+---
+
+## Negative baseline — established from Personio's own configuration. 2026-09-30
+
+Tenant A roles:
+
+| Role | Permissions | Members |
+|---|---|---|
+| **All employees** | **24** | **34** — auto-assigned to every active employee, cannot be removed or deleted |
+| Recruiting Manager | 6 | 4 |
+| Project Manager | 28 | 2 |
+| Line Manager | 30 | 10 |
+| Management | 32 | 2 |
+| HR Manager | 59 | 2 |
+| Super Admin | 116 (all) | 2 |
+
+Every permission carries a scope: **All** / **Self** / **Off**.
+
+### `All employees` — the exact boundary under test
+
+```
+Employee profile
+  Public profile .................. All + Self     <- the ONLY "All"
+  HR information .................. Self
+  Personal Information ............ Self
+  Payroll information ............. Self
+  Bank details .................... Self
+  Emergency contact ............... Self
+  Qualifications / Equipment / Visa  Self
+
+Salary and Compensation
+  Salary band ..................... Off
+  Salary information .............. Self
+  Compensation & prelim payroll ... Off
+  Import one-time comp / salary ... Off
+  Manage compensation cycles ...... Off
+
+Documents
+  Work contracts .................. Self
+  Time off certificates ........... Self
+  Application documents ........... Self
+  Payroll ......................... Self
+  Performance ..................... Self
+  Other / Certificate / Study ..... Off
+
+Employment details
+  Assigning roles to employees .... Off      <- escalation target
+  Create employee profile / rehire  Off
+  Delete employee profile ......... Off
+  Employee history (both) ......... Off
+  Import - employee data .......... Off
+  People list & org chart (export)  Off
+
+Organisation
+  Org chart view .................. On
+  everything else ................. Off
+```
+
+**Personio's written contract:** a member of `All employees` may read **only their own**
+salary, bank details, payroll information and payroll documents. They may read **everyone's**
+public profile, and view the org chart. They may not assign roles.
+
+That is the negative baseline, defined by the vendor rather than assumed by us — which is
+exactly what phase 1 on Coveo lacked.
+
+### What now gets tested
+
+**T1 — horizontal read.** As an `All employees` member, reach *another* employee's Salary,
+Payroll information, Bank details or payroll Documents. The UI will hide them; the question
+is whether the **backend** enforces it. Routes to try, in order:
+
+1. Direct URL: `/staff/details/<other-employee-id>` and each tab beneath it.
+2. The XHR endpoints those tabs call (read them from DevTools on the admin session first,
+   then replay as the low-privilege user).
+3. `api.personio.com` with credentials minted under the restricted role.
+4. Exports, reports and Analytics — a common place where a per-field check is skipped
+   because the aggregate query was written separately.
+
+**T2 — vertical escalation.** `Assigning roles to employees` is **Off**. Can the user assign
+themselves a role anyway, via the endpoint the admin UI uses? That is "making yourself admin"
+in Personio's own severity wording.
+
+### Controls (FO-19 — the positive control must pass first)
+
+- **Positive control:** the low-privilege user CAN read their **own** salary and bank details.
+  If that fails, the account is misconfigured and every negative below is meaningless.
+- **Negative baseline:** the same user, same request shape, pointed at another employee.
+- **Catch-all sentinel:** an employee id that does not exist in this tenant, to distinguish
+  "denied" from "not found" — the distinction that mattered most on Coveo.
+
+### Severity if T1 lands
+
+Personio's table, verbatim: **High** — *"Privilege escalation within the same account with
+account take-over or similar (making yourself admin, gaining access to salary info)"*.
+Tier 2 High = **€1,125**. T2 would be the same band or better.
+
+Note their exclusion does **not** cover this: it applies only where the data is not
+sensitive, and it names firstname/lastname/email as the non-sensitive examples. Salary,
+payroll, bank details and documents are not on that list.
+
+## Recruiting API credentials — recorded, not yet used
+
+`Settings → Marketplace → Connected integrations → Recruiting API key`
+
+```
+Company ID     339177
+Access token   (held by operator, not recorded here)
+```
+
+The company id is small and sequential-looking. **Adjacent ids belong to real Personio
+customers.** They are never to be probed — that is not testing, it is unauthorised access to
+another company's HR data. The second tenant exists precisely so that no id ever has to be
+guessed; until it is provisioned, the cross-tenant axis stays parked.
