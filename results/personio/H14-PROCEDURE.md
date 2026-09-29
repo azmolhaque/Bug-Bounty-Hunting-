@@ -663,3 +663,54 @@ T2 remains the best bet, and it is a different question from everything closed s
 **not "can this credential read what it was not granted" but "can this identity perform an
 action it was not granted."** Every test to date has answered the first question. None has
 touched the second.
+
+## T8 — dev API environment. NOT EXPOSED. Terminal work on Personio is complete.
+
+`api.personio-dev.com` is in scope at Tier 2 and had only ever been touched at its root.
+Two questions were open: does it serve the same endpoints, and does a **production**
+credential authenticate against it — environment isolation being a real failure mode.
+
+```
+GET  /v1/company/employees   (prod bearer)   302
+POST /v1/auth                (prod client)   403  CloudFront error page
+GET  /v1/auth · /v1/company/employees · /v2/persons · /v1/company/attendances   302
+```
+
+Everything redirects; the POST is refused by CloudFront itself rather than by an
+application. Same shape as `api.personio.com`, which 302s to `www.personio.com/login/`.
+**The dev API is not publicly exposed**, so neither question can be answered from outside —
+and neither is a weakness.
+
+Redirect targets were not followed this time (FO-22).
+
+## Terminal testing on Personio: complete
+
+Stated as a conclusion, with the count behind it:
+
+| Surface | Coverage | Result |
+|---|---|---|
+| API attribute filter | 7 distinct paths | enforced on all |
+| API endpoint scoping | 18 v2 + 5 v1 collections | enforced |
+| Salary route, direct | own vs foreign vs nonexistent | enforced |
+| Unauthenticated estate | 62 hosts, 5 MCP servers | not exposed / OAuth enforced |
+| SPA bundles | 3 entry points | no public bundle to read |
+| Dev API | 6 requests | not publicly exposed |
+
+**~115 authorised requests. Zero findings. Zero false positives.**
+
+### Why there is nothing left here for a terminal
+
+Everything remaining needs a browser, and not incidentally — structurally:
+
+- **T2 (self-assign a role)** — the endpoint is an internal XHR, absent from the public API,
+  and the only terminal route to its path was the JS bundle, which is not served
+  unauthenticated.
+- **Stored XSS** — the terminal can confirm an API stores a payload raw, but that is
+  *correct* behaviour for an API; encoding belongs at render time. The finding is whether the
+  **browser** renders it unencoded, which a terminal cannot observe. Proposing it as terminal
+  work would be busywork.
+- **Legal-entity override** — needs a second legal entity created in the UI first.
+- **Cross-tenant** — blocked on tenant provisioning, awaiting the program's answer.
+
+Saying "terminal is done" is itself a claim that can be wrong, and it was wrong twice in this
+engagement (FO-16). It is made here with the surface list above as evidence, not as a feeling.
