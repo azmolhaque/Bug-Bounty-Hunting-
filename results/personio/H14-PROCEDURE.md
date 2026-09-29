@@ -229,3 +229,69 @@ never the point, the field coverage is.
 
 `Organization → People` → **Add people ▾** → *"Add a new person"* (or *"Import new people
 data"*). `/staff/new` returns 404 — that guess was wrong, and the UI path is the correct one.
+
+---
+
+## T3 — API credential scoping. CLEAN NEGATIVE, fully controlled. 2026-09-30
+
+`Settings → Marketplace → Connected integrations → Create custom integration` provides a
+three-step wizard with genuinely granular scoping:
+
+- **Endpoint scopes** (Read/Write per area): Employees, Attendances, Time Off, Documents,
+  Custom Reports, Compensations, Recruiting, Webhooks, Org Units, Legal Entities, Cost
+  Centers, Workplaces, Reports, Job Catalog, Salary Bands.
+- **Readable employee attributes** — field-level, ~60 attributes including `Fixed salary`,
+  `Hourly salary`, `Salary type`, `IBAN`, `BIC`, `Holder of bank account`,
+  `National Insurance Number`, `Date of birth`, `Address`, `Personal Email`,
+  `Marital Status`, health insurance, emergency contact, visa.
+- **Legal entities**, with the written claim: *"Legal entity selection will override any
+  query parameters passed in the API call."*
+
+### The credential under test
+
+`h14-restricted` — **Employees: Read only**, every other scope unchecked, and readable
+attributes limited to **First name + Last name only**.
+
+That is the negative baseline, written by the vendor in their own UI: this credential may
+read two fields and nothing else.
+
+### Results
+
+Auth against `POST https://api.personio.de/v1/auth` succeeded (91-char token) —
+**positive control passed**, so everything below is a valid test.
+
+| # | Request | Result |
+|---|---|---|
+| 1 | `GET /v1/company/employees?limit=1` | `id`, `first_name`, `last_name` — **exactly the grant** |
+| 2 | `GET /v2/persons?limit=1` | same three, plus an employment id reference |
+| 3 | `GET /v2/persons/<id>/employments` | employment **id** and a back-link only — no salary, contract or dates |
+| 4 | `GET /v1/…?attributes[]=salary_data&iban&date_of_birth` | **only `id` returned** — forbidden attributes silently dropped |
+| 5 | `GET /v2/persons?attributes=salary,iban,date_of_birth` | default fields only, no leak |
+| 6 | `/v1/company/attendances` | **403** forbidden |
+| 7 | `/v1/company/time-offs` | **403** forbidden |
+| 8 | `/v1/company/document-categories` | **403** forbidden |
+
+### Verdict
+
+**Attribute-level filtering holds on four distinct paths** — the v1 default response, the v2
+response, a linked sub-resource, and an explicit request naming the forbidden attributes.
+**Endpoint-level scoping holds** — ungranted areas return 403.
+
+The v1/v2 split was the hypothesis worth testing, since the two generations return different
+error shapes and are therefore different code. Both enforce identically. Test 4 is the
+strongest evidence: asking by name for `salary_data`, `iban` and `date_of_birth` returns a
+record containing only `id` — the filter is applied after the request is honoured, not merely
+omitted from a default projection.
+
+`api.personio.de` matches the in-scope wildcard `https://*.personio.de` (Tier 2).
+`api.personio.com` is CloudFront and 302s to `www.personio.com/login/` — not the API host.
+
+## Still untested
+
+1. **The legal-entity override claim.** *"Legal entity selection will override any query
+   parameters passed in the API call"* is an explicit written security promise and therefore
+   the cleanest possible finding if it fails. Needs a second legal entity in the tenant to
+   test properly — `Settings → Organization → Legal entities`.
+2. **The UI role boundary** — the actual €1,125 axis, and not started. An `All employees`
+   member reaching another employee's salary through the web app is entirely separate code
+   from the API credential path just cleared.
