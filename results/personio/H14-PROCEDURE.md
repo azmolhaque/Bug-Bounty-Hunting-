@@ -295,3 +295,46 @@ omitted from a default projection.
 2. **The UI role boundary** — the actual €1,125 axis, and not started. An `All employees`
    member reaching another employee's salary through the web app is entirely separate code
    from the API credential path just cleared.
+
+---
+
+## Session state — 2026-09-30 04:13. Environment complete, UI test not yet run.
+
+### Ready
+
+| Item | State |
+|---|---|
+| Tenant A | `sectestgorib01.app.personio.com`, 35 active people, 13 days of trial left |
+| Admin identity | `CANARY-TENANT-A` / `gorib@intigriti.me` — Super Admin |
+| **Low-privilege identity** | **`LOWPRIV TESTER` / `gorib+lowpriv@intigriti.me` — created, invited, password set, login confirmed** |
+| Negative baseline | `All employees` role, 24 permissions, salary/bank/payroll all **Self** |
+| API axis | tested and closed — 8 requests, clean negative |
+
+Login as LOWPRIV was confirmed working: the onboarding screen renders
+*"Welcome to Personio, LOWPRIV!"*. **The positive control for the UI axis is therefore
+established in principle**, though its first assertion has not been run.
+
+### Blocked on a rendering bug, not on the target
+
+The LOWPRIV session renders as a black screen on the operator's phone in Chrome incognito —
+the page loads (the saved MHTML contains the onboarding content) but paints black, most
+likely a dark-theme conflict. Nothing to do with Personio's security.
+
+### Next session — ten minutes of work
+
+1. Log in as LOWPRIV (Chrome or Kiwi incognito), finish the onboarding wizard.
+2. **[1] Positive control** — own profile → Salary tab → must be visible.
+3. **[2] The test** — `/staff/details/39463216` (Alan Foster) → Salary tab → must not be.
+4. **[3] Sentinel** — `/staff/details/1`.
+
+Baseline already measured as admin: `/staff/details/1` returns **"Restricted access"**, not
+"not found". So Personio does not distinguish forbidden from nonexistent — meaning any
+*different* response on [2] is itself signal, exactly as on Coveo.
+
+Every screenshot must include the top banner so the acting identity is provable. Six times
+this session a test was run in the wrong session; the banner is the cheapest guard against it.
+
+### If [2] succeeds
+
+Stop immediately. One record is proof; reading more is exfiltration. Personio's own wording:
+**High — "gaining access to salary info"**, Tier 2 = **€1,125**.
