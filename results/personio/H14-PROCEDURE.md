@@ -402,3 +402,81 @@ first attempt and the negative was therefore trustworthy immediately.
 `Assigning roles to employees` is **Off** for `All employees`. T2 asks whether LOWPRIV can
 assign itself a role through the endpoint the admin UI uses — "making yourself admin" in
 Personio's own severity wording, and the same €1,125 band.
+
+---
+
+## T4 — unauthenticated recon of the wider in-scope estate. CLEAN NEGATIVE. 2026-09-30
+
+Passive discovery via crt.sh (**no traffic to Personio**) across the in-scope wildcards,
+then a rate-limited GET probe. 56 unique names, all under `*.personio.tools` — an in-scope
+**Tier 2** wildcard.
+
+### What the certificate transparency logs revealed
+
+An internal AI/BI estate that is not otherwise advertised:
+
+```
+MCP servers      mcp-metricflow · rag-mcp · salesforce-mcp · zendesk-mcp   (bi-dev / bi-prod)
+                 safebase-mcp.sec
+AI / LLM         data-agent · llm-evaluations · copilot · claude-sf-connector
+                 channel-name-generator · incident-splitter · slide-builder
+Other            activ8 · payops · dummy-shared-db · toolsuite-test · skf.sec · skf-dev.sec
+Per-developer    anastasiamakhonina-* · douglaszickuhr-* · jamesarch-*
+                 jamesdoldissen-* · niklaskeil-* · yemiogoundele-*
+```
+
+### Probe results — the estate is not exposed
+
+**Almost every host returned `000` — DNS does not resolve publicly.** The certificates exist
+in CT logs but the hosts live behind a private network. That is correct posture: issuing a
+public certificate for an internal name leaks the name, not the service.
+
+Reachable from the internet:
+
+| Host | Result |
+|---|---|
+| `safebase-mcp.sec.personio.tools` | `Cannot GET /` — Express, alive |
+| `personio.tools` | 200, AmazonS3 |
+| `app.personio-dev.com` | 403 → `{"errors":[{"title":"Unauthenticated Request"}]}` |
+| `docs.personio.tools`, 4 × `*-static.bi-dev.*` | 302 CloudFront |
+
+### The one live MCP server — properly protected
+
+`safebase-mcp.sec.personio.tools`, on the security team's subdomain:
+
+```
+/health /sse /message /messages   404
+/mcp                              405   {"error":"method_not_allowed","detail":"Stateless mode; use POST."}
+/.well-known/oauth-authorization-server   200   Okta metadata (personio.okta.com)
+```
+
+A single MCP `initialize` POST, with `clientInfo.name` set to `intigriti-gorib-research` so
+the identity is honest in their logs:
+
+```
+POST /mcp  {"jsonrpc":"2.0","method":"initialize",…}
+  -> 401 {"error":"missing_bearer_token"}
+```
+
+**OAuth is enforced.** Stopped there — no retry, no bypass attempt, no `tools/list`.
+
+The `.well-known` document is **not a finding**: OAuth discovery metadata is public by
+design on every Okta tenant, and it discloses nothing that is not already published.
+
+Its `registration_endpoint` points at `personio.okta.com/oauth2/v1/clients`. Open dynamic
+client registration is a known issue class, but **`personio.okta.com` is not in the program
+scope** — the scope lists `*.personio.de`, `*.app.personio.com`, `*.personio.tools` and the
+rest, and Okta is a third party. Not touched.
+
+### Verdict
+
+Clean negative. Internal services are not publicly resolvable, the one exposed MCP server
+enforces bearer auth, and the dev application rejects unauthenticated requests.
+
+### Rule earned
+
+**FO-21 — Stating a rate limit in a comment does not enforce it.**
+The recon script carried "max 2 requests/sec" in its own header and then issued three curls
+per host with no delay between them — roughly 5 req/s against Personio's published cap.
+Caught before the 56-host run, but only by reading the implementation rather than trusting
+the comment. Constraints belong in the code path, not the documentation.
