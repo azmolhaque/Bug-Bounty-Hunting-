@@ -835,3 +835,83 @@ tested XSS, stored input rendering, or file-upload handling once.
 
 The next move on this target is not another authorization probe. It is the classes the program
 actually pays out on, starting with what the document service does with an uploaded file.
+
+---
+
+## XSS axis opened: whistleblowing, anonymous reporter -> case manager. ESCAPED. 2026-10-01
+
+The authorization axis was exhausted, so the class changed. The target chosen was the one
+shape that pays: **an unauthenticated outsider writes text that a company employee then opens
+in their own session.**
+
+Personio has exactly two such surfaces, both in scope:
+
+| surface | writer | reader |
+|---|---|---|
+| `*.personiowhistleblowing.com` (Tier 2) | anyone, no login | case manager |
+| `<tenant>.jobs.personio.com` | any applicant | recruiter |
+
+Whistleblowing was taken first: Tier 2 by name, and anonymity is its whole design.
+
+### Why the document-upload route was dropped before any payload was built
+
+`/documents/download/{id}/{storageKey}` serves uploaded files from the app origin, so an SVG
+or HTML upload would have been stored XSS on the session origin. One header read closed it:
+
+```
+content-disposition: attachment; filename=file; filename*=utf-8''Signed%20working%20contract.pdf
+x-content-type-options: nosniff
+```
+
+Forced download, no sniffing. Checking the defence before building the payload cost one
+request and saved an hour.
+
+Worth recording from the same response, though it is not a finding on its own (§3):
+
+```
+content-security-policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: <~60 hosts>
+```
+
+`unsafe-inline` **and** `unsafe-eval`. If an injection is ever found in this app, CSP will not
+stop it.
+
+### The test
+
+Environment built to make the boundary unambiguous: a `General` reporting channel with
+**LOWPRIV TESTER** as its only case manager — so the reader is an ordinary employee, not an admin.
+
+Submitted from a clean incognito session with no Personio cookie, through the public wizard
+(channel -> category -> describe -> upload -> review -> password; hCaptcha on step 1, so this
+cannot be scripted):
+
+```
+Title        <b>GORIBT6</b>
+Description  GORIBT0 probe <b>GORIBT1</b> <i>GORIBT2</i> <u>GORIBT3</u>
+             <a href="https://example.com">GORIBT4</a> <img src=x alt=GORIBT5>
+```
+
+No script tag, no event handler. The question at this stage is only *does HTML render at all*.
+
+Read back at `/whistleblowing/report/78c58ded-5d2c-4f3d-9787-d5c9beb94ae0`, saved as MHTML and
+grepped rather than eyeballed:
+
+```html
+<h1 class="ds-type-heading-five">&lt;b&gt;GORIBT6&lt;/b&gt;</h1>
+<span class="ds-type-body-medium">GORIBT0 probe &lt;b&gt;GORIBT1&lt;/b&gt; &lt;i&gt;GORIBT2&lt;/i&gt;
+ &lt;u&gt;GORIBT3&lt;/u&gt; &lt;a href="https://example.com"&gt;GORIBT4&lt;/a&gt;
+ &lt;img src=x alt=GORIBT5&gt;</span>
+```
+
+Escaped in the case list, in the detail heading, and in the chat message body. Three separate
+components, three correct escapes.
+
+### Read on the remaining XSS surface
+
+The application is React end to end, and React escapes by default. An injection would require
+an explicit `dangerouslySetInnerHTML`, which in practice means a rich-text sink: job
+descriptions, email templates, announcements, document templates. **Every one of those is
+authored by an admin**, so even if unescaped it is admin -> employee, not outsider -> employee,
+and would not clear §2.
+
+One genuine outsider-to-employee sink is left: **a candidate application on the public job
+site**, rendered to a recruiter. That is the last XSS experiment worth running here.
