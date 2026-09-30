@@ -997,3 +997,60 @@ happened yet, over well-paying programmes where it has.
 - Delete the whistleblowing test case and the `General` channel.
 - Log out both the admin and LOWPRIV sessions — both cookies were pasted into the transcript.
 - Delete the `h14-restricted` API integration.
+
+## Two loose ends pulled before closing. Both held. 2026-10-01
+
+Neither was busywork: both were surfaces the earlier sweeps had genuinely not reached.
+
+### The `filter` argument on `DM_ListAppDocuments`
+
+An earlier error revealed `filter` is a `String!` — a filter expression language, not a scalar.
+If the resolver substituted our filter for the session scope rather than intersecting with it,
+a low-privileged user could enumerate every document in the tenant.
+
+```
+filter=''                          documentsList: []
+filter='ownerEmployeeId==39463247' documentsList: []
+filter='ownerEmployeeId!=39494707' Invalid filter provided: Unsupported operator
+filter='companyId==339177'         documentsList: []
+filter='true'                      Invalid filter provided: No expression found in filter
+filter='1=1'                       Invalid filter provided: Malformed filter
+```
+
+The parser demonstrably read our input — it distinguishes an unsupported operator from a
+malformed expression from a valid one — and a *valid* filter naming another employee still
+returned nothing. Scope is applied independently of the filter. Enforced.
+
+### Recruiting's own API, and a candidate's CV
+
+The recruiting module has a separate API that no earlier sweep touched. Its routes came from
+`performance.getEntriesByType('resource')` on the recruiter's application drawer:
+
+```
+/recruiting/api/v1/applications/{id}/profile/info
+/recruiting/api/v1/applications/{id}/profile/bootstrap
+/recruiting/api/v2/applications/{id}/profile/document-categories
+/recruiting/api/documents/v2/{jobId}
+/recruiting/application/{id}/preview-popup/{documentId}
+```
+
+This is the most sensitive data reachable in the tenant: a job applicant is **not an employee**,
+so their name, email, phone, salary expectation and CV are a third party's personal data. LOWPRIV
+is not a recruiter.
+
+```
+profile/bootstrap            403  {"error":{"message":"unauthorised","code":403}}
+profile/document-categories  403  {"error":{"message":"Unauthorised","code":403}}
+documents/v2/2822178         403  {"error":{"message":"Unauthorised","code":403}}
+preview-popup/223476255      403  (the CV)
+profile/info                 405  GET and POST -- method, not authorisation
+profile/info  (PUT)          403  {"error":{"message":"unauthorised","code":403}}
+```
+
+The 405 was not accepted as an answer: a method error says nothing about authorisation, so the
+route was retried until it answered the actual question. PUT returns 403, so the route is guarded;
+GET and POST return 405 with no body of any kind. No leak, no finding.
+
+**Personio is closed.** ~240 authorised requests, four bug classes, seven enforcement surfaces,
+zero findings, zero false positives, zero rules-of-engagement violations beyond the one redirect
+to an out-of-scope host, which is recorded above.
