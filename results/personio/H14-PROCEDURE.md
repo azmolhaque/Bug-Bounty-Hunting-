@@ -769,3 +769,69 @@ authenticated bundles (`~/h14/opmine.sh`), then sweep them as LOWPRIV with a pos
 same discipline as the v1/v2 parity sweep.
 
 **T2 is a negative, and the surface it opened is the largest untested one in this engagement.**
+
+---
+
+## The internal API — mapped, swept, enforced. 2026-09-30
+
+Everything before this tested the **public** v1/v2 API. This section tested the application's
+own internal surface, which had never been touched because persisted queries hide the
+operation names and the SPA serves no bundle to an anonymous client.
+
+### How the surface was obtained
+
+1. An authenticated fetch of `/` yields the orchestrator shell. Its `__NEXT_DATA__` carries the
+   **module-federation registry**: 170 micro-frontends as `[name, uuid, "__remote/entry.<hash>.js",
+   "<group>/<module>"]`. Personio's whole front-end topology, in one page.
+2. `https://assets.cdn.personio.de/artifact-service/<group>/<module>/__remote/entry.js` — the
+   unhashed alias — returns 200, so any module's bundle is retrievable without knowing a hash.
+   59 high-value bundles pulled (payroll ×32, documents ×7, access-management, data-governance,
+   whistleblowing, identity, integrations).
+3. That was a dead end: the entries are federation containers, and the feature code sits in
+   chunks behind them. **The cheap route won instead** — `performance.getEntriesByType('resource')`
+   in the admin's console, run on each privileged page, prints every request URL in full.
+
+### What that produced, and what it answered
+
+| Test | Result |
+|---|---|
+| `scope=` on `/platform/dashboard/api/v2/people` — `everyone`, `all`, `company`, `team`, `__canary__` | only `reports`/`everyone`/`self` valid; unknown values return 0 records — **whitelisted, not trusted** |
+| `scope=everyone` field set | `id, name, full_name, profile_picture_url, profile_url, logged_in_user, email` — exactly the Public profile the role grants. Intended; dropped |
+| `PAY_ListPeople`, `PAY_ListPayrollLegalEntities` | `Permission denied — PAYROLL_VIEW` |
+| `ARM_GetCapabilities` / `ListPermissionSets` / `GetPermissionConfigCatalog` / `ListPermissionSetGroupStatus` | Permission denied, all four |
+| `EO_ListPositionIds` | Permission denied |
+| `/api/v1/payrolls`, `/api/v2/payrolls/*/personal`, `/*/files` | `403 — User does not have payroll access to this subcompany` |
+| `DM_ListAppDocuments` with `ownerEmployeeId` / `employeeId` / `personId` = another employee | `documentsList: []` — the parameter is ignored, scope comes from the session |
+| `/api/v2/document-management/documents?employeeId=<other>` | `{"success":true,"data":[]}` |
+| **`/documents/download/{id}/{storageKey}`** for another employee's signed contract + NDA | **403** |
+| same, with id and storageKey deliberately mismatched | **403** — the pair is not the check; the session is |
+| `DM_GetInitializationData` | `404 — Only known, curated queries allowed to execute in Production` |
+
+The document test is the one that matters, and it was set up properly: three documents exist in
+the tenant, owned by employee `39463247`, and their ids and storage keys were read from the
+admin's own session. LOWPRIV asked for them by exact id **and** exact key. 403.
+
+Two operations did return data — `DM_ListAppDocumentCategories` (category names, companyId) and
+`ARM_GetFeatureAccess` (subscription feature slugs). Both are configuration, neither is anyone's
+personal data, and §3 drops them. Recorded so the absence of a report is not mistaken for an
+oversight.
+
+### Verdict on this axis
+
+**~200 authorised requests across seven distinct enforcement surfaces — public API, internal
+GraphQL gateway, internal per-module REST, document storage, payroll, permission engine, role
+assignment — and not one gap.**
+
+Personio enforces authorization in the resolver, not the UI. Every client-supplied identifier
+(`scope`, `employeeId`, `ownerEmployeeId`, document id, storage key) is ignored in favour of the
+session. That is the correct design, and testing it further has no expected value.
+
+### The strategy error, stated plainly
+
+Four programs running — Exoscale, Adobe, Coveo, Meta, now Personio — the bug class chosen was
+**authorization**, every time. It is the class every mature SaaS hardens first and tests most.
+Personio has 351 accepted reports and its own severity table names XSS three times; we never
+tested XSS, stored input rendering, or file-upload handling once.
+
+The next move on this target is not another authorization probe. It is the classes the program
+actually pays out on, starting with what the document service does with an uploaded file.
