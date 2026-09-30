@@ -915,3 +915,85 @@ and would not clear §2.
 
 One genuine outsider-to-employee sink is left: **a candidate application on the public job
 site**, rendered to a recruiter. That is the last XSS experiment worth running here.
+
+## The second outsider-to-employee sink: job application -> recruiter. STRIPPED AT INPUT.
+
+The last XSS surface worth testing on this target. An applicant is fully unauthenticated, and
+what they type is read by a recruiter inside the product.
+
+### Terminal work did the mapping
+
+The career page was not where it was assumed to be. `sectestgorib01.jobs.personio.com` returned
+`<html id="__next_error__">` — a Next.js error page, not an empty career page. The cause was a
+setting, not a wrong host: **Enable Personio career page** was unchecked. Once enabled:
+
+```
+GET /                     200  79,950b   4 positions listed
+GET /job/2822178          200            QA Engineer
+GET /job/2822178/apply    200  71,772b
+     fields: first_name last_name email phone available_from salary_expectations + uploads
+     turnstile            <- Cloudflare Turnstile
+```
+
+Turnstile means the application cannot be submitted from curl, so the submission itself was done
+from a clean incognito browser with no Personio cookie. Everything up to that point — finding the
+career page, the position, the form endpoint and the exact field names — was terminal.
+
+### Result
+
+Submitted as an anonymous applicant:
+
+```
+first_name  <b>GORJ1</b>
+last_name   <i>GORJ2</i>
+```
+
+Read back in the recruiter view (`/recruiting/position/2822178?applicationId=145052466`), saved
+as MHTML and grepped. 14 occurrences of the canary, every one identical:
+
+```html
+data-cell-value="GORJ1 GORJ2"
+<span class="TableCell-module__truncate___qZYUF" data-align="left">GORJ1 GORJ2</span>
+<p data-test-id="applicant-title" ...>GORJ1 GORJ2</p>
+```
+
+Not `<b>GORJ1</b>` and not `&lt;b&gt;GORJ1&lt;/b&gt;` — **the tags are gone**. The markup was
+stripped server-side on input, before any rendering question arises. Two independent defences:
+sanitise on write, escape on read.
+
+## Personio: closed. 2026-10-01
+
+| axis | coverage | result |
+|---|---|---|
+| Authorization | ~200 requests, 7 enforcement surfaces | no gap |
+| Document storage -> XSS | response headers | attachment + nosniff |
+| Whistleblowing, anonymous -> case manager | title, description, chat body | escaped |
+| Recruiting, applicant -> recruiter | name fields | stripped at input |
+
+Roughly 230 authorised requests, four bug classes, zero findings and zero false positives. The
+negatives are clean and documented, which is worth something — but it is not income, and saying
+otherwise would be dishonest.
+
+### What actually went wrong, and it is not the bug class
+
+Changing class from authorization to XSS was the right correction and it still produced nothing,
+which means the class was not the binding constraint. The binding constraint is **target
+selection**.
+
+Five programs: Exoscale, Adobe, Coveo, Meta, Personio. Every one a mature vendor with a funded
+security team, a bug bounty programme running for years, and the exact surfaces a solo researcher
+can reach already swept by hundreds of researchers before us. `accepted-per-researcher` measured
+how *rewarding* a programme is to the people already in it; it did not measure whether anything
+is left for a newcomer with a phone.
+
+The gates in `rank-programs.py` need a sixth column, and the next session starts by writing it:
+prefer **recently launched programmes and recently launched assets**, where the sweep has not
+happened yet, over well-paying programmes where it has.
+
+### Housekeeping owed on this tenant
+
+- Operator's **real CV** was uploaded as the test application's document. Delete the application.
+- Delete the `QA Engineer` job and unpublish the career page.
+- Delete the whistleblowing test case and the `General` channel.
+- Log out both the admin and LOWPRIV sessions — both cookies were pasted into the transcript.
+- Delete the `h14-restricted` API integration.
