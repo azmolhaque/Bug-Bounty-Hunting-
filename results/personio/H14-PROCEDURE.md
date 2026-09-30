@@ -1054,3 +1054,40 @@ GET and POST return 405 with no body of any kind. No leak, no finding.
 **Personio is closed.** ~240 authorised requests, four bug classes, seven enforcement surfaces,
 zero findings, zero false positives, zero rules-of-engagement violations beyond the one redirect
 to an out-of-scope host, which is recorded above.
+
+### Whistleblower confidentiality, unauthenticated. ENFORCED.
+
+The most sensitive object in the product: an anonymous informant's report. The reporter proves
+identity with a case password and nothing else, so the question is whether the password is
+actually required.
+
+The reporter UI's own host answers every path with its SPA shell — six probes all returned the
+same `<!DOCTYPE html>`, which is the Adobe trap, not access. The real API base came from a dev
+URL left in the bundle, `<tenant>.dev.personio-internal.de/public/whistleblowing-service/reporter`,
+which maps in production to the tenant's app host:
+
+```
+GET /public/whistleblowing-service/reporter/reports/78c58ded-…      401   0 bytes
+GET /public/whistleblowing-service/reporter/reports/78c58ded-…/comments  401   0 bytes
+GET /public/whistleblowing-service/reporter/reports                 401   0 bytes
+GET /public/whistleblowing-service/reports/78c58ded-…               401   0 bytes
+GET /public/whistleblowing-service/reporter/report-a-case           401   0 bytes
+```
+
+401 rather than 404 means the path is right and the refusal is the answer. Zero-byte bodies —
+no error text, no hint of whether the report exists. Correct.
+
+The one sub-question left on this axis — whether case A's password reads case B — needs a second
+case, and the wizard is behind hCaptcha. Logged as open, not answered.
+
+## Genuinely open on Personio, both needing setup rather than testing
+
+1. **Legal-entity scoping.** Personio's role editor states that a role restricted to one legal
+   entity cannot see another's employees. The tenant has one legal entity, so this was never
+   tested. It matters because the boundary is the **vendor's own written claim** — breaking it
+   cannot be closed as intended behaviour. Needs: a second legal entity, 2-3 employees moved into
+   it, and LOWPRIV's role scoped to the first. Then the test itself is terminal.
+2. **Second tenant** for the cross-tenant axis (EUR 3,000, explicitly in scope, and the programme
+   instructs testers to create `sec-test-<handle>-<nn>` instances).
+
+Everything that can be tested with the environment as it stands has been tested.
