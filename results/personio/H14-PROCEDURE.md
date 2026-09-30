@@ -714,3 +714,58 @@ Everything remaining needs a browser, and not incidentally — structurally:
 
 Saying "terminal is done" is itself a claim that can be wrong, and it was wrong twice in this
 engagement (FO-16). It is made here with the surface list above as evidence, not as a feeling.
+
+---
+
+## T2 — vertical privilege escalation via self-assigned role. CLOSED, enforced. 2026-09-30
+
+The one question every earlier test left untouched: not *"can this credential **read** what it
+was not granted"* but *"can this identity **perform an action** it was not granted."*
+
+`Assigning roles to employees` is **Off** for the `All employees` role that LOWPRIV holds.
+The admin UI performs the assignment through an internal persisted-query GraphQL call,
+captured from DevTools in the admin session:
+
+```
+POST /graphql?op=ARM_BulkAssignRoles_v2025091501
+{"query":"ARM_BulkAssignRoles_v2025091501",
+ "operationName":"ARM_BulkAssignRoles_v2025091501",
+ "variables":{"roleIds":[{"id":"11120349"}],"userIds":["39494707"]}}
+```
+
+`11120349` = Recruiting Manager · `39494707` = LOWPRIV · `39490672` = admin · `339177` = company.
+
+Replayed verbatim with LOWPRIV's own session cookie. Three assertions, in order, because a
+result without them is worthless (FO-19, and the wrong-session incident earlier in this hunt):
+
+```
+A. IDENTITY   grep of the authenticated app shell -> "39494707" x2, no "azmol", no 39490672
+B. LIVENESS   POST SM_CanCompanyAccessPersonio_v2025102201
+              {"data":{"canAccessPersonio":{"canAccessPersonio":true}}}   [200] 57b
+C. THE TEST   POST ARM_BulkAssignRoles_v2025091501                         [200]
+   {"errors":[{"message":"Permission denied","path":["bulkAssignRoles"],
+     "extensions":{"title":"Access denied for action ACTION_EDIT on assign/unassign
+      roles to/from employees","classification":"DataFetchingException"}}],
+    "data":{"bulkAssignRoles":null}}
+```
+
+**Enforced server-side.** The UI hides the control *and* the resolver refuses the mutation.
+Nothing to report.
+
+### What the refusal handed us
+
+The error is not a generic 403 — it names the check: `ACTION_EDIT` on a named resource. So
+every internal operation sits behind an `<ACTION> on <resource>` authorization decision. That
+is the shape of an engine, and an engine applied across hundreds of operations is exactly the
+kind of thing that is applied unevenly.
+
+Everything closed so far (~115 requests) was on the **public v1/v2 API**. The **internal
+GraphQL API has never been tested**, because persisted queries mean an operation cannot be
+called without knowing its exact name, and the names live in the SPA bundles — which T6 found
+are not served to an unauthenticated client.
+
+With LOWPRIV's cookie in hand that blocker is gone. Next: harvest operation names from the
+authenticated bundles (`~/h14/opmine.sh`), then sweep them as LOWPRIV with a positive control,
+same discipline as the v1/v2 parity sweep.
+
+**T2 is a negative, and the surface it opened is the largest untested one in this engagement.**
