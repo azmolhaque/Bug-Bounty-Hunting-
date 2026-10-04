@@ -93,3 +93,87 @@ exact class Tesla's brief keeps in scope:
 
 Next: capture the app's real API host and query shape from the running page, rather than guessing
 paths — guessing is both fuzzing and against the rules of engagement.
+
+## Full sweep and application reading — 2026-10-04, second half
+
+### The sweep, corrected
+
+My first probe covered only 112 of 511 hosts, filtered by keywords I had invented. That filter
+was the only reason the rest were skipped, so the whole set was swept. Two tooling corrections
+on the way: Termux has no `/tmp` (curl silently wrote nothing), and a sequential run with 15s
+timeouts would have taken an hour, not the five minutes I estimated — dead hosts cost the full
+timeout. Reworked to 4-way parallel, one GET per host, 3s connect / 6s total.
+
+**170 of 511 answered**, in about three minutes.
+
+### Applications found, as opposed to infrastructure
+
+```
+fleetview.{,prd.}{america,europe,}.fn.tesla.com   x5   "Tesla Fleetview"
+live-data.{,prd.}{america,europe,}.fn.tesla.com   x5   200, no title
+mfs-supplier{,-eng}.mo.tesla.cn                   x2   "MFS Supplier Portal"
+tripx{,-alpha}.*.vn.cloud.tesla.com               x3   "Tesla | TripX"
+billing.tesla.com · cx.tesla.cn · service.tesla.cn · warp.solarcity.com
+extissues.teslamotors.com  401 "Unauthorized (401)"   (external Jira)
+```
+
+The `auth-stage` pattern — one app, two environments, differing only in config — repeats three
+times here: `mfs-supplier-eng` vs `mfs-supplier`, `tripx-alpha` vs `tripx`, and fleetview's five
+regions.
+
+### What the bundles gave up
+
+**Fleetview / live-data** call Tesla's Fleet API: `/api/1/vehicles/`, `/vehicle_data`,
+`/oauth2/v3/token`, with `client_id` read from `window.UI_CONFIG.oauth_client` and
+`scope=device_data email energy_cmds energy_device_data offline_a…`. `live-data` names
+`fleet-api-files-stg.tesla.com` — a staging host referenced from a production app.
+
+`UI_CONFIG` is **not** in the HTML we are served; the server injects it only for a real session.
+So the client id could not be read, and nothing was guessed.
+
+**MFS Supplier (the eng host runs an older build** — `main.607a352fb2dee6e1.js` with a separate
+`runtime.js`, against prod's `main-TZVR5XI4.js`) names a large surface:
+
+```
+/auth/adfs  /auth/badge  /auth/callback  /auth/login
+/authentication/refreshtoken  /authentication/useteslaaccess
+/oauth2/v1/{authorize,logout,userinfo}
+/{supplier,inventory,inventorytx,order,system,external}/v1/api
+/hostler/userlist  /userrole  /usernav  /userfav  /userwarehouse/username/
+```
+
+and leaks internal hostnames: `github.tesla.com`, `hub.tesla.com`, `teamchat.tesla.com`,
+`workbench.tesla.com`, `sandbox-workbench.tesla.com`, `dataviz{,-stage}.tesla.com`,
+`mfs-supplier-uat.{mo.tesla.services,tesla.com}`, `warehouse-uat.mo.tesla.services`.
+Hostname disclosure alone is explicitly out of scope, so it is noted and not pursued.
+
+### The test that looked promising, and why it is a negative
+
+Six API prefixes are named in one bundle. If five were guarded and one was not, that would be an
+authentication gap worth reporting. Tested all six on the eng host:
+
+```
+/supplier/v1/api      401    14b     Jwt is missing
+/inventory/v1/api     200  28201b    Angular index
+/inventorytx/v1/api   200  28201b    Angular index
+/order/v1/api         200  28201b    Angular index
+/system/v1/api        200  28201b    Angular index
+/external/v1/api      200  28201b    Angular index
+```
+
+The five "200"s are **byte-identical to the SPA shell**. They are not unguarded APIs; they are
+routes that do not exist on this host and fall through to Angular's catch-all. Only
+`/supplier/v1/api` is proxied to a backend, and it refuses without a JWT. Correct behaviour.
+
+Reading a 200 as access here would have produced exactly the kind of report that closes as
+spam. The size comparison is what settled it.
+
+### State at the end of the session
+
+Nothing reportable. One lead (LEAD-001). Closed with evidence: the CUA kiosk app, two Google
+Maps keys, external Confluence, the `ap.tesla.services` estate, the CUA dev/qa/stage hosts, and
+the MFS API prefixes.
+
+The method that produced the only lead was reading two configurations of the same application
+side by side — not scanning. `tripx-alpha` vs `tripx` and the five fleetview regions are the
+same shape and have not been read yet.
