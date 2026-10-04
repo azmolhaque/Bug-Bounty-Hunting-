@@ -177,3 +177,88 @@ the MFS API prefixes.
 The method that produced the only lead was reading two configurations of the same application
 side by side — not scanning. `tripx-alpha` vs `tripx` and the five fleetview regions are the
 same shape and have not been read yet.
+
+## Reading the remaining applications — same session, later
+
+### billing.tesla.com — enforced
+
+A Next.js **static export** (`nextExport: true`), so there are no `/_next/data/` server endpoints
+to abuse. But `_buildManifest.js` — which the app serves to every visitor — hands over its entire
+route table:
+
+```
+/   /404   /_error   /tnc   /account   /history   /payment/[id]
+__rewrites afterFiles: { source: "/api/billing/:path*" }
+```
+
+`/payment/[id]` is the IDOR shape, and the page chunk shows exactly how the id is used:
+
+```js
+var e = useRouter().query.id,
+    n = useAuth().isAuthenticated,
+    t = useSWR(`${o.mb.PAYMENTS}/${e}`).data;
+```
+
+The URL's `id` goes straight into the API call, and `isAuthenticated` is a **client-side** check.
+The endpoint map came out of a shared chunk:
+
+```js
+var r="/api/billing", o={ PROFILE:r+"/profile", SETTINGS:r+"/settings", PAYMENTS:r+"/payments",
+                          STATEMENTS:r+"/statements", PAYMENT_ACCOUNTS:r+"/payment-accounts", … }
+```
+
+Tested the **collections first**, deliberately, so that no individual record had to be touched if
+the door turned out to be shut:
+
+```
+/api/billing/profile           403  {"detail":"Authentication credentials were not provided."}
+/api/billing/settings          403  same
+/api/billing/payments          403  same
+/api/billing/statements        403  same
+/api/billing/payment-accounts  403  same
+/api/billing/__canary__        503  HTML
+```
+
+The sentinel is what makes this readable. Had the nonexistent path answered with the same 403,
+the refusals would have been the edge talking and would have proved nothing. It answers
+differently, so the 403s are the application — Django REST Framework, enforcing. `/payments/<id>`
+was never requested; there was no need.
+
+### accounts.tesla.com — enforced
+
+The EDR bundle (1.3 MB) names `/account/api/userSearch`, `/account/api/search/C360Search`,
+`/account/api/configs/*`, `/account/api-doc`, `/api/reports`. On `accounts.tesla.com`:
+
+```
+/account/api-doc                 307 -> /oauth2/auth-login?redirect_url_path=…auth.tesla.com/oauth2/v1/authorize…
+/account/api/configs             404  {"error":"Invalid Request"}
+/account/api/userSearch          404  {"error":"Invalid Request"}
+/account/api/search/C360Search   404  {"error":"Invalid Request"}
+/api/reports                     404  {"error":"Invalid Request"}
+```
+
+The documentation endpoint is behind OAuth; the rest are not routed on that host. A customer
+search API would have been the most serious thing available, and it is not reachable there.
+
+### Closed in passing
+
+```
+api.solarcity.com          401, no WWW-Authenticate  — token auth, nothing to work with
+extissues.teslamotors.com  401 on /rest/api/2/serverInfo — anonymous Jira access off
+fleet-api-files-stg        no DNS
+am-i-online-prd            "ok"  — health check, out of scope by the brief
+x1.ap.tesla.services       "server date … hash … ver:" — version disclosure, out of scope
+warp.solarcity.com         jQuery 3.0.0 page — out-of-date software, out of scope
+```
+
+### Session total
+
+Roughly 250 authorised requests. **Nine surfaces closed with evidence**, one lead, no findings
+and nothing claimed that was not shown. Every closure has either a control or a sentinel behind
+it, and two results that looked like findings — the five "200" API prefixes on MFS, and the five
+403s on billing — were only readable because the response *size* and a *nonexistent path* were
+checked alongside the status code.
+
+Not yet read: the EDR bundle in full, TripX, `charging-transparency.tesla.com`, `cx.tesla.cn`.
+Not yet resolved: LEAD-001, which needs Bugcrowd identity verification and a `bugcrowdninja.com`
+account before it can be settled.
