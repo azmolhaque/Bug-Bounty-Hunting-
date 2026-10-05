@@ -47,24 +47,28 @@ curl "https://api.map.baidu.com/geocoding/v3/?address=%E5%8C%97%E4%BA%AC&output=
  "precise":0,"confidence":20,"comprehension":100,"level":"城市"}}
 ```
 
-`HTTP 200`. `"status":0` is Baidu's success code. **Four** Baidu services accept it:
+`HTTP 200`. `"status":0` is Baidu's success code. **Five** Baidu services accept it:
 
 ```
 geocoding/v3            status 0   coordinates returned
 place/v2/search         status 0   "特斯拉(北京朝阳合生汇城市展厅)" and more POIs
+place/v2/detail         status 0   full record for a single POI
 location/ip             status 0   resolved my own IP
 reverse_geocoding/v3    status 0   full street address for a Shanghai coordinate
 ```
 
-Two do not, which is worth stating so the scope is not overstated:
+Four do not, which is worth stating so the scope is not overstated:
 
 ```
-geodata/v3/geotable/list   status 240  "APP 服务被禁用"   (cloud data storage disabled)
-yingyan service/list       status 1    internal error     (vehicle tracking not enabled)
+direction/v2/driving       status 240  "APP 服务被禁用"
+weather/v1                 status 240  "APP 服务被禁用"
+geodata/v3/geotable/list   status 240  "APP 服务被禁用"   (cloud data storage)
+yingyan service/list       status 1    internal error     (vehicle tracking)
 ```
 
-So the key cannot read stored Tesla data — it can only consume paid API calls. I tested those two
-specifically to establish the ceiling rather than to leave it implied.
+So the key cannot read stored Tesla data and cannot reach the priciest routing APIs — it consumes
+the five metered services above and nothing more. I tested the other four specifically to
+establish the ceiling rather than leave it implied.
 
 ## Credential 2 — ipinfo.io API token, active
 
@@ -211,6 +215,20 @@ testing: four calls on the day.
   happens to hold.
 - Sweep the other configurator config files for the same pattern; `config_web.json` was found
   from an Internet Archive record, not from any current link.
+
+## Neither credential appears in public code
+
+Before writing this up I checked whether either value is already published, so that this is not a
+report about something already in the open:
+
+```
+github.com/search?q="47216944bba1aa"&type=code                    0 files
+github.com/search?q="qAt8bB6YfSE69wpL9zPMcSVCdkjQO94Z"&type=code  0 files
+github.com/search?q="ip_lookup_service_token"&type=code           0 files
+```
+
+No repositories, commits, issues or packages either. Both values appear to be reachable only
+from the Tesla assets named above.
 
 ## Scope and conduct
 
