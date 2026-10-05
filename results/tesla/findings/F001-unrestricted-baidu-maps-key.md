@@ -1,6 +1,8 @@
 # F001 — Publicly readable Tesla config exposes two working third-party credentials
 
 **Status:** ready to submit · Bugcrowd, Tesla · targets `*.tesla.com`, `*.tesla.cn`
+**Submit using `F001-SUBMISSION-TEXT.md`, not this file.** This is the working record — it grew by
+accretion and repeats itself. The submission file is the cleaned, deduplicated version.
 **Found:** 2026-10-05 · **Researcher:** Gorib (`gorib@bugcrowdninja.com`) · **IP:** 180.148.212.54
 
 ## The point in one sentence
@@ -245,7 +247,7 @@ account, a cookie, or a guessed path: both paths come from Tesla's own code.
 
 Both credentials are metered per call, and both are reachable by anyone who reads a public URL.
 
-Baidu Maps bills per call above a free allowance, and four billable services accept this key.
+Baidu Maps bills per call above a free allowance, and five metered services accept this key.
 Anyone who reads one unauthenticated endpoint can:
 
 - run geocoding, reverse geocoding, place search and IP location on Tesla's account, from
