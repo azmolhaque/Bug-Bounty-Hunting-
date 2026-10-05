@@ -16,14 +16,37 @@ Unauthenticated Tesla config files expose a working unrestricted Baidu Maps key 
 
 `*.tesla.com`, `*.tesla.cn`
 
-## VRT
+## VRT — choose `Pay-Per-Use Abuse`
 
 `Sensitive Data Exposure > Disclosure of Secrets > Pay-Per-Use Abuse`
 
-If the triager prefers it, the `ipinfo.io/me` result (the token reads Tesla's plan, month-to-date
-usage and remaining balance, i.e. account state, not just a lookup) supports
-`Sensitive Data Exposure > Disclosure of Secrets` at one tier higher. I am not arguing severity up
-myself — I am stating what I proved and leaving the tier to triage.
+Read off Tesla's live submission form, the siblings under `Disclosure of Secrets` and their
+default priorities are:
+
+| Subcategory | Priority |
+|---|---|
+| For Publicly Accessible Asset | **P1** |
+| For Internal Asset | P3 |
+| **Pay-Per-Use Abuse** | **P4** ← correct for this finding |
+| Data/Traffic Spam | P5 |
+| Intentionally Public, Sample or Invalid | **P5** ← the risk to pre-empt |
+| Non-Corporate User | P5 |
+
+**Do not pick P1.** "For Publicly Accessible Asset" means a secret that grants access to the
+*program's own* asset. Ours grants access to a third-party metered account (ipinfo, Baidu), which
+is exactly what `Pay-Per-Use Abuse` is defined for. Picking P1 here would be the severity
+inflation that gets reports auto-closed, and it would be wrong on the facts.
+
+**The real danger is P5 "Intentionally Public, Sample or Invalid"** — a triager skimming this
+could decide a client-side maps key is public by design and close it in thirty seconds. Two
+sentences kill that argument, so they must come first in the description, before anything else:
+
+> Tesla restricts its own Google Maps keys — the same call shape is refused with
+> `REQUEST_DENIED: API keys with referer restrictions cannot be used with this API`. This Baidu
+> key is not restricted, and the ipinfo.io token cannot be restricted at all, because ipinfo
+> offers no referrer control — it is a server-side credential published in a client-side file.
+
+Neither credential is a sample and both are live, which disposes of the rest of that P5 bucket.
 
 ## CVSS 3.1
 

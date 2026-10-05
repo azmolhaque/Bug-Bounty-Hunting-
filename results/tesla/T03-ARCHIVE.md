@@ -263,3 +263,69 @@ curl -s -o /dev/null -w '%{http_code} %{size_download}b %{remote_ip}' https://st
 
 `000` with no `remote_ip` means curl never connected — the name does not resolve publicly.
 Internal-only hostname. Dead end, closed.
+
+## 2026-10-06 — `proxy.php?address=` and `auth.php` characterised
+
+Both paths came from the Internet Archive record of `/sites/all/modules/`, not from guessing.
+
+### `proxy.php?address=` — a real mode, but it returns nothing
+
+The sentinel discipline earned its keep here:
+
+```
+?address=%E4%B8%8A%E6%B5%B7  (上海)   200, 5 b   ->  false
+?address=                             200, 0 b   ->  (empty)
+?__sentinel__=1                       200, 0 b   ->  (empty)
+(no parameters)                       200, 0 b   ->  (empty)
+```
+
+`address` is a **recognised** mode — it answers `false` where the nonexistent parameter answers
+nothing at all. So the script does dispatch on it. But `false` is the whole response: no upstream
+data, no error text, no reflection. Nothing crosses a boundary.
+
+Even in the best case this is a geocode-string wrapper, and a connector that forwards a
+user-supplied query to its configured upstream is intended behaviour — the same reasoning that
+closed the AppSheet SSRF as WAI (§3). **Not a finding.**
+
+### `auth.php` — key-gated, and the key will not be guessed
+
+```
+GET /sites/all/modules/custom/tesla_login/sso/auth.php      200, 15 b
+no key supplied
+```
+
+A `key` parameter gates it. Discovering that key by trying values is **brute force, which the
+Tesla RoE forbids without prior written approval**. Closed on that basis.
+
+The one legitimate avenue left is the reverse direction: if the key is *published* in a file that
+is already public, that is a chain (public config → SSO key), not brute force. Searching the
+public config files for it is the only way I will pursue this.
+
+### Out of scope, noted and not reported
+
+`auth.php`'s response headers disclose internal infrastructure hostnames
+(`pvg16p1wwwwb018.cb2.pvg16.tzla.net`, `pvg16p1tegvr029.cb2.pvg16.tzla.net`,
+`x-varnish-fwd-server`). **Internal hostname/IP disclosure is explicitly out of scope by the
+brief.** Recorded here only so it is not re-found and mistaken for a lead.
+
+Also noted: `server: TencentEdgeOne` — `tesla.cn` fronts through Tencent EdgeOne, not Akamai.
+Fingerprinting, not a bug.
+
+### `tesla.com` modules tree — **2335 archived URLs, still unswept**
+
+The earlier `tesla.com` CDX query had silently returned an Internet Archive "Temporarily
+Offline" HTML page, which is why every file tested on 2026-10-06 was `.cn`. Re-run returned real
+data:
+
+```
+https://www.tesla.com/sites/all/modules/99bill/province_city_district_map.json
+https://www.tesla.com/sites/all/modules/ajax_tools/ajax.js?X
+...                                                      2335 URLs
+```
+
+This is the largest piece of surface still outstanding on this target.
+
+### `99bill` (快钱, Chinese payment processor) — closed
+
+The archive knows exactly **one** file in that module, a province/city list. No other paths, and
+I will not invent any. Suggestive name, no surface.
