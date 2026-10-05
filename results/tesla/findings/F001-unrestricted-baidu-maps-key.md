@@ -7,7 +7,8 @@
 
 Two Tesla assets that anyone can read without logging in — the `/api/findus/env` endpoint and the
 `config_web.json` configurator file — publish **two live third-party credentials**: a Baidu Maps
-key with no referrer or IP restriction on it, and an active ipinfo.io API token.
+key with no referrer or IP restriction on it, and an active ipinfo.io API token. Both files are
+served from **`www.tesla.com` as well as `www.tesla.cn`**, so this is not a regional artefact.
 
 A browser-side map key being *visible* is normal; this one being *unrestricted* is not, and
 Tesla's own Google Maps keys prove they know the difference. The ipinfo token has no excuse at
@@ -72,14 +73,30 @@ establish the ceiling rather than leave it implied.
 
 ## Credential 2 — ipinfo.io API token, active
 
-`https://www.tesla.cn/sites/all/modules/custom/tesla_configurator/js/config/config_web.json`
-is served with no authentication (200, 329 KB) and contains:
+The configurator config file is served with no authentication (200, 329 KB) and contains:
 
 ```json
 "use_ip_lookup_service": true,
 "ip_lookup_service_token": "47216944bba1aa",
 "apiNames": {"ipInfo": "https://ipinfo.io/geo", …}
 ```
+
+**It is published on both the `.cn` and the `.com` site, at the same path:**
+
+```
+https://www.tesla.cn/sites/all/modules/custom/tesla_configurator/js/config/config_web.json
+https://www.tesla.com/sites/all/modules/custom/tesla_configurator/js/config/config_web.json
+```
+
+`curl` gets the file from `.cn` directly (200, 329052 bytes). On `.com`, Akamai refuses `curl`
+with 403 but serves a browser normally — I opened that URL in Chrome, searched the response for
+`ip_lookup_service_token`, and got **1 of 1** match: the same token, `47216944bba1aa`, next to the
+same `"apiNames": {"ipInfo": "https://ipinfo.io/geo", …}` block. Screenshot attached, and I have
+saved the `.com` copy of the file.
+
+So this is not a China-only config artefact. The same token is readable from Tesla's main
+`www.tesla.com` site, which is the significant part of the spread: the asset with the global
+audience publishes the credential too.
 
 The token is live. ipinfo marks unauthenticated responses with a `readme` field and omits it when
 a token is accepted, which makes this a one-request check:
@@ -171,6 +188,20 @@ curl "https://maps.googleapis.com/maps/api/geocode/json?address=Austin&key=AIzaS
 I checked three of Tesla's Google keys; all three behave this way. Same company, same class of
 credential, same class of request — restricted. The Baidu key is the one that was missed.
 
+## Where the credentials are exposed — the full spread I checked
+
+| Host | Path | Result | Credential present |
+|---|---|---|---|
+| `www.tesla.cn` | `/api/findus/env` | 200 (curl) | Baidu key, GrowingIO ids |
+| `www.tesla.com` | `/api/findus/env` | 200 (browser) / 403 to curl | Baidu key |
+| `www.tesla.cn` | `/sites/all/.../config_web.json` | 200, 329052 b (curl) | ipinfo token |
+| `www.tesla.com` | `/sites/all/.../config_web.json` | 200 (browser) / 403 to curl | **ipinfo token** |
+| `www.teslamotors.com` | both paths | 301 → `tesla.com` | — (redirect) |
+
+Every 403 above is Akamai refusing a `curl` User-Agent, not the file being absent — each one was
+then opened in a normal browser session and the credential was there. Nothing here needed an
+account, a cookie, or a guessed path: both paths come from Tesla's own code.
+
 ## Impact
 
 Both credentials are metered per call, and both are reachable by anyone who reads a public URL.
@@ -197,10 +228,14 @@ events. Writing a fabricated event would have demonstrated more, and I deliberat
 would modify Tesla's data, which the rules of engagement forbid. The ids are reported as exposed;
 what could be done with them is not claimed.
 
-I made ten calls in total: six to Baidu, one per service, to establish which are accepted, and
-four to ipinfo — two to show the token authenticates and two against `/me` with and without it. I
-did not probe quota limits on either account, and the usage counter above shows the cost of my
-testing: four calls on the day.
+And because the token is published on `www.tesla.com` as well as `www.tesla.cn`, the audience that
+can read it is Tesla's global one, not only visitors to the China site.
+
+I kept my own volume deliberately small: ten Baidu calls, one per service, to establish which are
+accepted and which are not, and a handful of ipinfo calls — enough to show the token authenticates
+and to read `/me` with and without it. I did not probe quota limits on either account. The usage
+counter is the receipt for that: it read `day: 4, month: 66` at 18:33 UTC and `day: 7, month: 69`
+at 19:35 UTC, so my entire engagement cost Tesla seven lookups out of 50,000.
 
 ## Remediation
 
@@ -236,12 +271,58 @@ from the Tesla assets named above.
   brief. Nothing in the out-of-scope list covers third-party API keys or their restrictions.
 - No Tesla account, no customer data, no other user, and no automated tooling were involved.
 
+## Reproduction — copy-pasteable, four commands
+
+```bash
+# 1. read the Baidu key, unauthenticated
+curl -s "https://www.tesla.cn/api/findus/env" | grep -o '"baiduMapAk":"[^"]*"'
+
+# 2. read the ipinfo token, unauthenticated
+curl -s "https://www.tesla.cn/sites/all/modules/custom/tesla_configurator/js/config/config_web.json" \
+  | grep -o '"ip_lookup_service_token": *"[^"]*"'
+#    (same file on www.tesla.com — open in a browser; Akamai 403s curl's User-Agent)
+
+# 3. prove the Baidu key is unrestricted — no Referer, no account
+curl -s "https://api.map.baidu.com/geocoding/v3/?address=%E5%8C%97%E4%BA%AC&output=json&ak=qAt8bB6YfSE69wpL9zPMcSVCdkjQO94Z"
+
+# 4. prove the ipinfo token is a live account credential
+curl -s "https://ipinfo.io/me?token=47216944bba1aa"     # returns the account
+curl -s "https://ipinfo.io/me"                          # 400, token required
+```
+
+Final verification run: **2026-10-05 19:35:23 UTC**, external IP `180.148.212.54`,
+`curl 8.21.0 (aarch64-unknown-linux-android)`.
+
+```
+curl "https://ipinfo.io/me?token=47216944bba1aa"
+{"token":"47216944bba1aa",
+ "requests":{"day":7,"month":69,"limit":50000,"remaining":49931},
+ "features":{"core":{"daily":2147483647,"monthly":50000},
+             "hostio":{"daily":2147483647,"monthly":1000, …}}}
+
+curl "https://ipinfo.io/me"
+{"error":"API token required to view token details. Did you mean to visit /my instead?"}   400
+```
+
+### Expected vs observed
+
+| | Expected (secure) | Observed |
+|---|---|---|
+| Baidu key off-origin | `REQUEST_DENIED` / referrer error, as Tesla's Google keys give | `status:0`, data returned, from Bangladesh with no `Referer` |
+| ipinfo token location | server-side only; ipinfo has no referrer control | published in `config_web.json` on `.cn` **and** `.com` |
+| `ipinfo.io/me` with the leaked token | should not resolve to an account | returns Tesla's plan, month-to-date usage and remaining balance |
+
 ## Evidence held locally
 
 - Browser screenshots of `tesla.com/api/findus/env` and `tesla.cn/api/findus/env` with the
   credentials visible, and of `tesla.cn/.../config_web.json`.
+- **Browser screenshot of `www.tesla.com/.../config_web.json` with `ip_lookup_service_token`
+  searched and highlighted — 1 of 1 match — and a saved copy of that file.** This is what
+  establishes that the exposure is not China-only.
 - Terminal screenshot of the ipinfo token check, with and without the token, showing the
   `readme` field appear and disappear.
 - Terminal screenshot: `2026-10-05 18:33:28 UTC`, IP `180.148.212.54`,
   `curl 8.21.0 (aarch64-unknown-linux-android)`, the Baidu call succeeding and the Google call
   being refused in one frame.
+- `~/tesla/EVIDENCE.txt` — the full final run, timestamped, including the host-by-host spread
+  sweep in the table above.
