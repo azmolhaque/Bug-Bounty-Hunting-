@@ -471,3 +471,45 @@ the brief. It appears in the report only as the thing that proves the call is se
 
 Neither file is committed; both contain live credentials (§7). Catalogued in
 `results/tesla/evidence-manifest.md`.
+
+---
+
+## CORRECTION (2026-10-06): `*.teslamotors.com` IS in scope
+
+I earlier ruled `stage2.teslamotors.com` and `qa.teslamotors.com` out of scope and told the
+operator not to send a single packet to them, on the basis that the program covered only
+`*.tesla.com` and `*.tesla.cn`. **That was wrong.** Bugcrowd's own target selector on the
+submission form lists:
+
+```
+Official Tesla iOS apps
+*.tesla.services
+*.teslainsuranceservices.com
+*.tesla.com
+Tesla Energy hardware you own
+Official Tesla Android apps
+*.tesla.cn
+*.teslamotors.com          <- in scope
+*.solarcity.com            <- in scope
+Any host verified to be owned by Tesla Motors Inc. (domains/IP space/etc.)
+Tesla vehicle hardware that you own
+Other
+```
+
+The scope is considerably wider than the two wildcards I had been working from — it includes
+`*.tesla.services`, `*.teslainsuranceservices.com`, `*.solarcity.com`, and a catch-all for any
+host verifiably owned by Tesla.
+
+Consequences:
+
+- The two staging hosts from `config_web.json`'s `staging_envs` are legitimate targets after all.
+  `stage2.teslamotors.com` resolves to 118.214.134.54 behind Akamai. Worth probing once F001 is
+  submitted.
+- `00-PROGRAM.md` records the reward tiers from a `*.tesla.com` / `*.tesla.cn` reading of the
+  brief; the in-scope asset list there is incomplete and should be rebuilt from this selector.
+- The caution itself was not wasted — refusing to touch a host I believed out of scope was the
+  right call on the information I had. The error was not reading the scope from the authoritative
+  place. The target selector on the submission form is authoritative; a prose summary of the brief
+  is not.
+
+No requests were sent to any of these hosts while they were believed out of scope.
