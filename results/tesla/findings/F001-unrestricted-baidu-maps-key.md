@@ -1,16 +1,20 @@
-# F001 — Unauthenticated config endpoint exposes third-party credentials, one of them unrestricted
+# F001 — Publicly readable Tesla config exposes two working third-party credentials
 
 **Status:** ready to submit · Bugcrowd, Tesla · targets `*.tesla.com`, `*.tesla.cn`
 **Found:** 2026-10-05 · **Researcher:** Gorib (`gorib@bugcrowdninja.com`) · **IP:** 180.148.212.54
 
 ## The point in one sentence
 
-`/api/findus/env` is readable with no authentication on both `www.tesla.com` and `www.tesla.cn`
-and hands out third-party service credentials — including a **Baidu Maps key that carries no
-referrer or IP restriction**, so anyone can spend Tesla's Baidu quota from anywhere.
+Two Tesla assets that anyone can read without logging in — the `/api/findus/env` endpoint and the
+`config_web.json` configurator file — publish **two live third-party credentials**: a Baidu Maps
+key with no referrer or IP restriction on it, and an active ipinfo.io API token.
 
-A browser-side map key being visible is normal. **The bug is that this one is unrestricted**, and
-the proof that Tesla knows better is their own Google Maps keys, which are correctly locked down.
+A browser-side map key being *visible* is normal; this one being *unrestricted* is not, and
+Tesla's own Google Maps keys prove they know the difference. The ipinfo token has no excuse at
+all — ipinfo has no referrer restriction to apply, so that token was never meant to leave the
+server.
+
+Both are billable. I verified both work from my own machine with no Tesla account.
 
 ## What the endpoint returns
 
@@ -62,6 +66,44 @@ yingyan service/list       status 1    internal error     (vehicle tracking not 
 So the key cannot read stored Tesla data — it can only consume paid API calls. I tested those two
 specifically to establish the ceiling rather than to leave it implied.
 
+## Credential 2 — ipinfo.io API token, active
+
+`https://www.tesla.cn/sites/all/modules/custom/tesla_configurator/js/config/config_web.json`
+is served with no authentication (200, 329 KB) and contains:
+
+```json
+"use_ip_lookup_service": true,
+"ip_lookup_service_token": "47216944bba1aa",
+"apiNames": {"ipInfo": "https://ipinfo.io/geo", …}
+```
+
+The token is live. ipinfo marks unauthenticated responses with a `readme` field and omits it when
+a token is accepted, which makes this a one-request check:
+
+```
+curl "https://ipinfo.io/8.8.8.8?token=47216944bba1aa"
+{"ip":"8.8.8.8","hostname":"dns.google","city":"Mountain View", … ,"anycast":true}
+
+curl "https://ipinfo.io/8.8.8.8"
+{"ip":"8.8.8.8", … ,"readme":"https://ipinfo.io/missingauth","anycast":true}
+```
+
+The `readme` line is present without the token and gone with it. The token is authenticating the
+request against Tesla's ipinfo account.
+
+Unlike a maps key, an ipinfo token **cannot** be referrer-restricted — ipinfo offers no such
+control. It is a server-side credential, and publishing it in a client-side config file is the
+whole problem.
+
+The same file also lists Tesla's staging hostnames:
+
+```json
+"staging_envs": ["stage.tesla.com", "stage2.teslamotors.com", "qa.teslamotors.com"]
+```
+
+`stage2.teslamotors.com` resolves (118.214.134.54) and is behind Akamai. Hostname disclosure is
+out of scope by the brief, so it is noted only as part of what this file publishes, not claimed.
+
 ## The differential — why this is an oversight, not a decision
 
 Tesla's Google Maps keys, taken from the Fleetview and CUA app bundles, refuse the same shape of
@@ -79,6 +121,8 @@ credential, same class of request — restricted. The Baidu key is the one that 
 
 ## Impact
 
+Both credentials are billed per call, and both are reachable by anyone who reads a public URL.
+
 Baidu Maps bills per call above a free allowance, and four billable services accept this key.
 Anyone who reads one unauthenticated endpoint can:
 
@@ -90,23 +134,30 @@ Anyone who reads one unauthenticated endpoint can:
 That second effect is what gives this impact beyond disclosure: the key powers a customer-facing
 feature, so burning its quota degrades that feature.
 
+The ipinfo token is the same shape of problem on a different account: requests made with it are
+billed to Tesla, and ipinfo's paid plans are metered. Exhausting that quota breaks the
+configurator's IP-based region detection for real visitors.
+
 The GrowingIO account and data-resource ids are the identifiers a client uses to post analytics
 events, so they also allow fabricated events to be written into Tesla China's analytics. I did
-not test that, and I am not claiming it — it is noted because it comes from the same endpoint and
-the same root cause.
+not test that, and I am not claiming it — it is noted because it comes from the same root cause.
 
-I made exactly six calls in total, one per Baidu service, purely to establish which are accepted.
-I did not probe quota limits.
+I made eight calls in total: six to Baidu, one per service, to establish which are accepted, and
+two to ipinfo to show the token authenticates. I did not probe quota limits on either.
 
 ## Remediation
 
-- Apply a referrer and/or IP whitelist to this Baidu key, as Tesla already does for its Google
+- **Rotate the ipinfo.io token** and move it server-side. It cannot be restricted, so removing it
+  from `config_web.json` and proxying the lookup is the only fix.
+- Apply a referrer and/or IP whitelist to the Baidu key, as Tesla already does for its Google
   Maps keys, and rotate it since it has been publicly readable.
 - If the key is consumed by a native app where a referrer cannot be set, move it server-side and
   proxy the calls rather than publishing it.
 - Review what else `/api/findus/env` returns per region — the `.cn` response carries credentials
   the `.com` response does not, which suggests the endpoint returns whatever the regional config
   happens to hold.
+- Sweep the other configurator config files for the same pattern; `config_web.json` was found
+  from an Internet Archive record, not from any current link.
 
 ## Scope and conduct
 
@@ -117,7 +168,9 @@ I did not probe quota limits.
 ## Evidence held locally
 
 - Browser screenshots of `tesla.com/api/findus/env` and `tesla.cn/api/findus/env` with the
-  credentials visible.
+  credentials visible, and of `tesla.cn/.../config_web.json`.
+- Terminal screenshot of the ipinfo token check, with and without the token, showing the
+  `readme` field appear and disappear.
 - Terminal screenshot: `2026-10-05 18:33:28 UTC`, IP `180.148.212.54`,
   `curl 8.21.0 (aarch64-unknown-linux-android)`, the Baidu call succeeding and the Google call
   being refused in one frame.
