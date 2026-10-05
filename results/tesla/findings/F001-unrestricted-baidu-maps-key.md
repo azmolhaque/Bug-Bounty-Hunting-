@@ -116,12 +116,16 @@ curl "https://ipinfo.io/me"
 ```
 
 So the leaked token exposes Tesla's ipinfo **account**: the plan (50,000 core lookups a month,
-plus a 1,000/month `hostio` add-on), this month's consumption, and the remaining balance. That is
-account state, not merely the ability to run a lookup.
+plus a 1,000/month `hostio` allowance), this month's consumption, and the remaining balance. That
+is account state, not merely the ability to run a lookup.
 
-It also shows the practical exposure: Tesla had used **66** of 50,000 calls when I checked, so
-anyone holding this token can consume effectively the whole monthly allowance before Tesla's own
-usage would register it.
+**On the money question, to be accurate rather than dramatic:** 50,000 lookups a month is ipinfo's
+free allowance, so I am not claiming this runs up a bill. The consequence is the other way round —
+a free plan has no overage headroom. When the 50,000 are gone the account stops answering until
+the month rolls over.
+
+Tesla had used **66** of the 50,000 when I checked. Anyone holding this token can burn the
+remaining 49,934 in minutes, and at that point the lookup below stops working for real visitors.
 
 ### The token is in live production use, not a leftover
 
@@ -165,7 +169,7 @@ credential, same class of request — restricted. The Baidu key is the one that 
 
 ## Impact
 
-Both credentials are billed per call, and both are reachable by anyone who reads a public URL.
+Both credentials are metered per call, and both are reachable by anyone who reads a public URL.
 
 Baidu Maps bills per call above a free allowance, and four billable services accept this key.
 Anyone who reads one unauthenticated endpoint can:
@@ -180,12 +184,14 @@ feature, so burning its quota degrades that feature.
 
 The ipinfo token is worse than the maps key in one respect: it reads the account as well as
 spending it. An attacker learns Tesla's plan and usage, and can burn a 50,000-call monthly
-allowance of which Tesla itself had used 66 — at which point the configurator's IP-based region
-detection stops working for real visitors.
+allowance of which Tesla itself had used 66. Because the plan has no overage, that is not a bill —
+it is an outage: the configurator's IP-based region detection stops working for real visitors
+until the month resets, and the server-side path below is what breaks.
 
 The GrowingIO account and data-resource ids are the identifiers a client uses to post analytics
-events, so they also allow fabricated events to be written into Tesla China's analytics. I did
-not test that, and I am not claiming it — it is noted because it comes from the same root cause.
+events. Writing a fabricated event would have demonstrated more, and I deliberately did not: that
+would modify Tesla's data, which the rules of engagement forbid. The ids are reported as exposed;
+what could be done with them is not claimed.
 
 I made ten calls in total: six to Baidu, one per service, to establish which are accepted, and
 four to ipinfo — two to show the token authenticates and two against `/me` with and without it. I
