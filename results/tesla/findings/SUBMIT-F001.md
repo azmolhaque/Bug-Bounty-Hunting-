@@ -78,3 +78,39 @@ with timestamp, IP and curl version.
   **Tesla's account state**; (4) it is on **`www.tesla.com`**, not just the China site.
 - Do not re-argue the severity if it is set lower than you hoped. Per FO-12, a rejection is not
   re-litigated with the same evidence.
+
+---
+
+## SUBMITTED — 2026-10-06
+
+Submission `c036dc61-24a7-442d-8783-67b6a86fd81f`, state **New** (awaiting triage).
+Target `*.tesla.com`. VRT accepted as **P4 — Sensitive Data Exposure > Disclosure of Secrets >
+Pay-Per-Use Abuse**. Nine attachments: four screenshots, four JSON files, one manifest.
+
+Program stats read off the engagement page at submission time:
+
+```
+Validation within   4 days      75% of submissions accepted or rejected within 4 days (last 3 months)
+Average payout      $1,312.24   last 3 months
+```
+
+The average is **not** a forecast for this report. It is dominated by vehicle and infrastructure
+findings at P1/P2. A P4 credential leak sits far below it.
+
+### Honest outcome estimate, recorded before the answer is known
+
+| Outcome | Estimate | Why |
+|---|---|---|
+| **Duplicate** | ~40% | The single largest risk. `/api/findus/env` is a plain unauthenticated endpoint on a ten-year-old program with thousands of hunters. The archive-derived `config_web.json` path is the less-trodden half of the finding; the Baidu key is not. |
+| **Accepted P4** | ~30% | The likely accept. Recent comparable web accepts on this program: $500 (2 Oct, `*.tesla.com`), $700 (1 Oct, `*.tesla.cn`). |
+| **Accepted P3** | ~10% | Only if the triager weighs the `ipinfo.io/me` account read and the proven server-side spend on `.com` as more than pay-per-use. |
+| **N/A / Informational / Won't Fix** | ~20% | "Third-party key, accepted risk." The Google-key differential is the defence against this and it is a strong one, but it is not a guarantee. |
+
+Realistic expected value: **$150–$400**, with a good case of **$500–$700** and a real chance of
+**$0**. Anyone reading this later should not treat the $1,312 average as the number to expect.
+
+### Rule for the wait
+
+Do not chase this submission. Do not ask for a status update before the 4-day window has passed,
+do not argue the tier if it lands P4, and do not re-argue a close with the same evidence (FO-12).
+The correct use of the waiting period is the next finding, not this one.
