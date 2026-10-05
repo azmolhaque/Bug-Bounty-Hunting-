@@ -411,3 +411,63 @@ grep -Ei '"[a-z0-9_]*(sso|auth|login|secret|api_?key|private|sign|hmac|salt)[a-z
 
 The `auth.php` key is not published in `config_web.json`. The chain I was looking for does not
 exist there; the archive supplied it instead.
+
+### VERDICT on the archived SSO key: **DROPPED**
+
+```
+GET /sites/all/modules/custom/tesla_login/sso/auth.php?key=e2ab1ff2…f257:d618…b80&destination=mytesla
+Expired or invalid token
+```
+
+The key is dead. No session, no cookie, no redirect, no account reached.
+
+Applying §2.6 to my own lead rather than arguing around it: the one-sentence answer to *"what did
+the attacker actually GET?"* is **nothing**. An archived credential that no longer authenticates is
+a precondition, not a boundary crossing. The constitution says drop it, so it is dropped — not
+written up as "an attacker who had found this in 2024 could have…", which is exactly the
+speculative-escalation style that gets reports closed as Spam (FO-10).
+
+Capture dates, which bound how fresh an archived key can be:
+
+```
+20240807063803   auth.php?key=e2ab1ff2…   <- the only unmasked one
+20210423215734   auth.php                 (no key)
+20200605144013   auth.php                 (no key)
+...   seven more captures, all bare
+20210408115607   d6.php?key=XXXXX&token=XXXXXXX   <- masked
+20180815181118   d6.php?key=XXXXX&token=XXXXXXX   <- masked
+```
+
+One unmasked key in ten years of captures, and it has expired. The design weakness (SSO material
+in a GET query string) is real, but with no live key I cannot show impact, and a program this
+mature will have seen it. Not reported.
+
+**Still untested:** the domain-wide archive query for *any* `key=`/`token=` URL across `tesla.com`
+and `tesla.cn` never ran — the Internet Archive returned its "Temporarily Offline" page again, and
+`total: 0` was counting that HTML, not an empty result set. That is the one thing left on this
+thread: if a *recent* key turns up, the liveness question reopens. Retry when the archive is up.
+
+### `proxy.php?ip=true` works on `www.tesla.com` — this strengthens F001
+
+```
+https://www.tesla.com/sites/all/modules/custom/tesla_findus_map/proxy.php?ip=true
+{ "ip":"205.234.27.201","city":"San Jose","region":"California","country":"US",
+  "loc":"37.3394,-121.8950","org":"AS40913 Quality Technology Services, LLC" }
+```
+
+The returned address is the calling machine's egress, in San Jose — not mine, in Bangladesh. So
+`www.tesla.com` performs this ipinfo lookup **server-side**, and the leaked token is being spent by
+the main global site's production code, not only by `.cn`. Folded into F001.
+
+The origin IP itself is **not** reported: infrastructure/internal IP disclosure is out of scope by
+the brief. It appears in the report only as the thing that proves the call is server-side.
+
+### `.com` evidence now complete
+
+- `env.json`, 5799 bytes — the full unauthenticated `tesla.com/api/findus/env` response with
+  `baiduMapAk` present and `gioConfig` blank, exactly as F001 described.
+- `config_web.json` from `.com` — **329052 bytes, byte-for-byte the same length as the `.cn`
+  copy**, carrying the same `ip_lookup_service_token`. The same file is served from both hosts.
+
+Neither file is committed; both contain live credentials (§7). Catalogued in
+`results/tesla/evidence-manifest.md`.

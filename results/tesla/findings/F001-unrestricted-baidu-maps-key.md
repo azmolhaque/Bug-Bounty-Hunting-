@@ -20,9 +20,10 @@ Both are billable. I verified both work from my own machine with no Tesla accoun
 ## What the endpoint returns
 
 ```
-GET https://www.tesla.com/api/findus/env        200, application/json, no auth
+GET https://www.tesla.com/api/findus/env        200, application/json, no auth, 5799 bytes
     …"baiduMapAk":"qAt8bB6YfSE69wpL9zPMcSVCdkjQO94Z",
-      "gioConfig":{"GIO_ACCOUNT_ID":"","GIO_DATA_RESOURCE_ID":"","GIO_HOST":""}
+      "gioConfig":{"GIO_ACCOUNT_ID":"","GIO_DATA_RESOURCE_ID":"","GIO_HOST":""}}}
+    (the complete 5799-byte response is attached as env.json)
 
 GET https://www.tesla.cn/api/findus/env         200, application/json, no auth
     …"baiduMapAk":"qAt8bB6YfSE69wpL9zPMcSVCdkjQO94Z",
@@ -34,8 +35,10 @@ GET https://www.tesla.cn/api/findus/env         200, application/json, no auth
 The `.com` response leaves the GrowingIO fields blank; **the `.cn` response fills them in**. Both
 hand out the same Baidu key.
 
-(`curl` to `www.tesla.com` is refused by Akamai with 403; a browser is served normally, and the
-screenshot is attached. `www.tesla.cn` answers `curl` directly.)
+(`curl` to `www.tesla.com` is refused by Akamai with 403 — including with a full Chrome
+User-Agent, so it is fingerprinting below the UA string. A browser is served normally; the
+screenshot and the complete saved response are both attached. `www.tesla.cn` answers `curl`
+directly.)
 
 ## The demonstrated issue: the Baidu key is unrestricted
 
@@ -88,7 +91,10 @@ https://www.tesla.cn/sites/all/modules/custom/tesla_configurator/js/config/confi
 https://www.tesla.com/sites/all/modules/custom/tesla_configurator/js/config/config_web.json
 ```
 
-`curl` gets the file from `.cn` directly (200, 329052 bytes).
+`curl` gets the file from `.cn` directly (200, 329052 bytes). I have also saved the `.com` copy
+from a browser: it is **329052 bytes as well — byte-for-byte the same length** — and contains the
+same `"ip_lookup_service_token": "47216944bba1aa"`, the same `"use_ip_lookup_service": true`, and
+the same `"ipInfo": "https://ipinfo.io/geo"`. Both files are attached.
 
 On `.com` I cannot give you a terminal reproduction, and I would rather say that than imply one
 exists. Akamai returns 403 to `curl` on these paths **even with a full Chrome User-Agent**
@@ -161,7 +167,26 @@ the month rolls over.
 Tesla had used **66** of the 50,000 when I checked. Anyone holding this token can burn the
 remaining 49,934 in minutes, and at that point the lookup below stops working for real visitors.
 
-### The token is in live production use, not a leftover
+### The token is in live production use on `www.tesla.com`, not only on `www.tesla.cn`
+
+This is the part that matters most, and it is reproducible in any browser:
+
+```
+https://www.tesla.com/sites/all/modules/custom/tesla_findus_map/proxy.php?ip=true
+
+{ "ip": "205.234.27.201", "city": "San Jose", "region": "California", "country": "US",
+  "loc": "37.3394,-121.8950", "org": "AS40913 Quality Technology Services, LLC",
+  "postal": "95110", "timezone": "America/Los_Angeles" }
+```
+
+That is an ipinfo.io lookup performed **server-side by `www.tesla.com`** — the IP returned is the
+egress address of the machine that made the call, not mine (I am in Bangladesh; this is San Jose).
+So the leaked token is being spent by the main `.com` site's own production code path right now.
+
+*I am not reporting the returned IP itself — infrastructure/internal IP disclosure is out of scope
+by your brief. It appears here only because it is what proves the call is server-side.*
+
+### The configurator file itself, on `.com`
 
 `/sites/all/modules/custom/tesla_findus_map/proxy.php?ip=true` is reachable on `www.tesla.cn`
 and returns an ipinfo lookup performed **server-side**:
