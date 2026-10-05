@@ -329,3 +329,85 @@ This is the largest piece of surface still outstanding on this target.
 
 The archive knows exactly **one** file in that module, a province/city list. No other paths, and
 I will not invent any. Suggestive name, no surface.
+
+---
+
+## 2026-10-06 — the `tesla.com` sweep: an SSO authentication key captured in full by the Internet Archive
+
+**This outranks F001. Handle it first.**
+
+The `tesla.com` modules tree (2335 archived URLs, the half that the earlier failed CDX query had
+hidden) contains two SSO endpoints, and the archive captured one of them **with its key intact**:
+
+```
+/sites/all/modules/custom/tesla_gatekeeper/sso/d6.php?key=XXXXX&keep=&destination=&d7=&locale=&token=XXXXXXX
+/sites/all/modules/custom/tesla_login/sso/auth.php?key=e2ab1ff2…f257:d618…b80&locale&destination=mytesla
+```
+
+The `d6.php` capture is masked (`XXXXX`). **The `auth.php` capture is not.** Its `key` is a
+1024-hex-character blob, a colon, then a 32-hex MAC — the shape of an encrypted payload plus
+integrity tag — and `destination=mytesla`, the customer account area.
+
+*Full value deliberately NOT recorded in this repository (CLAUDE.md §7). It is in
+`~/tesla/com-modules.txt` on the local machine only. It is also, right now, readable by anyone on
+`web.archive.org`.*
+
+### Why this matters more than a metered API key
+
+If that key still authenticates, the chain is: public archive → SSO handoff URL → a session in
+`/mytesla`. That is authentication bypass against a real customer account, not pay-per-use abuse.
+And even if that specific key has expired, the root cause stands on its own: **Tesla's SSO passes
+authentication material in a GET query string**, which is why a third-party archive has a copy.
+Query strings end up in archives, proxy logs, Referer headers and browser history by design.
+
+### Testing guardrails — decided BEFORE touching it
+
+Tesla's RoE: *"Do not access or modify data that does not belong to you. If you are able to access
+… personal data of other customers … immediately contact Tesla. Do not attempt to conduct
+post-exploitation work with this data."*
+
+That language anticipates gaining access and prescribes the response, so a single minimal request
+that establishes only whether the credential is *accepted* is within it. The guardrails:
+
+- headers only — `-D -` with `-o /dev/null`; the body is discarded unread
+- **do not follow the redirect** (no `-L`), so `/mytesla` is never requested
+- **no cookie jar** — no `-b`, no `-c`; any `Set-Cookie` is dropped on the floor
+- one request, then stop. If it authenticates, that is the finding — nothing further is tested.
+
+What is explicitly **forbidden** here: pasting this key into a browser. That would follow the
+redirect, store the session cookie and land inside another person's account. Not done, not to be
+done.
+
+### Expected obstacle
+
+`www.tesla.com` returns 403 to curl on these module paths **even with a full browser User-Agent** —
+Akamai is fingerprinting beyond the UA string:
+
+```
+curl -A "<Chrome UA>" https://www.tesla.com/sites/all/modules/.../config_web.json   403, 476 b
+curl -A "<Chrome UA>" https://www.tesla.com/api/findus/env                          403
+   "You don't have permission to access … on this server."  Reference #18.65a5c117…
+```
+
+So the liveness check may be unanswerable from the terminal. If so, the report states the exposure
+and the design flaw, and says plainly that the key was not replayed and why. Claiming a takeover
+that was not demonstrated would be exactly the FO-8/9/11 failure.
+
+### Consequence for F001's `.com` claim
+
+The 403 persisting with a browser UA means `curl` cannot corroborate the `.com` exposure at all —
+the browser screenshot remains the only direct evidence, and F001 must say so rather than implying
+a terminal reproduction exists. The archive independently corroborates it: the CDX record lists
+`https://www.tesla.com/sites/all/modules/custom/tesla_configurator/js/config/config_web.json` as a
+real `.com` URL. F001 updated accordingly.
+
+### Closed: no SSO key in the public config files
+
+```
+grep -Ei '"[a-z0-9_]*(sso|auth|login|secret|api_?key|private|sign|hmac|salt)[a-z0-9_]*":"…"'
+  cn_config.json  ->  "login": "GET PRICING & OPTIONS"     (a UI string)
+  com_config.json ->  (empty — 403, never downloaded)
+```
+
+The `auth.php` key is not published in `config_web.json`. The chain I was looking for does not
+exist there; the archive supplied it instead.
