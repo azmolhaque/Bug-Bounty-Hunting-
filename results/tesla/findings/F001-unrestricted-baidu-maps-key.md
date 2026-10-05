@@ -123,6 +123,22 @@ It also shows the practical exposure: Tesla had used **66** of 50,000 calls when
 anyone holding this token can consume effectively the whole monthly allowance before Tesla's own
 usage would register it.
 
+### The token is in live production use, not a leftover
+
+`/sites/all/modules/custom/tesla_findus_map/proxy.php?ip=true` is reachable on `www.tesla.cn`
+and returns an ipinfo lookup performed **server-side**:
+
+```
+curl "https://www.tesla.cn/sites/all/modules/custom/tesla_findus_map/proxy.php?ip=true"
+{"ip":"103.222.41.40","city":"Shanghai","region":"Shanghai","country":"CN",
+ "loc":"31.2222,121.4581","org":"AS138421 China Unicom", …}
+```
+
+An unknown parameter on the same script returns an empty body, so this is the script acting on a
+recognised mode rather than echoing anything back. The configurator's IP lookup is therefore a
+live path that consumes the ipinfo plan this token belongs to — the credential is current, not an
+artefact of an old build.
+
 The same file also lists Tesla's staging hostnames:
 
 ```json

@@ -123,3 +123,42 @@ reach them. `api-dev.solarcity.com` has no DNS.
 `/milestones/swagger/` and `/sources/swagger/` answer **403 with a 26-byte body** — a different
 response, so those three applications are deployed there behind something. The archive holds
 real paths for them (`/deals/values`, `/milestones/healthcheck`) that have not been tried.
+
+## Chasing the escalation, and where it topped out — 2026-10-06
+
+The archive's module listing under `/sites/all/modules/custom/` (8,237 URLs, 27 custom Drupal
+modules) named four files worth more than the config ones: `tesla_careers/js/lib/keys.js`,
+`tesla_findus_map/proxy.php`, `tesla_login/sso/auth.php` and `tesla_gatekeeper/sso/d6.php`.
+
+```
+keys.js            404 on .com and .cn        gone
+d6.php             404                        gone
+proxy.php          200 on .com and .cn        live
+auth.php           200, "no key supplied"     live
+```
+
+### `proxy.php` is not SSRF, and is not being reported as one
+
+A PHP proxy inside a maps module is the right thing to look at, so it was looked at properly.
+The parameters came from archived URLs rather than guesswork — `?address=` and `?ip=true` — and
+the module's Angular scripts named the rest (`lat`, `lng`, `type`, `bounds`, `place`, `radius`).
+
+```
+?__canary__=1       200   0 bytes      <- sentinel: unrecognised mode, silent
+?address=Austin     200   "false"
+?lat=&lng=          200   0 bytes
+?ip=true            200   208 bytes    ipinfo JSON
+```
+
+It takes **modes, not URLs**. The upstream host is fixed in the code and nothing in the request
+reaches it, so the precondition for SSRF — control of the destination — is absent. Closed.
+
+What it did establish is worth keeping: `?ip=true` performs a server-side ipinfo lookup, which
+means the token leaked in `config_web.json` is **in current production use**, not a leftover. That
+went into F001.
+
+### `auth.php` — open, and deliberately not pursued
+
+`tesla_login/sso/auth.php` answers `no key supplied`. Finding the key it wants would mean guessing
+values against an authentication endpoint, which is brute force: forbidden by the programme's
+rules of engagement and excluded from scope. Noted and left alone.
