@@ -162,3 +162,31 @@ went into F001.
 `tesla_login/sso/auth.php` answers `no key supplied`. Finding the key it wants would mean guessing
 values against an authentication endpoint, which is brute force: forbidden by the programme's
 rules of engagement and excluded from scope. Noted and left alone.
+
+## Exhausting the root cause — the full module sweep, 2026-10-06
+
+`config_web.json` leaked two credentials, which raises the obvious question: is that one careless
+file, or a habit? The archive listed 118 distinct `.js`/`.json` paths under
+`/sites/all/modules/custom/` across 27 modules. **82 are still live** and all 82 were pulled and
+searched.
+
+```
+credential-shaped assignments   none        (only MozPrintableKey and React internals)
+cloud key formats               none        AKIA · ASIA · LTAI · AIza · sk_live · xox* · gh*_ · JWT
+internal hostnames              none
+```
+
+The modules that looked most promising were checked by hand rather than left to the regex:
+
+- **`tesla_payment_forms`** — `tesla_payment_forms.stripe.js` reads its key from
+  `Drupal.settings.tesla.stripe[region][country]` and passes it to `Stripe.setPublishableKey()`.
+  A *publishable* key belongs in the browser; there is no `sk_live_` anywhere in the module.
+- **`jsencrypt.js`** contains the strings `BEGIN PRIVATE KEY` and `BEGIN RSA PRIVATE KEY`. Those
+  are the library's own PEM parsing constants, not a key. Reporting them would have been a
+  self-inflicted spam close.
+- **`tesla_five_minute_credit`**, **`apple_pay.js`**, **`solarroof_order_form`** — no endpoints,
+  no identifiers beyond `merchantCapabilities: ['supports3DS']` and a `validationURL` read from
+  the Apple Pay event, which is how Apple Pay is meant to work.
+
+So the two credentials in `config_web.json` are what there is. The habit is not widespread, and
+F001 should claim exactly those two and nothing more.
