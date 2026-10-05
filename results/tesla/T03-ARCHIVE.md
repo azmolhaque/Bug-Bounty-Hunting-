@@ -513,3 +513,45 @@ Consequences:
   is not.
 
 No requests were sent to any of these hosts while they were believed out of scope.
+
+---
+
+## NEAR MISS (2026-10-06): another program's evidence was attached to the Tesla draft
+
+Four PNGs named `01-evidence-terminal.png`, `02-proxy-san-jose.png`,
+`03a-config-token-highlighted.png` and `03b-config-url-bar.png` were uploaded to the Tesla
+submission and embedded in its description. **None of them contained Tesla evidence.** They were
+screenshots of a Marriott engagement — `marriottfranchisetransactions.marriott.com`, a BASELINE vs
+AUTH BYPASS comparison, PHPSESSID values, and a PHP fatal error with a `/FranLic/www/html/...`
+stack trace — plus two Personio files from June.
+
+Caught in Preview before `Report vulnerability` was pressed. The draft's *text* was clean (0 hits
+for marriott / FranLic / PHPSESSID / AUTH BYPASS), so nothing was disclosed. Had it been
+submitted, a Tesla triager would have been shown another program's unpublished vulnerability.
+
+### Root cause — mine
+
+I wrote the rename helper as `cp "$(ls -t $SS/*.png | sed -n "${1}p")"` and printed the candidate
+list with `date -r "$f" '+%H:%M:%S'` — **time only, no date**. A June screenshot at 22:44 therefore
+sorted and displayed exactly like one taken today, and position `[1]` read as "just taken". The
+operator picked by position, as instructed, and got June files.
+
+Compounding it: the screenshots for this engagement had never actually been taken. The terminal
+*output* had been pasted into chat, which looked like progress, so neither of us noticed the
+capture step was missing.
+
+### Rules adopted
+
+1. **Never list evidence candidates without a full date.** `'+%Y-%m-%d %H:%M'`, always.
+2. **Never select evidence by list position.** Copy the full path of a file whose date has been
+   read.
+3. **Open every screenshot before attaching it.** A filename and a timestamp say nothing about
+   what is in the image. The only check that works is looking at the picture and confirming it
+   shows *this* target's hostname.
+4. **One engagement, one evidence directory.** A shared phone screenshot folder mixes programs,
+   and the mixing is invisible until Preview.
+5. **Preview every submission before sending.** This was caught only because the rendered preview
+   showed the images. Had the report been submitted blind, it would have gone out.
+
+This belongs in the §9 Definition-of-Done evidence checklist: an attachment is not verified by its
+name, its size or its timestamp — only by its content.
