@@ -88,11 +88,24 @@ https://www.tesla.cn/sites/all/modules/custom/tesla_configurator/js/config/confi
 https://www.tesla.com/sites/all/modules/custom/tesla_configurator/js/config/config_web.json
 ```
 
-`curl` gets the file from `.cn` directly (200, 329052 bytes). On `.com`, Akamai refuses `curl`
-with 403 but serves a browser normally — I opened that URL in Chrome, searched the response for
-`ip_lookup_service_token`, and got **1 of 1** match: the same token, `47216944bba1aa`, next to the
-same `"apiNames": {"ipInfo": "https://ipinfo.io/geo", …}` block. Screenshot attached, and I have
+`curl` gets the file from `.cn` directly (200, 329052 bytes).
+
+On `.com` I cannot give you a terminal reproduction, and I would rather say that than imply one
+exists. Akamai returns 403 to `curl` on these paths **even with a full Chrome User-Agent**
+(`Reference #18.65a5c117…`), so it is fingerprinting past the UA string. A browser is served
+normally: I opened the `.com` URL in Chrome, searched the response for `ip_lookup_service_token`,
+and got **1 of 1** match — the same token, `47216944bba1aa`, next to the same
+`"apiNames": {"ipInfo": "https://ipinfo.io/geo", …}` block. That screenshot is attached and I have
 saved the `.com` copy of the file.
+
+Independent corroboration that this is a real `.com` URL and not a mistake on my part: the
+Internet Archive's CDX index lists it directly.
+
+```
+curl -s "https://web.archive.org/cdx/search/cdx?url=tesla.com/sites/all/modules/*&fl=original&collapse=urlkey"
+…
+https://www.tesla.com/sites/all/modules/custom/tesla_configurator/js/config/config_web.json
+```
 
 So this is not a China-only config artefact. The same token is readable from Tesla's main
 `www.tesla.com` site, which is the significant part of the spread: the asset with the global
@@ -193,13 +206,14 @@ credential, same class of request — restricted. The Baidu key is the one that 
 | Host | Path | Result | Credential present |
 |---|---|---|---|
 | `www.tesla.cn` | `/api/findus/env` | 200 (curl) | Baidu key, GrowingIO ids |
-| `www.tesla.com` | `/api/findus/env` | 200 (browser) / 403 to curl | Baidu key |
+| `www.tesla.com` | `/api/findus/env` | 403 to curl even with a Chrome UA; 200 in a browser | Baidu key |
 | `www.tesla.cn` | `/sites/all/.../config_web.json` | 200, 329052 b (curl) | ipinfo token |
-| `www.tesla.com` | `/sites/all/.../config_web.json` | 200 (browser) / 403 to curl | **ipinfo token** |
+| `www.tesla.com` | `/sites/all/.../config_web.json` | 403 to curl even with a Chrome UA; 200 in a browser | **ipinfo token** |
 | `www.teslamotors.com` | both paths | 301 → `tesla.com` | — (redirect) |
 
-Every 403 above is Akamai refusing a `curl` User-Agent, not the file being absent — each one was
-then opened in a normal browser session and the credential was there. Nothing here needed an
+Every 403 above is Akamai refusing an automated client, not the file being absent. Setting a full
+Chrome User-Agent does not get past it, so the refusal is on something below the UA string; each
+of those URLs was then opened in a normal browser session and the credential was there. Nothing here needed an
 account, a cookie, or a guessed path: both paths come from Tesla's own code.
 
 ## Impact
