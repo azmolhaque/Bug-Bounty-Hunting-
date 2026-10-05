@@ -95,6 +95,34 @@ Unlike a maps key, an ipinfo token **cannot** be referrer-restricted — ipinfo 
 control. It is a server-side credential, and publishing it in a client-side config file is the
 whole problem.
 
+### The token is an account credential, not just a lookup key
+
+`https://ipinfo.io/me` returns the state of the account the token belongs to:
+
+```
+curl "https://ipinfo.io/me?token=47216944bba1aa"
+
+{"token":"47216944bba1aa",
+ "requests":{"day":4,"month":66,"limit":50000,"remaining":49934},
+ "features":{"core":{"daily":2147483647,"monthly":50000},
+             "hostio":{"daily":2147483647,"monthly":1000, …}}}
+```
+
+Without the token the same path refuses:
+
+```
+curl "https://ipinfo.io/me"
+{"error":"API token required to view token details. Did you mean to visit /my instead?"}   400
+```
+
+So the leaked token exposes Tesla's ipinfo **account**: the plan (50,000 core lookups a month,
+plus a 1,000/month `hostio` add-on), this month's consumption, and the remaining balance. That is
+account state, not merely the ability to run a lookup.
+
+It also shows the practical exposure: Tesla had used **66** of 50,000 calls when I checked, so
+anyone holding this token can consume effectively the whole monthly allowance before Tesla's own
+usage would register it.
+
 The same file also lists Tesla's staging hostnames:
 
 ```json
@@ -134,16 +162,19 @@ Anyone who reads one unauthenticated endpoint can:
 That second effect is what gives this impact beyond disclosure: the key powers a customer-facing
 feature, so burning its quota degrades that feature.
 
-The ipinfo token is the same shape of problem on a different account: requests made with it are
-billed to Tesla, and ipinfo's paid plans are metered. Exhausting that quota breaks the
-configurator's IP-based region detection for real visitors.
+The ipinfo token is worse than the maps key in one respect: it reads the account as well as
+spending it. An attacker learns Tesla's plan and usage, and can burn a 50,000-call monthly
+allowance of which Tesla itself had used 66 — at which point the configurator's IP-based region
+detection stops working for real visitors.
 
 The GrowingIO account and data-resource ids are the identifiers a client uses to post analytics
 events, so they also allow fabricated events to be written into Tesla China's analytics. I did
 not test that, and I am not claiming it — it is noted because it comes from the same root cause.
 
-I made eight calls in total: six to Baidu, one per service, to establish which are accepted, and
-two to ipinfo to show the token authenticates. I did not probe quota limits on either.
+I made ten calls in total: six to Baidu, one per service, to establish which are accepted, and
+four to ipinfo — two to show the token authenticates and two against `/me` with and without it. I
+did not probe quota limits on either account, and the usage counter above shows the cost of my
+testing: four calls on the day.
 
 ## Remediation
 
