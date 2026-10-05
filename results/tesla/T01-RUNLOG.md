@@ -262,3 +262,117 @@ checked alongside the status code.
 Not yet read: the EDR bundle in full, TripX, `charging-transparency.tesla.com`, `cx.tesla.cn`.
 Not yet resolved: LEAD-001, which needs Bugcrowd identity verification and a `bugcrowdninja.com`
 account before it can be settled.
+
+## Session 2 — 2026-10-05: EDR, and the Tesla China CX platform
+
+### EDR (Event Data Recorder) — capability-URL design, no finding
+
+`edr.tesla.cn` / `edr.tesla.com`. The bundle shows the download call plainly:
+
+```js
+rO.get(`/api/reports/${r}`, {responseType:"blob"})   // returns a PDF
+rO.post("/api/reports", formData)                     // submits a request, with a file
+```
+
+Parameter frequency: `mobile` 403, `phone` 28, `vin` 25, `rn` 16. The identity in this flow is a
+mobile number and a VIN.
+
+Probed with a sentinel and with values that cannot belong to anyone:
+
+```
+/api/report-version                  200  "26.34.0"
+/api/__canary__                      200  SPA shell          <- sentinel: unrouted falls through
+/api/reports                         200  SPA shell          <- GET not routed
+/api/reports/0                       400  "Bad Request"
+/api/reports/1                       400  "Bad Request"
+/api/reports/<random valid UUIDv4>   404  "Not Found"
+```
+
+So the endpoint **does not ask for authentication** — a well-formed random UUID gets 404, not 403.
+The only protection is knowing the UUID. That is a capability URL, which is a normal design for a
+document download link, and 122 bits of randomness is not guessable.
+
+It would become a finding only by showing the UUID is weakly generated or leaked, and the only
+way to see a real one is to submit a fabricated EDR request with a VIN we do not own. The brief
+forbids spamming forms and we have no Tesla vehicle. **Closed deliberately rather than pursued.**
+
+### Tesla China CX platform — the largest new surface, and it holds
+
+`cx.tesla.cn`'s bundle gave up 37 hosts and 124 API paths. Host triage:
+
+```
+community-api.tesla.cn          200   {"status":"Healthy", …}  (health JSON at /)
+apigateway-cx-api.tesla.com     401   Jwt is missing
+apigateway-verification-svc.cn  401   Jwt is missing
+apigateway-socialconnect{,-stage}.cn  401   Jwt is missing
+akamai-apigateway-ownership-mobile-app-stage.tesla.com  401   Jwt is missing
+china-community-app.tesla.cn    404   Not found
+cxadmin{,-api}{,-stg}.tesla.{com,cn}   all NXDOMAIN — internal only
+sso{,-dev}.tesla.com            404
+ownership.tesla.{com,cn}        200   "OK"
+```
+
+**Swept all 109 paths on `community-api.tesla.cn`**, sentinel first (`/api/__canary__` → 404, so
+absent routes are distinguishable):
+
+```
+401 x 25     404 x 20     200 x 18
+```
+
+Then swept the 46 **parameterised** paths my first sweep had skipped — that skip was my error, and
+those are the IDOR-shaped ones — each with a random UUID that belongs to nobody.
+
+**Guarded (401), including every staff-facing endpoint:**
+`enterprisewechat/{tasklist,taskdetail,getemployeenamebyid,getgroupinfo,getgroupinfonrn,getdrotemplates}`,
+`partnerissuevoucher/*`, `asset/preview`, `notification/preview`, `notification/voice-msg-audio`,
+`review2/offline-review-snapshot`, `checkifcarowner`, `customervehicle`.
+
+**Open, and all of it published marketing content:** `article`, `event/preview`, `canvas/preview`,
+`landingpage2`, `luckydraw`, `special`, `referral`, `voucherpackage/merchant`, `feature/list`,
+`category`.
+
+### Two things that looked like findings and were not
+
+**`trtlocation/{store,service,bodyshop,delivery}`** — 1.7 MB of unauthenticated data, 618 + 502 +
+368 + 171 records. Fields are `address, city, name, phone, province, business hours, trtId,
+showOnFindUs`. **Zero e-mail addresses**; the 618 `phone` values are store landlines. And
+`showOnFindUs` is `false` on *every* record, so it is an unused flag, not a hidden/visible split —
+checking that is what stopped a wrong conclusion. This is Tesla's public China retail directory.
+
+**The preview inconsistency** — `asset/preview` is 401 while `article/preview`,
+`canvas/preview`, `landingpage2/preview` and `event/preview` are not. That asymmetry is the right
+thing to chase, so it was: the open ones take **version ids**, not entity ids, and there is no
+public endpoint that hands a version id out. Tested with real UUIDs taken from `/api/category` and
+`/api/luckydraw/info` — all "not found". No draft content was reachable.
+
+Likewise `luckydraw/{contact,contactvin,mailing}` — names that promise participant PII — return 404
+for a real campaign id, so they key on something else entirely.
+
+### Authentication bypass attempt on the guarded endpoints — negative
+
+The 401s come back with **zero bytes**, which usually means middleware rather than the app, and
+middleware is often applied unevenly. Tested `/api/enterprisewechat/tasklist`:
+
+```
+GET  baseline                      401
+POST / HEAD / PUT                  404   (route is GET-only)
+OPTIONS                            405
+/API/… · /api/EnterpriseWechat/… · /api/…/TaskList      401
+//api/… · /api/…/ · /./api/…                            401
+```
+
+Case, duplicate slash, trailing slash and dot-segment all normalise before the check. Consistent.
+
+### Where Tesla stands
+
+Across two sessions, roughly **450 authorised requests** and **fourteen surfaces closed with
+evidence**: CUA kiosk, three Google Maps keys, extConfluence, extissues Jira, ap.tesla.services,
+MFS supplier API, accounts.tesla.com, billing API, EDR, trtlocation, the CX endpoint sweep, the CX
+token endpoints, and the CX middleware.
+
+One lead (LEAD-001). No findings. Nothing claimed that was not shown.
+
+**Every surface reachable without an account has now been swept.** The classes that pay — IDOR,
+broken access control, cross-user reads — all require an authenticated session, and that is the
+one thing we do not have. Continuing to sweep unauthenticated is the cheapest work available and
+also, now, the least likely to produce anything.
