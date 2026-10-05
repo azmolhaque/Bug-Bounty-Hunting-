@@ -71,7 +71,7 @@ B's page   2 TESLA RD      <- untouched
 **The injected `id` was ignored and the session's own address was updated.** Clean negative, and
 a well-controlled one: two real accounts, a distinctive value, and both ends inspected.
 
-## `addressCreate` with an injected owner — INCONCLUSIVE, redo
+## Ownership injection — RESOLVED, negative
 
 Same idea against create: from A, with `createdByUserId` and `userId` set to **B's** user id.
 
@@ -80,21 +80,45 @@ POST /api/addressCreate  -> 400  {"reason":"Error occurred in address update","s
 ```
 
 A 400 looks like a refusal, but it has two possible causes: the injected fields were rejected, or
-A already has a primary mailing address and a second create fails regardless. **Those are
-different conclusions and the response does not distinguish them.**
-
-The control — the same request without the injected fields — returned:
+A already has a primary mailing address and a second create fails regardless. The control — the
+same request **without** the injected fields — settled it:
 
 ```
-401  {"message":"INVALID_SESSION"}
+POST /api/addressCreate  (no injection)  -> 400  same error
 ```
 
-A's access token had expired between the two requests (it lives about an hour). **So the control
-never ran, and this test is unresolved.** Recording it as inconclusive rather than reading the
-400 as a negative: the whole point of the control is that without it the 400 means nothing.
+**The 400 had nothing to do with the injection.** A simply cannot hold two mailing addresses, so
+the request never got far enough for the extra fields to matter. The first run was not a test of
+anything, and reading it as a negative would have been wrong. The UI offers no way to delete an
+address either — the edit page has only Update and Cancel — so `addressCreate` could not be
+emptied for a clean run.
 
-**To finish it:** sign in to A again, delete A's existing mailing address, then run the control
-first and the injection second, within the same token lifetime.
+The question was therefore asked through `addressUpdate`, which does work for A, with **all three**
+identifiers injected at once:
+
+```js
+PUT /api/addressUpdate
+{"id":63087955,                     // B's address
+ "userId":"134937530",              // B
+ "createdByUserId":"134937530",     // B
+ "street1":"888 OWNER RD", …}
+```
+
+Response:
+
+```json
+{"id":63089761,"name":"GoribA Tester","street1":"888 OWNER RD",
+ "createdByUserId":"134935810","isPrimary":true, …}
+```
+
+```
+A's page   888 OWNER RD     <- A's own record, A's own owner id
+B's page   2 TESLA RD       <- untouched
+```
+
+**All three injected identifiers ignored.** The owner came back as `134935810` — A — not the
+`134937530` we sent, and the record written was A's own. Both identity and target are resolved
+from the session alone. Conclusive negative.
 
 ## Closed in this session
 
@@ -106,7 +130,7 @@ first and the injection second, within the same token lifetime.
 
 ## Next
 
-1. Finish the `addressCreate` ownership test properly, with a live control.
+1. ~~Finish the addressCreate ownership test~~ — done, negative.
 2. **Refer and Earn.** Referral codes are shareable identifiers tied to an account, Tesla attaches
    real credit to them, and referral systems are a common place for logic flaws. It is the one
    remaining account feature that both creates identifiable objects and carries value.
