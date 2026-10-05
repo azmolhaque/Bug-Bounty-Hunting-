@@ -77,7 +77,7 @@ curl -s "https://api.map.baidu.com/geocoding/v3/?address=%E5%8C%97%E4%BA%AC&outp
 # 4 — the ipinfo token is a live ACCOUNT credential, not just a lookup key
 curl -s "https://ipinfo.io/me?token=47216944bba1aa"
 {"token":"47216944bba1aa",
- "requests":{"day":7,"month":69,"limit":50000,"remaining":49931},
+ "requests":{"day":10,"month":72,"limit":50000,"remaining":49928},
  "features":{"core":{"daily":2147483647,"monthly":50000},
              "hostio":{"daily":2147483647,"monthly":1000, …}}}
 
@@ -149,8 +149,20 @@ brief. It appears here only because it is what proves the call is server-side.
 | `www.tesla.com` | `/sites/all/modules/custom/tesla_configurator/js/config/config_web.json` | ipinfo token |
 | `www.tesla.cn` | same path | ipinfo token |
 
-The `.com` and `.cn` copies of `config_web.json` are both **329,052 bytes — byte-for-byte the same
-length** — and carry the same token. Both files are attached.
+The `.com` and `.cn` copies of `config_web.json` are **the same file**, not merely similar ones.
+Both are 329,052 bytes and both hash to the same SHA-256:
+
+```
+config_web_cn.json    329052   817a1af5ec7555792aa2f828924a8fe0e3816022ababaddee9df731fbde1223f
+config_web_com.json   329052   817a1af5ec7555792aa2f828924a8fe0e3816022ababaddee9df731fbde1223f
+```
+
+One artefact, carrying one credential, served from both hostnames. The two `/api/findus/env`
+responses do differ (5,866 bytes on `.cn`, 5,799 on `.com`) — that is the GrowingIO block being
+populated on `.cn` and left blank on `.com`, and both still hand out the same Baidu key.
+
+All four files are attached, along with `MANIFEST.txt` listing their sizes and hashes so you can
+confirm the attachments are exactly what I fetched.
 
 Nothing here needed an account, a cookie, or a guessed path. Both paths come from Tesla's own code.
 
@@ -166,8 +178,8 @@ location on Tesla's account, from anywhere, at any rate. Beyond the spend, the k
 plan, month-to-date consumption and remaining balance. To be accurate rather than dramatic: 50,000
 lookups a month is ipinfo's **free** tier, so I am not claiming a bill. The consequence runs the
 other way — a free plan has no overage headroom, so when the allowance is gone the account simply
-stops answering until the month rolls over. Tesla had used **69** of 50,000 when I checked; anyone
-holding this token can burn the remaining 49,931 in minutes, and the `proxy.php` lookup above then
+stops answering until the month rolls over. Tesla had used **72** of 50,000 when I finished; anyone
+holding this token can burn the remaining 49,928 in minutes, and the `proxy.php` lookup above then
 fails for real visitors on both sites.
 
 Because the token is published on `www.tesla.com`, not only on the China site, the population that
@@ -176,9 +188,9 @@ can read it is the global one.
 ## Conduct — what I did and did not do
 
 - No Tesla account, no customer data, no other user's data, no automated scanning.
-- I did **not** probe quota limits on either account. My usage counter is the receipt: ipinfo read
-  `day: 4, month: 66` at 18:33 UTC and `day: 7, month: 69` at 19:35 UTC. My entire engagement cost
-  seven lookups out of 50,000.
+- I did **not** probe quota limits on either account. The account's own counter is the receipt:
+  ipinfo read `day: 4, month: 66` at 18:33 UTC, `day: 7, month: 69` at 19:35 UTC, and
+  `day: 10, month: 72` at 20:44 UTC. My entire engagement cost **ten** lookups out of 50,000.
 - The `config_web.json` file also contains GrowingIO analytics identifiers. I did **not** write a
   test event with them, because that would modify Tesla's data. I report them as exposed and claim
   nothing further about them.
@@ -186,8 +198,9 @@ can read it is the global one.
   and `ip_lookup_service_token` each return 0 results on GitHub code search, with no repositories,
   commits, issues or packages either.
 
-Verification run: **2026-10-05 19:35:23 UTC**, external IP `180.148.212.54`,
-`curl 8.21.0 (aarch64-unknown-linux-android)`.
+Final verification run: **2026-10-05 20:44:04 UTC**, external IP `180.148.212.54`,
+`curl 8.21.0 (aarch64-unknown-linux-android) libcurl/8.21.0 OpenSSL/3.6.3`. The attached terminal
+screenshot is that run.
 
 ## Remediation
 
@@ -212,7 +225,8 @@ Verification run: **2026-10-05 19:35:23 UTC**, external IP `180.148.212.54`,
 |---|---|---|
 | 1 | `env.json` (5,799 b) | The complete unauthenticated `tesla.com/api/findus/env` response |
 | 2 | `config_web_com.json` (329,052 b) | The `.com` copy with the token |
-| 3 | `config_web_cn.json` (329,052 b) | The `.cn` copy — same length, same token |
+| 3 | `config_web_cn.json` (329,052 b) | The `.cn` copy — **identical SHA-256** to #2 |
+| 3b | `MANIFEST.txt` | Sizes + SHA-256 of all four files, with timestamp and my IP |
 | 4 | Screenshot: `tesla.com/.../proxy.php?ip=true` → San Jose | Strongest single item: the token is spent server-side by `.com` |
 | 5 | Screenshot: `tesla.com/.../config_web.json`, token highlighted 1/1 | The exposure is global, not China-only |
 | 6 | Screenshot: terminal, Baidu success beside Google `REQUEST_DENIED` | The differential that kills "intended behaviour" |
