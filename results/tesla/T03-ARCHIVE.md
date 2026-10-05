@@ -190,3 +190,76 @@ The modules that looked most promising were checked by hand rather than left to 
 
 So the two credentials in `config_web.json` are what there is. The habit is not widespread, and
 F001 should claim exactly those two and nothing more.
+
+---
+
+## 2026-10-06 — archive sweep of the full `/sites/all/modules/` tree (CLOSED, no new credential)
+
+CDX query `url=tesla.{com,cn}/sites/all/modules/*` → **4442** archived URLs.
+Filtered to config-shaped extensions (`json|ya?ml|ini|env|conf|txt`) → **30** candidates,
+all on `www.tesla.cn`. Fetched each live with a browser UA, 1s apart.
+
+**Result: no second credential. The sweep is closed.**
+
+| Outcome | Count | Verdict |
+|---|---|---|
+| `config_web.json` + 6 cachebuster variants | 7 | 200, 329052 b, the **already-reported** ipinfo token. Nothing new. |
+| `config_locale_strings.json` + 13 variants | 14 | 200, 407459 b, zero secret-shaped matches. Locale strings only. |
+| `.json` paths under 8 other modules | 8 | **404** — all of them. |
+| `99bill/province_city_district_map.json` | 1 | 301 (http→https). Not re-fetched over https yet. |
+
+This answers the open thread in F001's remediation ("sweep the other configurator config
+files for the same pattern"): `config_web.json` is the only one carrying a credential.
+That is a point in F001's favour, not against it — the finding is specific, not a pattern
+of sloppiness I failed to bound.
+
+### DROPPED: `theme_token` on the 404 pages — Drupal per-request token, not a secret
+
+My grep matched `"theme_token":"…"` on all 8 of the 404 responses (433 KB Drupal error pages).
+It is **noise**, and the proof is in the data itself: **every single request returned a
+different value** —
+
+```
+tesla_corporate_form   theme_token  -Qq25hZjkcILB_YYEwikrlC2CVrJElWSna8KOMwaYRo
+tesla_findus_map       theme_token  3hyM2aI808RUtbFHYa2x0QNly7B0WM-DTck8HoD6xxE
+tesla_findus_mobile    theme_token  rF6IDFQkY9klD6yLBPlDMNvr0l8iSckOeNJ1nacHGq0
+tesla_get_updates      theme_token  qQjZ-rdq0nD7T2YakPtARUUGQpsAaccK3Xs58Copi-k
+tesla_payment_forms    theme_token  hgenrn2uAofTXsQxRGqjy2FD-M0I8_PPDDKNjQHJ20I
+tesla_rsvp_event       theme_token  eXri8oQ7-xgLq8CFEheeekZ6oN0XF-XXHEeSs5yLvZ0
+tesla_test_drive       theme_token  26R0ve3Hg1-0rxxDFZA8H5S4VOjIkayIMt3OFZrY06s
+tesla_test_drive (kr)  theme_token  AI714xRbtkb3et1BLeHR3s5kSo2T4BIequL5s_6VwpI
+```
+
+A leaked static credential does not change per request. This is Drupal 7's
+`Drupal.settings.ajaxPageState.theme_token` — a per-request anti-tamper token that ships in
+every Drupal 7 page, including the generic 404. It is the *mitigation* for arbitrary-theme
+rendering, not a hole. Public by design. **Do not report.**
+
+Same for `"m3ConfigurationKey":"app-find-my-tesla.configuration"` — a configuration *name*,
+not a value. Object-name enumeration with no record read: Hard Rejection List §3.
+
+This is the second time a `token`/`key`-shaped grep has produced a false positive on this
+target (first was `BEGIN PRIVATE KEY` inside `jsencrypt.js`). Rule for next time: before
+believing any matched secret, **request it twice**. If it differs, it is a session or request
+token, not a credential.
+
+### My filter was too narrow — real remaining lead
+
+4442 → 30 threw away every `.js` and `.php` path in the tree. The `.php` files are the
+server-side endpoints that take parameters (actual bug surface, unlike static JSON), and the
+archive revealed a **`99bill`** module — 99bill / 快钱 is a Chinese payment processor. That
+directory was never examined. Next step, not a finding.
+
+### CLOSED: `stage.tesla.com`
+
+From `config_web.json`'s `staging_envs`. Scope is `*.tesla.com` / `*.tesla.cn`, so
+`stage2.teslamotors.com` and `qa.teslamotors.com` are **out of scope — not touched, zero
+packets sent**. `stage.tesla.com` is in scope, but:
+
+```
+curl -s -o /dev/null -w '%{http_code} %{size_download}b %{remote_ip}' https://stage.tesla.com/
+000  0b          <- empty remote_ip: no public DNS resolution
+```
+
+`000` with no `remote_ip` means curl never connected — the name does not resolve publicly.
+Internal-only hostname. Dead end, closed.
