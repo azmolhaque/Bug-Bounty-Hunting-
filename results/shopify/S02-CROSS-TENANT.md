@@ -135,3 +135,100 @@ each store's app configuration and does not change the tokens.
 
 A draft order `#D11` was created in `gorib-a` by the control test. It is in our own store and
 harmless, but delete it when convenient so the store stays clean for later tests.
+
+---
+
+# Addendum — Storefront API, bulk operations, and two more object types
+
+Continued the same night. Same rig, same four-way discipline.
+
+## Shop and BulkOperation — two object types `node()` had not seen
+
+```
+                               B's token -> B's object     A's token -> B's object
+Shop/85890007265               name, email, currencyCode   null
+BulkOperation/8579090153697    status + signed url         null
+nonexistent BulkOperation      —                           null   (sentinel: same as cross)
+```
+
+`Shop` was worth testing separately because it is a singleton and singletons often take a
+different code path. It does not leak.
+
+## Bulk operations — a different infrastructure entirely
+
+A bulk query in store B completes and hands back a **Google Cloud Storage signed URL**:
+
+```
+storage.googleapis.com/shopify-tiers-assets-prod-us-east1/
+  bulk-operation-outputs/9c50690e387149cb29978fe32a01
+  ?GoogleAccessId=assets-us-prod@shopify-tiers.iam.gserviceaccount.com
+  &Expires=1791915081&Signature=...
+```
+
+Fetched with **no authentication header at all**: `HTTP 200`, 1467 bytes of B's product data.
+
+That is a pure capability URL, and it is intended design: the object path is 28 random hex
+characters, the signature is required, and the expiry is roughly seven days. The question that
+matters is not "does the URL work without auth" — it is **"can another tenant obtain the URL"**,
+and the answer is no: `node()` on B's BulkOperation id returns `null` to A's token, and the
+sentinel returns `null` too. Noted and dropped.
+
+## Storefront API — a genuinely different authorisation model
+
+The Admin API's default is "show everything to a secret token". The Storefront API's default is
+the opposite: a **public** token, embedded in themes and readable by anyone, which must expose
+only published data. That inversion is where filtering mistakes live.
+
+Store A's own test data supplies four objects that must stay hidden:
+
+```
+15405711720584  The Draft Snowboard       DRAFT      publishedAt null   handle the-draft-snowboard
+15405712015496  The Archived Snowboard    ARCHIVED   publishedAt null   handle the-archived-snowboard
+15405711982728  The Hidden Snowboard      ACTIVE     publishedAt null   handle the-hidden-snowboard
+15405711753352  The Minimal Snowboard     ACTIVE     publishedAt null   handle the-minimal-snowboard
+```
+
+Three separate resolvers tested, each its own code path:
+
+| Resolver | Hidden four | Control (`gift-card`, ACTIVE, published) |
+|---|---|---|
+| `products(first: 50)` | absent — exactly 13 of 17 returned | present |
+| `product(id:)` | all four `null` | data |
+| `productByHandle(handle:)` | all four `null` | data |
+
+`productByHandle` is the one that would have mattered most. An id is a 64-bit number nobody
+outside the store knows, but a handle is human-readable and guessable — `the-hidden-snowboard`,
+or in a real store `summer-2027-collection`. A leak there is directly exploitable by a competitor;
+a leak via id is not. It does not leak.
+
+## Final tally for the night
+
+| Surface | Checks | Result |
+|---|---|---|
+| `node()` | 8 object types | isolated |
+| Type-specific resolvers | 5 | isolated |
+| Write path (`draftOrderCreate` with a foreign variant) | 4 | rejected, no oracle |
+| REST Admin API | 5 | isolated |
+| Bulk operations + GCS | 3 | isolated |
+| Storefront API publish filtering | 3 resolvers × 5 | correct |
+
+**Six surfaces, thirty-plus controlled checks, zero leaks.** Shopify is well built. That is the
+answer, and it is worth more than a guess either way.
+
+## For the next session
+
+Untested, and each a different kind of boundary rather than more of the same:
+
+- **Staff-role permissions** inside one store — a limited staff account reaching owner-only data.
+  Not cross-tenant at all; an entirely different check.
+- **Customer access tokens** (`unauthenticated_read_customers`) — can one customer's token read
+  another customer's orders or addresses?
+- **Metaobjects / metafields** — newer surface, less trodden.
+- **Content objects** — unpublished pages, blogs and articles via the Storefront API's
+  `unauthenticated_read_content`. Same publish-filtering class as above but a different resolver
+  family; needs `read_content` on the Admin side to establish ground truth first.
+
+The rule that earned its keep tonight, twice: **a positive control and a sentinel accompany every
+conclusion.** Once it caught a null that would have read as "it knows this exists but hides it",
+and once it caught a REST harness that returned 303 to everything — including the control — where
+no request ever reached the API.
