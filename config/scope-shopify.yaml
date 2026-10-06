@@ -1,0 +1,88 @@
+# scope-shopify.yaml — Shopify Bug Bounty Program (HackerOne)
+# Program: https://hackerone.com/shopify
+# Scope read: 2026-10-06  (read from the live policy pages, not from memory)
+#
+# USAGE:
+#   SCOPE_FILE=config/scope-shopify.yaml ./scripts/scope-check.sh <host>
+#
+# WHY THIS PROGRAM — the four criteria that Tesla failed:
+#   1. Free self-serve signup            partners.shopify.com, unlimited dev stores
+#   2. Multi-tenant                      each dev store is its own tenant
+#   3. Objects we create ourselves       products, orders, customers, files — with ids
+#   4. Impact lands on the target's data not a third party's metered quota
+#
+# BOUNTY (90-day averages from the live policy page):
+#   Low       $500    – $1,000     avg $503
+#   Medium    $1,000  – $14,000    avg $3,127
+#   High      $14,000 – $50,000    avg $4,200
+#   Critical  $50,000 – $200,000   avg $104,688
+#   Max $200,000. Non-core findings are scored with C/I/A Requirements set to Low.
+#
+# THE POINT: the FLOOR is $500. Tesla's P4 floor was $100 and we were paid $0.
+
+program: "Shopify"
+platform: "hackerone.com"
+handle: "shopify"
+report_url: "https://hackerone.com/shopify/reports/new"
+
+in_scope:
+  wildcards:
+    - "*.myshopify.com"          # every storefront, including our own dev stores
+    - "*.shopify.com"
+    - "*.shopifycloud.com"
+    - "*.shopifycs.com"
+    - "*.shopifykloud.com"
+    - "*.shopify.io"             # NOTE: may contain developer test or third-party apps —
+                                 # if a host looks like a test or third-party app, ask the
+                                 # program before touching it.
+  named:
+    - "admin.shopify.com"
+    - "accounts.shopify.com"
+    - "partners.shopify.com"
+    - "academy.shopify.com"
+    - "cdn.shopify.com"
+    - "investors.shopify.com"
+    - "livechat.shopify.com"
+    - "arrive-server.shopifycloud.com"
+    - "supplier-portal.shopifycloud.com"
+  own_assets:
+    # The program explicitly tells researchers to create these.
+    - "<ours>.myshopify.com"     # our own development stores — the testing surface
+
+out_of_scope:
+  - "community.shopify.com"      # third-party service — policy says DO NOT TEST
+  - "community.shopify.dev"      # third-party service — policy says DO NOT TEST
+  # Third-party apps in the Shopify App Store: report to the app's developer first.
+  # Only escalate to Shopify if the developer does not respond satisfactorily.
+  # "Core Ineligible Findings" are out of scope — read that list before writing anything up.
+
+rules_of_engagement:
+  - "Test against OUR OWN development stores. Never another merchant's store."
+  - "No testing against live merchant data, ever."
+  - "Cross-tenant tests use two stores we own — Store A and Store B — so no third party's
+     data is ever touched."
+  - "Report third-party app bugs to the app developer first."
+  - "Do not test community.shopify.com or community.shopify.dev."
+
+# ---------------------------------------------------------------------------
+# HUNTING PLAN — why this program suits the structure we need
+# ---------------------------------------------------------------------------
+# Shopify object ids are GIDs of the form gid://shopify/Product/1234567890 — the numeric
+# half is a real database id, not 122 bits of randomness. That is the opposite of the
+# Tesla InstallationGUID and the Marriott confirmation_id walls, where the identifier was
+# unobtainable. Here we MINT the identifiers ourselves, in a store we own.
+#
+# Priority classes, highest expected value first:
+#   1. Cross-store object access — Store A's Admin API token against Store B's object ids.
+#      Both stores are ours, so a crossing is provable without touching anyone's data.
+#   2. Staff-role permission bypass inside one store — a limited staff account reaching
+#      owner-only data (payouts, customers, app credentials).
+#   3. Storefront API over-exposure — unpublished products, draft orders, customer objects
+#      reachable with the public storefront token.
+#   4. App OAuth scope escalation — an app granted read_products reaching write_orders.
+#
+# Discipline carried over from the Tesla engagement:
+#   - Positive control, negative baseline and a SENTINEL before believing any result.
+#   - Ask "what does the attacker actually GET?" BEFORE investing hours, not after.
+#   - A 200 on a shell is not access. A 404 can be routing, not authorisation.
+#   - Request any matched secret twice; if it differs it is a session token.
