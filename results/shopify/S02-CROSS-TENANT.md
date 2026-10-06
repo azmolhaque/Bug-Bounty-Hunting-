@@ -537,3 +537,92 @@ REST harness returning 303 to everything, a `unitCost` read the docs authorise, 
 
 **Shopify's authorization is, on this evidence, genuinely well built.** Twelve independent
 surfaces, every one enforced, no oracles anywhere.
+
+---
+
+# Addendum 6 — the in-scope assets never touched
+
+## `*.shopifycs.com` — Card Services
+
+Named in scope and never probed. The sentinel ran first, and it was the right call:
+
+```
+zzz-canary-nope.shopifycs.com   "missing client certificate"   <- mTLS on the wildcard
+checkout.us.shopifycs.com       403, server: UploadServer, <Error><Code>AccessDenied</Code>
+deposit.shopifycs.com           403, same — Google Cloud Storage
+cs.us.shopifycs.com             403
+cardsinkone.apps.shopifycs.com  403
+```
+
+The wildcard sits behind client-certificate auth; the real hosts resolve to GCS buckets that
+refuse anonymous reads. Payment infrastructure, properly closed.
+
+## `*.shopifykloud.com` — never enumerated at all
+
+147 hostnames from the archive, and the names are the most interesting of the night:
+
+```
+flower.*.airflow.shopifykloud.com                  Apache Airflow Flower — ships with NO auth by default
+druid-druid-router-api-ingress-...k8s-exp          Apache Druid router API
+conductor.shopify-data-presto-global               Netflix Conductor
+etl-a / etl-b.shopify-data-presto-global           ETL
+console.alumina / console.magnesia                 consoles
+datagrip-license-server.apps                       JetBrains licence server
+canada.vpnify                                      VPN
+amp-*.flink                                        Apache Flink
+```
+
+Exactly the class of internal data tooling that gets left exposed. Probed all 147 in parallel:
+
+```
+sentinel  zzz-canary-nope.shopifykloud.com   000   (no wildcard DNS)
+alive     0 of 147
+```
+
+**None resolve publicly.** The whole domain is internal DNS — the same shape as Tesla's
+`tesla.services`, where 6,029 archived hostnames produced nothing live. Suggestive names,
+no surface.
+
+## The Partner API — a separate API, a separate token type
+
+Untouched all night, and structurally the most promising thing left: the **organization id sits in
+the URL path** while the token sits in a header. That split is where ownership checks get missed.
+
+```
+https://partners.shopify.com/<org_id>/api/2026-10/graphql.json
+```
+
+A Partner API client was created on our own organization (`5235914`) with all four permission sets,
+deliberately — if a cross-org read fails even at maximum permission, the conclusion is not muddied
+by "perhaps the scope was too narrow".
+
+A control problem surfaced first and is worth recording: our organization is new, so
+`transactions` returns `edges: []` and `app` returns `null`. **With no data of our own, a cross-org
+empty result would have been unreadable** — "denied" and "empty" look identical. So the question
+was narrowed to one that does not need data: *is the org id in the path validated against the
+token at all?*
+
+```
+[3] own org 5235914        -> version list returned
+[4] nonexistent 99999999   -> 401 "Invalid access token"
+[5] neighbour  5235913     -> 401 "Invalid access token"
+```
+
+The token is bound to the organization in the path. A valid token with another org id is refused,
+and a nonexistent org is **indistinguishable from a real one that is not ours** — so there is no
+existence oracle for partner organizations either.
+
+Exactly one request was sent to a non-owned organization id, and the rule was fixed before it went:
+one request, stop at the first sign of foreign data, no enumeration. None appeared.
+
+## Thirteen surfaces
+
+```
+node()  ·  typed resolvers  ·  Admin write paths  ·  REST  ·  bulk operations + GCS
+Storefront product filtering  ·  Storefront content filtering  ·  Storefront cart mutations
+access-scope enforcement  ·  app-to-app metafields  ·  asynchronous execution
+customer-vs-customer  ·  Partner API organization scoping
+```
+
+Plus two in-scope infrastructure domains closed on their own terms: `shopifycs` behind mTLS and
+GCS, `shopifykloud` behind internal DNS.
