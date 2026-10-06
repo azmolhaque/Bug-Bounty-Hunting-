@@ -232,3 +232,96 @@ The rule that earned its keep tonight, twice: **a positive control and a sentine
 conclusion.** Once it caught a null that would have read as "it knows this exists but hides it",
 and once it caught a REST harness that returned 303 to everything — including the control — where
 no request ever reached the API.
+
+---
+
+# Addendum 2 — access-scope enforcement, and the lead the documentation killed
+
+A different boundary from everything above: not "can tenant A read tenant B", but **"can a token
+read data it has no scope for"**. Shopify's app permission model *is* access scopes, so this is
+the same class a staff-permission test would cover, and it runs entirely from a terminal.
+
+## Scope enforcement works, with one apparent gap
+
+Our main app held eight scopes. Direct queries for resources outside them were refused cleanly:
+
+```
+locations               ACCESS_DENIED
+staffMembers            ACCESS_DENIED
+giftCards               ACCESS_DENIED  (read_gift_cards)
+shopifyPaymentsAccount  ACCESS_DENIED  (read_shopify_payments)
+priceRules              field no longer exists on QueryRoot
+inventoryItems          DATA RETURNED        <- the anomaly
+```
+
+Nested traversal was also refused — `Product → variants → inventoryItem → inventoryLevels` returns
+`ACCESS_DENIED: Required access: read_inventory`, with the path reported correctly. The classic
+"top-level resolver checks the scope, nested field forgets" bypass does not apply here.
+
+Writes are refused too: `inventoryItemUpdate` returns
+`Access denied ... Required access: write_inventory`.
+
+## The lead, built properly
+
+`unitCost` — the merchant's cost of goods, from which margin follows — is a field on
+`InventoryItem`. On Shopify's own test data it is `null`, so I set a real value through the admin
+UI (`Cost per item: 1234.56`; the UI itself then displayed `Profit +$1,395.39, Margin +53.1%`,
+which is exactly the sensitivity in question) and read it back.
+
+Then, rather than claim anything from the eight-scope token, I built the control that the claim
+actually needs: **a second app in the same store holding exactly one scope.**
+
+```
+[1] accessScopes            [{"handle":"read_products"}]         <- one scope, verified
+[2] inventoryLevels         ACCESS_DENIED "Required access: `read_inventory`"
+[3] unitCost                {"amount":"1234.56","currencyCode":"USD"}
+```
+
+One token. Same object. Shopify names `read_inventory` as required for one field and hands over
+the cost price on another. That looked like a genuine gap in its own authorization model.
+
+## Why it is NOT a finding
+
+The documentation settles it, and against us. `InventoryItem`:
+
+> **Requires `read_inventory` access scope OR `read_products` access scope.**
+
+So the object is *documented* as readable with `read_products`. The apparent inconsistency is the
+design: the **object** opens to either scope, while certain **fields** (`inventoryLevels`,
+`locationsCount`) demand the narrower one. `unitCost` is not an escapee from that gate; it was
+never behind it.
+
+§2.2: *"does the vendor's documentation explain this behavior? If yes, it will be marked
+'intended behavior' and closed."* It does. **Dropped before a word of the report was written.**
+
+The check was committed to in advance — "I will not write a word until I see the docs" — which is
+the only reason this cost twenty minutes instead of an evening and a closed submission.
+
+## Recorded, not claimed: REST and GraphQL disagree
+
+```
+GraphQL, read_products only   ->  unitCost returned
+REST,    read_products only   ->  {"errors":"[API] This action requires merchant approval for read_inventory scope."}
+```
+
+The same data under two APIs under two rules. Not reportable: the GraphQL behaviour is the
+documented one, so REST being stricter is conservatism, not a vulnerability. It would be worth a
+second look only if the asymmetry ran the other way.
+
+## Where this leaves the program
+
+Seven surfaces now, all clean:
+
+```
+node() · typed resolvers · write paths · REST · bulk operations + GCS
+Storefront API publish filtering · access-scope enforcement
+```
+
+Still untouched, and still a different kind of boundary each:
+
+- **Staff accounts proper** — a real limited-permission staff user in the admin UI, not an app
+  token. The app-scope model turned out to be well enforced; the human-role model is separate code.
+- **Customer access tokens** — one customer's token against another customer's orders or addresses.
+- **Metaobjects / metafields.**
+- **Unpublished pages, blogs and articles** via `unauthenticated_read_content` — the same
+  publish-filtering class that products passed, on a different resolver family.
