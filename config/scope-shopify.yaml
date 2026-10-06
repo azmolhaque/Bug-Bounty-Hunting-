@@ -86,3 +86,36 @@ rules_of_engagement:
 #   - Ask "what does the attacker actually GET?" BEFORE investing hours, not after.
 #   - A 200 on a shell is not access. A 404 can be routing, not authorisation.
 #   - Request any matched secret twice; if it differs it is a session token.
+
+# ---------------------------------------------------------------------------
+# PROGRAM RULES THAT WOULD HAVE INVALIDATED THE WHOLE ENGAGEMENT
+# ---------------------------------------------------------------------------
+account_requirements:
+  # Quoted from the policy, not paraphrased:
+  #   "Only test against stores you created using your HackerOne
+  #    YOURHANDLE@wearehackerone.com registered email."
+  #   "You must test only against stores you have created. Testing against live
+  #    merchants is prohibited and can result in reports being closed as Not
+  #    Applicable and/or your disqualification from the Shopify bug bounty program."
+  signup_url: "https://partners.shopify.com/signup/bugbounty"   # NOT the ordinary partners signup
+  required_email: "<hackerone-handle>@wearehackerone.com"
+  structure: "ONE partner account registered with the alias; MANY development stores beneath it."
+  forbidden:
+    - "Creating stores with a personal email — reports from them close as Not Applicable."
+    - "Testing any store we did not create. Live merchants are strictly off limits."
+    - "Interacting with stores we did not create, in any way."
+    - "Contacting Shopify Support by chat, email or phone about a HackerOne report."
+
+# Reference pages pulled from the policy, worth reading before writing anything up:
+#   https://bugbounty.shopify.com/criteria?q=scope
+#   https://bugbounty.shopify.com/criteria?q=rules
+#   https://bugbounty.shopify.com/criteria?q=ineligible-issues
+#   https://bugbounty.shopify.com/calculator        <- severity/bounty calculator
+#   https://docs.hackerone.com/en/articles/8494488-core-ineligible-findings
+
+# NOTE ON THE CROSS-TENANT TEST
+# Both stores sit under one partner account. That is fine for DISCOVERY: a shpat_ token is
+# scoped to a store, not to an owner, so Store A's token reading Store B's objects is a real
+# authorisation failure regardless of who owns them. But before reporting, think about how to
+# answer the obvious triager objection — "both stores are yours" — because a finding that can
+# be waved away on ownership grounds is a finding that gets closed.
