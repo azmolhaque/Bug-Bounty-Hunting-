@@ -468,3 +468,72 @@ Every one enforced correctly. Across the whole engagement the controls caught fo
 findings that were not there: a null that looked like concealment, a REST harness that returned
 303 to everything including the control, a `unitCost` read that the documentation turned out to
 authorise, and a cart quantity of 0 that was inventory rather than filtering.
+
+---
+
+# Addendum 5 — customer vs customer
+
+The last boundary available without a second human identity: two shoppers in one store, each with
+their own login, orders and addresses. Created through the Storefront API after adding
+`unauthenticated_write_customers` and `unauthenticated_read_customers`:
+
+```
+c1  Customer/31262891868296   address MailingAddress/43777503527048   "111 ALPHA St"
+c2  Customer/31262891901064   address MailingAddress/43777503592584   "222 BRAVO St"
+```
+
+Both id pairs are sequential — customers 32,768 apart, addresses 65,536 apart.
+
+`customerAddressUpdate(customerAccessToken:, id:, address:)` is the right shape to attack: the
+object id is a **separate argument** from the token that establishes who is asking. That is exactly
+where ownership checks get forgotten.
+
+```
+[1] CONTROL   c1's token, c1's own address      -> updated
+[2] TEST      c1's token, c2's full address id  -> customerUserErrors NOT_FOUND "Address does not exist"
+```
+
+## The sentinel was wrong, and it hid the real test
+
+`[3]` used `MailingAddress/9999999999` and came back `Invalid id` — but a real address id is not a
+bare number. It carries a query string:
+
+```
+gid://shopify/MailingAddress/43777503592584?model_name=CustomerAddress&customer_access_token=VWWuh6xt...
+```
+
+**The id embeds an access token.** So `[3]` was malformed rather than nonexistent, and the
+comparison was meaningless. Worse, it concealed the question that actually mattered: what happens
+with the bare numeric id, without the embedded token?
+
+```
+[4] TEST      c1's token, c2's address, bare number   -> Invalid id, RESOURCE_NOT_FOUND
+[5] CONTROL   c1's token, c1's OWN address, bare num  -> Invalid id, RESOURCE_NOT_FOUND
+[6] SENTINEL  well-formed, nonexistent number         -> Invalid id, RESOURCE_NOT_FOUND
+```
+
+`[5]` settles it: **c1 cannot address even its own address without the embedded token**, so `[4]`
+fails on format, not on ownership. All three responses are identical, so there is no oracle either.
+
+The address id is a signed capability. The numeric half is sequential and guessable; the token
+half is not. And `[2]` shows that holding another customer's complete id — token included — still
+does not work, because the mutation's own `customerAccessToken` must match. Two independent locks.
+
+Had I stopped at `[2]` I would have recorded "customer isolation holds" for the right reason by
+luck, on the strength of a sentinel that tested nothing.
+
+## Twelve surfaces
+
+```
+node()  ·  typed resolvers  ·  Admin write paths  ·  REST  ·  bulk operations + GCS
+Storefront product filtering  ·  Storefront content filtering  ·  Storefront cart mutations
+access-scope enforcement  ·  app-to-app metafields  ·  asynchronous execution
+customer-vs-customer
+```
+
+Five would-be findings caught by controls across the engagement: a null read as concealment, a
+REST harness returning 303 to everything, a `unitCost` read the docs authorise, a cart quantity of
+0 that was inventory, and a malformed-id sentinel that hid the real ownership question.
+
+**Shopify's authorization is, on this evidence, genuinely well built.** Twelve independent
+surfaces, every one enforced, no oracles anywhere.
