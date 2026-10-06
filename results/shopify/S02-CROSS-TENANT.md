@@ -325,3 +325,77 @@ Still untouched, and still a different kind of boundary each:
 - **Metaobjects / metafields.**
 - **Unpublished pages, blogs and articles** via `unauthenticated_read_content` — the same
   publish-filtering class that products passed, on a different resolver family.
+
+---
+
+# Addendum 3 — app-to-app isolation, and authorization on the async path
+
+Two more boundaries, neither of them tenant-vs-tenant.
+
+## App vs app, inside one store
+
+`gorib-a` now hosts two apps: `recon` (eight scopes) and `minimal` (one). Shopify lets an app
+write metafields into a reserved namespace of its own, and in the wild apps keep API keys, OAuth
+tokens and licence data there. So: **can one app read another app's reserved metafields in the
+same store?**
+
+`recon` wrote one, and Shopify resolved `$app:private` into its real namespace:
+
+```
+namespace  app--432303570945--private
+key        secret_config
+value      RECON-ONLY-9f3a2b7c
+GID        gid://shopify/Metafield/190778229686408
+```
+
+Three read paths, each a different resolver, each with its control:
+
+| Path | `recon` (owner) | `minimal` (other app) |
+|---|---|---|
+| `product.metafields(first: 20)` listing | the metafield | `[]` |
+| `product.metafield(namespace:, key:)` — literal namespace | the value | `null` |
+| `node(id: <Metafield GID>)` | the value | `null` |
+
+Sentinel: `minimal` asking for a fabricated app namespace also gets `null`, identical to the real
+one, so there is no existence oracle.
+
+Note the third row. The metafield's GID is a plain sequential integer, and knowing the namespace
+is not required to address it — but it is still refused. Isolation holds.
+
+## Authorization on the asynchronous path
+
+Everything tested so far was synchronous: one request, one check, one answer. **Bulk operations
+are not.** The query is queued and executed later, in a different context, by a different worker.
+Deferred execution is a classic place for authorization to be weaker, on the assumption that
+"it was already checked when it went into the queue".
+
+Using `minimal`, which holds only `read_products`:
+
+```
+sync    orders                -> ACCESS_DENIED, immediately
+bulk    products   (in scope) -> CREATED -> COMPLETED, objectCount 17, url present
+bulk    orders     (no scope) -> CREATED, userErrors [] -> FAILED, ACCESS_DENIED, objectCount 0, url null
+bulk    customers  (no scope) -> CREATED, userErrors [] -> FAILED, ACCESS_DENIED, objectCount 0, url null
+```
+
+There is a real asymmetry here: the **mutation accepts the query into the queue without checking
+the scope at all** — `userErrors: []`, `status: CREATED` — where the synchronous API refuses the
+same query outright. But the worker checks, the operation ends `FAILED / ACCESS_DENIED`, and
+**objectCount is 0 and url is null**. Nothing is produced, nothing leaks.
+
+§2.6: what did the attacker actually get? Nothing. A validation inconsistency with no data behind
+it is not a finding. Recorded, not claimed.
+
+The in-scope bulk control is what makes the two failures meaningful: bulk works perfectly for this
+token when the scope is present, so the failures are about authorization rather than about bulk
+being broken for it.
+
+## Running total
+
+```
+node()  ·  typed resolvers  ·  write paths  ·  REST  ·  bulk operations + GCS
+Storefront publish filtering  ·  access-scope enforcement  ·  app-to-app metafields
+asynchronous execution
+```
+
+Nine surfaces. Every one enforced correctly, every conclusion carrying a control and a sentinel.
