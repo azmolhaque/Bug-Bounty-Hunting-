@@ -159,3 +159,48 @@ needed to prove a crossing can be **created legitimately** by a free account —
 mailing-address pattern, not the Tesla-GUID or Marriott-confirmation-number pattern. Every lead
 parked today (T04, M025) died at the same step: an identifier that could only be obtained by being
 a paying customer.
+
+### The one re-check that was worth doing — Baidu Yingyan, 2026-10-06
+
+Before accepting the close, I went back over my own bounding of the Baidu key, because one line of
+it had been binned carelessly:
+
+```
+direction/v2/driving       status 240   "APP 服务被禁用"     <- explicit: service disabled
+weather/v1                 status 240   "APP 服务被禁用"     <- same
+geodata/v3/geotable/list   status 240   "APP 服务被禁用"     <- same
+yingyan service/list       status 1     internal error       <- DIFFERENT, and I called it a refusal anyway
+```
+
+Yingyan (鹰眼) is Baidu's **vehicle trajectory tracking** service. If it were live on this key it
+would reach Tesla's **own** fleet data rather than a third party's quota — a different class
+entirely, far above an Informational ceiling. Worth one careful pass.
+
+It is not live, and the controls are what establish that:
+
+```
+/api/v3/service/list      ak=real    status 1     服务内部错误
+/api/v3/__canary__/list   ak=real    status 1     服务内部错误    <- IDENTICAL to the real path
+```
+
+So `status 1` is a **catch-all**, not a signal — `service/list` is simply not a v3 endpoint. My
+"status 1 ≠ status 240" hypothesis was wrong, and only the canary showed it.
+
+The meaningful probe was `entity/list`, which does answer specifically:
+
+```
+entity/list?service_id=1   ak=FAKE    status 200   APP不存在，AK有误       <- ak rejected
+entity/list?service_id=1   ak=real    status 4005  指定追踪服务不存在      <- ak accepted, lookup ran
+entity/list service_id = 1, 2, 3, 5, 10, 100       all 4005
+```
+
+The differential is real: Baidu validates the ak, Tesla's key passes that check, and the request
+reaches a service lookup. But **no tracking service is attached to the key**. Six ids were tried
+and no more; searching the id space would be brute force, which the RoE forbids.
+
+**Conclusion: the Baidu key reaches no Tesla-owned data.** The original bounding stands, and is now
+bounded properly rather than by a mis-read error code. This closes the last avenue that could have
+changed the finding's class.
+
+The answer to "can this be saved" is therefore **no**, and it is now a tested no rather than an
+asserted one.
