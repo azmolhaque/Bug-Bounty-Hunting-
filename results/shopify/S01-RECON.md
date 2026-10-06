@@ -109,3 +109,19 @@ that killed Tesla T04 and Marriott M025.
 
 Next action: `partners.shopify.com` → two development stores → Admin API tokens → the four-way
 cross-tenant test (positive control, cross attempt, sentinel token) already drafted.
+
+## Final piece — `*.quick.shopify.io` is a wildcard behind Google IAP
+
+```
+vaultscope.quick.shopify.io    302 -> accounts.google.com ... client_id=503582027637-7jii1kpb...
+artifact.quick.shopify.io      302 -> identical
+zzz-canary.quick.shopify.io    302 -> identical        <- SENTINEL, same client_id
+```
+
+The canary — a hostname that does not exist — gets the same IAP redirect with the same client id.
+So the whole namespace is wildcard-routed behind Google Cloud IAP, and subdomain existence leaks
+nothing either. Closed.
+
+**Recon on this program is now complete and produced nothing reportable.** Every live host is
+behind Okta SSO, Google IAP or mTLS; the five ungated hosts have no discoverable paths. The
+unauthenticated surface is genuinely well built.
