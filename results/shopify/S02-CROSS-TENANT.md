@@ -399,3 +399,72 @@ asynchronous execution
 ```
 
 Nine surfaces. Every one enforced correctly, every conclusion carrying a control and a sentinel.
+
+---
+
+# Addendum 4 — unpublished content, and the Storefront write path
+
+## Content objects — the same publish-filtering class, a different resolver family
+
+Products passed; pages and articles are separate code. A page was created in `gorib-a` with
+**Visibility: Hidden**:
+
+```
+Page/166194512008   "Secret Internal Page"   handle secret-internal-page   body SECRET-PAGE-CANARY-7x4k
+```
+
+Page ids are sequential — `166188351624` (Contact), `166188384392` (Privacy), `166194512008`
+(ours) — so an attacker who cannot guess the handle can still count. Four read paths:
+
+| Path | Hidden page | Control (`contact`, visible) |
+|---|---|---|
+| `pages(first: 30)` | absent | present |
+| `pageByHandle(handle:)` | `null` | data |
+| `node(id:)` | `null` | data |
+| `nodes(ids: [...])` | `null` in the array | data in the array |
+
+Sentinel: a nonexistent handle and a nonexistent page id both return `null`, identical to the
+hidden page, so there is no existence oracle.
+
+`nodes()` was worth testing separately from `node()`: it is a different resolver, and a batch
+endpoint is exactly the kind of place a per-object visibility check gets applied once instead of
+per element. It is applied per element — the array came back `[contact, null]`.
+
+## The Storefront write path — carts
+
+Every Storefront test so far was a read. A cart is a **mutation**, and today's work has shown
+repeatedly that read and write paths carry separate checks. The question: can an unpublished
+variant be put into a public cart, and from there into a checkout?
+
+The first attempt had a **broken control** — the published product chosen was Gift Card, whose
+inventory is 0, so it came back `quantity: 0` just like the hidden ones and proved nothing. Redone
+with a published, in-stock product:
+
+```
+[1] CONTROL  Collection Snowboard: Liquid (ACTIVE, published, 50 in stock)
+             cartCreate -> totalQuantity 1, cost 749.95, line present
+[2] TEST     Hidden Snowboard (ACTIVE, publishedAt null, 50 in stock)
+             cartCreate -> totalQuantity 0, cost 0.0, lines []
+[3] TEST     cartLinesAdd of the hidden variant onto the working cart
+             -> cart unchanged, totalQuantity still 1, only the Liquid line, userErrors []
+```
+
+Both cart mutations drop the unpublished variant. They do it **silently** — `userErrors` is empty
+and the line simply vanishes — which is a UX wart, not a security failure: nothing enters the cart
+that should not, and nothing leaks.
+
+Note the broken control nearly cost a wrong reading for the third time today. "Hidden product gives
+quantity 0" meant nothing until a published in-stock product was shown to give quantity 1.
+
+## Eleven surfaces
+
+```
+node()  ·  typed resolvers  ·  Admin write paths  ·  REST  ·  bulk operations + GCS
+Storefront product filtering  ·  Storefront content filtering  ·  Storefront cart mutations
+access-scope enforcement  ·  app-to-app metafields  ·  asynchronous execution
+```
+
+Every one enforced correctly. Across the whole engagement the controls caught four would-be
+findings that were not there: a null that looked like concealment, a REST harness that returned
+303 to everything including the control, a `unitCost` read that the documentation turned out to
+authorise, and a cart quantity of 0 that was inventory rather than filtering.
