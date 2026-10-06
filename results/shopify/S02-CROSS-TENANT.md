@@ -626,3 +626,89 @@ customer-vs-customer  ·  Partner API organization scoping
 
 Plus two in-scope infrastructure domains closed on their own terms: `shopifycs` behind mTLS and
 GCS, `shopifykloud` behind internal DNS.
+
+## The named hosts — coverage closed
+
+```
+cdn.shopify.com          200  envoy          CDN, public assets by design
+accounts.shopify.com     200  cloudflare     identity — browser/session territory
+admin.shopify.com        200  cloudflare     the merchant admin — browser/session territory
+academy.shopify.com      301  -> www.shopifyacademy.com   (off-scope destination)
+investors.shopify.com    301  -> www.shopify.com/investors/
+livechat.shopify.com     301  -> help.shopify.com/questions
+zzz-canary.shopify.com   404                  sentinel differs, so the above are real
+```
+
+`accounts` and `admin` are the two worth real time, and neither is a terminal target: they are
+browser-and-session surfaces where the classes are XSS, CSRF and logic flow. They are also the most
+heavily trodden parts of the program.
+
+**Terminal coverage of the scope is complete.**
+
+---
+
+# Engagement summary — 2026-10-06/07
+
+Thirteen authorization surfaces, every conclusion carrying a positive control and a sentinel:
+
+| Surface | Result |
+|---|---|
+| `node()`, 8 object types | isolated |
+| Type-specific resolvers, 5 | isolated |
+| Admin write path (`draftOrderCreate` with a foreign variant) | rejected, no oracle |
+| REST Admin API | isolated |
+| Bulk operations + the GCS result URL | isolated |
+| Storefront product publish filtering, 3 resolvers | correct |
+| Storefront content publish filtering, 4 paths | correct |
+| Storefront cart mutations, 2 | correct |
+| Access-scope enforcement, direct and nested | enforced |
+| App-to-app reserved metafields, 3 paths | isolated |
+| Asynchronous execution (bulk) | enforced, deferred |
+| Customer vs customer | isolated, two independent locks |
+| Partner API organization scoping | enforced, no oracle |
+
+Plus `shopifycs.com` (mTLS + GCS), `shopifykloud.com` (147 hosts, none public), and the named
+hosts above.
+
+## Six would-be findings the controls caught
+
+1. A `null` for another tenant's object that would have read as concealment — until a wholly
+   nonexistent id returned `null` too.
+2. A REST harness returning `303` to **everything including the control**, because the shell
+   appended a stray character to the URL. No request ever reached the API.
+3. `unitCost` readable with only `read_products` — until the documentation turned out to authorise
+   exactly that (`InventoryItem` requires `read_inventory` **or** `read_products`).
+4. A cart quantity of `0` for hidden products that meant nothing until a published, in-stock
+   product was shown to give quantity `1` — the first control was a gift card with no inventory.
+5. A malformed-id sentinel in the customer-address test that hid the real question, which was what
+   happens with the bare numeric id. Running it properly showed c1 cannot address even its own
+   address that way.
+6. A cross-org comparison that would have been unreadable because our own organization has no data,
+   so "denied" and "empty" are the same response.
+
+Any one of those, written up, would have been a closed report and a dent in the platform signal.
+
+## Verdict
+
+**Shopify's authorization is well built.** That is the finding of the night, and it is worth
+knowing with this much confidence rather than guessing.
+
+## What is left, and why it needs more than a terminal
+
+| Avenue | Requires |
+|---|---|
+| Staff roles — a limited human user, not an app token | a second email address |
+| Partner cross-organization with real data | a second partner account |
+| `admin` / `accounts` web surfaces | browser, session, XSS/CSRF/logic classes |
+| Themes and Liquid | theme editing, an entirely different class |
+
+The first two are the better odds, precisely because they need **two separate human identities** —
+which is the one shape this engagement could not construct tonight, and the least trodden as a
+result.
+
+## The asset that survives the session
+
+The harness: two stores, four Admin tokens across two apps of differing scope, a Storefront token,
+two customer accounts with access tokens, a Partner API client, and a four-way test shape
+(positive · cross · reverse · sentinel) that any new idea drops straight into. Setup cost for the
+next session is zero.
