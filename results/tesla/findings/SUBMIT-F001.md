@@ -114,3 +114,48 @@ Realistic expected value: **$150–$400**, with a good case of **$500–$700** a
 Do not chase this submission. Do not ask for a status update before the 4-day window has passed,
 do not argue the tier if it lands P4, and do not re-argue a close with the same evidence (FO-12).
 The correct use of the waiting period is the next finding, not this one.
+
+---
+
+## OUTCOME — closed P5 / Informational, 2026-10-05 22:32 UTC
+
+Triager `HT_X` changed the severity **P4 → P5** and the state to **Informational**, roughly
+ninety minutes after submission, with no comment.
+
+The pre-registered estimate above had this at ~20%. It is the outcome that happened. The estimate
+was not wrong, and nothing here is to be re-argued.
+
+### Not appealing, and why
+
+There is **no new evidence**. Everything was in the report. Appealing with the same evidence is
+precisely FO-12, and on Bugcrowd it costs more signal than the report could ever have earned.
+
+One escalation axis was considered and rejected: `config_web.json` also carries GrowingIO
+analytics credentials (`GIO_ACCOUNT_ID`, `GIO_DATA_RESOURCE_ID`), and injecting fabricated events
+would be an integrity impact on **Tesla's own** data rather than a third party's — a different and
+stronger class. It cannot be used, because demonstrating it means writing to Tesla's analytics,
+which the RoE forbids. Arguing it without demonstrating it is the speculative escalation that
+FO-10 warns about. So it stays unclaimed.
+
+### The lesson, which is about class selection and not about execution
+
+The report's quality was never the limiting factor. SHA-256 equality across hosts, four controls,
+a negative baseline, a production-use proof, timestamped evidence from a stated IP — none of it
+was questioned. A ninety-minute close with no comment means the triager decided on the **class**,
+not on the argument.
+
+**A third-party metered credential has an Informational ceiling on a mature program**, because it
+reaches none of the program's own data. No amount of rigour lifts it. The quality bar in §2 was
+met; the §2.1 question — "what does the attacker get?" — was answered with "another company's
+free-tier quota", and that was always going to cap the outcome.
+
+This should have been said on the morning of the hunt, not after the close. The honest forecast
+for this class on a program like Tesla is Informational more often than P4.
+
+### What this changes going forward
+
+Spend the effort where the impact lands on **the target's own data**, and where the identifiers
+needed to prove a crossing can be **created legitimately** by a free account — the Personio
+mailing-address pattern, not the Tesla-GUID or Marriott-confirmation-number pattern. Every lead
+parked today (T04, M025) died at the same step: an identifier that could only be obtained by being
+a paying customer.
