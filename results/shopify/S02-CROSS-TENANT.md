@@ -1177,3 +1177,36 @@ authoritative state instead of trusting the tool's own success message.
 
 **Still open on this surface:** the card carries a `✓` control — if that applies the change, the
 test is not finished, it is paused one tap short of the answer.
+
+### Surface 18 CLOSED — Sidekick enforces staff permissions on writes too
+
+The one tap that was left settles it. Sidekick's own account of the "edit":
+
+```
+Q: What is the current price of The Multi-managed Snowboard?
+   2 steps completed:  Running code / Retrieved the product title and variant prices
+A: "The Multi-managed Snowboard's saved price is $629.95 USD. The earlier $1.00 edit is
+    still unsaved in your open form. Click Save if you want to apply it."
+```
+
+So the $1 never reached the database: Sidekick populated a *form field*, and the limited staff's
+product page renders read-only with no Save control at all. There is nothing to click.
+
+Two further writes, in categories where the staff holds zero permissions, are refused by name:
+
+```
+Create discount TESTSAVE10 10% off
+  -> "I couldn't create TESTSAVE10 because your account is missing the Marketing permission
+      required for this workflow. No discount was created."
+
+Add customer Zed Canary <zed-canary-8821@example.com>
+  -> "I couldn't add Zed Canary because your account is missing the Customers and Create and
+      edit customers permissions. No customer was created."
+```
+
+Both name the exact missing permission and both state explicitly that nothing was created.
+
+**Verdict: Sidekick resolves data as the staff member, not as the store.** Reads and writes both
+enforce the role. Eighteen surfaces, eighteen holds. The only blemish is cosmetic — an "Edited
+product" card for a change that was never applied, which could mislead a merchant but gains an
+attacker nothing.
