@@ -81,4 +81,3 @@ else:
     print("  Unrecognised response. Do not guess what it means - paste it back and we")
     print("  work it out before drawing any conclusion.")
 PY
-SH
