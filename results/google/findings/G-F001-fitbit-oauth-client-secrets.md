@@ -139,6 +139,69 @@ the Google and Alphabet Vulnerability Reward Program."*
 Not searched publicly yet. These pages are long-lived and the values sit in plain page source, so a
 duplicate is a genuine risk and is priced into the estimate below rather than argued away.
 
+---
+
+## Chain tested and CLOSED — redirect_uri validation holds
+
+A client secret is only an account-takeover primitive if an attacker can also receive a victim's
+authorization code, so the whole severity of this report turns on `redirect_uri` validation. It was
+tested from a logged-in session on a free Fitbit account I created for this purpose, with both
+baselines established first so the attack rows are readable at all.
+
+```
+[ACCEPT baseline]  no redirect_uri parameter
+                   -> CONSENT SCREEN:
+                      "Social Feed Moderation Application by Fitbit Inc. would like the
+                       ability to access and write the following data in your account"
+                      [Allow All] [profile]   Deny / Allow
+
+[REJECT baseline]  redirect_uri=https://example.com/
+                   -> "invalid_request - Invalid redirect_uri parameter value"
+
+[ATTACK] suffix    https://feed-moderation.fitbit.com.example.com/   -> same rejection
+[ATTACK] userinfo  https://feed-moderation.fitbit.com@example.com/   -> same rejection
+[ATTACK] own origin https://feed-moderation.fitbit.com/              -> same rejection
+```
+
+**Validation is strict.** None of the classic bypasses is accepted, and even the app's own origin is
+refused, so the registered URI is narrower still. **Account takeover is therefore NOT achievable
+with this credential alone, and this report does not claim it.** I never pressed Allow, so no
+authorization code was ever issued.
+
+Saying this plainly is deliberate. The first question a reviewer asks is whether the exposure chains
+to user data; answering it with a tested negative is worth more than leaving it open.
+
+### What the consent screen does add
+
+It names the client: **"Social Feed Moderation Application by Fitbit Inc."** — a **first-party
+Fitbit application**, not a third-party integration. The consent text says it requests the ability
+to *"access and **write**"* data in a user's account. So the published secret belongs to a
+first-party application with write access to user accounts, which is what distinguishes this from a
+leaked key for some external service.
+
+## Dedup checked
+
+```
+github.com/search?q="458dd4f32a9db4957cf15fd464be196d"&type=code   0 files
+github.com/search?q="7659f9d9ecc92d6dc1ee0d1774e9744a"&type=code   0 files
+Google web search for the first value                              no result; it is only
+                                                                   identified as "an MD5 hash"
+```
+
+Neither value is indexed anywhere public. They are reachable only by reading the page source of the
+two hosts.
+
+## Final position
+
+This is a **credential exposure** report, not an account-takeover report:
+
+- Two confidential OAuth client secrets for first-party Fitbit applications are published in
+  unauthenticated page source on two TIER1 hosts, one of them the sign-in host.
+- Both are verified live against Fitbit's own token endpoint by a three-way differential.
+- Both mint real Fitbit application tokens via `client_credentials`.
+- `redirect_uri` validation was tested and holds, so the code-exchange path is not open, and that is
+  stated rather than left implied.
+
 ## Honest outcome estimate, recorded BEFORE the result
 
 | Outcome | Estimate | Why |
