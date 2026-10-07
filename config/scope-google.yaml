@@ -1,0 +1,88 @@
+# scope-google.yaml — Google & Alphabet VRP
+# Program: https://bughunters.google.com/
+# Source: github.com/google/bughunters (Google's own published copy of the rules
+#         and the domain-tier lists), read 2026-10-08. NOT from memory, NOT from
+#         an AI summary.
+
+program: "Google and Alphabet VRP"
+platform: "bughunters.google.com"
+report_url: "https://bughunters.google.com/report"
+
+# ---------------------------------------------------------------------------
+# SCOPE — quoted from the rules, not paraphrased
+# ---------------------------------------------------------------------------
+in_scope_principle: |
+  "In principle, any Google-owned or Alphabet (Bet) subsidiary web service that
+   handles reasonably sensitive user data is intended to be in scope. This
+   includes virtually all the content in the following domains:
+     *.google.com  *.youtube.com  *.blogger.com
+     *.deepmind.com  *.waymo.com  *.wing.com"
+
+exclusions:
+  third_party: |
+    "Some Google-branded services hosted in less common domains may be operated
+     by our vendors or partners... Please read the fine print on the page and
+     examine domain and IP WHOIS records to confirm. If in doubt, talk to us first!"
+  recent_acquisitions: "Six-month blackout period on newly acquired companies."
+  cloud_customer_apps: "*.bc.googleusercontent.com and *.appspot.com — Cloud customers' apps."
+  sandbox_domains: "XSS in *.googleusercontent.com and other sandbox domains."
+  tier4: "Applications on TIER4 domains are not in scope for Google VRP."
+
+# ---------------------------------------------------------------------------
+# TARGET UNDER CONSIDERATION — synthid.com (SynthID Detector, Google DeepMind)
+# ---------------------------------------------------------------------------
+synthid_com:
+  whois_registrant: "Google LLC"            # checked 2026-10-07, MarkMonitor
+  nameservers: "ns1-4.googledomains.com"
+  server: "ESF (Google frontend), 216.239.32.27"
+  auth: "Google, OpenAI or Apple account"
+  tier_list_status: |
+    NOT present in domain-tiers/external_domains_google.asciipb nor in
+    external_domains_acquisitions.asciipb (checked by grep, 2026-10-08).
+  reading: |
+    The published lists are "redacted copies" that update weekly, so absence is
+    not proof of exclusion. The standalone Google list does carry bare non-google
+    TLDs (admob.com, blogger.com, recaptcha.net, wiz.io, gfiber.com), so a
+    standalone domain CAN be listed — which makes the absence worth noting.
+    The principle rule covers it: Google-owned web service handling user data,
+    and the WHOIS check the rules themselves prescribe returns Google LLC.
+    PROCEED, but record this ambiguity in any report rather than discovering it
+    during triage.
+
+# ---------------------------------------------------------------------------
+# THE REJECTION RULES THAT DECIDE OUR HYPOTHESES
+# ---------------------------------------------------------------------------
+idor_rule: |
+  From "Understanding secrets in URLs and IDORs":
+  "If an attacker can access a sensitive private resource simply by knowing its
+   ID, it *might* be an IDOR vulnerability. However, and this is vital, there
+   also needs to be a clear path for the attacker to DISCOVER the needed ID."
+  "...reports describing vulnerabilities based on guessing complex random IDs
+   are almost always not eligible for reward or credit."
+
+  CONSEQUENCE: this is the Tesla InstallationGUID wall, written down as policy.
+  The FIRST observation on any upload surface must be the SHAPE of the object id.
+  Long random id  -> IDOR hypothesis is dead, drop it in minutes, not hours.
+  Short/sequential/derived id -> pursue.
+
+ai_rules:
+  single_user_scope: |
+    "In a 'single-user scope' scenario, where an attacker and victim are the same
+     account, this security boundary does not exist." Self-pwn, safety-guardrail
+     bypasses and jailbreaks are rejected.
+  minimal_interaction: |
+    "If a victim needs only say 'hi' to an LLM to trigger a rogue action or data
+     exfiltration, this is likely a valid VRP report."
+  exfil_bar: |
+    Data must be (1) repeatedly reproducible, (2) demonstrably not a hallucination,
+    (3) reachable by a stated attacker method, (4) genuinely private and unknown
+    to the attacker. Google's own advice: "try to exfiltrate non-shared data from
+    your second test account isolated from the first one."
+  watermark_note: |
+    Bypassing the watermark or tricking the detector into misidentifying a file is
+    a content/model-behaviour issue, not a VRP flaw. DO NOT SPEND TIME ON IT.
+
+rules_of_engagement:
+  - "No DoS, no black-hat SEO, no spam, no physical or social engineering."
+  - "No high-volume automated scanning."
+  - "Test with our own accounts only. Two accounts for any cross-account claim."
