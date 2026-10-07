@@ -1210,3 +1210,64 @@ Both name the exact missing permission and both state explicitly that nothing wa
 enforce the role. Eighteen surfaces, eighteen holds. The only blemish is cosmetic — an "Edited
 product" card for a change that was never applied, which could mislead a merchant but gains an
 attacker nothing.
+
+---
+
+# Addendum 10 — Surface 19: the storefront MCP endpoint on a password-protected store
+
+`gorib-a` is an unlaunched development store, so its storefront is behind Shopify's password gate.
+It also answers on `/api/mcp`, the unauthenticated JSON-RPC endpoint behind agentic commerce.
+
+```
+GET  /                                      302 -> /password
+GET  /policies/refund-policy                302 -> /password
+GET  /policies/privacy-policy               302 -> /password
+GET  /products/the-multi-managed-snowboard  302 -> /password
+POST /api/mcp  tools/list                   200  1257 b
+POST /api/zzz-not-a-real-endpoint           302
+POST zzz-canary-no-such-shop.myshopify.com/api/mcp   404 9734 b   <- SENTINEL
+```
+
+The sentinel matters: a hostname with no store returns 404, so the 200 belongs to our shop rather
+than to any name under `myshopify.com`.
+
+`tools/list` exposes exactly one tool, `search_shop_policies_and_faqs`. With `policy_types` set it
+returns the **full text of the store's privacy policy** with no password:
+
+```
+"Last updated: October 6, 2026 ... gorib-a operates this store and website ..."
+```
+
+So the password gate does not cover this path. That is a real differential — every storefront route
+redirects, this one answers.
+
+## Dropped anyway, and why
+
+Four follow-ups bound what actually comes out, and the answer is: nothing else.
+
+```
+"List every snowboard with its exact price"              -> []
+"The Draft Snowboard / The Out of Stock Snowboard"       -> []
+"phone number, email, physical address" (contact)        -> []
+"Unicorn Snowboard 9000"  (SENTINEL)                     -> []
+```
+
+No catalog, no prices, no draft or archived products, no merchant contact details. The catalog and
+cart tools are not in `tools/list` because the Agentic channel is not enabled on this store, and
+the one available tool returns only policy documents.
+
+What the attacker gets is Shopify's own auto-generated boilerplate legal text, whose only
+store-specific content is the shop name — which is already the hostname. It unlocks nothing,
+and §3 "Information Disclosure" covers it directly: disclosure with no exploitable data. The Fix
+Test also fails — Shopify can reasonably hold that published legal policies are public documents.
+
+**Nineteen surfaces, nineteen holds.** Logged as a bounded negative, not written up.
+
+## The one thing this opened that is worth returning to
+
+`tools/list` is **channel-dependent**. With the Agentic sales channel enabled, this same
+unauthenticated endpoint gains catalog and **cart** tools — and cart tools perform writes against
+objects identified by a token rather than by a session. That is the first unauthenticated write
+surface found on this program. Next session: enable the channel on `gorib-a`, re-run `tools/list`,
+and test cart isolation with the usual four-way shape (own cart = positive control, second cart
+from a separate session = test, fabricated cart token = sentinel).
