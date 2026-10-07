@@ -1271,3 +1271,57 @@ objects identified by a token rather than by a session. That is the first unauth
 surface found on this program. Next session: enable the channel on `gorib-a`, re-run `tools/list`,
 and test cart isolation with the usual four-way shape (own cart = positive control, second cart
 from a separate session = test, fabricated cart token = sentinel).
+
+---
+
+# Addendum 11 — Surface 20: Crawler access (Web Bot Auth) signatures
+
+`Online Store -> Preferences -> Crawler access` mints HTTP Message Signature headers that authorise
+an external crawler. New mechanism, and it is an authorisation mechanism, so worth a pass.
+
+Signature created on `gorib-a` (`crawler-test-a`, 30 days). The domain picker offered exactly one
+option, `gorib-a.myshopify.com (Primary)` — no second store, no free text. The `Signature-Input`
+names what is actually covered:
+
+```
+sig1=("@authority" "signature-agent");keyid="…";nonce="…";tag="web-bot-auth";
+created=1791402801;expires=1793994801
+Signature-Agent: "https://shopify.com"
+```
+
+`@authority` is covered, so the host is bound into the signature — predicted *before* testing that
+cross-store would fail. Path and method are **not** covered, so one signature is valid for every
+path on that host.
+
+```
+[CONTROL ]  gorib-a, no signature          302 -> /password
+[TEST    ]  gorib-a, valid signature       302 -> /password
+[SENTINEL]  gorib-a, signature + "XXXX"    302 -> /password
+[CROSS   ]  gorib-b, gorib-a's signature   302 -> /password
+```
+
+**Crawler signatures do not bypass the storefront password gate**, so the cross-store question never
+arises — nothing opened anywhere.
+
+## The honest limit of this negative
+
+There is **no positive control**: we own no public store, so we never showed the signature does
+anything anywhere. The only supportable claim is "the password gate still redirects when the
+signature is present". It does **not** support "the signature mechanism is sound" — that needs a
+store where the signature demonstrably changes a response, which a development store cannot provide.
+Recorded as a bounded negative with its bound stated.
+
+## Two shell traps that invalidated runs tonight, both caught by length checks
+
+1. Assigning `SIGIN=sig1=("@authority" …)` without quotes made zsh parse it as an array —
+   `${#SIGIN}` came back **33** instead of 243. Unquoted, the signature was never sent, and the
+   first run's `302` meant nothing. Had the length not been printed, the log would now read
+   "crawler signatures do not bypass the password" on evidence that never left the terminal.
+2. `Signature-Agent` is a Structured Field *string*: the surrounding double quotes are part of the
+   value. `SIGAG="https://shopify.com"` strips them (19 chars, not 21) and the header is malformed.
+
+Also, the `\;` line-continuation artefact from the REST session reappeared, adding `; sleep 5` as
+extra curl URLs (`000` rows). Harmless here because the first row of each block is the real result,
+but the lesson stands: on this terminal, keep each curl on one line.
+
+**Twenty surfaces, twenty holds.**
