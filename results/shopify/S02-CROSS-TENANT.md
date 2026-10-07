@@ -972,3 +972,64 @@ Nine shapes: direct output injection, Markdown, the artifact renderer, card sche
 data-bearing egress, egress to a researcher-controlled host, indirect injection with a tool-use
 payload, skill-name path traversal, and invocation of ungranted skills. All held. The file-read
 primitive and the egress sink are both real and both correctly bounded.
+
+---
+
+# Addendum 8 — Sidekick app skills, conversations and memory (2026-10-07)
+
+## App-supplied skills are gated per conversation
+
+`/workspace/agents/skills/apps/` holds skills supplied by installed apps, keyed by numeric app id —
+the exact shape of an IDOR, given Sidekick's file-read primitive.
+
+```
+app-3890849   CONTROL   read: the Shop app's SKILL.md, declaring invoke_app_intent actions
+app-3890848             "hasn't been enabled for Sidekick in this conversation"
+app-1                   same message
+app-99999999  SENTINEL  same message
+directory listing       only app-3890849
+```
+
+A neighbouring id, a low id and a nonexistent id all produce the **same** refusal, so there is no
+oracle separating "real app, not enabled" from "no such app".
+
+The Shop skill exposes `owner: "532861601aa89a5e70f5d56d075e82ac"`. That is a 32-hex value of the
+same shape as our own apps' API keys (`6f0c46d7c5ae447c325ca408d6ff67c1`), i.e. a public client id
+that appears in OAuth URLs — not a secret, and not claimed as one.
+
+## Conversations and memory are store-scoped
+
+A new object type, and one with real content: last night's conversations in `gorib-a` contain
+payloads, file paths and skill names.
+
+A broken control surfaced first and had to be worked around. `gorib-b`'s Sidekick **does not have
+the `conversation-history` skill at all** — it cannot list conversations and cannot name its own
+conversation id, even after conversations were created there. So the test could not be run from B;
+a refusal there would have meant "no capability", not "denied".
+
+Inverted instead: run the search from A, which does have the skill, after planting a canary in B.
+
+```
+B: "Please note this reference code for my records: BRAVO-CANARY-7m3x"
+   -> "has been saved and I'll have it on hand for future conversations"
+```
+
+Then, from A:
+
+```
+[CONTROL]   search "pwned-9k2"           -> FOUND. Returns the full exchange, the saved path
+                                            /workspace/agents/skills/user/pwned-9k2/SKILL.md,
+                                            and conversation ID 01M49EWRDN8DDG9DT3A2FX95GY
+[TEST]      search "BRAVO-CANARY-7m3x"   -> not found in past messages
+[SENTINEL]  search "ZULU-NOTHING-4p9"    -> not found
+```
+
+The control proves the search works and is detailed. B's canary — explicitly confirmed saved in B —
+is invisible from A, and reads identically to a string that exists nowhere.
+
+**Conversation history and saved memory are scoped to the store.**
+
+## Running count
+
+Sixteen surfaces. Conversation IDs are ULIDs (`01M49EWRDN8DDG9DT3A2FX95GY`), time-ordered with a
+random tail, so they are not enumerable even if the scoping had failed.
