@@ -394,6 +394,51 @@ protection sits on the first door only.
 the secret appears to be inherited boilerplate rather than something that page needs — a staff
 moderation console has no login-page justification at all.
 
+## The full grant surface the published credential reaches — and where each one stops
+
+```
+[SENTINEL] zzz_not_a_real_grant   400  unsupported_grant_type
+           delegate_token         400  unsupported_grant_type      <- identical to sentinel: not available
+
+           client_credentials     200  access_token, scope ""
+           authorization_code     400  invalid_grant  "Authorization code invalid"
+           password               400  invalid_grant  "Invalid username/password"
+           mfa_sms                400  invalid_token  "MFA token invalid: ZZZINVALID7x2"
+           social                 400  invalid_request -> googleAccessToken -> googleIdToken
+```
+
+So the published credential authenticates against **Fitbit's whole first-party authentication grant
+set**, not merely the standard code flow: password, social sign-in exchange, and the MFA step.
+
+### Where each one stops — tested, so the report does not have to speculate
+
+- **`social`** asks next for `googleAccessToken`, and then for `googleIdToken`. It wants a **signed
+  assertion from the provider**; the social UID is only a lookup key. **This is not a bypass**, and
+  the design is sound. I checked precisely because a social UID is not a secret and the answer
+  mattered either way.
+- **`mfa_sms`** validates the MFA token itself (`invalid_token`), so it needs one issued during a
+  real login. **Not a bypass either.**
+- **`password`** is the one with no second factor in front of it: it goes straight to validating a
+  username and password.
+
+Every identifier used above was fabricated, each shape was sent once, and no real person's
+identifier was ever substituted.
+
+### Final, bounded impact
+
+The published secret does **not** give account takeover — each grant still demands its own proof, and
+`redirect_uri` validation holds. What it gives is:
+
+1. The ability to authenticate as two first-party Fitbit OAuth applications, one of them
+   "Fitbit Web Application" itself.
+2. A **credential-validation path through `grant_type=password`** that does not pass through the
+   sign-in page, which is where `recaptcha-preloading-*.js` is loaded and where
+   `recaptchaEnabled: true` applies.
+3. Reach into the MFA and social-exchange grants of Fitbit's own login system.
+
+And it does all of this in direct contradiction of Fitbit's own documented requirement that a
+server-type application's client secret *"should never be included in application source code"*.
+
 ## Honest outcome estimate, recorded BEFORE the result
 
 | Outcome | Estimate | Why |
