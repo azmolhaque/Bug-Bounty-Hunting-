@@ -317,6 +317,44 @@ web-api.fitbit.com             401 304 b   (second token endpoint, named by snap
 zzz-canary-7x2.fitbit.com      NO-DNS      (no wildcard on fitbit.com)
 ```
 
+## Is this "working as intended"? Fitbit's own documentation answers it
+
+The obvious defence is that a first-party browser application needs its credential in the browser,
+so the design is intended. Fitbit's own developer guide forecloses that, in its own words
+(`dev.fitbit.com/build/reference/web-api/developer-guide/authorization/`):
+
+> **Server Application Type**
+> "Server application types must authenticate themselves using the client secret available in
+> application settings. This provides the highest level of security to the OAuth 2.0 flow. However
+> it should only be used by applications that can securely store the client secret, such as apps
+> running on a web server. **Notably, the client secret should never be included in application
+> source code or stored on an end-user device where it can be discovered.**"
+
+Fitbit registers applications as **server, client or personal**, and the type determines how the
+token endpoint authenticates them. Both of these clients are **server type**, and that is not an
+assumption — the endpoint's own behaviour proves it:
+
+```
+wrong secret        -> 401 "Client secret invalid."
+no credentials      -> 401 "...or a client_id was not specified in case of a public client"
+```
+
+A client-type (public) application would not be rejected for a bad secret. These are server-type
+clients, server-type clients authenticate with a secret, and Fitbit's documentation says that secret
+**"should never be included in application source code"**. It is in the source of two of their own
+pages, one of them the page users sign in on.
+
+So the violated rule is not an external standard I am appealing to. **It is Fitbit's own written
+requirement for this exact application type.** That is what moves this out of "intended behaviour".
+
+The same page also confirms a limit I stated earlier rather than discovering it later:
+
+> "Client Credentials ... is used with specific Fitbit API endpoints related to business operations.
+> **It is not supported by the public Web APIs to retrieve Fitbit user data.**"
+
+Which is exactly why the `client_access_token` carries empty scopes and why this report does not
+claim user data was reachable with it.
+
 ## Honest outcome estimate, recorded BEFORE the result
 
 | Outcome | Estimate | Why |
@@ -324,7 +362,7 @@ zzz-canary-7x2.fitbit.com      NO-DNS      (no wildcard on fitbit.com)
 | Duplicate | ~30% | Plain page source on a well-known host. Long-lived. Others look here. |
 | Accepted, rewarded | ~45% | The differential disproves "public client by design", which is the objection that would otherwise close it. Two hosts, TIER1, credentials class. |
 | Accepted, low / credit | ~15% | If the panel weighs the empty `scopes` heavily and treats it as no demonstrated user impact. |
-| Won't fix / intended | ~10% | If Fitbit considers these clients non-confidential despite the endpoint's own behaviour. |
+| Won't fix / intended | ~5% | Fitbit's own documentation forbids the practice for this application type, which is hard to argue past. | If Fitbit considers these clients non-confidential despite the endpoint's own behaviour. |
 
 Do not re-argue a close with the same evidence (FO-12). Do not add impact claims after submission —
 Google states the reward is decided on what is in the report **before triage**.
