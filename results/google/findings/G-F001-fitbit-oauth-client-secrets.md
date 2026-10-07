@@ -257,6 +257,66 @@ the report says so rather than implying a wider pattern.
 - The OneTrust scripts loaded by `dev.fitbit.com` are the vendor's standard consent library, byte
   for byte the same as on thousands of other sites.
 
+## The grant types these clients accept — and the one that matters
+
+The bounding above ("you still need a victim's authorization code") only covers the
+authorization-code grant. It does not have to hold for the others, so each was tried once, with a
+grant that cannot exist sent first to establish what "not supported" looks like.
+
+```
+[SENTINEL] grant_type=zzz_not_a_real_grant_7x2  400  unsupported_grant_type
+           grant_type=device_code               400  unsupported_grant_type   <- identical to sentinel
+           grant_type=token-exchange            400  unsupported_grant_type   <- identical to sentinel
+
+           grant_type=client_credentials        200  access_token, scope ""
+           grant_type=authorization_code        400  invalid_grant "Authorization code invalid"
+           grant_type=password                  400  invalid_grant "Invalid username/password"
+                                                     ^^^^^^^^^^^^ DIFFERENT from the sentinel
+```
+
+Two unsupported grants return the sentinel's exact response. `password` does not — it returns
+`invalid_grant` and a message about the *credentials*, which means the endpoint accepted the grant
+type and went on to validate a username and password.
+
+**`grant_type=password` (resource-owner password credentials) is enabled for `228TQD`, "Fitbit Web
+Application".** That grant skips the browser, the consent screen, the `redirect_uri` check and the
+login page entirely. The credential required to use it is the secret published on
+`accounts.fitbit.com`.
+
+The same config file that publishes the secret also carries:
+
+```json
+"featureFlags": { "recaptchaEnabled": true, "mobileRecaptchaEnabled": true,
+                  "firstPartySSOEnabled": true, "mandatoryEmailVerification": true }
+```
+
+So Fitbit protects the sign-in *page* with reCAPTCHA. The token endpoint reached with the published
+first-party secret is a second door into the same credential check, and reCAPTCHA is not on it.
+
+### What was NOT verified, and why I stopped
+
+I did not obtain a user access token through this grant. One attempt was made, against **my own
+test account, with my own password**, and it returned `Invalid username/password` — most likely
+because that account was created through Google sign-in and has no native Fitbit password
+(`firstPartySSOEnabled: true`).
+
+I did not try a second password, another account, or any list. One request establishes that the
+grant exists and performs credential validation; anything further would be brute force, which the
+rules forbid and which the finding does not need. Whether a correct native password returns a
+scoped user token is something Fitbit can confirm internally in seconds.
+
+So the claim is exactly this and no more: **the published secret unlocks a credential-validating
+grant on Fitbit's own first-party OAuth client, outside the protections that sit on the sign-in
+page.** I am not claiming account takeover and I did not demonstrate one.
+
+### Minor, recorded for completeness
+
+```
+corporate-webapps.fitbit.com   404  10 b   (named in dev.fitbit.com's CSP, not in the tier list)
+web-api.fitbit.com             401 304 b   (second token endpoint, named by snapdragon-ws)
+zzz-canary-7x2.fitbit.com      NO-DNS      (no wildcard on fitbit.com)
+```
+
 ## Honest outcome estimate, recorded BEFORE the result
 
 | Outcome | Estimate | Why |
