@@ -202,6 +202,61 @@ This is a **credential exposure** report, not an account-takeover report:
 - `redirect_uri` validation was tested and holds, so the code-exchange path is not open, and that is
   stated rather than left implied.
 
+## Which applications these are — Fitbit's own consent screen names them
+
+Loading the authorize endpoint for each client id from a logged-in session makes Fitbit identify
+the application itself. No claim of mine is needed:
+
+```
+client_id=228TQD  ->  "Fitbit Web Application" by Fitbit, Inc.
+                      would like the ability to ACCESS AND WRITE the following data in your account
+
+client_id=227ZG3  ->  "Social Feed Moderation Application" by Fitbit Inc.
+                      would like the ability to ACCESS AND WRITE the following data in your account
+```
+
+`228TQD` is **Fitbit's own web application**, and its secret is published on
+`accounts.fitbit.com` — the page users sign in on.
+
+Requesting the client's full scope list shows what that application is permitted to reach:
+
+```
+friends · weight · activity and exercise · HEART RATE · profile ·
+LOCATION AND GPS · SLEEP · food and water logs · Fitbit devices and settings
+```
+
+That is Fitbit's own wording, on Fitbit's own consent screen, and it answers "what is at stake"
+better than any sentence I could write. **Allow was never pressed**, so no authorization code was
+ever issued and no scope was ever granted.
+
+## How far it spreads — bounded, not guessed
+
+Every host that answered 200 in the acquisition sweep was re-checked for the same pattern, with the
+two known-leaking hosts included in the same run as positive controls:
+
+```
+>>> accounts.fitbit.com          TIER1   LEAKS   basicToken -> 228TQD:7659f9…744a   <- CONTROL
+>>> feed-moderation.fitbit.com   TIER1   LEAKS   clientId   -> 227ZG3:458dd4…196d   <- CONTROL
+    41 other hosts (Fitbit, Nest, Waze, Mandiant, Looker, Waymo, Wing, Tenor, …)  clean
+```
+
+The controls lighting up is what makes the 41 "clean" rows mean anything. An earlier version of this
+scan reported **all** hosts clean, including the two known leaks, because the config is URL-encoded
+inside the meta tag and the patterns could never match. That run was discarded.
+
+**Conclusion: two applications, not a build convention.** The blast radius is these two clients, and
+the report says so rather than implying a wider pattern.
+
+## Also checked and found clean
+
+- `dev.fitbit.com` — its 19 32-hex strings are asset-fingerprint filenames
+  (`search-icon-ce72b3f2….svg`), not secrets.
+- `snapdragon-ws.fitbit.com` — references client id `228TQD` and a Google API key, but publishes no
+  secret of its own.
+- `myaccount.nest.com` — ships a config meta tag, but it contains no credentials.
+- The OneTrust scripts loaded by `dev.fitbit.com` are the vendor's standard consent library, byte
+  for byte the same as on thousands of other sites.
+
 ## Honest outcome estimate, recorded BEFORE the result
 
 | Outcome | Estimate | Why |
