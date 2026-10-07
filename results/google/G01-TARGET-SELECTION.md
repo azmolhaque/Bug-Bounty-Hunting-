@@ -290,3 +290,74 @@ Known dead or sunset, do not sweep: `poly`, `fusiontables`, `appmaker`, `aboutme
 Before touching Colab, read `bughunters/articles/learn/invalid-reports/ai-products/
 ai-first-colab-known-issues.md` — Google publishes a known-issues page for it, which is a dedup list
 handed to us for free.
+
+---
+
+# Addendum — terminal-only avenues, 2026-10-08 05:30
+
+Three things were testable without a browser. Two closed; one strengthened the write-up.
+
+## The second client unlocks the same grants — and it has no excuse
+
+`227ZG3` is "Social Feed Moderation Application", a staff tool, not a sign-in page.
+
+```
+[SENTINEL] zzz_not_a_real_grant   unsupported_grant_type
+           password               invalid_grant  "Invalid username/password"
+           social                 invalid_request "Missing required parameter googleAccessToken"
+           mfa_sms                invalid_token   "MFA token invalid"
+```
+
+Identical to `228TQD`. This matters for the argument: Fitbit can say a sign-in page necessarily
+carries a browser-side credential. **A staff moderation console cannot make that claim**, and its
+published secret opens the same password, social and MFA grants.
+
+## Internet Archive over the acquisitions — the Tesla technique, run and closed
+
+Ten apexes, CDX, filtered for config-shaped paths. The script checks for CDX returning an HTML error
+page rather than data, because that silently corrupted a count during the Tesla engagement.
+
+```
+fitbit.com     40000 urls    0 config-shaped      looker.com    40000   16
+nest.com       40000           6                  mandiant.com  40000    0
+nestlabs.com    2649           0                  cameyo.com    26367    9
+waze.com       40000           0                  pring.jp        800    0
+appsheet.com   40000           3                  photomath.net  8023    0
+```
+
+Twelve candidates re-fetched live. Everything 301/302 except two:
+
+```
+https://adpc.cameyo.com/.env              200  16236b
+https://bhisd.cameyo.com/custom/.env      200  16236b
+```
+
+Identical byte counts on different hosts and paths — which is the tell, not the find. The canary
+settles it:
+
+```
+https://adpc.cameyo.com/zzz-canary-7x2            200  16236b   <- IDENTICAL
+https://bhisd.cameyo.com/custom/zzz-canary-7x2    200  16236b   <- IDENTICAL
+body: "<!DOCTYPE html> ... <meta name=\"author\" content=\"Cameyo\">"
+```
+
+Catch-all routing serving Cameyo's own HTML page for any unknown path. No `.env` exists. `cameyo.com`
+is TIER0, so a real one would have mattered; this is not one. **Closed.**
+
+Tesla's archive technique did not repeat here. Running it was still correct — it is cheap, it is
+non-touching, and the alternative was assuming.
+
+## Where the night ends
+
+```
+G-F001   PARKED. Two live OAuth client secrets, verified, Fitbit's own docs forbid
+         the practice, and both clients' full grant surface mapped. No payable
+         impact demonstrated: every grant still needs a key the secret does not give.
+
+OPEN     One test, in results/google/RESUME-HERE.md — whether Fitbit validates the
+         aud claim of a Google ID token. Blocked only on needing a Fitbit account
+         that was created through "Continue with Google".
+```
+
+Nothing was submitted. Fourteen probes, and the ones that mattered most were the ones that killed a
+conclusion rather than supported one.
