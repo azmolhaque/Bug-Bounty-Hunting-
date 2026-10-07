@@ -1,7 +1,7 @@
 # G-F001 — Two Fitbit OAuth client secrets published in unauthenticated page source
 
 **Program:** Google and Alphabet VRP (`bughunters.google.com`)
-**Status:** verified, not yet submitted
+**Status:** PARKED — verified but NOT submitted. The credential unlocks nothing.
 **Found:** 2026-10-07 · **Tester IP:** 180.148.212.54 · **curl 8.21.0 (aarch64-android)**
 
 > **Secrets are REDACTED in this file** per CLAUDE.md §7 — nothing secret goes to git.
@@ -439,7 +439,91 @@ The published secret does **not** give account takeover — each grant still dem
 And it does all of this in direct contradiction of Fitbit's own documented requirement that a
 server-type application's client secret *"should never be included in application source code"*.
 
-## Honest outcome estimate, recorded BEFORE the result
+## DECISION: PARKED, not submitted — and the test that settled it
+
+The last open question was whether the minted application token reaches anything. It does not.
+
+### Scopes cannot be requested
+
+```
+grant_type=client_credentials&scope=profile                              200  scope=''
+grant_type=client_credentials&scope=heartrate                            200  scope=''
+grant_type=client_credentials&scope=activity heartrate location sleep…   200  scope=''
+grant_type=client_credentials  (no scope at all)                         200  scope=''
+```
+
+Asking changes nothing. The JWT's inner `scopes` claim is empty in every case. Fitbit's
+introspection endpoint agrees:
+
+```
+{"active":true,"scope":"{}","client_id":"228TQD","token_type":"access_token"}
+```
+
+### And the token is refused everywhere — my own marker was the false positive
+
+```
+ENDPOINT                                      [APP]      [NIL]      [FAKE]
+/1/user/-/profile.json                        403/126b   401/304b   401/240b
+/1/user/-/apiSubscriptions.json               403/273b   401/304b   401/240b
+/1/apiSubscriptions.json                      404/131b   401/304b   401/240b
+/1/user/-/activities/heart/date/today/1d.json 403/126b   401/304b   401/240b
+/1/foods/units.json                           403/126b   401/304b   401/240b
+/1/activities.json                            403/126b   401/304b   401/240b
+/1/zzz-canary-7x2.json                        404/131b   401/304b   401/240b   <- CANARY
+```
+
+My script printed "TOKEN IS DOING WORK" on all seven rows, **including the canary** — a path that
+does not exist. That is the tell: the heuristic was wrong, not the target. What is actually
+happening is uniform: the token **authenticates** (so never 401) and is then **denied at every
+endpoint** (403), while nonexistent paths give the same 404 as the canary.
+
+Blanket behaviour, no endpoint-specific access. Tenth near-miss caught by a canary, and this one was
+my own reasoning rather than the target's.
+
+## Why this is not submitted
+
+Applying §2.1 — *what does the attacker actually get?*
+
+```
+client_credentials  ->  a token that is refused everywhere
+password            ->  still needs the victim's password
+social              ->  still needs a signed Google/Facebook ID token
+mfa_sms             ->  still needs an MFA token from a real login
+authorization_code  ->  still needs a code; redirect_uri validation holds
+```
+
+Every door needs a key the secret does not provide. The honest one-sentence answer is: *the attacker
+gains the ability to make a request they could already make by loading Fitbit's sign-in page in a
+browser.* That is convenience, not privilege.
+
+The one claim that would have carried it — that `grant_type=password` escapes a protection the
+sign-in page enforces — was never verified, and **cannot** be, because proving it means repeatedly
+submitting failed logins. That is brute force, which the rules forbid. Under §2.6 an unverified
+precondition is not a finding, and writing it up as one is exactly how a report becomes Spam.
+
+Add the structural problem: `accounts.fitbit.com`'s own bundle **uses** this credential, so it is
+downloaded by every Fitbit web user's browser at every login. It is functionally public by design.
+Fitbit's documentation forbidding the practice is third-party developer guidance and does not bind
+their own first-party client.
+
+**This is the Tesla F001 shape**: a well-evidenced credential exposure where the credential reaches
+nothing. That closed P5 Informational in ninety minutes. The rigour was never the limiting factor
+there either.
+
+## Un-park condition
+
+One of these, and nothing less:
+
+1. Evidence that the token endpoint lacks a protection the sign-in page has — obtainable only from
+   Fitbit's side, not ours.
+2. An endpoint where the app token returns data, distinguishable from the canary's 404 and the
+   blanket 403.
+
+Until then this is a lead, labelled honestly as one.
+
+## Honest outcome estimate, superseded by the decision above
+
+
 
 | Outcome | Estimate | Why |
 |---|---|---|
