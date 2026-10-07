@@ -131,3 +131,80 @@ paid. **He is eligible.**
 A liveness sweep over the candidates above — status, size, redirect target, server — nothing more.
 No paths invented, no scanning, no volume. The sweep decides which of these is a real application
 before a single hour goes into any of them.
+
+---
+
+## Liveness sweep — 2026-10-08, run from Termux
+
+```
+HOST                                   IP                RESULT
+metabase.photomath.net                 NO-DNS
+dpcapi-admin.photomath.net             NO-DNS
+daportal.photomath.net                 NO-DNS
+taportal.photomath.net                 NO-DNS
+argocd-platform-eu-dev.photomath.net   NO-DNS
+argocd-dwh-eu-dev.photomath.net        NO-DNS
+argocd-gke-app-eu-prod.photomath.net   34.149.138.245    302 -> Google IAP (client_id 867278860234-g77td6ok…)
+argocd-gke-app-us-prod.photomath.net   34.149.22.195     302 -> same IAP client_id
+lapi.photomath.net                     34.149.49.67      404  21b
+tlapi.photomath.net                    35.190.29.4       403 134b
+threadit.app                           172.217.26.110    301 -> threadit.area120.com
+threadit.area120.com                   142.250.182.238   200 12866b   <title>Threadit</title>
+signals.area120.com                    8.232.133.29      200   965b   <title>Demand Signals</title>
+orionwifi.area120.com                  172.217.26.46     404 1561b
+baseline.google.com                    NO-DNS
+admin.baseline.google.com              NO-DNS
+connected.google.com                   192.178.177.113   404 1561b
+hume.google.com                        192.178.158.113   307 -> accounts.google.com ServiceLogin
+googlecloudcheatsheet.withgoogle.com   192.178.177.141   302 -> cloud.google.com/products/
+zzz-canary-does-not-exist.photomath.net  NO-DNS                        <- SENTINEL
+zzz-canary-does-not-exist.area120.com  142.250.122.100   404 1561b     <- SENTINEL
+```
+
+### The area120 sentinel is what makes this readable
+
+`*.area120.com` has **wildcard DNS**, and a hostname that does not exist answers `404 1561b`. So:
+
+```
+orionwifi.area120.com   404 1561b   identical to the canary  -> no application
+connected.google.com    404 1561b   same shape               -> no application
+threadit.area120.com    200 12866b  nothing like the canary  -> real application
+signals.area120.com     200   965b  nothing like the canary  -> real application
+```
+
+Without the canary, `orionwifi` and `connected` would have been read as "deployed but protected" and
+chased. `photomath.net` has **no** wildcard (its canary is NO-DNS), so `lapi` and `tlapi` genuinely
+exist.
+
+### Both TIER0 photomath hosts are closed — killed in two minutes
+
+```
+lapi   body: "default backend - 404"      (text/plain, 21 b)
+tlapi  body: "<title>403</title>403 Forbidden"  (GFE-style minimal HTML, 134 b)
+
+path         lapi            tlapi
+/            404 21b         403 134b
+/zzz-canary  404 21b         403 134b     <- CONTROL: identical
+/health      404 21b         403 134b
+/api         404 21b         403 134b
+/v1          404 21b         403 134b
+```
+
+`default backend - 404` is the GKE ingress default backend: the hostname resolves to a load
+balancer, but **no ingress rule routes it**, so there is no application behind it. `tlapi`'s 403 is
+identical on every path including a canary path, so it is a blanket edge rule, not an app. Neither
+is the T04 "shadow API" shape — there is nothing deployed to find. **Dropped.**
+
+### Survivors
+
+```
+threadit.area120.com   TIER1   live, 12.8 KB, "Threadit" (Area 120 async video messaging)
+signals.area120.com    TIER1   live, 965 B,  "Demand Signals"
+hume.google.com        TIER1   Google sign-in, unexamined
+```
+
+Two live TIER1 applications on obscure Area 120 hostnames is exactly the profile the target filter
+was looking for: small, tiered (so a reward is defined), and far off the path most hunters walk.
+Open question before any effort goes in: does either still accept a free self-serve signup, and does
+either hold objects shared between users? Area 120 wound down several products in 2023, and a title
+tag does not prove a working product.
