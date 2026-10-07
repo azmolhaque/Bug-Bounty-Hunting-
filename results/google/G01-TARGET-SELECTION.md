@@ -208,3 +208,85 @@ was looking for: small, tiered (so a reward is defined), and far off the path mo
 Open question before any effort goes in: does either still accept a free self-serve signup, and does
 either hold objects shared between users? Area 120 wound down several products in 2023, and a title
 tag does not prove a working product.
+
+---
+
+## Both survivors are closed. The filter was applied in the wrong order.
+
+### threadit.area120.com — dead product
+
+The page says it in red: *"Threadit.app is no longer in service. The Threadit Area 120 team has been
+acquired by Google Workspace to help support async video efforts."* The HTML is a static memorial
+page — images only, no bundle, no signup. **Dropped.**
+
+### signals.area120.com — allowlist, and a paid one
+
+Live Angular SPA. The JS says what it is:
+
+```
+/js/firebase.js  /js/bundle.js  /js/papaparse.js
+endpoints:  identitytoolkit + securetoken.googleapis.com     <- Firebase AUTH only
+            apis.google.com/js/client.js                      <- gapi
+            staging-dot-signals-public.appspot.com            <- GAE backend, project "signals-public"
+clientId:   27895279838-2u1sfrbmv0cu7t58c1ihq5eouimp8oo6.apps.googleusercontent.com
+            708042167689-s01vdaf0j8m12ugub9lig6jjeoe3n0u5.apps.googleusercontent.com
+```
+
+No `firebaseio.com`, no `firestore`, no `collection(...)` anywhere in 578 KB of bundle. Firebase is
+used **for authentication only**, so the "loose Firestore rules" hypothesis does not apply here and
+was dropped before any time went into it.
+
+Signing in with a dedicated test Google account returns:
+
+```
+User not authorized. Contact the Demand team to get access.
+```
+
+and the footer reads *"to manage your subscription to Signals or delete your account, use the GCP
+Marketplace console"*. It is an allowlisted, paid GCP Marketplace product. **Dropped** — this is the
+Tesla `InstallationGUID` / Marriott confirmation-number wall again: access obtainable only by being
+a paying customer.
+
+One angle was considered and rejected: the "not authorized" message is rendered by the SPA, so the
+server may or may not enforce it, and a client-only check would be a clean authorisation bypass.
+Testing it means driving the GAE backend directly with a captured OAuth token — and `*.appspot.com`
+is on the VRP's own non-qualifying list. Not worth it on a phone, and not worth it against an
+explicitly excluded host.
+
+### The process lesson
+
+Liveness was checked first and the access model second. That is backwards. Of the twenty-two hosts
+swept, the ones that died did so for three reasons, and only one of them needed a network request:
+
+```
+no DNS / wildcard-identical     12   needs a sweep
+dead product                     1   needs one page load
+allowlist or paid access         1   needs one sign-in      <- cheapest signal, checked last
+behind IAP / Google sign-in      3
+```
+
+**Access model first, liveness second.** A host that cannot be signed into by a free account is
+useless to us however alive it is, and that is one page load to find out.
+
+## Next queue — filtered on access model first
+
+From Google's TIER2 list (272 entries, far less contested than TIER0/1), the candidates that take a
+free self-serve Google account, hold objects the user creates, and share them between users:
+
+```
+code.earthengine.google.com     free signup; user scripts, assets and sharing ACLs; genuinely
+signup.earthengine.google.com   off the usual path
+datastudio.google.com           Looker Studio: reports and data sources with sharing ACLs, free
+cse.google.com                  Programmable Search Engine: own search engines, own ids, free
+merchants.google.com            Merchant Center: free, multi-tenant, self-minted product ids
+crowdsource.google.com          free, user contributions
+recorder.google.com             free, recordings shared by link
+classroom.google.com            classes, assignments, submissions — real cross-role multi-tenancy
+```
+
+Known dead or sunset, do not sweep: `poly`, `fusiontables`, `appmaker`, `aboutme`, `plus`,
+`profiles`, `optimize`, `jamboard`.
+
+Before touching Colab, read `bughunters/articles/learn/invalid-reports/ai-products/
+ai-first-colab-known-issues.md` — Google publishes a known-issues page for it, which is a dedup list
+handed to us for free.
