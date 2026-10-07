@@ -355,6 +355,45 @@ The same page also confirms a limit I stated earlier rather than discovering it 
 Which is exactly why the `client_access_token` carries empty scopes and why this report does not
 claim user data was reachable with it.
 
+## Is the credential actually used by the page? Yes — and that decides the framing
+
+```
+accounts.fitbit.com/assets/accounts.fitbit.com-3c633fe7….js   351,543 b
+    basicToken references : 1
+    grants named in code  : authorization_code · delegate_token · mfa_sms · social
+    endpoints named       : oauth2/token · oauth2/revoke · oauth2/introspect
+
+accounts.fitbit.com/assets/vendor-1b016de5….js              1,096,168 b
+    grants named in code  : password · refresh_token
+    header construction   : Authorization:"Basic "+window.btoa(e.concat(":"))
+
+accounts.fitbit.com/recaptcha-preloading-3bca9f46….js             213 b   <- reCAPTCHA is on this page
+
+feed-moderation …/assets/feed-moderation-3c230761….js         239,163 b
+    227ZG3 references : 0        grant_type references : 0
+```
+
+So the sign-in page really does perform browser-side Basic authentication to the token endpoint, and
+the vendor bundle carries the `password` grant path. **This is deliberate architecture, not an
+accidental leak**, and the report should say so rather than be caught out by it.
+
+That matters for how this is argued. The finding is **not** "a secret was leaked by mistake". It is:
+
+1. Fitbit's own documentation forbids this for server-type applications, in terms that leave no
+   room — *"should never be included in application source code"*.
+2. Both clients are server-type, proven by the endpoint rejecting a wrong secret.
+3. The consequence is concrete: `grant_type=password` is reachable with the published credential, so
+   there is a credential-validation path that does not pass through the sign-in page — the same page
+   that loads `recaptcha-preloading-*.js`.
+
+Point 3 is the one that survives an architectural defence. Whatever Fitbit's reasons for putting the
+credential in the browser, the result is a second door to the same credential check, and the
+protection sits on the first door only.
+
+`feed-moderation`'s own bundle references neither its client id nor any grant, so there the pair with
+the secret appears to be inherited boilerplate rather than something that page needs — a staff
+moderation console has no login-page justification at all.
+
 ## Honest outcome estimate, recorded BEFORE the result
 
 | Outcome | Estimate | Why |
@@ -362,7 +401,7 @@ claim user data was reachable with it.
 | Duplicate | ~30% | Plain page source on a well-known host. Long-lived. Others look here. |
 | Accepted, rewarded | ~45% | The differential disproves "public client by design", which is the objection that would otherwise close it. Two hosts, TIER1, credentials class. |
 | Accepted, low / credit | ~15% | If the panel weighs the empty `scopes` heavily and treats it as no demonstrated user impact. |
-| Won't fix / intended | ~5% | Fitbit's own documentation forbids the practice for this application type, which is hard to argue past. | If Fitbit considers these clients non-confidential despite the endpoint's own behaviour. |
+| Won't fix / intended | ~15% | Fitbit's own documentation forbids the practice for this application type, which is hard to argue past. | If Fitbit considers these clients non-confidential despite the endpoint's own behaviour. |
 
 Do not re-argue a close with the same evidence (FO-12). Do not add impact claims after submission —
 Google states the reward is decided on what is in the report **before triage**.
