@@ -8,8 +8,10 @@
 
 ## The finding in one line
 
-An OAuth client can introspect an access token that was issued to a **different** client, and Fitbit
-tells it the token is active, which client it belongs to, and when it expires.
+Any holder of a valid Fitbit access token can introspect **any other** token — including one issued
+to a different OAuth client — and Fitbit answers with its status, the client it belongs to, its scope
+and its validity window. The endpoint authenticates the caller but never checks that the caller owns
+the token being asked about.
 
 ## Why this is independent of G-F001
 
@@ -42,6 +44,44 @@ own credentials. Then client `228TQD` was asked to introspect the token belongin
 The control proves the endpoint works for a client's own token. The sentinel proves it genuinely
 validates tokens rather than answering `active:true` to anything. Between them, the cross result is
 real: **Fitbit knew the token belonged to `227ZG3`, said so, and answered anyway.**
+
+## How much authority is actually required — tested, and it is wider than "another client"
+
+The first proof used Basic client credentials. That turns out to be only one way in.
+
+```
+[BASELINE] Basic 228TQD, reads 227ZG3's token
+           200 {"active":true,"scope":"{}","client_id":"227ZG3","exp":…,"iat":…}
+
+[NO AUTH]  no Authorization header
+           401 {"code":401,"status":"UNAUTHENTICATED","message":"Request is missing required
+                authentication credential…"}
+
+[BEARER]   Authorization: Bearer <228TQD's token>, reads 227ZG3's token
+           200 {"active":true,"scope":"{}","client_id":"227ZG3","exp":…,"iat":…}     <-- WIDER
+
+[BEARER]   Authorization: Bearer <the same token being introspected>
+           200 {"active":true,…,"client_id":"227ZG3",…}
+
+[FAKE]     Basic with fabricated credentials
+           401 {"errorType":"invalid_client","message":"… Client id invalid."}
+
+[SENTINEL] Basic 228TQD, fabricated token
+           200 {"active":false}
+```
+
+**Any valid access token can introspect any other token.** The bar is not "hold credentials for two
+OAuth applications" — it is "hold one access token of any kind", which includes the token a user's
+own device obtains for any third-party Fitbit app they have connected.
+
+Every control behaved: authentication **is** required (401 without it), fabricated credentials **are**
+rejected (401 `invalid_client`), and the endpoint **does** validate tokens (`active:false` for a
+fabricated one). So the boundary is measured rather than assumed, and the flaw sits precisely at one
+place: **the endpoint authenticates the caller but never checks that the caller owns the token it is
+asking about.**
+
+That is also the cleanest way to say what the fix is: authenticate as now, then compare the token's
+`client_id` to the caller's — exactly what `revoke` already does.
 
 ## Fitbit enforces this binding elsewhere, which is what makes it look like an oversight
 
