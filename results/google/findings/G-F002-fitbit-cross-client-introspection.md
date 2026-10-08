@@ -193,3 +193,44 @@ along and the banner was still there.
 Do not add to the submission — Google decides the reward on what is available **prior to triage**.
 Do not chase it. Do not re-argue a close with the same evidence (FO-12). The correct use of the
 waiting period is the next finding.
+
+---
+
+## Follow-up: the rest of Fitbit's own endpoint map, and why it closed
+
+After submitting, the full constants map was pulled from `accounts.fitbit.com`'s bundle — the same
+place `introspect` came from — on the reasoning that one ownership-check mistake is rarely alone.
+
+The map named two endpoints never touched before:
+
+```
+GET_DELEGATE_TOKEN    oauth2/delegate
+DELEGATE_TOKEN_LOGIN  oauth2/delegate/token
+DELEGATE_LOGIN_FAILURE          (+ a delegateLogin action in the UI)
+```
+
+Delegation means acting for someone else, so it is exactly where an ownership check goes missing.
+It does not here:
+
+```
+[SENTINEL] POST /oauth2/zzz_not_a_path_7x2   HTML error page      <- real paths look different
+GET  /oauth2/delegate          Basic 228TQD  403
+POST /oauth2/delegate          Basic 228TQD  403
+POST /oauth2/delegate          no auth       401 UNAUTHENTICATED
+POST /oauth2/delegate          Basic 227ZG3  403
+POST /oauth2/delegate/token    Basic 228TQD  400 (empty body, with and without parameters)
+POST /oauth2/delegate/token    no auth       401
+```
+
+`oauth2/delegate` answers **403** to both of our clients. Fitbit checks authorisation there and our
+clients do not hold it — correct behaviour. `delegate/token` answers 400 with an empty body, naming
+no parameter, so going further would mean **guessing parameter names**, which is the thing this
+engagement does not do.
+
+**Lead closed.** And it strengthens the submitted report rather than weakening it: `revoke` enforces
+the ownership check, `delegate` enforces authorisation, and `introspect` is the one that does
+neither. The outlier argument is now backed by two siblings instead of one.
+
+The rest of the map was left alone deliberately. The `1/user/-/mfa/*` endpoints resolve `-` from the
+token, so they cannot be tested without a user token, which no account we can create will produce.
+`1/account/resetPassword.json` would send mail. Neither is worth the traffic.
