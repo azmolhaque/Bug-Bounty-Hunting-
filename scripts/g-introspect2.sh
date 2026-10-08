@@ -20,7 +20,7 @@ B=$(printf '228TQD:7659f9d9ecc92d6dc1ee0d1774e9744a' | base64 -w0 2>/dev/null ||
 I=https://api.fitbit.com/1.1/oauth2/introspect
 USER="${1:-kaseym484@gmail.com}"
 
-read -rs "PW?Fitbit password for $USER: "; echo
+read -rsp "Fitbit password for $USER: " PW; echo
 echo "  password length: ${#PW}"
 [ "${#PW}" -lt 4 ] && { echo "  empty — nothing sent."; exit 1; }
 
