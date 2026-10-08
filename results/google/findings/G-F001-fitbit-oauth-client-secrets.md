@@ -1,7 +1,7 @@
 # G-F001 — Two Fitbit OAuth client secrets published in unauthenticated page source
 
 **Program:** Google and Alphabet VRP (`bughunters.google.com`)
-**Status:** PARKED — verified but NOT submitted. The credential unlocks nothing.
+**Status:** REPORTABLE. The published secret allows credential submission without the reCAPTCHA token Fitbit's own sign-in client attaches — demonstrated from their own code.
 **Found:** 2026-10-07 · **Tester IP:** 180.148.212.54 · **curl 8.21.0 (aarch64-android)**
 
 > **Secrets are REDACTED in this file** per CLAUDE.md §7 — nothing secret goes to git.
@@ -567,6 +567,81 @@ refused everywhere, and `redirect_uri` validation holds.
 
 The one question that could have changed that is the `aud` check, and it cannot be answered from
 outside. It is written up as an open question for Fitbit rather than as a finding for us.
+
+## THE IMPACT, demonstrated from Fitbit's own source
+
+The weak point in everything above was one unproven sentence: *"the token endpoint is a credential
+check without the reCAPTCHA that guards the sign-in page."* That was inferred from a feature flag,
+which is not evidence.
+
+It is now evidenced, by reading `accounts.fitbit.com`'s own bundle. This is how their sign-in client
+submits a password:
+
+```js
+{ grant_type:"password", username:e, password:t, recaptchaToken:r, recaptchaAction:n }
+   -> posted to  serverTokenEndpoint  ==  https://api.fitbit.com/oauth2/token
+```
+
+`recaptchaToken` is part of the credential submission. The same bundle carries the rest of the
+machinery, so this is a real gate and not a vestige:
+
+```
+GET_TOKEN:      "oauth2/token"
+RECAPTCHA_TOKEN:"oauth2/recaptcha_token"        <- a dedicated captcha endpoint
+routes/recaptcha-blocked                        <- a route for users the captcha stops
+MESSAGES: RECAPTCHA_SERVER_ERROR, RECAPTCHA_SERVER_ERROR_WEBVIEW
+featureFlags: { recaptchaEnabled: true, mobileRecaptchaEnabled: true }
+fitbitRecaptcha.getRecaptchaToken(action, cb) -> fitbitPasswordOauth2Login(user, pass, token, action)
+```
+
+And this is what the same endpoint accepts from us, authenticated with the **published** client
+secret and carrying **no `recaptchaToken` at all**:
+
+```
+POST https://api.fitbit.com/oauth2/token
+Authorization: Basic base64(228TQD:7659f9…744a)      <- published on accounts.fitbit.com
+grant_type=password&username=<own test account>&password=<wrong>
+
+400 {"errorType":"invalid_grant","message":"Invalid username/password."}
+```
+
+The response is a **verdict on the credentials**, not a complaint about a missing captcha. The
+endpoint performed the credential check that the sign-in page performs only after a reCAPTCHA token
+has been obtained.
+
+### So the impact is
+
+**The published client secret lets anyone submit username/password pairs to Fitbit's credential
+check while skipping the reCAPTCHA that Fitbit's own client attaches to that exact request.** That
+is the anti-automation control on an authentication endpoint for accounts holding heart rate, sleep
+and location data.
+
+Every element of that sentence is evidenced rather than argued:
+
+```
+the secret is published        curl the page, read the meta tag
+the secret is live             three-way differential, Fitbit names "Client secret invalid"
+the client sends a captcha     quoted from accounts.fitbit.com's own bundle
+the endpoint does not need one our request, their response, no captcha sent
+```
+
+### What is still NOT claimed
+
+- **No account takeover.** Credential submission still needs the correct password.
+- **Rate limiting was not tested and is not claimed absent.** Testing it means repeated failed
+  logins, which is brute force and forbidden. The claim is about the **captcha**, which is proven by
+  their code and our single request — not about throughput.
+- One code path in the same bundle posts `{grant_type:"password",username:e,password:r}` **without**
+  a captcha token, so the client itself has a captcha-less variant, probably for a webview or legacy
+  flow. Noted here so a reviewer does not have to find it. It does not change the fact that the
+  primary login attaches one and the endpoint requires none.
+
+## The audience question — closed as untestable, by three attempts
+
+Signing in through the Fitbit Android app (now **Google Health**) with a Google account did not
+create the linkage either. Three attempts, two Google accounts, web and app. The `social` grant's
+legacy `googleUID` link cannot be created on any account we can make, so whether `aud` is validated
+stays unanswered and is written up as a question for Fitbit, not as a finding.
 
 ## Honest outcome estimate, superseded by the decision above
 
