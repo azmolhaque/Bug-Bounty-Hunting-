@@ -521,6 +521,53 @@ One of these, and nothing less:
 
 Until then this is a lead, labelled honestly as one.
 
+## The audience test — UNTESTABLE from outside, which is not the same as safe
+
+Three attempts, two Google accounts, a Fitbit account created for each.
+
+```
+googleUID = 103353436196036194164  (azmol01717534550)  -> "Social account not linked to email"
+googleUID = 103716934560634616990  (kaseym484)         -> "Social account not linked to email"
+after signing into Fitbit via "Continue with Google"   -> "Social account not linked to email"
+```
+
+The sign-in URL says why: `accounts.google.com/v3/signin/accountchooser?continue=https://fitbit.google…`.
+Fitbit is migrating accounts to **Google Accounts** (`fitbit.google.com`), and their own config
+carries `"legacyAccountDeprecationEnabled": true`. That migration is a different mechanism from the
+`social` grant's legacy `googleUID` linkage, and a newly created account gets the former, not the
+latter.
+
+So the linkage the `social` grant looks for **cannot be created on any account we are able to make**.
+
+### What this does and does not establish
+
+```
+established     the social grant is reachable with the published client secret
+established     it accepts a Google ID token, parses it, and reads the email out of it
+established     it does NOT reject on the token - it stops at account linkage, a later step
+NOT established that the `aud` claim is validated
+NOT established that it is not
+```
+
+Recorded as **untestable from outside, not as safe**. A server that verified the ID token properly —
+signature, `iss`, `exp` *and* `aud` against its own client id, which is one standard library call —
+would have refused before ever reading the email. It did not. That is a reason for Fitbit to check
+internally, and the report says exactly that rather than claiming either outcome.
+
+Stopped after three attempts by a rule set before the first one. No further accounts, no other
+person's identifier, nothing retried.
+
+## FINAL STATUS
+
+**PARKED. Not submitted.** The published secrets are a genuine misconfiguration that Fitbit's own
+documentation forbids for server-type applications, and they are confined to two Fitbit applications
+— the rest of Google's estate is clean. But under §2.1 the attacker gains nothing they could not
+already attempt: every grant still demands a key the secret does not supply, the app token is
+refused everywhere, and `redirect_uri` validation holds.
+
+The one question that could have changed that is the `aud` check, and it cannot be answered from
+outside. It is written up as an open question for Fitbit rather than as a finding for us.
+
 ## Honest outcome estimate, superseded by the decision above
 
 
