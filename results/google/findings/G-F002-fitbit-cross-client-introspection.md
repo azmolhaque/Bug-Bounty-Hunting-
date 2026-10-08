@@ -2,7 +2,7 @@
 
 **Program:** Google and Alphabet VRP · **Target:** `api.fitbit.com/1.1/oauth2/introspect`
 **Found:** 2026-10-08 · **Tester IP:** 180.148.212.54 · curl 8.21.0 (aarch64-android)
-**Status:** verified, impact partially bounded
+**Status:** SUBMITTED 2026-10-08 07:19 UTC — Google VRP report `571371934`
 
 ---
 
@@ -164,3 +164,32 @@ curl -s -X POST https://api.fitbit.com/1.1/oauth2/introspect -H "Authorization: 
 | Informational | ~30% | "No sensitive data disclosed" is a fair reading of the app-token case. |
 | Duplicate | ~20% | Two client credentials used to be free to obtain, so others could have tried this. |
 | Accepted, medium | ~10% | Only if user-token introspection leaks the user id, which I could not test and do not claim. |
+
+
+---
+
+## SUBMITTED — 2026-10-08 07:19 UTC
+
+Google VRP, report `571371934`. Type **Permissions Bypass**. Attachments: `evidence.txt` and
+`2026-10-08_0658UTC_fitbit-introspect-cross-client.png`. Disclosure: private, Google only.
+
+One detail worth keeping. The review page initially carried an automated banner:
+
+```
+info_outline  Intended Behavior
+The reported behavior appears to be intended. Please check the documentation.
+```
+
+It disappeared after the 200-character summary was rewritten to end with
+`oauth2/revoke refuses the same request.` The classifier had read the first version as describing
+expected behaviour; naming Fitbit's own inconsistency in the summary line removed that reading.
+
+**Lesson for the next report: put the strongest anti-"intended-behaviour" fact in the first line a
+triager reads, not in a section further down.** The argument existed in the Impact analysis all
+along and the banner was still there.
+
+### Rule for the wait
+
+Do not add to the submission — Google decides the reward on what is available **prior to triage**.
+Do not chase it. Do not re-argue a close with the same evidence (FO-12). The correct use of the
+waiting period is the next finding.
