@@ -405,3 +405,67 @@ OPEN     one test: does Fitbit validate the aud claim of a Google ID token?
          "Continue with Google". Fifteen minutes, and the only remaining path
          from "misconfiguration" to "account takeover".
 ```
+
+---
+
+# Addendum — synthid.com, dropped in twenty minutes by the checklist
+
+First target assessed under `results/_strategy/PRE-SUBMIT-CHECK.md`. The point of the exercise was
+to answer "does this qualify?" before "is there a bug?", and it worked.
+
+```
+URL of a result page        synthid.com/image-detection    -- no identifier at all
+Boq application             boq-deepmind-visualization
+app path                    /_/WatermarkApp/
+inline data                 AF_initDataCallback x3, WIZ_global_data x1
+backend                     /_/WatermarkApp/data/batchexecute  (RPC, session-token bound)
+scope                       NOT in either published domain-tier list
+```
+
+**There is no REST object identifier to tamper with.** A Boq app's calls are RPC batches bound to the
+per-session token, so the IDOR shape is absent structurally, not because we failed to find one. And
+the result page carries no id, so nothing is addressable to begin with.
+
+Written down before the grep ran, and it held: *"my guess is this is a Boq app with no history."*
+Recording the prediction first is what makes the result a test rather than a story told afterwards.
+
+Dropped. Twenty minutes, no account work, no report.
+
+## The pattern across twenty hours on this program
+
+Every Google surface reached so far fails at one of four walls:
+
+```
+behind Okta / IAP / mTLS            no access at all              (52 hosts, S01)
+a Boq app with no REST ids          no object to tamper with      (SynthID)
+no user-to-user sharing             no cross-user boundary        (Fitbit)
+needs an unguessable identifier     ineligible by Google's own    (571371934, closed)
+                                    published IDOR rule
+```
+
+That is not bad luck. **Google has closed the classes reachable from a terminal without a proxy or
+browser devtools**, which is precisely the toolkit available here. The surfaces that remain open need
+request interception, and that is the thing this setup cannot do.
+
+The honest conclusion is about fit, not about effort: **Google VRP is a poor match for a
+phone-and-Termux workflow.** Twenty hours, roughly 900 hosts swept, one submitted report, closed on a
+rule that was already written down.
+
+## What a matching program looks like
+
+```
+a plain REST or JSON API with object ids in URLs or request bodies
+   -> there is something to tamper with, and curl is enough to do it
+
+users share objects with other users
+   -> a cross-user boundary exists at all
+
+free self-serve signup, two accounts
+   -> both sides of that boundary are ours
+
+launched under ~18 months
+   -> the easy classes have not already been taken
+```
+
+Google fails the first two on nearly every surface. That is the finding of this engagement, and it
+is worth more than the report that closed.
