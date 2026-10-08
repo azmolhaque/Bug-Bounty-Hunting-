@@ -643,6 +643,50 @@ create the linkage either. Three attempts, two Google accounts, web and app. The
 legacy `googleUID` link cannot be created on any account we can make, so whether `aud` is validated
 stays unanswered and is written up as a question for Fitbit, not as a finding.
 
+## Chain extensions — three tried, three closed, none in the report
+
+```
+USER ENUMERATION   existing account + wrong password   -> invalid_grant "Invalid username/password."
+                   impossible address + wrong password -> invalid_grant "Invalid username/password."
+                   IDENTICAL. No account-existence oracle. Good security on their part.
+
+oauth2/recaptcha_token  empty body        200  {}
+                        with an action    200  {}
+                        [SENTINEL] fake endpoint -> HTML error page, so the endpoint is real
+                        and distinct - but it returns nothing usable. Closed.
+
+SCOPE on the password grant   no scope / real scopes / impossible scope
+                              all three identical. Scope is not parsed before the credential
+                              check, so nothing can be concluded. Stays out.
+```
+
+Three attempts to widen the finding, three negatives. They are recorded because a reviewer should
+see that the surrounding surface was checked and holds — and because claiming any of them without
+this evidence is how a report becomes Spam.
+
+**MFA was not tested.** `mfa_sms` appears to be the same legacy mechanism as the social link: Fitbit
+accounts are migrating to Google Accounts, and the app now offers only "Manage your Google Account",
+so a Fitbit-native second factor could not be enabled on an account we can create. Not tested, not
+claimed.
+
+## FINAL — what the report claims, and nothing more
+
+```
+1. accounts.fitbit.com publishes a confidential OAuth client secret for
+   "Fitbit Web Application" in page source. feed-moderation.fitbit.com publishes
+   a second one for a staff tool. Both TIER1 in Google's own list.
+2. Both are live, proven by a three-way differential Fitbit itself distinguishes
+   ("Client secret invalid" vs "Client id invalid").
+3. Fitbit's documentation forbids this for server-type applications.
+4. Their sign-in client posts recaptchaToken with the password grant.
+5. The same endpoint, with the published secret and NO captcha token, performs
+   the credential check anyway.
+```
+
+Not claimed: account takeover, absent rate limiting, user enumeration, scope escalation, MFA bypass,
+or that the `aud` claim is unvalidated. Each was either tested and closed, or could not be tested
+from outside and is written up as a question rather than a finding.
+
 ## Honest outcome estimate, superseded by the decision above
 
 
