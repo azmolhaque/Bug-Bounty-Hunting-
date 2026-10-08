@@ -361,3 +361,47 @@ OPEN     One test, in results/google/RESUME-HERE.md — whether Fitbit validates
 
 Nothing was submitted. Fourteen probes, and the ones that mattered most were the ones that killed a
 conclusion rather than supported one.
+
+---
+
+# Addendum — the Google-owned half of the tier list, 2026-10-08
+
+Google publishes two tier lists. The Fitbit secrets came out of the acquisitions half; this is the
+other half, 380 TIER0/1/2 Google-owned domains plus 26 per-apex sentinels, 406 rows.
+
+Fifty-two answered 200. All fifty-two scanned for credentials in page source **and** in up to four
+same-origin JS bundles each, with URL-encoded config blobs decoded.
+
+```
+>>> accounts.fitbit.com          CONTROL   LEAKS   basicToken -> 228TQD:7659f9…744a
+>>> feed-moderation.fitbit.com   CONTROL   LEAKS   clientId   -> 227ZG3:458dd4…196d
+
+    bughunters.google.com        TIER0     clean       remotedesktop.google.com  TIER0  clean
+    gemini.google.com            TIER0     clean       flash.android.com         TIER0  clean
+    www.google.com               TIER1     clean       m.youtube.com             TIER1  clean
+    messages.google.com          TIER1     clean       myactivity.google.com     TIER1  clean
+    legalretrievals.google       TIER1     clean       partners.cloud.google.com TIER1  clean
+    clients3.google.com          TIER1     clean       signals.area120.com       TIER1  clean
+    threadit.area120.com         TIER1     clean
+    … 39 more TIER2 hosts, all clean
+```
+
+**The controls lighting up is what makes "clean" mean anything here.** The same scanner, in the same
+run, finds both known secrets. So the fifty-two negatives are real negatives, not a repeat of
+probe7's broken pattern-match.
+
+**Google's own properties are clean. The leak is confined to Fitbit.** That is worth knowing for the
+report: it is not a Google-wide build convention, it is two Fitbit applications — which is both a
+narrower claim and a more credible one.
+
+## State of play
+
+```
+DONE     acquisitions tier list swept, credentials found (G-F001, parked)
+DONE     Google-owned tier list swept, nothing found
+DONE     Internet Archive over 10 acquisition apexes, nothing found
+OPEN     one test: does Fitbit validate the aud claim of a Google ID token?
+         results/google/RESUME-HERE.md — needs a Fitbit account created via
+         "Continue with Google". Fifteen minutes, and the only remaining path
+         from "misconfiguration" to "account takeover".
+```
