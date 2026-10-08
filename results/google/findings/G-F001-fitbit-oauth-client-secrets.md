@@ -735,6 +735,43 @@ Termux denies, a `grep -c` over single-line XML, and a pattern that could never 
 config. Each was caught by a control rather than by the result looking wrong. This is the fourth,
 and it was caught the same way.
 
+## Every avenue, and how each one closed
+
+```
+redirect_uri manipulation   suffix / userinfo / subdomain / own origin   all rejected
+app access token            403 on every endpoint; canary 404 identical  no access
+scope on client_credentials profile / heartrate / full list              scope:"" every time
+scope on password grant     real vs impossible scope                     identical errors
+user enumeration            existing vs impossible address               identical wording
+oauth2/recaptcha_token      empty body / with action                     {} both times
+captcha "bypass"            loginWhenRecaptchaFails sends no token        THEIR OWN DESIGN
+social grant aud validation three attempts, two Google accounts, app+web untestable: the legacy
+                                                                         link cannot be created
+MFA bypass                  mfa_sms is legacy                            cannot be enabled
+cross-client code binding   dev.fitbit.com registration DISABLED         cannot be tested
+```
+
+Nine avenues. Six closed by test, three untestable from outside. The last one died on the
+registration form itself: the fields are disabled and the banner reads *"Registration of new
+applications via this form is discontinued"*, and the replacement process runs on Google's OAuth
+rather than `api.fitbit.com/oauth2/token`, so it cannot answer the question either.
+
+## FINAL VERDICT
+
+**G-F001 is a credential exposure with no demonstrable impact.**
+
+What is real and proven: two confidential OAuth client secrets for first-party Fitbit applications,
+one of them "Fitbit Web Application", published in the page source of two TIER1 hosts, verified live
+against Fitbit's own token endpoint, in contradiction of Fitbit's own documented rule for
+server-type applications. Google's own estate is clean, so it is confined to Fitbit.
+
+What could not be shown, after nine attempts: any action an attacker gains that they could not
+already attempt. Every grant still requires the victim's own secret, and the one claim that looked
+like impact turned out to be Fitbit's own fallback design.
+
+Submitting is a ~25-30% shot at a small reward or credit, and a ~70% chance of Informational. That
+is the honest number, and it does not move with more effort — the ceiling here is the class.
+
 ## Honest outcome estimate, superseded by the decision above
 
 
