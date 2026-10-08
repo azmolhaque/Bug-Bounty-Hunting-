@@ -1,7 +1,7 @@
 # G-F001 — Two Fitbit OAuth client secrets published in unauthenticated page source
 
 **Program:** Google and Alphabet VRP (`bughunters.google.com`)
-**Status:** REPORTABLE. The published secret allows credential submission without the reCAPTCHA token Fitbit's own sign-in client attaches — demonstrated from their own code.
+**Status:** PARKED. The captcha-bypass impact claim was WRONG and has been withdrawn — see "The claim I had to withdraw" below.
 **Found:** 2026-10-07 · **Tester IP:** 180.148.212.54 · **curl 8.21.0 (aarch64-android)**
 
 > **Secrets are REDACTED in this file** per CLAUDE.md §7 — nothing secret goes to git.
@@ -686,6 +686,54 @@ claimed.
 Not claimed: account takeover, absent rate limiting, user enumeration, scope escalation, MFA bypass,
 or that the `aud` claim is unvalidated. Each was either tested and closed, or could not be tested
 from outside and is written up as a question rather than a finding.
+
+## The claim I had to withdraw
+
+Before submitting I went looking for the strongest objection a reviewer could raise, and found it in
+Fitbit's own bundle. The impact claim does not survive.
+
+```js
+loginWhenRecaptchaFails: function(e,t,n){ r.error(e), this.sendFitbitPasswordOauth2Login(t,n) }
+
+featureFlags.recaptchaEnabled
+  ? sendFitbitPasswordOauth2LoginWithRecaptcha(n,a,b,l)   // 4 args, token included
+  : sendFitbitPasswordOauth2Login(n,a)                    // 2 args, NO token
+```
+
+```
+fitbitPasswordOauth2Login:function(e,r,n,i)   <- user, pass, recaptchaToken, action
+sendFitbitPasswordOauth2Login(n,a)            <- user, pass only
+```
+
+**Fitbit's own client deliberately submits credentials with no captcha token** whenever reCAPTCHA
+fails or the flag is off. A request without `recaptchaToken` is therefore an *expected* shape, not an
+evasion, and the endpoint accepting it is the design rather than an oversight.
+
+The counterweight, for completeness:
+
+```js
+i === constants.RECAPTCHA_ERROR_MESSAGE && 403 === n && this.navigateTo("recaptcha-blocked")
+```
+
+The server **can** reject with 403 for a reCAPTCHA reason, so the check exists — it is **risk-based**
+(reCAPTCHA **v3**, loaded as `api.js?render=<sitekey>`, which is score-based). One unblocked request
+says nothing about what happens at volume, and establishing that would require exactly the
+high-volume credential submission the rules forbid.
+
+So: **"the published secret bypasses the sign-in captcha" is not supportable and is withdrawn.** It
+was the only thing that lifted this above credential exposure.
+
+### Why this is recorded rather than quietly dropped
+
+I asserted that impact in this file a few hours ago on the strength of a feature flag, then found
+the code that contradicts it. The sequence matters more than the conclusion: the claim was made
+before it was checked, and the check is what a reviewer would have run. Writing the
+`loginWhenRecaptchaFails` grep before writing the report is the habit worth keeping.
+
+Three of my own scripts also returned wrong results during this engagement — a write to `/tmp` that
+Termux denies, a `grep -c` over single-line XML, and a pattern that could never match URL-encoded
+config. Each was caught by a control rather than by the result looking wrong. This is the fourth,
+and it was caught the same way.
 
 ## Honest outcome estimate, superseded by the decision above
 
