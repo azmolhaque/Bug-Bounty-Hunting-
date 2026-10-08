@@ -2,7 +2,7 @@
 
 **Program:** Google and Alphabet VRP · **Target:** `api.fitbit.com/1.1/oauth2/introspect`
 **Found:** 2026-10-08 · **Tester IP:** 180.148.212.54 · curl 8.21.0 (aarch64-android)
-**Status:** SUBMITTED 2026-10-08 07:19 UTC — Google VRP report `571371934`
+**Status:** CLOSED — Won't Fix (Intended Behavior), P4/S4, three minutes after submission.
 
 ---
 
@@ -234,3 +234,65 @@ neither. The outlier argument is now backed by two siblings instead of one.
 The rest of the map was left alone deliberately. The `1/user/-/mfa/*` endpoints resolve `-` from the
 token, so they cannot be tested without a user token, which no account we can create will produce.
 `1/account/resetPassword.json` would send mail. Neither is worth the traffic.
+
+
+---
+
+## OUTCOME — Won't Fix (Intended Behavior), 2026-10-08 07:25 UTC
+
+Report `571371934`. Created 01:22 PM, closed 01:25 PM local. Three minutes.
+
+```
+Status    Won't fix (Intended behavior)
+Priority  P4        Severity  S4
+```
+
+> "According to our assessment, querying the endpoint relies on knowing a valid access token or
+> random identifier that cannot be guessed in any practical way. If you find a reliable method or
+> side-channel to leak or predict target tokens, please let us know by updating this report."
+
+## This was predictable, and I had already written the rule that predicts it
+
+From `config/scope-google.yaml`, committed the day before this report, quoting Google's own
+"Understanding secrets in URLs and IDORs":
+
+> "If an attacker can access a sensitive private resource simply by knowing its ID, it *might* be an
+> IDOR vulnerability. However, and this is vital, there also needs to be a clear path for the
+> attacker to **DISCOVER** the needed ID... reports describing vulnerabilities based on guessing
+> complex random IDs are almost always not eligible for reward or credit."
+
+And the consequence I wrote under it, in my own words:
+
+> "CONSEQUENCE: this is the Tesla InstallationGUID wall, written down as policy. The FIRST
+> observation on any upload or object surface must be the SHAPE of the object id."
+
+Attacking the introspection endpoint requires **already holding the victim's token string** — 205
+characters of randomness. By the rule in my own scope file, this was dead before it was written.
+
+I ran controls and sentinels on every technical claim and never once ran the finding against the
+program's own eligibility rule. The rigour was aimed entirely at "is this true?" and never at "does
+this qualify?".
+
+## The filter that must run before anything is submitted
+
+**Does the attack require the attacker to already know an identifier they cannot obtain or predict?**
+
+```
+Tesla T04       needs an InstallationGUID        -> would have closed. Correctly parked.
+Marriott M025   needs a confirmation number      -> would have closed. Correctly parked.
+G-F001          needs the victim's password      -> correctly parked.
+G-F002          needs the victim's token string  -> SUBMITTED ANYWAY. Closed in three minutes.
+```
+
+Three of the four were parked for exactly this reason. The fourth was submitted because the
+technical work around it was good, and good technical work on an ineligible class is still
+ineligible.
+
+## What Google said WOULD change it
+
+> "If you find a reliable method or side-channel to leak or predict target tokens, please let us
+> know by updating this report."
+
+That is a real door, and it is the only one. A way to obtain or predict another user's token turns
+this from Won't Fix into a chain with a demonstrated entry point. We do not have one, and nothing
+tested so far suggests one exists. Not re-argued, per FO-12 — the close is accepted.
