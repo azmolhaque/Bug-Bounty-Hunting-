@@ -1,0 +1,98 @@
+# Google Mobile VRP — scope, read from google/bughunters@ab9de14 on 2026-10-19
+# Source: bughunters/articles/about/rules/android-friends/
+#         google-mobile-vulnerability-reward-program-rules.md
+#
+# এই ফাইলটা মুখস্থ থেকে লেখা হয়নি। প্রতিটা লাইন repo থেকে পড়া।
+# G-F002 মরেছিল কারণ আমি scope ফাইল লিখে সেটা নিজের finding-এর বিরুদ্ধে চালাইনি।
+# এইবার: কোনো probe লেখার আগে kill_list চালাও।
+
+program: Google Mobile VRP
+report_url: https://bughunters.google.com/report
+
+in_scope_developers:
+  - Google LLC
+  - Developed with Google
+  - Research at Google
+  - Red Hot Labs
+  - Google Samples
+  - Fitbit LLC
+  - Nest Labs Inc.
+  - Waymo LLC
+  - Waze
+
+tier1_apps:          # highest payout, most crowded
+  com.google.android.gms: Google Play Services
+  com.google.android.googlequicksearchbox: AGSA
+  com.google.android.apps.cloudconsole: Google Cloud
+  com.google.android.gm: Gmail
+tier2: "apps that interact with a Tier 1 app, user data, or Google services"
+tier3: "apps that handle no user data and don't touch Google services"
+
+qualifying:
+  ACE: |
+    Run native code of the attacker's choosing on the victim device, in the same
+    process as the affected app. No OS sandbox bypass required.
+    NOT qualifying: tricking a user into installing an app and running code in it.
+  theft_high_impact: |
+    Credentials, auth tokens able to perform sensitive state-changing actions,
+    government IDs, MEDICAL or PAYMENT information.
+  theft_low_impact: |
+    Contacts, photos (unless public by default), message contents, call/SMS logs,
+    web history, bookmarks, education/employment info linkable to an individual.
+  other: |
+    Path traversal / zip path traversal -> arbitrary file write
+    Intent redirection -> launching non-exported components
+    Unsafe PendingIntent usage
+    Orphaned permissions
+    (These are "not strictly in scope" but rewarded if security impact is shown.)
+
+# ==== KILL LIST — একটা probe লেখার আগে প্রতিটা hypothesis এখানে ফেলো ====
+kill_list:
+  - Hardcoded API keys                      # G-F001 এই নিয়মেই মরত
+  - Attacks that require a rooted device    # frida/objection দিয়ে খুঁজতে পারো,
+                                            # কিন্তু PoC unrooted-এ চলতে হবে
+  - Variants of Strandhogg and Tapjacking
+  - Access to NON-SENSITIVE media in external storage
+  - Access to non-sensitive internal files of another app
+  - Location information alone (unless it uniquely identifies the individual)
+  - Does not work on the LATEST available OS version
+  - Secondary lockscreen bypasses
+  - Unreasonable user interaction or social engineering
+  - Third-party app  -> Google Play Security Reward Program, not here
+  - AOSP bug         -> Android and Google Devices SRP, not here
+  - Chrome on Android-> Chrome VRP, not here
+  - Non-Google SDK/library -> report to the maintainer first
+
+impact_rule: |
+  "Impact is judged based on the ACTUAL reported impact, and not on a POTENTIAL
+   impact. An example would be a vulnerability that allows arbitrary file write.
+   In some cases this could lead to ACE, however, if you do not demonstrate this
+   in your report, the reward amount will not reflect this."
+  -> এটাই CLAUDE.md FO-8/9/11। যা প্রমাণ করেছ শুধু তাই দাবি করবে।
+     আর arbitrary file write পেলে থেমো না — .so overwrite করে ACE দেখাও,
+     ওখানেই $2,250 থেকে $7,500-এ লাফ।
+
+payout_matrix:   # USD, max, for GOOD QUALITY reports
+  # scenario 3 = "user must install a malicious app" -> আমাদের বাস্তব পরিস্থিতি
+  tier1: {ACE_s3: 15000, THEFT_s3: 9000,  OTHER_s3: 4500}
+  tier2: {ACE_s3:  7500, THEFT_s3: 4500,  OTHER_s3: 2250}
+  tier3: {ACE_s3:  2250, THEFT_s3: 1350,  OTHER_s3:  675}
+
+quality_multiplier:
+  exceptional_1.5x: "proposed patch or mitigation + root cause analysis"
+  good_1.0x: |
+    device name + OS version + app version; a PoC that is fast and easy to run
+    (APK, or ADB commands — "in cases that the vulnerability can be fully
+    triggered by using ADB, that is also acceptable"); step-by-step repro;
+    clear demonstration of impact.
+  low_0.5x: "anything less"
+  bonus: "+$1,000 discretionary for novel technique or exceptional writeup"
+
+rules_of_engagement: |
+  "When investigating a vulnerability, please only ever target your own accounts.
+   Never attempt to access anyone else's data, and do not engage in any activity
+   that would be disruptive or damaging to your fellow users or to Google."
+  "Please be succinct: a short proof-of-concept is more valuable than a video."
+
+duplicates: "Only the first report received is awarded. Same SDK bug across
+  different apps = duplicates of the earliest submission."
