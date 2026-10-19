@@ -14,3 +14,13 @@ does the WebView destination take its URL from the deeplink, and is the host val
 
 **Structural note:** exported providers are essentially closed across these apps
 (Fitbit: 6 providers, 0 flagged). The surface has moved to deeplinks.
+
+| S27 | Fitbit `fitbit://webview?authenticated=&url=` → `WebFrameActivity` | DROP | Correctly built. `UrlValidator.isTrusted` is an exact `Set.contains(host)` plus an https check — no `endsWith`/`contains` bypass. `WebFrameActivity:221` applies it precisely when `AUTHENTICATED` is set, and `slw` registers the `WebViewJsInterface` bridge *and* constructs `DelegateTokenGenerator` only on that same flag. So: unauthenticated → arbitrary URL but no bridge and no credentials; authenticated → bridge and credentials but Fitbit hosts only. Credentials, bridge and validation are all gated on one flag, consistently. |
+
+**Strategic update after S27.** Fitbit's webview stack is well maintained — the
+obvious deeplink/WebView classes are handled correctly. Depth-first on a flagship
+app is unlikely to pay. Switch to breadth: only 16 of the 50 pulled in-scope
+packages have been swept. The remaining 34 include the low-attention ones
+(labs.whisk, labs.language.tailwind, scone, cbrsnetworkmonitor, carrier.carrierwifi,
+mapslite, photosgo, cultural), which is where a first-party app is likelier to
+have an unguarded component than Gmail or Fitbit.
