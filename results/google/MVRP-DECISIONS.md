@@ -101,3 +101,54 @@ The classifier now separates BUNDLE_ERR (populated refusal — a valid sentinel
 baseline, run proceeds) from BUNDLE (actual payload — abort if the sentinel
 produces one). It also prints the sentinel's bytes before any abort, since a
 control failure invalidates the comparison, not the observation.
+
+| S38 | wellbeing `.api` call() — missing access check on two methods | DROP (real defect, empty payload) | See below. |
+
+### S38 in full — the gap is real, what is behind it is not
+
+`WellbeingSettingsProvider` registers each call() method with a package
+allowlist (`a2.m("com.google.android.googlequicksearchbox")` …) and each API
+implementation also carries its own `gau.b(callingPackage)` check. Two
+implementations return unconditional `Boolean.TRUE` from that check:
+
+    gcu  get_wind_down_status   ->  san.E(Boolean.TRUE)
+    gcy  update_wind_down       ->  san.E(Boolean.TRUE)
+
+Predicted from the code, then confirmed empirically from `adb shell`, whose
+calling package `com.android.shell` is on no allowlist:
+
+    canary_not_real                           success=false, wellbeing_tts_invalid_arguments
+    get_wind_down_status                      Bundle[{lastUpdateMs=0, state=0, version=0, zenRuleState=0}]
+    update_wind_down                          Bundle[{result=-1}]
+    get_wind_down_data                        SecurityException: Access not allowed for app: com.android.shell
+    screenTimeSummary                         SecurityException
+    get_app_usage_and_sleep_intervals         SecurityException
+    get_auto_dnd_text                         SecurityException
+    get_auto_dnd_configuration                SecurityException
+    set_wind_down_schedule_enabled_in_bedtime SecurityException
+    get_all_apps_usage / get_app_usage / get_app_usage_millis   SecurityException
+    start_screen_effects_override / stop_...  SecurityException
+
+A clean three-way differential: sentinel refuses, guarded methods name the
+caller and refuse, two methods answer. The access-control inconsistency is
+real and precisely located.
+
+**Dropped anyway.** What the attacker actually GETS is bedtime-mode state —
+four zeroes — which appears nowhere in the Mobile VRP sensitive-data list, and
+a write that returned `result=-1`, i.e. nothing changed. The data-bearing
+methods (`screenTimeSummary`, `get_app_usage_and_sleep_intervals`, the usage
+APIs) are exactly the ones that enforce the allowlist. Even a working
+`update_wind_down` would amount to "an app can toggle your bedtime mode",
+which is not a security impact, and routing that to "DND could suppress
+security notifications" is the speculative chain CLAUDE.md section 3 forbids.
+
+Worth recording because of what it would have looked like without the kill
+list: "Access control bypass in Google Digital Wellbeing, unauthenticated app
+reads and writes user settings." True sentence, N/A close.
+
+`com.google.android.apps.search.assistant.surfaces.voice.devapp` is in two
+allowlists and is NOT installed on this device, so the package name is
+unclaimed - but it only gates `get_all_apps_usage` and `get_app_usage`, and
+whether the allowlist verifies signature as well as name is untested. That is
+the one thread here worth pulling if the service surface comes up empty; it
+needs the PoC app, since the package name must be claimed by a real APK.
