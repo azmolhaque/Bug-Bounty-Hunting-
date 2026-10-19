@@ -24,14 +24,14 @@ command -v adb >/dev/null || { echo "!! adb নেই"; exit 1; }
 
 classify() {
   local o="$1"
-  if   grep -qiE 'permission denial|securityexception' <<<"$o"; then echo DENIED
+  if   grep -qiE 'permission denial|securityexception|checkContentProviderPermission|checkAssociationAndPermission' <<<"$o"; then echo DENIED
   elif grep -qiE 'unknown uri|failed to find provider|could not find provider' <<<"$o"; then echo NOPROVIDER
   elif grep -qi 'error while accessing provider' <<<"$o"; then echo REACHED
   elif [ -z "${o//[[:space:]]/}" ]; then echo SILENT
   else echo BYTES
   fi
 }
-rd() { adb shell content read --uri "$1" 2>&1 | tr -d '\r' | head -12; }
+rd() { adb shell content read --uri "$1" 2>&1 | tr -d '\r' | head -40; }
 
 {
 echo "# FileProvider path-config probe"

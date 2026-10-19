@@ -45,16 +45,18 @@ classify() {
   elif grep -qiE 'unknown uri|failed to find provider|could not find provider|does not exist' <<<"$o"; then echo NOPROVIDER
   elif grep -q 'Row:' <<<"$o"; then echo "DATA"
   elif grep -qi 'no result found' <<<"$o"; then echo EMPTY
-  # provider-এর নিজের কোড আমাদের ইনপুট নিয়ে চলেছে এবং crash করেছে।
-  # কোনো permission check আমাদের আটকায়নি — এটা DENIED থেকে সম্পূর্ণ আলাদা অবস্থা,
-  # আর এটাই সবচেয়ে বড় সংকেত: provider অরক্ষিত, শুধু আমাদের path ভুল।
+  # `content` CLI একটা permission denial-কে NPE হিসেবে দেখায়: সে remote
+  # exception-এর খালি message পড়তে গিয়ে নিজেই String.contains(null) মারে।
+  # আসল কারণ থাকে 'Caused by' ব্লকে। ওটাই দেখো, NPE-টা না।
+  elif grep -qiE 'checkContentProviderPermission|checkAssociationAndPermission' <<<"$o"; then echo DENIED
+  elif grep -qi 'unsupportedoperation' <<<"$o"; then echo UNSUPPORTED
   elif grep -qi 'error while accessing provider' <<<"$o"; then echo REACHED
   elif [ -z "${o//[[:space:]]/}" ]; then echo SILENT
   else echo OTHER
   fi
 }
 
-q() { adb shell content query --uri "$1" 2>&1 | tr -d '\r' | head -25; }
+q() { adb shell content query --uri "$1" 2>&1 | tr -d '\r' | head -45; }
 
 {
 echo "# Mobile VRP provider probe"

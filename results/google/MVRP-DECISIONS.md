@@ -24,3 +24,32 @@ packages have been swept. The remaining 34 include the low-attention ones
 (labs.whisk, labs.language.tailwind, scone, cbrsnetworkmonitor, carrier.carrierwifi,
 mapslite, photosgo, cultural), which is where a first-party app is likelier to
 have an unguarded component than Gmail or Fitbit.
+
+### Tooling correction, 2026-10-19 — the NPE was a denial all along
+
+Every FileProvider read came back as
+
+    Error while accessing provider:<auth>
+    java.lang.NullPointerException: ... String.contains(...) on a null object reference
+
+and I read that as "the provider ran our input and crashed, so nothing blocked
+us". Wrong. With the output no longer truncated, the same failure shows:
+
+    Caused by: android.os.RemoteException: Remote stack trace:
+      at ContentProviderHelper.checkContentProviderPermission(...)
+      at ContentProviderHelper.checkAssociationAndPermissionLocked(...)
+
+The `content` CLI mis-renders a permission denial: it reads the remote
+exception's null message and throws its own NPE over it. So every one of those
+reads was DENIED. The provider/FileProvider surface across safetyhub,
+chromecast.app and docs is closed, not open.
+
+Fixes: both probe scripts now classify `checkContentProviderPermission` /
+`checkAssociationAndPermission` as DENIED, add an UNSUPPORTED state, and raise
+the output head so the `Caused by` block is never cut off — the truncation is
+what hid the cause in the first place.
+
+| S28 | docs `storage` (MANAGE_DOCUMENTS) vs `storage.legacy` (no permission) | PARTIAL | The guarded one denies. The legacy one is reachable without permission but `queryRoots` and `/document/root` both return `No result found`. Reachable + empty is a precondition, not a crossing. |
+| S29 | docs `statesyncer` (CrossAppStateProvider, exported, no permission) | PARTIAL | Reachable, returns no rows. |
+| S30 | safetyhub `suggestionstateprovider` (exported, no permission) | PARTIAL | Reachable, but `query()` throws UnsupportedOperationException — not a query surface. |
+| S31 | all FileProviders in safetyhub / chromecast.app / docs | DROP | Denied; see the correction above. |
