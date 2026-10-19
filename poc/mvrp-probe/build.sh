@@ -15,9 +15,40 @@ AJ="${AJ:-$HOME/tools/android.jar}"
 OUT="$HERE/out"
 KS="$HOME/tools/mvrp-debug.keystore"
 
-for t in "$BT/aapt2" "$BT/d8" "$BT/zipalign" "$BT/apksigner"; do
-  [ -x "$t" ] || { echo "!! নেই: $t   (BT=... দিয়ে পথ দাও)"; exit 1; }
+# ---- টুল বাছাই: যেটা এই আর্কিটেকচারে আসলে চলে ----
+# Google-এর build-tools zip শুধু linux x86_64। ARM64 মেশিনে তার native
+# বাইনারিগুলো (aapt2, zipalign) binfmt-এ ভেঙে পড়ে:
+#     x86_64-binfmt-P: Could not open '/lib64/ld-linux-x86-64.so.2'
+# অথচ d8 আর apksigner জাভা-র‍্যাপার, তাই যেকোনো আর্কিটেকচারে চলে।
+# Debian-এর aapt2/apksigner native ARM64 — আগে সেগুলো চেষ্টা করি।
+runs() {           # runs <path> : চালিয়ে দেখো, binfmt ত্রুটি হলে না
+  [ -n "${1:-}" ] && [ -x "$1" ] || return 1
+  local o; o="$("$1" version 2>&1; "$1" --version 2>&1)" || true
+  case "$o" in *binfmt*|*ld-linux*|*"cannot execute"*) return 1;; esac
+  return 0
+}
+pick() {           # pick <name> : system আগে, তারপর $BT
+  local n="$1" c
+  for c in "$(command -v "$n" 2>/dev/null || true)" "$BT/$n"; do
+    runs "$c" && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+AAPT2="$(pick aapt2   || true)"
+D8="$(pick d8         || true)"
+ZIPALIGN="$(pick zipalign || true)"
+APKSIGNER="$(pick apksigner || true)"
+
+for v in AAPT2 D8 APKSIGNER; do
+  eval "p=\$$v"
+  [ -n "$p" ] || { echo "!! $v পাওয়া গেল না (এই আর্কিটেকচারে চলে এমন কপি নেই)"; exit 1; }
+  printf '      %-10s %s\n' "$v" "$p"
 done
+if [ -z "$ZIPALIGN" ]; then
+  echo "      ZIPALIGN   নেই — বাদ দিচ্ছি (adb install-এর জন্য লাগে না,"
+  echo "                 শুধু Play-তে আপলোডের জন্য দরকার হতো)"
+fi
 [ -f "$AJ" ] || { echo "!! android.jar নেই: $AJ   (AJ=... দিয়ে পথ দাও)"; exit 1; }
 
 # android.jar-এ resources.arsc আছে কিনা — aapt2-র জন্য সেটাই লাগে।
@@ -38,17 +69,21 @@ javac -source 8 -target 8 -nowarn -bootclasspath "$AJ" -cp "$AJ" \
 
 echo "[2/5] d8"
 find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
-"$BT/d8" --lib "$AJ" --min-api 24 --output "$OUT" @"$OUT/classes.txt"
+"$D8" --lib "$AJ" --min-api 24 --output "$OUT" @"$OUT/classes.txt"
 
 echo "[3/5] aapt2 link"
-"$BT/aapt2" link -I "$AJ" \
+"$AAPT2" link -I "$AJ" \
     --manifest "$HERE/AndroidManifest.xml" \
     --min-sdk-version 24 --target-sdk-version 34 \
     -o "$OUT/base-unsigned.apk"
 
-echo "[4/5] dex যোগ + zipalign"
+echo "[4/5] dex যোগ + align"
 ( cd "$OUT" && zip -q -u base-unsigned.apk classes.dex )
-"$BT/zipalign" -f 4 "$OUT/base-unsigned.apk" "$OUT/base-aligned.apk"
+if [ -n "$ZIPALIGN" ]; then
+  "$ZIPALIGN" -f 4 "$OUT/base-unsigned.apk" "$OUT/base-aligned.apk"
+else
+  cp "$OUT/base-unsigned.apk" "$OUT/base-aligned.apk"
+fi
 
 echo "[5/5] sign"
 if [ ! -f "$KS" ]; then
@@ -57,9 +92,9 @@ if [ ! -f "$KS" ]; then
           -alias mvrp -keyalg RSA -keysize 2048 -validity 10000 \
           -dname "CN=mvrp-probe, O=cindrasec, C=BD" >/dev/null 2>&1
 fi
-"$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
+"$APKSIGNER" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
     --out "$OUT/mvrp-probe.apk" "$OUT/base-aligned.apk"
-"$BT/apksigner" verify --print-certs "$OUT/mvrp-probe.apk" | head -3
+"$APKSIGNER" verify --print-certs "$OUT/mvrp-probe.apk" | head -3
 
 echo
 echo "তৈরি: $OUT/mvrp-probe.apk"
