@@ -184,3 +184,45 @@ Why these matter if a transaction does work: `CredentialRecoveryService` sits
 in the migration path that imports credentials, which is High Impact Data; the
 clouddpc endpoints are Android Device Policy's OEM command and local policy
 handlers.
+
+| S39 | restore `CredentialRecoveryService`, clouddpc `OemCommandEndpointService` / `LocalPolicyHandlerEndpointService` | PARKED — precondition only | Bind succeeds from a permissionless app, but no byte was obtained. See below. |
+
+### S39 — four layers deep, still a precondition
+
+The chain, read out of the decompiled source:
+
+    CredentialRecoveryService.onBind()
+      -> ((ptd) a().b.a()).a()            ptd = com/google/frameworks/client/data/
+                                                android/server/Endpoint
+      -> grpc-over-binder server transport (rvk)
+      -> rvk handshake:  int callingUid = Binder.getCallingUid();
+                         poe a = rvkVar.a(callingUid);   // SecurityPolicy, async
+                         // failure path: "Could not evaluate SecurityPolicy"
+      -> rvk.a(int): policy is field `b` (type rvf); which implementation the
+         DI graph binds for THIS endpoint is not yet traced.
+
+So a per-connection policy exists and is evaluated against the calling UID;
+the transport even tags same-UID and cross-UID callers with different trust
+levels. What is NOT established is which policy instance applies here. Going
+further needs either the dagger binding for `rvf` traced, or a real
+grpc-binder client handshake built to test empirically.
+
+Correction to an earlier reading in this session: `rqp` is not the security
+policy. It is `abstract tut a(String)` — a service-name registry.
+
+Prior probability is low. These endpoints are shared across many Google apps,
+so a permissive policy would be a broad and well-trodden bug.
+
+### The useful result of tonight: a better filter than names
+
+All three services that bound returned an EMPTY interface descriptor. Empty
+means a framework grpc endpoint, where the check lives in the transport's
+SecurityPolicy — little room for a developer to forget it.
+
+A NON-empty descriptor means a hand-written AIDL Stub, where the caller check
+is the developer's own to write, or to forget. That is where the bugs are.
+
+We have been choosing targets by how promising their names sound
+(CredentialRecoveryService, OemCommandEndpointService). Descriptor shape is a
+far better filter, and `scripts/mvrp-services.sh` now sweeps every exported
+unguarded service across all decoded apps and sorts them on exactly that.
