@@ -72,10 +72,29 @@ find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
 "$D8" --lib "$AJ" --min-api 24 --output "$OUT" @"$OUT/classes.txt"
 
 echo "[3/5] aapt2 link"
-"$AAPT2" link -I "$AJ" \
+if ! "$AAPT2" link -I "$AJ" \
     --manifest "$HERE/AndroidManifest.xml" \
     --min-sdk-version 24 --target-sdk-version 34 \
-    -o "$OUT/base-unsigned.apk"
+    -o "$OUT/base-unsigned.apk" 2> "$OUT/aapt2.err"; then
+  cat "$OUT/aapt2.err"
+  if grep -q 'Failed to load resources table\|RES_TABLE_TYPE_TYPE' "$OUT/aapt2.err"; then
+    cat <<'HINT'
+
+!! এই aapt2 ওই android.jar-এর resources.arsc পড়তে পারছে না।
+!! কারণ: নতুন platform (API 34/35+) কমপ্যাক্ট এনকোডিং ব্যবহার করে, আর
+!!        distro-র পুরনো aapt2 সেটা চেনে না।
+!! সমাধান: পুরনো একটা platform নামাও — লিঙ্ক করার জন্যই শুধু, manifest-এর
+!!        targetSdkVersion এতে বদলায় না।
+!!
+!!   cd ~/tools
+!!   Z=$(curl -s https://dl.google.com/android/repository/repository2-3.xml \
+!!        | grep -oE 'platform-33[^<"]*\.zip' | sort -u | tail -1)
+!!   curl -L -O "https://dl.google.com/android/repository/$Z" && unzip -q "$Z"
+!!   AJ=~/tools/android-13/android.jar ~/Bug-Bounty-Hunting-/poc/mvrp-probe/build.sh
+HINT
+  fi
+  exit 1
+fi
 
 echo "[4/5] dex যোগ + align"
 ( cd "$OUT" && zip -q -u base-unsigned.apk classes.dex )
