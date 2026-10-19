@@ -53,3 +53,33 @@ what hid the cause in the first place.
 | S29 | docs `statesyncer` (CrossAppStateProvider, exported, no permission) | PARTIAL | Reachable, returns no rows. |
 | S30 | safetyhub `suggestionstateprovider` (exported, no permission) | PARTIAL | Reachable, but `query()` throws UnsupportedOperationException — not a query surface. |
 | S31 | all FileProviders in safetyhub / chromecast.app / docs | DROP | Denied; see the correction above. |
+
+| S32 | messaging `BugleContentProvider` (exported, no permission) | DROP | `query()` throws `IllegalStateException: unimplemented` for every URI — the canary table name and `/conversations`, `/messages`, `/participants`, `/parts` all return byte-identical errors. It is an empty stub; the real one, `BugleContentProviderInternal`, is DENIED. Every other messaging provider denied except `MediaScratchFileProvider` and `rcs.client.businessinfo` (both EMPTY) and `SharedStorageProvider` / `AvatarContentProvider` (query unimplemented). |
+| S33 | photos — Mars (Locked Folder), Memories, Partner, BackupStatus, FreeUpSpace | DROP | `mars.contentprovider.local_locked_media` and `libraries.photos.api.mars` both DENIED — Locked Folder holds. Memories and BackupStatus reachable but EMPTY; Partner and FreeUpSpace unimplemented. |
+| S34 | restore — `settingscard`, `pixelmigrate.provider` | DROP | Unimplemented / empty. |
+
+### Where the provider surface stands, 2026-10-19
+
+Probed across the eight highest-scoring non-Tier-1 packages. Uniformly closed:
+every provider holding real data denies, and the handful that answer are stubs
+(`unimplemented`) or return no rows. Google has hardened this systematically —
+manifest `exported=true` with no `android:permission` is routinely backed by an
+in-code check, as `camerapreviewprovider` showed first.
+
+Two vectors remain genuinely unprobed:
+
+1. **Exported services** (never touched — binding needs a PoC app, not adb).
+   Loudest names: restore `CredentialRecoveryService`; clouddpc
+   `OemCommandEndpointService`, `LocalPolicyHandlerEndpointService`,
+   `PlayEnterpriseManagementEndpointService`; Fitbit `HealthDataSdkService`,
+   `GPayMseService`; tycho `CarrierServicesTestService`, `AudioService`.
+2. **`call()` on the providers whose `query()` is unimplemented.** A provider
+   can expose its real API through `call()` while `query()` stays a stub —
+   SharedStorageProvider, AvatarContentProvider, freeable_space,
+   partnercontentprovider, settingscard, suggestionstateprovider. Method names
+   come from jadx, then `content call --uri X --method Y`.
+
+Both point at the same next tool: a permissionless PoC app. It also closes the
+control gap admitted earlier — adb shell (uid 2000) is not a faithful stand-in
+for a malicious app — and Mobile VRP asks for an APK in a good-quality report
+anyway.
