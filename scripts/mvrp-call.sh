@@ -56,8 +56,18 @@ SEN=$(call "canaryMethodThatCannotExist_$RANDOM")
 SV=$(cl "$SEN")
 echo "SENTINEL canaryMethodThatCannotExist -> $SV"
 if [ "$SV" = "BUNDLE" ]; then
-  echo "!! CONTROL FAIL: বানানো method-ও ভরা Bundle ফেরত দিয়েছে।"
-  echo "!! provider সব method-এ একই উত্তর দিচ্ছে — এই রানে কিছু প্রমাণ হয় না। থামো।"
+  echo "             ----- sentinel যা ফেরত দিয়েছে -----"
+  sed 's/^/             /' <<<"$SEN"
+  echo "             ------------------------------------"
+  echo
+  echo "!! CONTROL FAIL (তুলনার জন্য): বানানো method-ও ভরা Bundle দিয়েছে, তাই"
+  echo "!! method-ভিত্তিক তুলনা অচল — কোন method কাজ করল তা বলা যাবে না।"
+  echo "!!"
+  echo "!! কিন্তু উপরের বাইটগুলো নিজেই একটা পর্যবেক্ষণ: একটা unprivileged caller"
+  echo "!! (uid 2000, এই app নয়) যা খুশি method নাম দিয়ে ডেটা ফেরত পাচ্ছে।"
+  echo "!! পড়ো: ভেতরে token/credential/medical/message আছে কি?"
+  echo "!!   হ্যাঁ -> লিড। PoC app দিয়ে নিশ্চিত করো (shell != app)।"
+  echo "!!   না   -> setting/বুলিয়ান/খালি হলে kill list।"
   exit 3
 fi
 if [ "$SV" = "DENIED" ]; then
