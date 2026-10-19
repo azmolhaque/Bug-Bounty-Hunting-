@@ -59,17 +59,21 @@ r=ET.parse(sys.argv[1]).getroot(); app=r.find("application")
 n=0
 for p in app.findall("provider"):
     if a(p,"enabled")=="false": continue
-    exported = a(p,"exported")=="true" or (a(p,"exported") is None and p.findall("intent-filter"))
-    if not exported: continue
+    # exported=false বাদ দেবো না: androidx FileProvider সবসময় exported=false,
+    # সে URI grant-এ চলে। কিন্তু অবস্থাটা ছাপবো, কারণ এটাই ঠিক করে
+    # shell-এর ফলাফল একটা সাধারণ app-এর জন্যও সত্যি কিনা।
+    exp = a(p,"exported")
+    state = "exported" if exp=="true" else ("implicit" if (exp is None and p.findall("intent-filter")) else "NOT-exported")
     auth=a(p,"authorities") or ""
     perm=a(p,"permission") or a(p,"readPermission") or ""
+    grant="grantUri" if a(p,"grantUriPermissions")=="true" else "-"
     res=""
     for md in p.findall("meta-data"):
         if "FILE_PROVIDER_PATHS" in (a(md,"name") or ""):
             res=(a(md,"resource") or "").replace("@xml/","")
     for one in auth.split(";"):
         if one:
-            print(f"{one}|{res}|{perm}|{a(p,'name')}")
+            print(f"{one}|{res}|{perm}|{a(p,'name')}|{state}|{grant}")
             n+=1
 import sys as s
 print(f"#COUNT {n}", file=s.stderr)
@@ -82,12 +86,18 @@ if [ "$COUNT" -eq 0 ]; then
 fi
 echo
 
-while IFS='|' read -r auth res perm cls; do
+while IFS='|' read -r auth res perm cls state grant; do
   [ -z "$auth" ] && continue
   echo "---------------------------------------------------------------"
   echo "authority : $auth"
   echo "class     : $cls"
-  echo "permission: ${perm:-NONE}"
+  echo "permission: ${perm:-NONE}   manifest: $state   $grant"
+  if [ "$state" = "NOT-exported" ]; then
+    echo "  NOTE    : exported=false. adb shell এখান থেকে কিছু পেলেও তা"
+    echo "            একটা সাধারণ app-ও পাবে বলে ধরে নেওয়া যাবে না — shell (uid 2000)"
+    echo "            সব ক্ষেত্রে একটা malicious app-এর নিখুঁত প্রতিনিধি নয়।"
+    echo "            বাইট পেলে PoC app দিয়ে আবার যাচাই বাধ্যতামূলক।"
+  fi
 
   ROOTS=()
   if [ -n "$res" ] && [ -f "$RES/res/xml/$res.xml" ]; then
