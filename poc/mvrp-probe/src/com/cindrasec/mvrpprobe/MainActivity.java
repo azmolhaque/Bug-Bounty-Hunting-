@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Parcel;
 import android.os.Process;
 import android.util.Log;
 
@@ -36,6 +37,8 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
 
     public static final String TAG = "MVRP";
     private final Handler handler = new Handler();
+    private int txCode = -1;          // -1 = শুধু bind, transact নয়
+    private String txToken = null;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -52,8 +55,9 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             if ("call".equals(action))        doCall(in);
             else if ("query".equals(action))  doQuery(in);
             else if ("bind".equals(action)) { doBind(in); keepAlive = true; }
+            else if ("transact".equals(action)) { doBind(in); keepAlive = true; }
             else if ("start".equals(action))  doStart(in);
-            else Log.i(TAG, "actions: call | query | bind | start");
+            else Log.i(TAG, "actions: call | query | bind | transact | start");
         } catch (Throwable t) {
             // শ্রেণির নামই প্রায়ই আসল উত্তর:
             // SecurityException = সীমানা ধরেছে। অন্য কিছু = অন্য কারণে ব্যর্থ।
@@ -127,6 +131,10 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
 
         // false = system চেষ্টাও করতে দেয়নি (component নেই / exported নয় /
         // visibility নেই)। true = অনুরোধ গেছে; আসল উত্তর callback-এ।
+        if (in.getStringExtra("code") != null) {
+            txCode  = Integer.parseInt(in.getStringExtra("code"));
+            txToken = in.getStringExtra("token");   // interface token, থাকলে
+        }
         boolean ok = bindService(svc, this, Context.BIND_AUTO_CREATE);
         Log.i(TAG, "bindService() returned " + ok);
     }
@@ -140,6 +148,36 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             Log.i(TAG, "  descriptor THREW " + t.getClass().getName() + ": " + t.getMessage());
         }
         Log.i(TAG, "  isBinderAlive = " + binder.isBinderAlive());
+        if (txCode >= 0) transact(binder);
+    }
+
+    /**
+     * একটা নির্দিষ্ট transaction কোডে **খালি** parcel পাঠাও।
+     *
+     * ইচ্ছে করেই এক কোড, লুপ নয়, আর কোনো payload নয়। OemCommandEndpointService-এর
+     * মতো জিনিসে অন্ধভাবে ভরা parcel ছোড়া মানে অজানা কাজ চালিয়ে দেওয়া — CLAUDE.md §7
+     * বলে কোনো destructive payload নয়। কোডের অর্থ আগে jadx-এ পড়ো, তারপর পাঠাও।
+     */
+    private void transact(IBinder binder) {
+        Parcel data = Parcel.obtain(), reply = Parcel.obtain();
+        try {
+            if (txToken != null) data.writeInterfaceToken(txToken);
+            Log.i(TAG, "TRANSACT code=" + txCode + " token=" + txToken + " dataSize=" + data.dataSize());
+            boolean ok = binder.transact(txCode, data, reply, 0);
+            Log.i(TAG, "  transact() returned " + ok + "  replySize=" + reply.dataSize());
+            if (reply.dataSize() > 0) {
+                reply.setDataPosition(0);
+                byte[] raw = reply.marshall();
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < raw.length && i < 256; i++)
+                    sb.append((raw[i] >= 32 && raw[i] < 127) ? (char) raw[i] : '.');
+                Log.i(TAG, "  reply ascii = " + sb);
+            }
+        } catch (Throwable t) {
+            // SecurityException = প্রতি-transaction যাচাই আছে, সীমানা ধরেছে।
+            // অন্য কিছু = protocol ভুল, কিন্তু যাচাই নেই।
+            Log.i(TAG, "  transact THREW " + t.getClass().getName() + ": " + t.getMessage());
+        } finally { data.recycle(); reply.recycle(); }
     }
 
     public void onServiceDisconnected(ComponentName name) {

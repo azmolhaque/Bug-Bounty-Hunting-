@@ -152,3 +152,35 @@ unclaimed - but it only gates `get_all_apps_usage` and `get_app_usage`, and
 whether the allowlist verifies signature as well as name is untested. That is
 the one thread here worth pulling if the service surface comes up empty; it
 needs the PoC app, since the package name must be claimed by a real APK.
+
+### 2026-10-20 — first crossing: three services bind from a permissionless app
+
+The PoC app (`poc/mvrp-probe`, no `<uses-permission>` at all, uid 10563 —
+not shell) binds to these, with a nonexistent service as the control:
+
+    com.google.android.apps.restore/.osmigration.data.credentials.importer
+        .recovery.CredentialRecoveryService                      BOUND
+    com.google.android.apps.work.clouddpc/.vanilla.oemconfig.command
+        .services.OemCommandEndpointService                      BOUND
+    com.google.android.apps.work.clouddpc/.vanilla.policy
+        .services.LocalPolicyHandlerEndpointService              BOUND
+
+    com.google.android.apps.restore/.canary.NotARealService       false  (control)
+    com.fitbit.FitbitMobile/androidx.health.platform.client.impl
+        .sdkservice.HealthDataSdkService                          false
+
+`getInterfaceDescriptor()` is empty on all three, so these are not AIDL stubs
+but plain Binders — the naming and the tiktok framework around them point at
+gRPC-over-binder endpoints with custom transaction codes.
+
+**This is a precondition, not a finding.** Google's endpoints of this shape
+normally authenticate the caller per transaction rather than at bind time, so
+a successful bind is expected and proves nothing on its own. The question is
+what a transaction returns. Reading the decompiled service first rather than
+firing blind: an empty parcel at an unknown code on a device-policy command
+service is an unknown action, and CLAUDE.md section 7 forbids that.
+
+Why these matter if a transaction does work: `CredentialRecoveryService` sits
+in the migration path that imports credentials, which is High Impact Data; the
+clouddpc endpoints are Android Device Policy's OEM command and local policy
+handlers.
