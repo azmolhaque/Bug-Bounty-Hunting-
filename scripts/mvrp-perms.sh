@@ -85,6 +85,16 @@ for pkg in "${pkgs[@]}"; do
   for g in "${guards[@]}"; do
     row=$(lookup "$g")
     if [ -z "$row" ]; then
+      # android.permission.* প্ল্যাটফর্মের নিজস্ব namespace। সেখানে একটা নাম
+      # pm list permissions-এ না দেখালেও তা "দখলযোগ্য" নয় — প্ল্যাটফর্ম নিজের
+      # manifest-এ সেটা সংজ্ঞায়িত করে, আর নতুন API-র permission পুরনো OS-এ
+      # স্বাভাবিকভাবেই অনুপস্থিত থাকে (BIND_APP_FUNCTION_SERVICE = API 36)।
+      # এগুলোকে SQUATTABLE বলা মানে ভুল পথে সময় নষ্ট।
+      case "$g" in
+        android.permission.*|android.*.permission.*)
+          hits+="  PLATFORM    $g\n              এই ডিভাইসে ঘোষিত নয় (সম্ভবত নতুন API-র)। platform namespace — দখলযোগ্য নয়।\n"
+          continue;;
+      esac
       hits+="  SQUATTABLE  $g\n              কোনো package declare করে না -> malicious app নিজে declare করে self-grant করতে পারে\n"
       continue
     fi
