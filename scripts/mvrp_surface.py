@@ -49,6 +49,7 @@ def analyse(path):
     tgt = a(sdk, "targetSdkVersion", "?") if sdk is not None else "?"
 
     counts, findings = {}, []
+    disabled = 0
     perms_declared = {a(p, "name") for p in root.findall("permission")}
 
     for kind in ("activity", "activity-alias", "service", "receiver", "provider"):
@@ -57,6 +58,12 @@ def analyse(path):
         for el in els:
             name = a(el, "name") or "?"
             exp  = a(el, "exported")
+
+            # enabled=false -> অন্য app একে চালু করতে পারে না, তাই পৌঁছানোই যায় না।
+            # safetyhub-এর DEVICE_SUPERVISION stub ঠিক এভাবেই ভুয়া লিড হয়ে এসেছিল।
+            if a(el, "enabled") == "false":
+                disabled += 1
+                continue
             perm = a(el, "permission") or a(el, "readPermission") or a(el, "writePermission")
             ifs  = el.findall("intent-filter")
 
@@ -131,6 +138,8 @@ def analyse(path):
     print(f"\n{'='*78}\n{pkg}   targetSdk={tgt}   [{path}]")
     print("  components: " + "  ".join(f"{k}={v}" for k, v in counts.items()) +
           f"   (মোট {total})")
+    if disabled:
+        print(f"  enabled=false: {disabled} টা বাদ দেওয়া হলো (পৌঁছানো যায় না)")
     if flags:   print(f"  flags: {' '.join(flags)}")
     if netcfg:  print(f"  networkSecurityConfig: {netcfg}  <- cleartext/trust-anchor দেখো")
 
