@@ -83,3 +83,21 @@ Both point at the same next tool: a permissionless PoC app. It also closes the
 control gap admitted earlier — adb shell (uid 2000) is not a faithful stand-in
 for a malicious app — and Mobile VRP asks for an APK in a good-quality report
 anyway.
+
+| S35 | photos `partnercontentprovider`, `freeable_space` — call() | DROP | Sentinel method itself DENIED. call() boundary holds. |
+| S36 | wellbeing `.api` — call() | OPEN LEAD | A random nonexistent method returns `Bundle[{success=false, tts_config=<bytes>}]`; the bytes decode to the ASCII string `wellbeing_tts_invalid_arguments`. That is an error payload, not data — but the rejection is on ARGUMENTS, not permission, so an unprivileged caller (uid 2000) reaches method dispatch. The presence of a `success` field implies a successful call returns `success=true` plus a payload. Blocked only on not knowing the real method names. |
+| S37 | messaging `SharedStorageProvider` — call() | OPEN LEAD | Same shape: `Bundle[{result_error_key=2}]` for an arbitrary method. Error, not data; reached, not denied. |
+
+### Second tooling correction — a populated Bundle is not necessarily data
+
+mvrp-call.sh aborted on both of the above because its sentinel returned a
+populated Bundle, and its rule was "sentinel returns a Bundle => comparison is
+meaningless, stop". That rule was too blunt in a way that would have blocked
+the most promising targets permanently: these Bundles contain only a refusal
+(`success=false`, `result_error_key`), and a real data response would look
+obviously different from them. A refusal is a perfectly good baseline.
+
+The classifier now separates BUNDLE_ERR (populated refusal — a valid sentinel
+baseline, run proceeds) from BUNDLE (actual payload — abort if the sentinel
+produces one). It also prints the sentinel's bytes before any abort, since a
+control failure invalidates the comparison, not the observation.

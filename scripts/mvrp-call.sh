@@ -36,6 +36,11 @@ cl() {
   elif grep -qiE 'unsupportedoperation|unimplemented|not implemented' <<<"$o"; then echo UNSUPPORTED
   elif grep -qiE 'unknown uri|failed to find provider|could not find provider' <<<"$o"; then echo NOPROVIDER
   elif grep -qE 'Result: Bundle\[\{\}\]|Result: null' <<<"$o"; then echo NULLRESULT
+  # ভরা Bundle কিন্তু ভেতরে শুধু "না" — success=false, error key, error code।
+  # এটা ডেটা নয়, আর গুরুত্বপূর্ণ: এটা একটা বৈধ sentinel ভিত্তি, কারণ আসল
+  # ডেটা-ফেরত এর থেকে স্পষ্ট আলাদা দেখাবে। একে BUNDLE বললে স্ক্রিপ্ট
+  # ঠিক সবচেয়ে সম্ভাবনাময় target-এই চলতে অস্বীকার করত।
+  elif grep -qiE 'success=false|error_key|_error|error_code|invalid_arguments|errorcode' <<<"$o"; then echo BUNDLE_ERR
   elif grep -qE 'Result: Bundle\[\{' <<<"$o"; then echo BUNDLE
   elif [ -z "${o//[[:space:]]/}" ]; then echo SILENT
   else echo ERROR
@@ -102,6 +107,9 @@ cat <<'NOTE'
 == পড়ার নিয়ম ==
 BUNDLE      একটা unprivileged caller ডেটা ফেরত পেয়েছে। ভেতরে কী?
             token/credential/medical/message -> finding। setting/বুলিয়ান -> kill list।
+BUNDLE_ERR  ভরা Bundle কিন্তু ভেতরে "না" (success=false / error key)।
+            ডেটা নয় — কিন্তু provider permission-এ আটকায়নি, argument-এ আটকেছে।
+            মানে dispatch পর্যন্ত পৌঁছানো গেছে। আসল method নাম পেলে আবার চালাও।
 DENIED      সীমানা ধরে আছে।
 UNSUPPORTED এই method নেই।
 NULLRESULT  method আছে হয়তো, কিন্তু খালি ফিরেছে।
