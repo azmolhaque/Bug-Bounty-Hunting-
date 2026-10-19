@@ -54,7 +54,10 @@ fi
 # android.jar-এ resources.arsc আছে কিনা — aapt2-র জন্য সেটাই লাগে।
 # classes-only stub (যেমন Maven-এর android-4.1.1.4.jar) এখানে চলবে না,
 # আর সেটা জানা ভালো আগেই, aapt2-র দুর্বোধ্য ত্রুটির চেয়ে।
-if ! unzip -l "$AJ" 2>/dev/null | grep -q 'resources.arsc'; then
+# grep -q নয়: সে ম্যাচ পেয়েই বেরিয়ে যায়, pipe বন্ধ হয়, unzip SIGPIPE-এ মরে,
+# আর `set -o pipefail` সেটাকে ব্যর্থতা ধরে — ফলে ঠিক jar-ও "arsc নেই" দেখায়।
+# grep -c পুরো ইনপুট পড়ে, তাই দৌড় নেই।
+if [ "$(unzip -l "$AJ" 2>/dev/null | grep -c 'resources\.arsc' || true)" -eq 0 ]; then
   echo "!! $AJ -তে resources.arsc নেই — এটা classes-only stub।"
   echo "!! aapt2-র আসল platform android.jar লাগে। README দেখো।"
   exit 1
