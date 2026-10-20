@@ -230,16 +230,28 @@ done
 sleep 40
 echo "== ফলাফল =="
 echo "deeplink ছোড়া হয়েছে: $FIRED   বাদ: $SKIPPED"
+# শুধু sweep-এর সংখ্যাসূচক id — control-এর CONTROL/APPCTL আলাদা, ওগুলো
+# এখানে গোনা হবে না।
 H=$(grep -oE '/c/[0-9]+' "$SRVLOG" 2>/dev/null | sed 's#/c/##' | sort -u)
-if [ -z "$H" ] && [ "$(hits)" -gt 0 ]; then
-  echo "!! canary-তে hit আছে কিন্তু কোন id বলা যাচ্ছে না — লগে অনুরোধের পথ নেই।"
-  echo "!! interactsh-client -v দিয়ে আবার চালাও, নইলে hit কোন app/প্যারামিটারের"
-  echo "!! তা শনাক্ত করা যাবে না।"
+# control hit থাকলে লগে পথ লেখা হচ্ছে — তাই sweep-এর কোনো id না থাকাটা
+# সত্যিকারের নেতিবাচক ফল, ফরম্যাট সমস্যা নয়। দুটো আলাদা করে বলা দরকার,
+# নইলে একই রানে "hit আছে" আর "কোনো hit নেই" দুটোই ছাপা হয়।
+PATHS_OK=0
+grep -qE '/c/(CONTROL|APPCTL)' "$SRVLOG" 2>/dev/null && PATHS_OK=1
+if [ -z "$H" ] && [ "$PATHS_OK" -eq 0 ] && [ "$(hits)" -gt 0 ]; then
+  echo "!! লগে hit আছে কিন্তু অনুরোধের পথ নেই — কোন id তা বলা যাচ্ছে না।"
+  echo "!! interactsh-client -v দিয়ে চালাও।"
+  PATHS_OK=-1
 fi
-if [ -z "$H" ]; then
-  echo "canary-তে কোনো app পৌঁছায়নি।"
-  echo "এর মানে 'বন্ধ' নয় — এর মানে এই ১৯টা প্যারামিটার নামের কোনোটা মেলেনি,"
-  echo "অথবা app URL নেয় কিন্তু আনতে যায় না। আসল নাম jadx-এ পাওয়া যাবে।"
+if [ -z "$H" ] && [ "$PATHS_OK" -eq 1 ]; then
+  echo "sweep-এর কোনো deeplink canary-তে পৌঁছায়নি।"
+  echo "control hit লগে পথসহ এসেছে, তাই এটা **সত্যিকারের নেতিবাচক ফল** —"
+  echo "যন্ত্রের ত্রুটি নয়। তবু 'surface বন্ধ' নয়: এই ১৯টা প্যারামিটার নামের"
+  echo "কোনোটা মেলেনি, অথবা app URL নেয় কিন্তু আনতে যায় না।"
+  echo "পরের ধাপ: প্রতিটা app-এর dex থেকে আসল প্যারামিটার নাম বের করা।"
+elif [ -z "$H" ]; then
+  echo "canary-তে কোনো app পৌঁছায়নি — কিন্তু control-ও পথসহ আসেনি,"
+  echo "তাই এই ফল থেকে কিছু সিদ্ধান্ত নেওয়া যাবে না।"
 else
   echo "!! canary HIT:"
   for id in $H; do
