@@ -830,3 +830,49 @@ component-walk shape from `nbd`, the canonical-path check, and the
 Running tally of tool defects this session: 8 through 12, all five found by
 reading my own output rather than by being told. Four of the five are the same
 error — a conclusion drawn from something not being present.
+
+### 2026-10-20 — S43 closed definitively, with the reason named
+
+Reopened on the idea that `onActivityResult` is reachable if the child activity
+can be an attacker app. Followed through; it cannot.
+
+What is true, and is genuinely sloppy: `ProjectorActivity` is
+`android:exported="true"` with an `android.intent.action.QUICK_VIEW` filter, and
+its redirect checks neither argument —
+
+    public final void onActivityResult(int i, int i2, Intent intent) {
+        ...
+        if (intent.hasExtra("next_activity_result_key") && num != null) {
+            startActivity((Intent) intent.getParcelableExtra("next_activity_result_key"));
+
+no requestCode, no resultCode, so any result carrying that extra fires it. The
+branch twenty lines above does check both (`if (i == 256 && i2 == -1)`), so the
+file itself shows they know how. And a non-exported destination exists in the
+same package: `com.google.android.apps.viewer.drive.InternalProjectorActivity`,
+`exported="false"` — exactly what the rules ask for.
+
+What is missing is the only thing that matters: a way for an outside app to
+deliver a result to that activity.
+
+- The only two producers of `next_activity_result_key` in the whole app are
+  `DetailsPanelActivity:157` and `DoclistActionsMenuWrapperActivity:340`. Both
+  are `android:exported="false"`.
+- In both, the Intent is not taken from incoming extras. It arrives as the
+  parameter of an internal interface callback (`defpackage.nqr.s(Intent)`),
+  which only an internal caller invokes.
+- `grep` for `createChooser|ACTION_VIEW|ACTION_GET_CONTENT|ACTION_SEND|ACTION_OPEN_DOCUMENT`
+  across the entire `com/google/android/apps/viewer/` tree returns nothing, so
+  the viewer never launches an outside handler and an attacker app cannot be
+  the child.
+
+So the exported entry point, the unvalidated redirect and the non-exported
+destination are all real, and there is still no crossing. A precondition is not
+a finding (CLAUDE.md 2.6) — this is the shape that killed G-F002 and the Wiz
+subdomain report, and the honest move is to drop it rather than write it up as
+"an attacker who could return a result would be able to…".
+
+Two things worth keeping as method. Reopening a closed surface on a specific,
+testable reachability idea was right — the first drop reason ("it's in
+`onActivityResult`") was incomplete reasoning, and incomplete reasoning deserves
+a second look. And the follow-up was cheap: four greps settled it, where a PoC
+attempt would have cost hours and produced the same answer.
