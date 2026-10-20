@@ -50,7 +50,10 @@ sleep 1
 kill -0 "$SRV" 2>/dev/null || { echo "!! পোর্ট $PORT-এ সার্ভার চালু হয়নি"; exit 1; }
 adb reverse "tcp:$PORT" "tcp:$PORT" >/dev/null || { echo "!! adb reverse ব্যর্থ"; exit 1; }
 
-hits() { grep -c 'GET /c/' "$SRVLOG" 2>/dev/null || echo 0; }
+# grep -c শূন্য ম্যাচে "0" ছাপে **আর** exit 1 দেয়, তাই `|| echo 0` দ্বিতীয়
+# একটা 0 ছেপে "0\n0" বানায় — আর তুলনা "integer expression expected" বলে মরে,
+# আর সেটা CONTROL FAIL হিসেবে দেখায় যদিও canary ঠিকই কাজ করছিল।
+hits() { local n; n=$(grep -c 'GET /c/' "$SRVLOG" 2>/dev/null) || n=0; echo "${n:-0}"; }
 
 {
 echo "# deeplink canary sweep"
