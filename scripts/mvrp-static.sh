@@ -88,6 +88,26 @@ zip_files() {   # zip_files <sources-dir>
 # traversal নয়, কিন্তু অনেক দামি — archive আক্রমণকারীর নাগালে থাকলে ফল ACE,
 # rules-এর সর্বোচ্চ শ্রেণি। এই শ্রেণিটা sweep-এ ছিলই না।
 DEX_RE='DexClassLoader|InMemoryDexClassLoader|BaseDexClassLoader|DexFile|loadDex|"classes\.dex"'
+
+# ---- অনিরাপদ PendingIntent: শর্ত তিনটে ----
+# প্রথম রানে ১৪৩ ফাইল, আর তালিকা দেখলেই বোঝা যায় কেন অর্থহীন:
+# MediaSessionCompat, androidx/compose, io/flutter, bumptech/glide, expo —
+# তৃতীয় পক্ষের লাইব্রেরি, যা kill_list-এ স্পষ্ট ("Non-Google SDK/library ->
+# report to the maintainer first")। ওগুলো গুনে রাখাও ভুল ছিল।
+#
+# বাকি দুটো শর্ত শ্রেণির সংজ্ঞা থেকেই আসে:
+#   ২. PendingIntent আসলে **তৈরি** হচ্ছে, শুধু ধ্রুবকটা ফাইলে থাকা নয়
+#   ৩. base Intent-এ component পিন করা নেই — setComponent/setClass/setPackage
+#      বা new Intent(ctx, Foo.class) থাকলে গ্রাহকের ভরার জায়গা নেই
+PI_LIB='/sources/(androidx|android/support|kotlin|kotlinx|io/flutter|com/bumptech|expo|com/squareup|okhttp3|com/facebook|org/chromium|j\$)/'
+PI_CREATE='PendingIntent\.get(Activity|Activities|Broadcast|Service|ForegroundService)'
+PI_PINNED='setComponent\(|setClass\(|setClassName\(|setPackage\(|new Intent\([^;]*\.class'
+pi_files() {   # pi_files <sources-dir>
+  grep -rlE '33554432' --include='*.java' "$1" 2>/dev/null \
+    | xargs -r grep -lE "$PI_CREATE" 2>/dev/null \
+    | xargs -r grep -LE "$PI_PINNED" 2>/dev/null \
+    | grep -vE "$PI_LIB"
+}
 IR_START='startActivity|startActivities|startService|startForegroundService|sendBroadcast|sendOrderedBroadcast|bindService'
 ir_files() {   # ir_files <sources-dir>
   grep -rlE "$IR_RE" --include='*.java' "$1" 2>/dev/null \
@@ -223,8 +243,7 @@ for pkg in "${pkgs[@]}"; do
   # খালি সংখ্যা খোঁজা যথেষ্ট নয়: 33554432 = 2^25, desugar করা java.util
   # concurrency কোডে bit mask হিসেবে এসেই যায় (j$/util/concurrent/*.java)।
   # ফাইলে PendingIntent-ও থাকতে হবে।
-  PI=$(grep -rln "$MUT" --include='*.java' "$d" 2>/dev/null \
-       | xargs -r grep -ln 'PendingIntent' 2>/dev/null | head -20)
+  PI=$(pi_files "$d" | head -20)
   if [ -n "$PI" ]; then
     c=$(wc -l <<<"$PI"); TOT_PI=$((TOT_PI+c))
     echo "  [PendingIntent] FLAG_MUTABLE ($MUT) — $c ফাইল"

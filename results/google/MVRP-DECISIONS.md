@@ -995,3 +995,62 @@ app is an hour's work rather than a week's.
 The remaining work here, in order: the PendingIntent class cross-referenced
 against exported components (the only unexamined class in this corpus), then
 new targets from those four developers.
+
+### 2026-10-20 — the PendingIntent class, filtered down from 143
+
+The 143 figure was meaningless and the file list said why: `MediaSessionCompat`,
+`androidx/compose/material3`, `io/flutter/view`, `com/bumptech/glide`, `expo/`.
+Third-party library code, which the scope file's own kill list rules out —
+"Non-Google SDK/library -> report to the maintainer first". Counting them was
+wrong, not merely unhelpful.
+
+Two further conditions come straight from the class definition and were never
+applied: a PendingIntent must actually be *created*
+(`PendingIntent.getActivity/getBroadcast/getService/...`, not merely the constant
+`33554432` appearing in the file), and the base Intent must not pin a component —
+`setComponent`, `setClass`, `setClassName`, `setPackage` or
+`new Intent(ctx, Foo.class)` leave the consumer nothing to fill in.
+
+Bound by five fixtures: the mutable-plus-implicit shape is caught; a pinned
+component, a pinned `setComponent`, a file carrying the constant as a plain
+bitmask (desugared `j$/util` concurrency code), and an otherwise-matching file
+under a third-party library path are not.
+
+### 2026-10-20 — target list for the four untouched in-scope developers
+
+Pulled from the Play developer pages, since none of these apps has ever been
+touched here. Fifteen packages:
+
+**Research at Google** — `com.google.ai.edge.gallery`,
+`com.google.android.apps.vision.switches`,
+`com.google.audio.hearing.visualization.accessibility.scribe`
+
+**Google Samples** — `com.android.developers.androidify`,
+`com.google.samples.apps.nowinandroid`, `com.google.ar.unity.arcore_depth_lab`,
+`com.google.fpl.mechahamster`, `com.google.play.billing.samples.managedcatalogue`,
+`com.google.play.billing.samples.onetimepurchases`
+
+**Red Hot Labs** — `com.redhotlabs.bingo`
+
+**Developed with Google** — `com.google.android.apps.location.gps.gnsslogger`,
+`com.google.android.apps.location.rtt.wifinanscan`,
+`com.google.android.apps.location.rtt.wifirttlocator`,
+`com.google.android.apps.location.rtt.wifirttscan`, `com.google.looker`
+
+Ranked by where the rewarded classes could plausibly live, and by tier, since
+tier 3 pays $2,250 ACE / $1,350 theft / $675 other against tier 2's
+$7,500 / $4,500 / $2,250:
+
+1. `com.google.ai.edge.gallery` — imports and runs local model files, so it
+   handles file paths, archives and user prompts, and touches Google services.
+   Plausibly tier 2, and new enough (2025) to be unswept.
+2. `com.google.android.apps.location.gps.gnsslogger` — writes and exports log
+   files to storage, which is where file-write bugs live.
+3. `com.android.developers.androidify` — recent, takes user images.
+4. `com.google.samples.apps.nowinandroid` — deeplinks, but a sample app that
+   handles no user data reads as tier 3.
+
+Caveat to hold onto: a real bug in a sample app or a game still qualifies, but
+at tier 3 rates, and "actual impact" judging means a bug in software with no
+users is argued down. The AI Edge Gallery is the one target here where a
+finding would be worth tier-2 money.
