@@ -1220,3 +1220,41 @@ attack surface to hold.
 
 The honest read is that the tooling is now good and the target is wrong. This
 is a crowding problem, not a capability one.
+
+### 2026-10-21 — PreviewActivity: reachable, inert. Mobile VRP path closed for now.
+
+    adb shell am start -n com.google.ai.edge.gallery/androidx.compose.ui.tooling.PreviewActivity \
+      -a androidx.compose.ui.tooling.PREVIEW_ACTIVITY
+    Starting: Intent { act=... cmp=com.google.ai.edge.gallery/androidx.compose.ui.tooling.PreviewActivity }
+    topResumedActivity=ActivityRecord{... com.android.chrome/...Main ...}
+
+No `Permission Denial`, so the activity **is** externally launchable from a
+permissionless app — that part is confirmed. But without a `composable` extra it
+finishes immediately and the previous app returns to the front, so nothing was
+rendered and nothing was proven beyond reachability.
+
+Turning it into a finding would need a fully-qualified composable name that
+renders something sensitive. In an obfuscated release build those names are
+mangled into `ComposableSingletons$...` forms, and the ceiling even on success
+is Tier 3 "other", $675, with a strong chance of a low/informational close.
+Reachability without demonstrated impact is a precondition, which is exactly the
+shape CLAUDE.md §2.6 exists to stop me submitting. Dropped.
+
+The HuggingFace token lives in a DataStore proto (`AccessTokenData`,
+`DefaultDataStoreRepository.saveAccessTokenData`) in the app's private
+directory. `allowBackup` is on, but extracting it needs USB debugging and user
+consent, which the kill list rules out as unreasonable user interaction.
+
+**Session close.** 54 surfaces across 37 apps, 18 tool defects found and fixed,
+zero reports submitted. Every rewarded Mobile VRP class now has a fixture-bound
+pattern with controls that abort the run on failure, so this pipeline is worth
+re-running whenever a new in-scope app ships — it is an hour's work now.
+
+The conclusion is about targets, not capability. Mature Google apps hold at
+five layers because hundreds of hunters have swept them for years; the small
+apps from the untouched developers have almost no attack surface to hold. Both
+ends return zero for opposite reasons.
+
+Recommendation recorded for the operator: the expected value of further Mobile
+VRP time is low, and `business/fb-business-audit/` — built, never started — is
+the better use of the next session.
