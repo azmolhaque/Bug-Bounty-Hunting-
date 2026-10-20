@@ -46,7 +46,15 @@ adb shell svc power stayon usb >/dev/null 2>&1 </dev/null
 adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 </dev/null
 
 enc() { printf '%s' "$1" | sed 's|%|%25|g; s|:|%3A|g; s|/|%2F|g; s|?|%3F|g; s|&|%26|g; s|#|%23|g; s|=|%3D|g; s| |%20|g'; }
-sig() { sha1sum <<<"$1" | cut -c1-12; }
+# পর্দার পরিচয় থেকে অস্থির লেখা বাদ দিতে সব অঙ্ক মাস্ক করা হয়: ঘড়ি,
+# ব্যাটারি, তাপমাত্রা, তারিখ, বাতাসের গতি।
+#
+# কেন: প্রথম Fitbit রানে launcher-এর চারটে স্ন্যাপশট চারটে আলাদা fingerprint
+# পেয়েছিল, পার্থক্য ছিল শুধু "12:37 AM" বনাম "12:39 AM"। STAGE 3-এর payload
+# গুলো ক্রমে চলে, তাই দলগুলো দাঁড়িয়েছিল মিনিট ধরে — আর আমি সেটা পড়েছিলাম
+# "host www.fitbit.com দিয়ে শুরু হলে গ্রহণ" বলে, কারণ অ্যারেতে ঠিক ওই ছয়টাই
+# আগে ছিল। সময়কে কারণ ভেবে নেওয়া। অঙ্ক মাস্ক করলে ঐ দরজা বন্ধ।
+sig() { tr '0-9' '#' <<<"$1" | sha1sum | cut -c1-12; }
 
 screen_text() {
   local x
@@ -74,7 +82,7 @@ acc() {
 }
 
 # ---------- fire: সব ফল global-এ, কারণ $(...) subshell array হারিয়ে ফেলে ----------
-N=0; FTEXT=""; FSIG=""; FACT=""; FACC=""; FFILE=""; STABLE=1
+N=0; FTEXT=""; FSIG=""; FACT=""; FACC=""; FFILE=""; FSTART=""; STABLE=1
 SIG_L=(); URL_L=(); ACT_L=(); FILE_L=(); LBL_L=()
 fire() {
   local url="$1" name="$2"
@@ -83,13 +91,17 @@ fire() {
   adb shell input keyevent KEYCODE_HOME >/dev/null 2>&1 </dev/null
   sleep 1
   adb logcat -c >/dev/null 2>&1 </dev/null
-  adb shell am start -a android.intent.action.VIEW -d "'$BASE$(enc "$url")'" \
-    >/dev/null 2>&1 </dev/null
+  # am start-এর নিজের কথা রাখা হয়: "Error: Activity not started" মানে intent
+  # পৌঁছায়ইনি, আর "app খুলে সাথে সাথে বন্ধ করেছে" মানে app প্রত্যাখ্যান
+  # করেছে। দুটো সম্পূর্ণ ভিন্ন ঘটনা, অথচ দুটোতেই পর্দায় launcher থাকে।
+  FSTART=$(adb shell am start -a android.intent.action.VIEW -d "'$BASE$(enc "$url")'" \
+    2>&1 </dev/null | tr -d '\r' | grep -iE 'Error|Warning|Activity not started|Starting' | head -3)
   sleep "$WAIT"
   FTEXT=$(screen_text); FSIG=$(sig "$FTEXT")
   FACT=$(top_act);      FACC=$(acc "$FACT")
+  case "$FSTART" in *[Ee]rror*|*"not started"*) FACC="INTENT_ERROR" ;; esac
   printf '%s\n' "$FTEXT" > "$REP/$FFILE.txt"
-  printf '%s\n' "$FACT"  > "$REP/$FFILE.act"
+  { printf '%s\n' "$FACT"; printf 'am: %s\n' "$FSTART"; } > "$REP/$FFILE.act"
   adb logcat -d 2>/dev/null </dev/null \
     | grep -iE 'Cannot load|net::ERR|chromium.*CONSOLE|shouldOverrideUrl' \
     | head -6 > "$REP/$FFILE.logcat" 2>/dev/null
@@ -255,7 +267,7 @@ echo "===== পর্দার শ্রেণি — প্রতিটা আ�
 for s in $(printf '%s\n' "${SIG_L[@]}" | sort -u); do
   for i in "${!SIG_L[@]}"; do
     if [ "${SIG_L[$i]}" = "$s" ]; then
-      echo "--- sig=$s   activity=${ACT_L[$i]}"
+      echo "--- sig=$s   activity=${ACT_L[$i]}   (sig-এ অঙ্ক মাস্ক করা, ঘড়ি গোনা হয় না)"
       sed -n '1,5p' "$REP/${FILE_L[$i]}.txt" | sed 's/^/      | /'
       [ -s "$REP/${FILE_L[$i]}.logcat" ] && sed -n '1,3p' "$REP/${FILE_L[$i]}.logcat" | sed 's/^/      LOG /'
       break

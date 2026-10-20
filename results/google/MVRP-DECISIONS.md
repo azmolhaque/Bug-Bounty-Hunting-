@@ -665,3 +665,63 @@ That is a question about `UrlValidator.isTrusted`'s comparison, and it is
 answered by reading the method, not by fingerprinting error pages. Decompiling
 Fitbit is therefore the next step, and the host-validation sweep is on hold
 until that read says whether the prefix behaviour is real.
+
+### 2026-10-20 — S51 Fitbit `fitbit://webview?url=` CLOSED, and two more tool defects
+
+| S51 | Fitbit `fitbit://webview?url=` deeplink → `WebFrameActivity` | DROP | Under a validated instrument, every payload was dropped: all six `file://` paths, the universal-file-access canary, all eleven host-validation bypasses (suffix, subdomain-lookalike, userinfo `@`, encoded slash, trailing dot, scheme-relative, backslash, fragment and query reflection), `javascript:`, `content://` and `intent://`. The only URL the app accepted was its own host. This is a negative result, not an inconclusive one: the accept control demonstrated the instrument registers acceptance (`WebFrameActivity` resumed and the URL reached the network stack), and under that same instrument nothing else opened the app at all. |
+
+Incidental, not reportable: `https://www.fitbit.com/help` redirects to
+`http://help.fitbit.com/` — plain HTTP — and the platform blocks it with
+`net::ERR_CLEARTEXT_NOT_PERMITTED`. Their own host, blocked by the OS, no
+attacker gain. CLAUDE.md §3 (TLS/transport without a demonstrated downgrade
+attack).
+
+**Defect 9 — the fingerprint counted the clock.** The four "distinct screens"
+from the first run were one screen:
+
+    94e116a4 -> 12:37 AM      c2349611 -> 12:39 AM
+    ed84ed78 -> 12:38 AM      a42dd6b1 -> 12:41 AM
+
+all of them the launcher, with `0%`, `78°`, `92%`, `2 MPH` and a ticking clock.
+`sig()` hashed the raw screen text, so one minute of wall-clock made a new
+"screen".
+
+The consequence was worse than a missed signal. STAGE 3 fires its payloads in
+array order, so the groups fell along minute boundaries — and the first six
+entries in that array happen to be the six `www.fitbit.com`-prefixed hosts. I
+read a temporal artifact as "the host check accepts anything starting with
+www.fitbit.com", built a table out of it, and presented it. Time mistaken for
+cause.
+
+Fixed by masking every digit before hashing (`tr '0-9' '#'`). Verified on the
+real failure data: the two launcher snapshots now hash identically, while
+launcher vs. WebView-error and launcher vs. directory-listing still differ, so
+it is not over-masking.
+
+**Defect 10 — the evidence files overwrote each other.** In the first version
+`fire()` was called as `t=$(fire ...)`, i.e. in a subshell, so `N=$((N+1))`
+never persisted and every payload wrote `01-s1.txt` / `01-s3.txt`. Only the
+last dump of each stage survived. The per-payload evidence for that run is
+gone; the fingerprints in `report.txt` are all that remains of it. Already
+fixed when `fire()` was changed to set globals instead of echoing, but worth
+recording: a subshell silently discarding state destroyed the evidence the run
+existed to collect.
+
+**Also added:** `am start`'s own output is now captured and classified. A
+dropped intent and an app that opened and immediately finished both leave the
+launcher on screen, but they are different findings — `INTENT_ERROR` means the
+intent was never deliverable, `DROPPED` means the app received it and refused.
+
+Scope confirmed from the file, not memory: `config/scope-mobile-vrp.yaml:18`
+lists Fitbit LLC among `in_scope_developers`.
+
+**Remaining Fitbit lead.** The deeplink path is closed, but it is not the only
+way into `WebFrameActivity`. `WebFrameActivity:221` is
+`if (this.x && !UrlValidator.isTrusted(uri4))` with `x` the `...AUTHENTICATED`
+boolean extra, and the `slw` constructor attaches the JavaScript bridge and
+`DelegateTokenGenerator` behind that same flag. If the activity can be launched
+directly from another app with `AUTHENTICATED` true, the question becomes
+whether `isTrusted` can be satisfied by an attacker-controlled host — and the
+prize is the bridge plus a delegate token, which is Theft of Sensitive Data.
+That is settled by the manifest (is it exported) and by reading `isTrusted`,
+not by fingerprinting error pages. jadx is running on Fitbit now.
