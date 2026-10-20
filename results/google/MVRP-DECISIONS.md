@@ -1054,3 +1054,41 @@ Caveat to hold onto: a real bug in a sample app or a game still qualifies, but
 at tier 3 rates, and "actual impact" judging means a bug in software with no
 users is argued down. The AI Edge Gallery is the one target here where a
 finding would be worth tier-2 money.
+
+### 2026-10-20 — S53 GnssLogger, the first app from an untouched in-scope developer
+
+First target from the four developers never hunted here ("Developed with
+Google"). 8,307 java files, 20 manifest components, small enough to read whole.
+
+The static sweep returned zero on all four rewarded classes, and for once that
+zero is worth something: five controls printed POSITIVE first, and the only
+`PendingIntent` hit was GMS's own `PendingIntentCompat`.
+
+The manifest looked better than the code turned out to be:
+
+| S53 | gnsslogger `WearChannelClientListenerService` | DROP | `android:exported="true"`, no permission, `com.google.android.gms.wearable.CHANNEL_EVENT`, `wear://*` with `pathPrefix` `/send-zip`. The shape I had failed to find in 35 mature apps, declared in the manifest of a small one. But `onChannelOpened` builds the destination itself — `FileLogUtil.setupBaseDir(...)` + a string resource + `FileLogUtil.getFormattedCurrentDateAndTime()` + `.zip` — so not one character of the path comes from the channel, and the archive is never extracted: it is saved and its path written to SharedPreferences for the user to share. Even with full reachability the attacker gets attacker-supplied *content* at an app-chosen path, with no traversal and no execution. No crossing. |
+
+Two things also noted while reading: `WearableSignatureVerifier` and
+`GoogleCertificates` are both in this app's bundled GMS, so the base
+`WearableListenerService` almost certainly validates the caller — the same
+fifth-layer pattern as the other 52 closures, where the check sits below the
+manifest.
+
+Also worth keeping: the sweep was right and my expectation was wrong. I read
+`/send-zip` in the manifest and predicted an extractor; the tool said zero and
+the tool was correct. That is the first time in this session the instrument
+contradicted me and won.
+
+**Tooling note, not a defect.** `./mvrp-src.sh ... 'ZipInputStream|...|extract'`
+returned 43 files, nearly all `androidx/compose`'s `extractNestedStates` and
+`ExtractedText`. Searching for an English word rather than a shape. Harmless
+here because the result was read rather than counted, but worth remembering:
+the same looseness as defects 11 and 14, in a hand-typed query instead of a
+script.
+
+**Remaining queue.** Eight candidates in the mature corpus, none yet read:
+zip in `maps/bmqw`, `maps/bojy`, `messaging/fauv`, `nbu.files/one`; dex-from-archive
+in `dynamite/gvs`, `maps/iwn`, `messaging/uif`, `tachyon/hto`
+(`androidx/profileinstaller` dropped — baseline profiles, not dex loading, and a
+library). First question for all eight is the same and settles most of them in
+one line: does the archive come from the app's own private directory?
