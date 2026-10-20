@@ -144,24 +144,47 @@ AGSA's path is gRPC-over-binder: `OneSearchSuggestService.onBind` returns
 `IntrusionDetectionEventTransportService` is a Chimera wrapper (`bkaf`) whose
 implementation loads at runtime from a module, so it is not in `base.apk`.
 
-**Crucially, the gRPC `SecurityPolicy` has not been tested.** In grpc-binder the
-policy is evaluated when the client sends `SETUP_TRANSPORT`; the probe only
-binds and reads the descriptor. `isBinderAlive = true` therefore means the
-binder exists, not that a call would be allowed. Claiming otherwise would be the
-same error as calling an accepted bind request a connection.
+**The gRPC `SecurityPolicy` was then read, and it closes AGSA.** The policy is
+not `haux` (that is server options) but the map value in `cret`:
+`gitv.b(context, executor)` returns `gitr`, whose `b(int uid)` defers to
+`gitp.a(uid)`:
+
+```java
+public final Status a(int i) {
+    if (this.a.c(i)) return Status.OK;
+    return Status.h.withDescription("Rejected by (1st-party only) security policy");
+}
+```
+
+and `dcxf.c(uid)` resolves the calling uid to its packages and checks each for
+first-party signing. A self-signed third-party app holds the binder and is
+refused on every call.
+
+So AGSA's suggest service has a sixth layer: manifest permission, then bind,
+then the binder, then the gRPC server's per-service `SecurityPolicy`, then
+uid-to-package resolution, then signature. The orphaned permission defeats only
+the first.
 
 ## 6. What it would take to finish
 
-1. Locate where `gize` is constructed and which `SecurityPolicy` is attached —
-   the Hilt binding module, not `cret`.
-2. If the policy is permissive, implement a grpc-binder client handshake in the
-   probe and issue one `OneSearchSuggest` call. A response containing the user's
-   own search history would be Theft of Sensitive Data at Tier 1.
-3. If the policy checks UID or signature, this path is closed and the finding
-   remains a precondition — which is not submittable.
+AGSA is closed: its policy is first-party only, so no client implementation
+would help. What remains untested:
 
-Reusable beyond this target: grpc-over-binder is widespread across Google apps,
-so a working client in the probe would apply to every one of them.
+1. **GMS `IntrusionDetectionEventTransportService`** — connected, raw binder,
+   implementation loaded by Chimera so it is not in `base.apk`. Its policy is
+   unknown; the same first-party pattern is the obvious guess and would close it.
+2. **The three AppFunction services** — gate passed, never connected in 15
+   seconds. An internal caller check in the AndroidX `AppFunctionService` base
+   class is the hypothesis, untested.
+3. **The receivers** — `BatterySaverChangedReceiver`, `DownloadableRestorer`,
+   `WindDownClockAlarmActionReceiver`, `LockProximityReceiver` all showed
+   ACCEPTED *with and without* the permission, so the permission is irrelevant
+   to them and they are not part of this class.
+
+Honest expectation: every step-3 attempt so far has met a second layer, and the
+pattern across 56 surfaces is that Google's first-party apps verify the caller
+somewhere below the manifest. The method is sound and the first two steps are
+proven; the apps are simply defended deeper than the manifest suggests.
 
 ## 7. Tooling produced
 

@@ -1578,3 +1578,36 @@ with no class argument. The scripts carry `#!/usr/bin/env bash` and are
 unaffected; it is loops typed straight at the user's prompt that break. The
 empty `==` lines made it visible immediately, which is the only reason it was
 caught in one round.
+
+### 2026-10-21 — S56: the gRPC transport is first-party only. Orphan path closed on AGSA.
+
+Followed the chain to the bottom. `OneSearchSuggestService.onBind` returns
+`G().a.b()`, a grpc-binder server. The per-service `SecurityPolicy` is the map
+value in `cret` — `gitv.b(context, executor)` → `gitr` → `gitp.a(uid)`:
+
+    public final Status a(int i) {
+        if (this.a.c(i)) return Status.OK;
+        return Status.h.withDescription("Rejected by (1st-party only) security policy");
+    }
+
+with `dcxf.c(uid)` resolving the uid to its packages and checking each for
+first-party signing. A self-signed app holds the binder and is refused on every
+call.
+
+Six layers in total: manifest permission, bind, binder, the gRPC server's
+per-service policy, uid-to-package resolution, signature. The orphaned
+permission defeats the first.
+
+Three readings along the way were wrong before the code corrected them, which is
+worth recording because all three were name-based guesses: `fvmq.b` looked like
+a guard and is instrumentation, `haux` looked like the policy and is server
+options, and `gitv.b` looked like the service implementation and is the policy.
+Reading one more class each time was cheap; assuming would have produced a false
+report in either direction.
+
+**Session totals: 56 surfaces, 23 tool defects fixed, zero reports submitted.**
+
+The orphaned-permission work is the furthest this effort has got: steps 1 and 2
+measured with controls, step 3 blocked by a layer below the manifest every time.
+Written up in `results/google/ORPHAN-PERMISSION.md` so the next session resumes
+at step 3 rather than at zero.
