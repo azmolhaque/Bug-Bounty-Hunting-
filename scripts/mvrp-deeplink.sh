@@ -110,17 +110,31 @@ for kind in ("activity","activity-alias"):
             hosts=[a(d,"host") for d in f.findall("data") if a(d,"host")]
             paths=[a(d,"path") or a(d,"pathPrefix") for d in f.findall("data")
                    if a(d,"path") or a(d,"pathPrefix")]
+            # Maps একই handler-এর জন্য প্রতিটা Google country-ডোমেইন আলাদা
+            # করে ঘোষণা করে (maps.google.ao, .je, .jo, .kg, ... শত শত)।
+            # সবগুলো একই কোডে যায়, তাই প্রতিটাকে আলাদা লক্ষ্য ধরা মানে ঘণ্টার
+            # পর ঘণ্টা একই পরীক্ষা। key হবে (class, scheme, path) — host
+            # ভিন্নতার জন্য সর্বোচ্চ দুটো নমুনা।
             for s in schemes:
-                for h in (hosts or [""]):
-                    base=f"{s}://{h}" if h else f"{s}://x"
-                    for p in (paths[:2] or [""]):
-                        u=base+(p or "")
-                        if u not in seen:
-                            seen.add(u); print(f"{a(el,'name')}\t{u}")
+                for p in (paths[:2] or [""]):
+                    key=(a(el,'name'), s, p or "")
+                    if key in seen: continue
+                    seen.add(key)
+                    for h in (hosts[:2] or [""]):
+                        base=f"{s}://{h}" if h else f"{s}://x"
+                        print(f"{a(el,'name')}\t{base}{p or ''}")
 PY
 )
   [ ${#links[@]} -eq 0 ] && continue
-  echo "== $pkg  (${#links[@]} deeplink)"
+  # একটা app থেকে সর্বোচ্চ ৪০টা — তার বেশি মানে প্রায় নিশ্চিত host-ভিন্নতা,
+  # নতুন কোড পথ নয়।
+  CAP=40
+  if [ ${#links[@]} -gt "$CAP" ]; then
+    echo "== $pkg  (${#links[@]} deeplink -> প্রথম $CAP টা)"
+    links=("${links[@]:0:$CAP}")
+  else
+    echo "== $pkg  (${#links[@]} deeplink)"
+  fi
 
   for row in "${links[@]}"; do
     [ -z "$row" ] && continue
