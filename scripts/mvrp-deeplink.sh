@@ -78,6 +78,19 @@ fi
 # interactsh-client -v দিয়ে চালাতে হয়। -v ছাড়া hit দেখা যাবে কিন্তু
 # কোন app/প্যারামিটার তা বলা যাবে না।
 hits() { local n; n=$(grep -cE 'GET /c/|Received HTTP interaction' "$SRVLOG" 2>/dev/null) || n=0; echo "${n:-0}"; }
+# গণনার পার্থক্য দিয়ে control যাচাই করা যায় না: অন্য কোনো interaction দেরিতে
+# পৌঁছালেই সংখ্যা বাড়ে, আর control মিথ্যে পাস করে। ঠিক সেটাই হয়েছিল —
+# Fitbit কিছু আনেনি, কিন্তু ব্রাউজার control-এর দেরিতে আসা hit গোনা হয়ে
+# "POSITIVE" ছাপা হয়েছিল। তাই নিজের **চিহ্নিত পথ** খোঁজো।
+seen_marker() { grep -q "/c/$1" "$SRVLOG" 2>/dev/null; }
+wait_marker() {  # wait_marker <marker> <seconds>
+  local i=0
+  while [ "$i" -lt "$2" ]; do
+    seen_marker "$1" && return 0
+    sleep 2; i=$((i+2))
+  done
+  return 1
+}
 
 {
 echo "# deeplink canary sweep"
@@ -89,12 +102,9 @@ echo
 
 # ---- CONTROL: পুরো শৃঙ্খলটা কাজ করে কিনা ----
 echo "== CONTROL =="
-BEFORE=$(hits)
 adb shell am start -a android.intent.action.VIEW \
     -d "$CAN/c/CONTROL" >/dev/null 2>&1 </dev/null
-sleep 8
-AFTER=$(hits)
-if [ "$AFTER" -gt "$BEFORE" ]; then
+if wait_marker CONTROL 40; then
   echo "POSITIVE  ব্রাউজার canary-তে পৌঁছেছে — reverse + সার্ভার দুটোই চলছে"
 else
   echo "!! CONTROL FAIL: ব্রাউজারও canary-তে পৌঁছায়নি।"
@@ -122,15 +132,10 @@ adb shell am force-stop com.android.chrome >/dev/null 2>&1 </dev/null
 # "০ hit" অর্থহীন ছিল। Fitbit-এর WebFrameActivity যাচাই ছাড়াই URL লোড করে
 # (S27, আর চোখে দেখা), তাই সেটাই আমাদের জানা-ভালো কেস।
 if adb shell pm path com.fitbit.FitbitMobile >/dev/null 2>&1 </dev/null; then
-  B2=$(hits)
   enc=$(printf '%s' "$CAN/c/APPCTL" | sed 's|:|%3A|g; s|/|%2F|g')
   adb shell am start -a android.intent.action.VIEW \
       -d "'fitbit://webview?url=$enc'" >/dev/null 2>&1 </dev/null
-  # interactsh pull-ভিত্তিক: ক্লায়েন্ট সার্ভারে পোল করে, তাই interaction
-  # ঘটার পর লগে আসতে কয়েক সেকেন্ড দেরি হয়। কম অপেক্ষা করলে কাজ করা
-  # canary-ও "ব্যর্থ" দেখায়। ক্লায়েন্ট -poll-interval 2 দিয়ে চালালে ভালো।
-  sleep 30
-  if [ "$(hits)" -gt "$B2" ]; then
+  if wait_marker APPCTL 45; then
     echo "POSITIVE  Fitbit WebFrameActivity canary এনেছে — app-এর fetch ধরা যাচ্ছে"
   else
     echo "!! APP CONTROL FAIL: জানা-ভালো deeplink-ও canary আনেনি।"
