@@ -67,13 +67,18 @@ try() {   # try <launcher-pkg> <action> <target-pkg> <target-cls>
   local app="$1" act="$2" tp="$3" tc="$4" o
   adb logcat -c >/dev/null 2>&1 </dev/null
   adb shell am start -n "$app/$ACT" --es action "$act" \
-      --es pkg "$tp" --es cls "$tc" >/dev/null 2>&1 </dev/null
-  sleep "$WAIT"
+      --es pkg "$tp" --es cls "$tc" --es hold "$((WAIT*1000))" >/dev/null 2>&1 </dev/null
+  sleep "$((WAIT+2))"
   o=$(adb logcat -d 2>/dev/null </dev/null | tr -d '\r' \
       | grep -E "MVRP|Permission Denial|SecurityException" | tail -20)
   if   grep -q 'Permission Denial' <<<"$o";                  then echo "DENIED"
   elif grep -q 'SECURITY' <<<"$o";                           then echo "DENIED"
-  elif grep -q 'bindService() returned true' <<<"$o";        then echo "BOUND"
+  # গুরুত্বপূর্ণ পার্থক্য: bindService() true ফেরত দেওয়া মানে **সিস্টেম
+  # অনুরোধ গ্রহণ করেছে**, service সাড়া দিয়েছে তা নয়। আসল সংযোগের প্রমাণ
+  # onServiceConnected থেকে আসা "BOUND" লাইন। আগে দুটোকেই BOUND বলা হতো,
+  # আর তাতে টেবিলটা পাঁচটা সংযোগ দাবি করেছিল যেখানে সত্যিকারের সংযোগ ছিল একটা।
+  elif grep -q '^.*MVRP.*: BOUND ' <<<"$o";                  then echo "CONNECTED"
+  elif grep -q 'bindService() returned true' <<<"$o";        then echo "GATE_OK"
   elif grep -q 'bindService() returned false' <<<"$o";       then echo "NOBIND"
   elif grep -qE 'startActivity\(\) |sendBroadcast\(\) ' <<<"$o"; then echo "ACCEPTED"
   elif grep -q 'startService() returned null' <<<"$o";       then echo "NOSVC"

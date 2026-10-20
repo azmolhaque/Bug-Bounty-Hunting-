@@ -72,7 +72,14 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             Log.i(TAG, "THROWN " + t.getClass().getName() + ": " + t.getMessage());
         }
 
-        if (keepAlive) handler.postDelayed(this, wellbeing ? 9000 : 4000);
+        // কতক্ষণ বেঁচে থেকে onServiceConnected-এর অপেক্ষা করব।
+        // ৪ সেকেন্ড অনেক service-এর জন্য কম: bindService() true ফেরত দেয়
+        // সাথে সাথে, কিন্তু সংযোগ আসে পরে। অপেক্ষা ফুরিয়ে গেলে "সংযোগ হয়নি"
+        // আর "আমি আগেই চলে গেছি" আলাদা করা যায় না।
+        long hold = wellbeing ? 9000 : 4000;
+        String h = in.getStringExtra("hold");
+        if (h != null) try { hold = Long.parseLong(h); } catch (NumberFormatException ignored) { }
+        if (keepAlive) handler.postDelayed(this, hold);
         else run();
     }
 

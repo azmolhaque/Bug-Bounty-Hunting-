@@ -1526,3 +1526,55 @@ recurs, the next run says why instead of leaving me to theorise.
 
 Recording the honest state: diagnosis unconfirmed, fix sound, diagnostics added
 so the next occurrence is self-explaining.
+
+### 2026-10-21 — the orphan differential, and a correction to my own table
+
+The batch run produced nine differentials across five apps and three
+permissions. But the labels overstated what happened, and I corrected it before
+building on it.
+
+**Defect 23 — a weak fact given a strong name.** The classifier printed `BOUND`
+for `bindService() returned true`. That return value means only that the system
+*accepted the bind request*; it says nothing about the service responding.
+Actual connection is `onServiceConnected`, which the probe logs separately. Of
+the five services the table called `BOUND`, exactly one logged a real
+connection: `OneSearchSuggestService`, whose interface descriptor came back
+**empty** — a raw `Binder`, not an AIDL stub.
+
+Same family as defects 11 and 14: naming the ingredients instead of the thing.
+Relabelled to `GATE_OK` (request accepted) versus `CONNECTED` (service
+answered), bound by four fixtures.
+
+A second cause is also plausible and was not controlled for: the probe finished
+after a fixed 4 seconds, so a service connecting more slowly could not be
+distinguished from one never connecting. Added a `hold` extra and made the test
+wait longer than the probe lives.
+
+**What survives the correction, stated precisely.** Without the claimed
+permission the system refuses the bind outright with `Permission Denial`; with
+it, the request is accepted. That differential is real and reproducible across:
+
+| service | app | permission |
+|---|---|---|
+| `MemoryAppFunctionService` | Find My Device (`apps.adm`) | `BIND_APP_FUNCTION_SERVICE` |
+| `BugleAlternativeMessageTransportService` | Google Messages | `BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE` |
+| `WellbeingAppFunctionService` | Digital Wellbeing | `BIND_APP_FUNCTION_SERVICE` |
+| `MaestroAppFunctionService` | Pixel Buds | `BIND_APP_FUNCTION_SERVICE` |
+| `IntrusionDetectionEventTransportService` | GMS (Tier 1) | `BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE` |
+| `OneSearchSuggestService` | AGSA (Tier 1) | `nexuslauncher.permission.QSB` |
+
+All three `android.permission.BIND_*` names arrive in API 36 and do not exist on
+this API 35 device, which is why the hypothesis held here and not for AGSA's
+activity: those developers could rely on the framework to enforce the guard, so
+they had less reason to write AGSA's own runtime owner-check — and the framework
+does not know the name.
+
+Still a precondition. Passing the gate is not a crossing, and "I could bind" is
+the report shape dropped three times tonight.
+
+Also worth noting as its own class, defect 22: `set -- $t` returned empty
+because zsh does not word-split unquoted expansions, so four of five binds ran
+with no class argument. The scripts carry `#!/usr/bin/env bash` and are
+unaffected; it is loops typed straight at the user's prompt that break. The
+empty `==` lines made it visible immediately, which is the only reason it was
+caught in one round.
