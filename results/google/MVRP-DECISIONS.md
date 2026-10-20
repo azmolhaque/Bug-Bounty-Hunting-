@@ -1499,3 +1499,30 @@ anyway, and a failure in both means something other than the permission is
 holding. A control aborts the run unless the two APKs actually differ in
 granted permissions. `broadcast` added to the probe, since six of the targets
 are receivers that neither `startact` nor `bind` can touch.
+
+### 2026-10-21 — defect 21, and an explanation I could not reproduce
+
+`mvrp-orphan-test.sh` reported `com.cindrasec.mvrpprobe` not installed
+immediately after `adb install` printed `Success` for it.
+
+My first explanation was the `pipefail` + `grep -q` SIGPIPE race — `grep -q`
+exits at the first match, the upstream command takes SIGPIPE, and `pipefail`
+reports the whole pipeline as failed, so a *successful* match takes the error
+branch. That exact bug was fixed earlier tonight in the `android.jar` check,
+and I wrote it again in a new script, having fixed the instance instead of the
+class.
+
+**But I could not reproduce it.** Five runs with the same construct, including
+one with a 200,000-line producer, all matched correctly. So the explanation
+fits the symptom and matches a known prior failure, and is still only a
+hypothesis — `adb shell` is a much slower producer than `seq`, which changes
+the race window, but that is reasoning, not evidence.
+
+Fixed by removing the pipeline entirely (here-string), which eliminates the
+class whatever the cause was. More importantly, the failure branch no longer
+just asserts: it prints how many lines the package list actually contained, any
+`cindrasec` lines in it, and the `pm path` command to check directly. If this
+recurs, the next run says why instead of leaving me to theorise.
+
+Recording the honest state: diagnosis unconfirmed, fix sound, diagnostics added
+so the next occurrence is self-explaining.

@@ -27,15 +27,31 @@ command -v adb >/dev/null || { echo "!! adb নেই"; exit 1; }
 [ -f "$REPORT" ] || { echo "!! orphan রিপোর্ট নেই — আগে ./mvrp-orphan.sh চালাও"; exit 1; }
 
 # ---------- control: দুটো app-ই ইনস্টল আছে তো ----------
+# পাইপের মধ্যে grep -q + pipefail = SIGPIPE দৌড়: grep প্রথম মিলেই বেরোয়,
+# উপরের কমান্ড SIGPIPE খায়, pipefail পুরোটাকে ব্যর্থ বলে — আর মিল পাওয়া
+# সত্ত্বেও "ইনস্টল নেই" ছাপা হয়। আজ রাতে এই বাগটা একবার android.jar
+# যাচাইয়ে সারানো হয়েছিল; সারাইটা সাধারণীকরণ করিনি বলে আবার লিখেছি।
+# সমাধান: পাইপ নয়, here-string।
+PKGLIST=$(adb shell pm list packages 2>/dev/null </dev/null | tr -d '\r')
+NPKG=$(grep -c . <<<"$PKGLIST")
 for p in "$PROBE" "$CTL"; do
-  adb shell pm list packages 2>/dev/null </dev/null | tr -d '\r' | grep -qx "package:$p" \
-    || { echo "!! $p ইনস্টল নেই — উপরের build/install ধাপ দুটো চালাও"; exit 1; }
+  if ! grep -qx "package:$p" <<<"$PKGLIST"; then
+    # নীরব "নেই" বলব না — তালিকাটা আদৌ পড়া গেছে কিনা সেটাই আগে দেখাও।
+    # আগের সংস্করণে এখানে পাইপ+grep -q ছিল আর ইনস্টল সফল হওয়া সত্ত্বেও
+    # "নেই" ছাপা হয়েছিল; কারণটা নিশ্চিত হয়নি, তাই প্রমাণ ছাপানো হচ্ছে।
+    echo "!! $p তালিকায় পাওয়া গেল না।"
+    echo "   pm list packages পড়া গেছে: $NPKG টা লাইন"
+    echo "   cindrasec-সংক্রান্ত লাইন:"
+    grep -i 'cindrasec' <<<"$PKGLIST" | sed 's/^/     /' || echo "     (একটাও নেই)"
+    echo "   সরাসরি যাচাই:  adb shell pm path $p"
+    exit 1
+  fi
 done
 # probe-এ permission আছে, ctl-এ নেই — এটাই পুরো পরীক্ষার ভিত্তি
-NP=$(adb shell dumpsys package "$PROBE" 2>/dev/null </dev/null | tr -d '\r' \
-     | sed -n '/install permissions:/,/^ *[A-Za-z].*:$/p' | grep -c 'granted=true')
-NC=$(adb shell dumpsys package "$CTL" 2>/dev/null </dev/null | tr -d '\r' \
-     | sed -n '/install permissions:/,/^ *[A-Za-z].*:$/p' | grep -c 'granted=true')
+DP=$(adb shell dumpsys package "$PROBE" 2>/dev/null </dev/null | tr -d '\r')
+DC=$(adb shell dumpsys package "$CTL"   2>/dev/null </dev/null | tr -d '\r')
+NP=$(grep -c 'granted=true' <<<"$DP")
+NC=$(grep -c 'granted=true' <<<"$DC")
 echo "== CONTROL =="
 echo "PROBE granted=true : $NP"
 echo "CTL   granted=true : $NC"
