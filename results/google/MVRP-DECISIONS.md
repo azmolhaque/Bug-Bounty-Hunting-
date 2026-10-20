@@ -362,3 +362,32 @@ CLAUDE.md section 7 explicitly sanctions for benign canaries.
 Also observed in passing, not ours: `https://www.fitbit.com/help` redirects to
 `http://help.fitbit.com/` — a server-side HTTPS-to-HTTP downgrade on Fitbit's
 own site. Out of scope for Mobile VRP.
+
+### Correction — the deeplink sweep was never validated
+
+I reported "app control passed, the instrument is validated at app level". It
+was not. The control compared hit counts before and after; late interactions
+from the browser control raised the number, and it printed POSITIVE while the
+canary log contained no APPCTL at all. Caught only because the user ran
+`grep -c APPCTL` himself.
+
+Re-tested with a marker-based check: `fitbit://webview?url=<https canary>`
+produces **no** canary hit (FBTEST = 0), while `url=https://www.fitbit.com/help`
+earlier did reach WebFrameActivity and attempted a load.
+
+So the known-good case is not known-good. Either WebFrameActivity validates
+the host after all — S27 read `if (this.x && !UrlValidator.isTrusted(uri4))`
+and concluded no validation when `authenticated` is absent, but never read
+`smq.a(...)`, which builds the Intent and could validate there — or the
+deeplink did not reach the activity on this attempt. Follow-up logcat was
+empty for WebFrame/UrlValidator/DWB, so neither is established.
+
+**Standing state of the deeplink work: no validated instrument, therefore no
+usable result.** The 142-deeplink negative across 8 apps means nothing. Not
+recorded as a closed surface.
+
+### Session tally, 2026-10-19/20
+
+Surfaces examined: 40+. Valid bugs: zero. Tool defects found and fixed: seven,
+every one of which produced a false negative or, in the last case, a false
+validation. The target never once lied; the instruments did.
