@@ -226,3 +226,41 @@ We have been choosing targets by how promising their names sound
 (CredentialRecoveryService, OemCommandEndpointService). Descriptor shape is a
 far better filter, and `scripts/mvrp-services.sh` now sweeps every exported
 unguarded service across all decoded apps and sorts them on exactly that.
+
+| S40 | wellbeing `IWellbeingService` (the Chrome bridge) | DROP — auth enforced, proven empirically | See below. |
+
+### S40 — the experiment that finally had a clean yes/no
+
+`WellbeingService.onBind` hands out the AIDL stub with no check; the check is
+in `lrg.b()`:
+
+    uid -> getPackagesForUid -> must be exactly one package   (rejects null,
+           empty, and the classic multi-package-UID ambiguity)
+        -> must be in lpw.a: com.google.android.apps.chrome, com.chrome.canary,
+           com.chrome.dev, com.chrome.beta, com.android.chrome
+        -> and `this.h.b(str)`: signed with a Google certificate,
+           unless `this.i` skips it
+
+Tested without building a valid request proto, by reading which stage rejects:
+the service's own status codes distinguish 7 (any auth refusal) from 3/5
+(malformed or null request). A deliberately null request therefore answers the
+auth question on its own.
+
+    probe as com.cindrasec.mvrpprobe        -> callback 08 06 28 01  => status 7
+    probe as com.google.android.apps.chrome -> callback 08 06 28 01  => status 7
+
+(`lrg.c(i)` sets field 1 to i-1, so 6 means 7.)
+
+The second run held an allowlisted package name — `com.google.android.apps.chrome`
+is the one of the five absent from this device — and was still refused. So the
+signature check is live and `this.i` is off in production.
+
+That also disposes of a suspicion I raised from the decompiled control flow:
+the signature rejection appeared to set its result without returning, which
+would have let the later request handling overwrite it. It does not; the
+status stayed 7.
+
+Four of the five allowlisted names are absent from an ordinary phone, so the
+name really is claimable — the name is simply not sufficient. Worth recording
+as the shape of a bug that would have worked had the signature check been
+flagged off.
