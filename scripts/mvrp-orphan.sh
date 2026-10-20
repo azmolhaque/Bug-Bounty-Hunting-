@@ -33,25 +33,34 @@ adb get-state >/dev/null 2>&1 || { echo "!! device connected নয়"; exit 1;
 # হাতে অক্ষর গুনে substr() করা হয়েছিল — "+ permission:" ঠিক ১৩ অক্ষর, তাই
 # substr($0,13) কোলন থেকে শুরু করে নাম বানাত ":android.permission.INTERNET"।
 # control সেটা ধরেছে। জাদু-সংখ্যা বাদ, prefix কেটে নেওয়া হচ্ছে।
+# `-g` ছাড়া pm group-ভুক্ত permission ছাপে না — CAMERA, LOCATION, CONTACTS,
+# অর্থাৎ প্রতিটা dangerous runtime permission বাদ পড়ে। control সেটা ধরেছে।
+# parser ঠিক ছিল, প্রশ্নটা ভুল ছিল; তাই `-g -f` চাই।
 RAW="$REP/pm-raw.txt"
-adb shell pm list permissions -f 2>/dev/null </dev/null | tr -d '\r' > "$RAW"
+adb shell pm list permissions -g -f 2>/dev/null </dev/null | tr -d '\r' > "$RAW"
 
+# group ব্লকেরও নিজের package: লাইন আছে। p রিসেট না করলে সেটা আগের
+# permission-এর সাথে জোড়া লেগে যায়।
 DEF="$REP/defined.txt"      # নাম \t সংজ্ঞাদাতা package
 awk '
-  /permission:/ && /^[+ ]/ { p=$0; sub(/^.*permission:/,"",p); next }
+  /^[[:space:]]*[+]?[[:space:]]*group:/ { p=""; next }
+  /permission:/            { p=$0; sub(/^.*permission:/,"",p); next }
   /^[[:space:]]*package:/  { if (p!="") { k=$0; sub(/^[[:space:]]*package:/,"",k); print p"\t"k } }
 ' "$RAW" | sort -u > "$DEF"
 
 LVL="$REP/levels.txt"       # নাম \t protectionLevel
 awk '
-  /permission:/ && /^[+ ]/ { p=$0; sub(/^.*permission:/,"",p); next }
+  /^[[:space:]]*[+]?[[:space:]]*group:/ { p=""; next }
+  /permission:/            { p=$0; sub(/^.*permission:/,"",p); next }
   /protectionLevel:/       { if (p!="") { l=$0; sub(/^.*protectionLevel:/,"",l); print p"\t"l } }
 ' "$RAW" | sort -u > "$LVL"
 
-# definedness-এর দ্বিতীয়, স্বাধীন উৎস: -f ছাড়া তালিকা। দুটো একত্র করলে
-# একটা পার্সিং ভাঙলেও অন্যটা ধরে রাখে, আর control দুটোকেই পরীক্ষা করে।
+# definedness একটা package: লাইন থাকার উপর নির্ভর করবে না — নামই যথেষ্ট।
+# তিনটে স্বাধীন উৎস মেলানো হচ্ছে, যাতে একটা ভাঙলে উত্তরটা নীরবে বদলে না যায়।
 DEFSET="$REP/defined-names.txt"
-{ cut -f1 "$DEF"
+{ sed -n 's/^.*[^-]permission:\(.*\)$/\1/p' "$RAW"
+  adb shell pm list permissions -g 2>/dev/null </dev/null | tr -d '\r' \
+    | sed -n 's/^[[:space:]]*permission:\(.*\)$/\1/p'
   adb shell pm list permissions 2>/dev/null </dev/null | tr -d '\r' \
     | sed -n 's/^[[:space:]]*permission:\(.*\)$/\1/p'
 } | grep -v '^$' | sort -u > "$DEFSET"
@@ -72,7 +81,10 @@ if [ "$NDEF" -lt 100 ]; then
 fi
 echo "POSITIVE  ডিভাইসে $NDEF টা permission সংজ্ঞায়িত পাওয়া গেছে"
 CTLOK=1
-for p in android.permission.INTERNET android.permission.CAMERA; do
+# group-বিহীন একটা, group-ভুক্ত তিনটে — আগের রানে শুধু প্রথমটা থাকায়
+# control পাস করে যেত আর সব grouped permission অনাথ গোনা হতো।
+for p in android.permission.INTERNET android.permission.CAMERA \
+         android.permission.READ_CONTACTS android.permission.ACCESS_FINE_LOCATION; do
   grep -qx "$p" "$DEFSET" || { echo "!! BROKEN: $p সংজ্ঞায়িত দেখাচ্ছে না — পার্সিং ভেঙেছে"; CTLOK=0; }
 done
 [ "$CTLOK" -eq 1 ] || { echo "   প্রথম কয়েকটা পার্স করা নাম:"; head -3 "$DEFSET" | sed 's/^/     /'; exit 2; }

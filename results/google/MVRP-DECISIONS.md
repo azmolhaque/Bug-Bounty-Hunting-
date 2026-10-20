@@ -1287,3 +1287,38 @@ output alone.
 
 Parser verified against sample `pm list permissions -f` output: three names,
 their defining packages and their protection levels all come back clean.
+
+### 2026-10-21 — defect 20: the right parser asking the wrong question
+
+Second abort of the orphaned-permission sweep, on the control added after the
+first one. Names parsed cleanly this time, but `android.permission.CAMERA` was
+absent from the device listing — and it is a platform permission, always
+defined.
+
+The cause was not parsing. Without `-g`, `pm list permissions` omits every
+permission that belongs to a group, which is every dangerous runtime permission:
+CAMERA, CONTACTS, LOCATION and the rest. The listing showed
+`CAMERA_SEND_SYSTEM_EVENTS` and `MANAGE_CAMERA`, both ungrouped, while `CAMERA`
+itself was invisible.
+
+Consequence, had it passed: any component guarded by a grouped permission would
+have been reported ORPHANED. A different mistake from defect 19 with the same
+shape of damage — a sweep claiming vulnerability everywhere.
+
+Fixed by sourcing from `pm list permissions -g -f`, resetting the current
+permission when a `group:` block starts so the group's own `package:` line does
+not pair with the previous entry, and taking definedness from the names alone
+rather than from the existence of a `package:` line, unioned across three
+independent listings.
+
+The control set now checks one ungrouped permission and three grouped ones
+(`INTERNET`, `CAMERA`, `READ_CONTACTS`, `ACCESS_FINE_LOCATION`). With only
+`INTERNET`, as in the first version, this run would have passed and every
+grouped permission would have been counted orphaned.
+
+Parser verified against a `-g -f` sample: both the grouped and the ungrouped
+permission come back with their defining package, and the `permission-group:`
+line is not mistaken for a permission.
+
+Two aborts, two real defects, no false result published either time. That is
+the control set doing exactly the job the previous eighteen defects argued for.
