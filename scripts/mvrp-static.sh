@@ -19,6 +19,30 @@ OUT="${MVRP_OUT:-$HOME/mvrp}"
 SRC="$OUT/src"; REP="$OUT/static"; mkdir -p "$REP"
 LOG="$REP/static-$(date +%Y%m%d-%H%M).txt"
 
+# ---- exported component মানচিত্র ----
+# প্রার্থী ফাইলের ক্লাস যদি exported, permission-বিহীন component না হয়,
+# বাইরের app পৌঁছাবেই না — তখন নকশা-ত্রুটি থাকলেও crossing নেই।
+# এই ছাঁকনিটা হাতে করা মানে ৩৪টা প্রার্থী একে একে manifest-এ খোঁজা।
+DECODED="$OUT/decoded"
+expmap() {   # expmap <pkg> -> exported+unguarded ক্লাসের তালিকা
+  local m="$DECODED/$1/resources/AndroidManifest.xml"
+  [ -f "$m" ] || return 0
+  python3 -I - "$m" <<'PY2'
+import sys, xml.etree.ElementTree as ET
+AND="http://schemas.android.com/apk/res/android"
+def a(e,n,d=None): return e.get("{%s}%s"%(AND,n),d)
+app=ET.parse(sys.argv[1]).getroot().find("application")
+for k in ("activity","activity-alias","service","receiver","provider"):
+    for el in app.findall(k):
+        if a(el,"enabled")=="false" or a(el,"permission"): continue
+        exp=a(el,"exported")
+        if exp=="true" or (exp is None and el.findall("intent-filter")):
+            n=a(el,"name") or ""
+            if n: print(n)
+PY2
+}
+cls_of() { sed 's|^.*/sources/||; s|\.java$||; s|/|.|g' <<<"$1"; }
+
 pkgs=("$@")
 [ ${#pkgs[@]} -eq 0 ] && mapfile -t pkgs < <(ls -1 "$SRC" 2>/dev/null | grep -v '\.log$')
 [ ${#pkgs[@]} -eq 0 ] && { echo "!! $SRC খালি — আগে mvrp-decompile.sh চালাও"; exit 1; }
@@ -49,7 +73,7 @@ else
 fi
 echo
 
-TOT_PI=0; TOT_IR=0; TOT_ZIP=0
+TOT_PI=0; TOT_IR=0; TOT_ZIP=0; TOT_HOT=0
 for pkg in "${pkgs[@]}"; do
   d="$SRC/$pkg/sources"
   [ -d "$d" ] || continue
@@ -60,7 +84,11 @@ for pkg in "${pkgs[@]}"; do
   # FLAG_MUTABLE স্পষ্টভাবে দেওয়া = ডেভেলপার ইচ্ছে করে mutable চেয়েছে।
   # base Intent implicit (component সেট করা নেই) হলে গ্রাহক সেটা ভরে
   # app-এর পরিচয়ে যেকোনো জায়গায় পাঠাতে পারে।
-  PI=$(grep -rln "$MUT" --include='*.java' "$d" 2>/dev/null | head -20)
+  # খালি সংখ্যা খোঁজা যথেষ্ট নয়: 33554432 = 2^25, desugar করা java.util
+  # concurrency কোডে bit mask হিসেবে এসেই যায় (j$/util/concurrent/*.java)।
+  # ফাইলে PendingIntent-ও থাকতে হবে।
+  PI=$(grep -rln "$MUT" --include='*.java' "$d" 2>/dev/null \
+       | xargs -r grep -ln 'PendingIntent' 2>/dev/null | head -20)
   if [ -n "$PI" ]; then
     c=$(wc -l <<<"$PI"); TOT_PI=$((TOT_PI+c))
     echo "  [PendingIntent] FLAG_MUTABLE ($MUT) — $c ফাইল"
@@ -72,11 +100,24 @@ for pkg in "${pkgs[@]}"; do
   # বাইরের app ভেতরের non-exported component-এ পৌঁছাতে পারে।
   IR=$(grep -rln -E 'getParcelableExtra\(' --include='*.java' "$d" 2>/dev/null \
        | xargs -r grep -ln -E 'startActivity|startService|sendBroadcast' 2>/dev/null \
-       | xargs -r grep -ln 'android.content.Intent' 2>/dev/null | head -20)
+       | xargs -r grep -ln 'android.content.Intent' 2>/dev/null | head -40)
   if [ -n "$IR" ]; then
     c=$(wc -l <<<"$IR"); TOT_IR=$((TOT_IR+c))
     echo "  [IntentRedirect] extras থেকে Intent + start — $c ফাইল"
-    sed 's|^.*/sources/|      |' <<<"$IR" | head -8
+    EXP=$(expmap "$pkg")
+    HOT=""
+    while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      k=$(cls_of "$f")
+      grep -qxF "$k" <<<"$EXP" && HOT="$HOT$f\n"
+    done <<<"$IR"
+    if [ -n "$HOT" ]; then
+      echo "  *** এর মধ্যে exported + permission-বিহীন:"
+      printf '%b' "$HOT" | sed 's|^.*/sources/|      >>> |'
+      TOT_HOT=$((TOT_HOT+$(printf '%b' "$HOT" | grep -c . )))
+    else
+      echo "      (একটাও exported component নয় — বাইরে থেকে পৌঁছানো যায় না)"
+    fi
   fi
 
   # ---- ৩. Zip / path traversal ----
@@ -95,8 +136,8 @@ for pkg in "${pkgs[@]}"; do
 done
 
 echo "== সারাংশ =="
-printf 'PendingIntent(MUTABLE): %s ফাইল\nIntentRedirect: %s ফাইল\nZipTraversal: %s ফাইল\n' \
-  "$TOT_PI" "$TOT_IR" "$TOT_ZIP"
+printf 'PendingIntent(MUTABLE): %s ফাইল\nIntentRedirect: %s ফাইল  (exported: %s)\nZipTraversal: %s ফাইল\n' \
+  "$TOT_PI" "$TOT_IR" "$TOT_HOT" "$TOT_ZIP"
 cat <<'NOTE'
 
 == পড়ার নিয়ম ==
