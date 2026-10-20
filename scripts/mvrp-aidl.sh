@@ -39,12 +39,16 @@ adb shell pm path com.cindrasec.mvrpprobe >/dev/null 2>&1 || {
 # পরিষেবা নষ্ট করা নয়। সন্দেহ হলে ছোঁবো না।
 SKIP='clouddpc|[Ff]rp|[Pp]rovision|[Pp]olicy|[Cc]ommand|[Rr]estore|[Mm]igration|[Tt]ether|[Tt]elecom|[Oo]nboarding|[Ss]etupwizard|[Ww]ipe|[Dd]elete|[Rr]eset'
 
+# </dev/null প্রতিটা adb কলে — load-bearing। adb stdin পড়ে, আর এই ফাংশনটা
+# `while read < রিপোর্ট` লুপের ভেতর থেকে ডাকা হয়। stdin বন্ধ না করলে প্রথম
+# কলটাই বাকি পুরো ফাইল গিলে ফেলে, লুপ এক ধাপ পরে থেমে যায় — আর সারাংশ
+# "পরীক্ষিত: 1" দেখিয়ে সফল হওয়ার ভান করে।
 probe() {  # probe <pkg> <cls> <descriptor>
-  adb logcat -c >/dev/null 2>&1
+  adb logcat -c >/dev/null 2>&1 </dev/null
   adb shell am start -n "$PROBE" --es action transact \
-      --es pkg "$1" --es cls "$2" --es code 1 --es token "$3" >/dev/null 2>&1
+      --es pkg "$1" --es cls "$2" --es code 1 --es token "$3" >/dev/null 2>&1 </dev/null
   sleep "$WAIT"
-  adb logcat -d -s MVRP 2>/dev/null | tr -d '\r'
+  adb logcat -d -s MVRP 2>/dev/null </dev/null | tr -d '\r'
 }
 
 {
@@ -71,7 +75,7 @@ fi
 echo
 
 CUR=""; N=0; SKIPPED=0; SEC=0; OPEN=0
-while IFS= read -r line; do
+while IFS= read -r line <&3; do
   case "$line" in
     "== "*) CUR=$(awk '{print $2}' <<<"$line"); continue;;
   esac
@@ -102,11 +106,16 @@ while IFS= read -r line; do
     printf 'nobind    %s  %s\n' "$CUR" "$CLS"
   fi
   CLS=""
-done < "$REP_IN"
+done 3< "$REP_IN"
 
 echo
 echo "== সারাংশ =="
+EXPECT=$(grep -c '^  AIDL    ' "$REP_IN")
 echo "পরীক্ষিত: $N   SecurityException: $SEC   যাচাই-বিহীন মনে হচ্ছে: $OPEN   বাদ: $SKIPPED"
+echo "ইনপুটে AIDL: $EXPECT   স্পর্শ করা: $((N+SKIPPED))"
+if [ "$((N+SKIPPED))" -ne "$EXPECT" ]; then
+  echo "!! গণনা মেলেনি — লুপ সব এন্ট্রি দেখেনি। ফলাফল অসম্পূর্ণ, বিশ্বাস কোরো না।"
+fi
 cat <<'NOTE'
 
 OPEN?   transact method body পর্যন্ত গেছে, SecurityException আসেনি।
