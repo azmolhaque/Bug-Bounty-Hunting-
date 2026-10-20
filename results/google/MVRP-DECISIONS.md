@@ -725,3 +725,35 @@ whether `isTrusted` can be satisfied by an attacker-controlled host — and the
 prize is the bridge plus a delegate token, which is Theft of Sensitive Data.
 That is settled by the manifest (is it exported) and by reading `isTrusted`,
 not by fingerprinting error pages. jadx is running on Fitbit now.
+
+### 2026-10-20 — S52 Fitbit webview surface closed in source, matching the device
+
+| S52 | Fitbit `UrlValidator` + `amxu` gateway (the code behind S51) | DROP | Both validation paths are exact set membership, not pattern matching. `UrlValidator.isTrusted(URL)` is `getFitbitHosts().contains(url.getHost()) && protocol == "https"`. The gateway `amxu.b(str, z)` falls back, when `z` is false, to `f = {"support.google.com", "policies.google.com"}` compared with `bpvv.bO(set, host.toLowerCase(Locale.ROOT))`, and only after rejecting any URI with `getRawUserInfo() != null` and requiring an https scheme. No `endsWith`, no `startsWith`, no `contains` on the host string. `amxu.a()` is the entry point, matching `scheme == "fitbit" && host == "webview"`, so this is exactly where every payload in S51 died. |
+
+`WebFrameActivity` is declared with no `intent-filter` and no
+`android:exported`, so on Android 12+ it defaults to not exported; the extra it
+reads is
+`com.fitbit.webviewcomms.impl.ui.WebFrameActivity.AUTHENTICATED` (line 213) and
+line 221 is `if (this.x && !UrlValidator.isTrusted(uri4))`. There is no path
+from another app to set that extra. The design holds: `sln.java` attaches the
+auth headers (`this.d.invoke()`) inside the `isTrusted` branch, so the gate and
+the reward are bound to the same condition.
+
+Worth recording as method, not just result: the device sweep and the source
+read were independent, and they agreed. The device said only the app's own host
+was accepted; the source says why. That is the first time in this effort a
+surface has been closed twice over by different instruments, and it is the only
+kind of zero worth trusting.
+
+It also killed my own hypothesis twice. The "hosts beginning with
+www.fitbit.com are accepted" pattern was a clock artifact in the fingerprints,
+and the code shows the comparison could never have behaved that way.
+
+### 2026-10-20 — three new Fitbit candidates from the first static sweep
+
+Fitbit had never been decompiled, so `mvrp-static.sh` had never run against it.
+With 59,659 java files it reports:
+
+| C1 | `com/fitbit/device/ui/setup/choose/FastPairLandingActivity` | LEAD | Exported, no permission, pulls an Intent out of extras and starts it. This is the named-and-rewarded class, "intent redirections leading to launching non-exported application components". Distinct from S43's `ProjectorActivity`, which had the same shape but whose redirect sat inside `onActivityResult` and was therefore unreachable from outside. A landing activity is more likely to be on the `onCreate` path. Not a finding until the three questions are answered: reachable from outside, the started Intent actually attacker-controlled, and the destination actually non-exported. |
+| C2 | `defpackage/nbd`, `defpackage/rmk` | LEAD | Zip extraction into `new File(...)` with no `getCanonicalPath` / `startsWith` check — the "path traversal leading to arbitrary file write" class. Open question is who supplies the archive; if an attacker can, overwriting a `.so` would raise it from Other ($2,250) to ACE ($7,500). |
+| C3 | six files with `FLAG_MUTABLE` and `PendingIntent` | LEAD | Needs the manifest cross-reference and a check that the base Intent is implicit. |
