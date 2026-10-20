@@ -1258,3 +1258,32 @@ ends return zero for opposite reasons.
 Recommendation recorded for the operator: the expected value of further Mobile
 VRP time is low, and `business/fb-business-audit/` — built, never started — is
 the better use of the next session.
+
+### 2026-10-21 — defect 19, and the first control that caught one *before* a conclusion
+
+The orphaned-permission sweep aborted on its own second control: 2,025
+permissions read from the device, but `android.permission.INTERNET` did not
+come back as defined.
+
+The cause was a hand-counted offset. `+ permission:` is exactly 13 characters,
+so `substr($0,13)` begins at the colon and every parsed name carried a leading
+`:`. Every permission on the device would then have read as ORPHANED — a sweep
+reporting that *everything* is vulnerable, which is the most dangerous kind of
+wrong answer this tool could produce.
+
+Nineteenth defect, and the magic-number family. But the important part is what
+did not happen: no list was printed, no candidate was investigated, no claim
+was made. Every previous defect tonight was found by reading output that had
+already been presented as a result — this one died before the result existed.
+That is what the controls were for.
+
+Fixed by removing the offsets entirely (`sub(/^.*permission:/,"",p)`), adding
+`protectionLevel` parsing the same way, and taking definedness from the union of
+two independent sources — `pm list permissions -f` and plain
+`pm list permissions` — so one parser breaking cannot silently decide the
+answer. Controls now check two known permissions rather than one, and print the
+first parsed names when they fail, so the next breakage is diagnosable from the
+output alone.
+
+Parser verified against sample `pm list permissions -f` output: three names,
+their defining packages and their protection levels all come back clean.

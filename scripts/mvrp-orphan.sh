@@ -30,18 +30,32 @@ adb get-state >/dev/null 2>&1 || { echo "!! device connected নয়"; exit 1;
 [ -d "$DEC" ] || { echo "!! $DEC নেই — আগে mvrp-surface.sh চালাও"; exit 1; }
 
 # ---------- ডিভাইসে কোন permission গুলো সংজ্ঞায়িত ----------
-DEF="$REP/defined.txt"
-adb shell pm list permissions -f 2>/dev/null </dev/null | tr -d '\r' \
-  | awk '/^\+ permission:/{p=substr($0,13)} /^  package:/{print p"\t"substr($0,11)}' \
-  | sort -u > "$DEF"
-NDEF=$(wc -l < "$DEF")
+# হাতে অক্ষর গুনে substr() করা হয়েছিল — "+ permission:" ঠিক ১৩ অক্ষর, তাই
+# substr($0,13) কোলন থেকে শুরু করে নাম বানাত ":android.permission.INTERNET"।
+# control সেটা ধরেছে। জাদু-সংখ্যা বাদ, prefix কেটে নেওয়া হচ্ছে।
+RAW="$REP/pm-raw.txt"
+adb shell pm list permissions -f 2>/dev/null </dev/null | tr -d '\r' > "$RAW"
 
-# protectionLevel-ও লাগবে: signature হলে আক্রমণকারী সংজ্ঞাদাতা হলেও
-# স্বাক্ষর না মিললে grant পাবে না।
-LVL="$REP/levels.txt"
-adb shell pm list permissions -f 2>/dev/null </dev/null | tr -d '\r' \
-  | awk '/^\+ permission:/{p=substr($0,13)} /protectionLevel:/{sub(/.*protectionLevel:/,""); print p"\t"$0}' \
-  | sort -u > "$LVL"
+DEF="$REP/defined.txt"      # নাম \t সংজ্ঞাদাতা package
+awk '
+  /permission:/ && /^[+ ]/ { p=$0; sub(/^.*permission:/,"",p); next }
+  /^[[:space:]]*package:/  { if (p!="") { k=$0; sub(/^[[:space:]]*package:/,"",k); print p"\t"k } }
+' "$RAW" | sort -u > "$DEF"
+
+LVL="$REP/levels.txt"       # নাম \t protectionLevel
+awk '
+  /permission:/ && /^[+ ]/ { p=$0; sub(/^.*permission:/,"",p); next }
+  /protectionLevel:/       { if (p!="") { l=$0; sub(/^.*protectionLevel:/,"",l); print p"\t"l } }
+' "$RAW" | sort -u > "$LVL"
+
+# definedness-এর দ্বিতীয়, স্বাধীন উৎস: -f ছাড়া তালিকা। দুটো একত্র করলে
+# একটা পার্সিং ভাঙলেও অন্যটা ধরে রাখে, আর control দুটোকেই পরীক্ষা করে।
+DEFSET="$REP/defined-names.txt"
+{ cut -f1 "$DEF"
+  adb shell pm list permissions 2>/dev/null </dev/null | tr -d '\r' \
+    | sed -n 's/^[[:space:]]*permission:\(.*\)$/\1/p'
+} | grep -v '^$' | sort -u > "$DEFSET"
+NDEF=$(wc -l < "$DEFSET")
 
 {
 echo "# orphaned permission sweep"
@@ -57,12 +71,13 @@ if [ "$NDEF" -lt 100 ]; then
   exit 2
 fi
 echo "POSITIVE  ডিভাইসে $NDEF টা permission সংজ্ঞায়িত পাওয়া গেছে"
-if cut -f1 "$DEF" | grep -qx 'android.permission.INTERNET'; then
-  echo "POSITIVE  জানা-সংজ্ঞায়িত (android.permission.INTERNET) DEFINED হিসেবে ধরা পড়ছে"
-else
-  echo "!! BROKEN: INTERNET-ও সংজ্ঞায়িত দেখাচ্ছে না — পার্সিং ভেঙেছে"; exit 2
-fi
-if cut -f1 "$DEF" | grep -qx 'com.cindrasec.definitely.not.a.real.permission'; then
+CTLOK=1
+for p in android.permission.INTERNET android.permission.CAMERA; do
+  grep -qx "$p" "$DEFSET" || { echo "!! BROKEN: $p সংজ্ঞায়িত দেখাচ্ছে না — পার্সিং ভেঙেছে"; CTLOK=0; }
+done
+[ "$CTLOK" -eq 1 ] || { echo "   প্রথম কয়েকটা পার্স করা নাম:"; head -3 "$DEFSET" | sed 's/^/     /'; exit 2; }
+echo "POSITIVE  জানা-সংজ্ঞায়িত (INTERNET, CAMERA) DEFINED হিসেবে ধরা পড়ছে"
+if grep -qx 'com.cindrasec.definitely.not.a.real.permission' "$DEFSET"; then
   echo "!! BROKEN: বানানো permission-ও সংজ্ঞায়িত দেখাচ্ছে"; exit 2
 fi
 echo "POSITIVE  বানানো permission ORPHANED হিসেবেই থাকছে"
@@ -108,7 +123,7 @@ PY
     TOT=$((TOT+1))
     definer=$(awk -F'\t' -v p="$perm" '$1==p{print $2}' "$DEF" | head -1)
     level=$(awk -F'\t' -v p="$perm" '$1==p{print $2}' "$LVL" | head -1)
-    if [ -z "$definer" ]; then
+    if ! grep -qxF "$perm" "$DEFSET"; then
       [ "$printed" -eq 0 ] && { echo; echo "== $pkg"; printed=1; }
       ORPH=$((ORPH+1))
       echo "  *** ORPHANED  $perm"
