@@ -126,7 +126,10 @@ if adb shell pm path com.fitbit.FitbitMobile >/dev/null 2>&1 </dev/null; then
   enc=$(printf '%s' "$CAN/c/APPCTL" | sed 's|:|%3A|g; s|/|%2F|g')
   adb shell am start -a android.intent.action.VIEW \
       -d "'fitbit://webview?url=$enc'" >/dev/null 2>&1 </dev/null
-  sleep 8
+  # interactsh pull-ভিত্তিক: ক্লায়েন্ট সার্ভারে পোল করে, তাই interaction
+  # ঘটার পর লগে আসতে কয়েক সেকেন্ড দেরি হয়। কম অপেক্ষা করলে কাজ করা
+  # canary-ও "ব্যর্থ" দেখায়। ক্লায়েন্ট -poll-interval 2 দিয়ে চালালে ভালো।
+  sleep 30
   if [ "$(hits)" -gt "$B2" ]; then
     echo "POSITIVE  Fitbit WebFrameActivity canary এনেছে — app-এর fetch ধরা যাচ্ছে"
   else
@@ -223,7 +226,8 @@ PY
   echo
 done
 
-sleep 5
+# শেষ deeplink-গুলোর interaction পোল হয়ে লগে পৌঁছানোর সময় দাও
+sleep 40
 echo "== ফলাফল =="
 echo "deeplink ছোড়া হয়েছে: $FIRED   বাদ: $SKIPPED"
 H=$(grep -oE '/c/[0-9]+' "$SRVLOG" 2>/dev/null | sed 's#/c/##' | sort -u)
