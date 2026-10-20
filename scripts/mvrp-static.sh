@@ -70,11 +70,24 @@ IR_RE='\(Intent\)[^;]*getParcelable|getParcelable(ArrayList)?Extra\([^)]*[^A-Za-
 # তাই পাহারার তালিকায় component-walk, Path.normalize, আর ফাইলে ".."
 # স্ট্রিং থাকা — সব ধরা হচ্ছে। lead-জেনারেটরে নির্ভুলতাই দামি।
 ZIP_GUARD='getCanonicalPath|getCanonicalFile|startsWith\(|normalize\(\)|toPath\(\)|"\.\."'
+# traversal-এর শর্ত: entry-র নাম **আক্রমণকারীর হাতে** থাকতে হবে, অর্থাৎ
+# entry গুলো ঘুরে দেখা হচ্ছে, বা getEntry()-তে একটা চলক যাচ্ছে।
+# Voice Access-এর jbd.java প্রার্থী হয়েছিল অথচ সে চায় getEntry("classes.dex")
+# — ধ্রুবক নাম, ধ্রুবক গন্তব্য। পাহারার কিছুই নেই কারণ পাহারা দেওয়ার মতো
+# কোনো চলকই নেই। শর্তটা কখনো দাবি করেনি নামটা entry থেকে আসছে।
+ZIP_ITER='getNextEntry\(|\.entries\(\)|getEntry\([^")]'
 zip_files() {   # zip_files <sources-dir>
   grep -rlE 'ZipEntry|ZipInputStream|TarArchive' --include='*.java' "$1" 2>/dev/null \
-    | xargs -r grep -lE 'new File\(' 2>/dev/null \
+    | xargs -r grep -lE "$ZIP_ITER" 2>/dev/null \
+    | xargs -r grep -lE 'new File\(|appendPath\(' 2>/dev/null \
     | xargs -r grep -LE "$ZIP_GUARD" 2>/dev/null
 }
+
+# ---- archive থেকে গতিশীল কোড লোড ----
+# jbd.java খুঁজতে গিয়ে পাওয়া: সে একটা zip খুলে classes.dex বের করে লেখে।
+# traversal নয়, কিন্তু অনেক দামি — archive আক্রমণকারীর নাগালে থাকলে ফল ACE,
+# rules-এর সর্বোচ্চ শ্রেণি। এই শ্রেণিটা sweep-এ ছিলই না।
+DEX_RE='DexClassLoader|InMemoryDexClassLoader|BaseDexClassLoader|DexFile|loadDex|"classes\.dex"'
 IR_START='startActivity|startActivities|startService|startForegroundService|sendBroadcast|sendOrderedBroadcast|bindService'
 ir_files() {   # ir_files <sources-dir>
   grep -rlE "$IR_RE" --include='*.java' "$1" 2>/dev/null \
@@ -176,6 +189,17 @@ public class ZSafe {
   }
 }
 J
+cat > "$FIX/sources/ZConst.java" <<'J'
+import java.util.zip.ZipEntry; import java.util.zip.ZipFile; import java.io.File;
+public class ZConst {
+  void x(File apk, File dir) throws Exception {
+    ZipFile z = new ZipFile(apk);
+    ZipEntry e = z.getEntry("classes.dex");
+    File out = new File(dir, "dex");
+    new java.io.FileOutputStream(out).close();
+  }
+}
+J
 ZHITS=$(zip_files "$FIX/sources" | sed "s|^$FIX/sources/||" | sort | tr '\n' ' ')
 rm -rf "$FIX"
 if [ "$ZHITS" = "ZVuln.java " ]; then
@@ -185,7 +209,7 @@ else
 fi
 echo
 
-TOT_PI=0; TOT_IR=0; TOT_ZIP=0; TOT_HOT=0
+TOT_PI=0; TOT_IR=0; TOT_ZIP=0; TOT_HOT=0; TOT_DEX=0
 for pkg in "${pkgs[@]}"; do
   d="$SRC/$pkg/sources"
   [ -d "$d" ] || continue
@@ -230,6 +254,15 @@ for pkg in "${pkgs[@]}"; do
     fi
   fi
 
+  # ---- ৪. archive থেকে dex লোড (ACE-র সম্ভাবনা) ----
+  DX=$(grep -rlE "$DEX_RE" --include='*.java' "$d" 2>/dev/null \
+       | xargs -r grep -lE 'ZipEntry|ZipFile|ZipInputStream|\.apk|\.zip' 2>/dev/null | head -10)
+  if [ -n "$DX" ]; then
+    c=$(grep -c . <<<"$DX"); TOT_DEX=$((TOT_DEX+c))
+    echo "  [DexFromArchive] archive + dex লোডার — $c ফাইল  *** ACE শ্রেণি"
+    sed 's|^.*/sources/|      |' <<<"$DX" | head -8
+  fi
+
   # ---- ৩. Zip / path traversal ----
   # ZipEntry.getName() সরাসরি new File(dir, name)-এ গেলে ../ দিয়ে
   # ডিরেক্টরির বাইরে লেখা যায় — rules-এ "arbitrary file write"।
@@ -244,8 +277,8 @@ for pkg in "${pkgs[@]}"; do
 done
 
 echo "== সারাংশ =="
-printf 'PendingIntent(MUTABLE): %s ফাইল\nIntentRedirect: %s ফাইল  (exported: %s)\nZipTraversal: %s ফাইল\n' \
-  "$TOT_PI" "$TOT_IR" "$TOT_HOT" "$TOT_ZIP"
+printf 'PendingIntent(MUTABLE): %s ফাইল\nIntentRedirect: %s ফাইল  (exported: %s)\nZipTraversal: %s ফাইল\nDexFromArchive: %s ফাইল\n' \
+  "$TOT_PI" "$TOT_IR" "$TOT_HOT" "$TOT_ZIP" "$TOT_DEX"
 cat <<'NOTE'
 
 == পড়ার নিয়ম ==

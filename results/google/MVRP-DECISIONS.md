@@ -911,3 +911,47 @@ point matters because Mobile VRP scenario 2, "user follows a link", pays
 $18,750 for theft of sensitive data against scenario 3's $4,500 — but a web
 link cannot set Intent extras, so only the deeplink data path is reachable that
 way, not any extras-driven redirect.
+
+### 2026-10-20 — zip traversal: 13 candidates to 1 to 0, and a new class worth more
+
+With the full guard list, the sweep across all 35 apps dropped from 13
+zip-traversal candidates to one, all three controls printing POSITIVE first.
+The twelve that fell away each had a real guard that the old
+`getCanonicalPath`-only condition could not see. `ZipFolderOpener` — the shared
+`com.google.android.libraries.mdi.download` library, the one I most wanted to be
+broken because a library bug reaches many apps — guards properly:
+
+    if (name.contains("..")) {
+        for (File file = new File(name); file != null; file = file.getParentFile())
+            if (file.getName().equals("..")) throw new ZipException("Illegal name: " + name);
+    }
+
+and the tightened pattern excluded it on its own, without my reading it.
+
+| C4 | voiceaccess `defpackage/jbd` | DROP as traversal | The only survivor, and not a traversal either. It asks for a constant entry, `zipFile2.getEntry("classes.dex")`, and writes to a constant destination, `new File(jauVar.g(), "dex")`. Nothing derives from an entry name, so there is nothing to guard. |
+
+**Defect 14 — the traversal pattern never required the traversal.** It asked for
+`ZipEntry` plus `new File(` plus no guard, but never that the written path derive
+from an attacker-controlled entry name, which is the definition of the class.
+Exactly defect 11's family: the pattern named the ingredients and not the bug.
+
+Now also requires that entry names be attacker-reachable — iteration via
+`getNextEntry()` or `.entries()`, or `getEntry()` with a variable rather than a
+literal. Six fixtures, run aborts on mismatch: iteration and the variable
+`getEntry` are caught; the constant-entry shape from `jbd`, the component walk
+and the canonical-path check are not.
+
+**A class the sweep was not looking for at all.** What `jbd` does is more
+valuable than what I went looking for: it opens an archive, pulls `classes.dex`
+out of it and writes it to a `dex` directory. That is dynamic code loading. If
+the archive is attacker-reachable, the result is not a file write but ACE in
+Voice Access's process — the top-paying class in the rules ($7,500 at Tier 2
+against $2,250 for "other"), and I would have walked past it because my three
+categories were copied from the rules' list rather than derived from what the
+code does.
+
+Added as a fourth category, `DexFromArchive`: a dex loader
+(`DexClassLoader`, `InMemoryDexClassLoader`, `BaseDexClassLoader`, `DexFile`,
+`loadDex`, or the literal `"classes.dex"`) in a file that also touches an
+archive. Reachability of the archive is still the question that decides it, and
+`jbd`'s own archive source is being read now.
