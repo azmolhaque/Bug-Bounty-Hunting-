@@ -75,13 +75,21 @@ find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
 "$D8" --lib "$AJ" --min-api 24 --output "$OUT" @"$OUT/classes.txt"
 
 echo "[3/5] aapt2 link"
-if ! # PKG দিলে manifest-এর package নাম বদলে যায় (ক্লাসের নাম নয়)। এটা দিয়ে
-# একই কোড ভিন্ন পরিচয়ে চালানো যায় — allowlist শুধু নাম দেখে না signature-ও,
-# সেটা যাচাই করার একমাত্র উপায়।
+# PKG দিলে manifest-এর package নাম বদলায় (ক্লাসের নাম নয়) — একই কোড ভিন্ন
+# পরিচয়ে চালানোর জন্য। allowlist শুধু নাম দেখে না signature-ও, সেটা যাচাইয়ের
+# একমাত্র উপায়।
+#
+# সেটআপটা `if` এর বাইরে: আগে এটা `if !` এর ভেতরে ছিল, আর প্রথম লাইনের `#`
+# পুরো লাইনটা মন্তব্য করে দেওয়ায় শর্তটাই ভেঙে গিয়েছিল — বিল্ড [3/5]-এ
+# চুপচাপ মরত, কোনো ত্রুটি না দেখিয়ে।
 RENAME=()
-[ -n "${PKG:-}" ] && RENAME=(--rename-manifest-package "$PKG")
-"$AAPT2" link -I "$AJ" \
-    --manifest "$HERE/AndroidManifest.xml" "${RENAME[@]+"${RENAME[@]}"}" \
+if [ -n "${PKG:-}" ]; then
+  RENAME=(--rename-manifest-package "$PKG")
+  echo "      package  $PKG"
+fi
+
+if ! "$AAPT2" link -I "$AJ" \
+    --manifest "$HERE/AndroidManifest.xml" ${RENAME[@]+"${RENAME[@]}"} \
     --min-sdk-version 24 --target-sdk-version 34 \
     -o "$OUT/base-unsigned.apk" 2> "$OUT/aapt2.err"; then
   cat "$OUT/aapt2.err"
