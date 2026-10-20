@@ -95,9 +95,15 @@ while IFS= read -r line <&3; do
   N=$((N+1))
   o=$(probe "$CUR" "$CLS" "$DESC")
   t=$(grep -E 'transact\(\) returned|transact THREW|reply ascii' <<<"$o" | sed 's/^.*MVRP *: *//')
-  if grep -qi 'SecurityException' <<<"$o"; then
+  # প্রত্যাখ্যান সবসময় SecurityException হয়ে আসে না। দুটো service উত্তরের
+  # *ভেতরে* লিখে পাঠিয়েছে — "Uid is not Google Signed", "Illegal package
+  # [com.cindrasec.mvrpprobe]" — আর শুধু exception খুঁজলে ওগুলো ভুল করে
+  # "যাচাই নেই" দেখায়। control (Wellbeing, S40-তে auth প্রমাণিত) ঠিক এভাবেই
+  # OPEN? দেখিয়েছিল, আর সেটাই ধরিয়ে দিয়েছে।
+  if grep -qiE 'SecurityException|not Google Signed|Illegal package|[Nn]ot allowed|[Pp]ermission denied|[Uu]nauthorized|[Uu]nknown (caller|browser|package)' <<<"$o"; then
     SEC=$((SEC+1))
     printf 'DENIED    %s\n          %s\n' "$CUR" "$CLS"
+    grep -E 'reply ascii' <<<"$o" | sed 's/^.*MVRP *: */            /' 
   elif grep -q 'transact' <<<"$o"; then
     OPEN=$((OPEN+1))
     printf 'OPEN?     %s\n          %s\n          %s\n' "$CUR" "$CLS" "$DESC"
