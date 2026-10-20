@@ -63,7 +63,8 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             else if ("transact".equals(action)) { doBind(in); keepAlive = true; }
             else if ("wellbeing".equals(action)) { doWellbeing(in); keepAlive = true; }
             else if ("start".equals(action))  doStart(in);
-            else Log.i(TAG, "actions: call | query | bind | transact | wellbeing | start");
+            else if ("startact".equals(action)) doStartActivity(in);
+            else Log.i(TAG, "actions: call | query | bind | transact | wellbeing | start | startact");
         } catch (Throwable t) {
             // শ্রেণির নামই প্রায়ই আসল উত্তর:
             // SecurityException = সীমানা ধরেছে। অন্য কিছু = অন্য কারণে ব্যর্থ।
@@ -246,6 +247,40 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
         if (act != null) svc.setAction(act);
         ComponentName r = startService(svc);
         Log.i(TAG, "startService() returned " + (r == null ? "null" : r.flattenToShortString()));
+    }
+
+    /**
+     * activity চালু করো — service নয়।
+     *
+     * কেন আলাদা: doStart() startService() ডাকে, আর অনাথ-permission পরীক্ষায়
+     * লক্ষ্য ছিল AGSA-র ExportedSmartspaceTrampolineActivity, একটা activity।
+     * ভুল API ডাকায় লগে "startService() returned null" এসেছিল — যেটা
+     * "পৌঁছানো যায়নি" নয়, "আমি দরজায় কড়াই নাড়িনি"।
+     *
+     * SecurityException ধরা হচ্ছে আলাদা করে: সেটাই permission-সীমানার
+     * স্বাক্ষর, আর control-বিল্ডের সাথে তুলনার আসল মাপ।
+     */
+    private void doStartActivity(Intent in) {
+        String pkg = req(in, "pkg");
+        String cls = req(in, "cls");
+        Log.i(TAG, "STARTACT " + pkg + "/" + cls);
+        Intent act = new Intent();
+        act.setComponent(new ComponentName(pkg, cls));
+        String a = in.getStringExtra("svcAction");
+        if (a != null) act.setAction(a);
+        String d = in.getStringExtra("data");
+        if (d != null) act.setData(android.net.Uri.parse(d));
+        String ek = in.getStringExtra("extraKey");
+        if (ek != null) act.putExtra(ek, in.getStringExtra("extraVal"));
+        act.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(act);
+            Log.i(TAG, "startActivity() ফেরত এসেছে, exception ছাড়া");
+        } catch (SecurityException e) {
+            Log.i(TAG, "SECURITY " + e.getMessage());
+        } catch (Throwable t) {
+            Log.i(TAG, "THROWN " + t.getClass().getName() + ": " + t.getMessage());
+        }
     }
 
     private static String render(Object v) {

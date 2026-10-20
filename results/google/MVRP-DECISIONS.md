@@ -1360,3 +1360,50 @@ an app define names in the `android.permission.*` namespace, in a vendor
 namespace, in both, or in neither. The permissionless manifest is left
 untouched, since it is the instrument for a different claim; `build.sh` now
 takes a `MANIFEST` override.
+
+### 2026-10-21 — step 1 PROVEN: orphaned permissions can be claimed and are granted
+
+Not assumed. Measured:
+
+    declared permissions:
+      com.google.android.apps.nexuslauncher.permission.QSB: prot=normal
+      android.permission.BIND_APP_FUNCTION_SERVICE: prot=normal
+      ...
+    install permissions:
+      android.permission.BIND_APP_FUNCTION_SERVICE: granted=true
+      com.google.android.apps.nexuslauncher.permission.QSB: granted=true
+      com.android.systemui.permission.SEND_ALERT_BROADCASTS: granted=true
+      android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE: granted=true
+      android.permission.BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE: granted=true
+      com.google.android.flipendo.SAVER_STATE_UPDATE: granted=true
+      com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER: granted=true
+
+An ordinary third-party APK, signed with a self-made key, defines all seven
+orphaned permissions at `protectionLevel="normal"` and is granted all seven at
+install. Android did not reserve the `android.permission.*` namespace against a
+third-party definer when the platform itself does not define the name.
+
+The experiment was built to separate hypotheses — vendor namespace versus
+platform namespace — and the answer came back "both", which is the stronger of
+the two outcomes I had framed.
+
+This is the step the Wiz subdomain report assumed and lost on. Here it is
+demonstrated before anything is claimed.
+
+**Step 2 is not yet done, and the first attempt measured nothing.** The probe's
+`start` action calls `startService()`, but the AGSA target
+`ExportedSmartspaceTrampolineActivity` is an activity, so
+`startService() returned null` means "I knocked on the wrong door", not "the
+door is shut". Added a `startact` action that calls `startActivity()` and
+catches `SecurityException` separately, since that exception is the signature of
+a permission boundary and the thing the control build has to differ on.
+
+The GMS attempt returned `bindService() returned false`, which is also not yet
+a result: the reason is logged by ActivityManager, not under the probe's own
+tag, so the next run has to read unfiltered logcat.
+
+**The control is mandatory before any claim.** A successful reach proves nothing
+about the permission unless the same reach fails without it. `PKG=` rename
+builds a second, permissionless copy (`com.cindrasec.mvrpctl`) so both can be
+installed side by side and the same two attempts run under each. The finding, if
+there is one, is the difference — not the success.
