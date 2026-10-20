@@ -68,13 +68,26 @@ echo "== CONTROL =="
 BEFORE=$(hits)
 adb shell am start -a android.intent.action.VIEW \
     -d "http://127.0.0.1:$PORT/c/CONTROL" >/dev/null 2>&1 </dev/null
-sleep 4
+sleep 8
 AFTER=$(hits)
 if [ "$AFTER" -gt "$BEFORE" ]; then
   echo "POSITIVE  ব্রাউজার canary-তে পৌঁছেছে — reverse + সার্ভার দুটোই চলছে"
 else
   echo "!! CONTROL FAIL: ব্রাউজারও canary-তে পৌঁছায়নি।"
-  echo "!! reverse বা সার্ভার ভাঙা — এই রানে 'কোনো hit নেই' মানে কিছুই না। থামো।"
+  echo "!! এই রানে 'কোনো hit নেই' মানে কিছুই না। থামছি।"
+  echo
+  echo "   adb reverse তালিকা:"
+  adb reverse --list 2>&1 </dev/null | sed 's/^/     /'
+  echo "   সার্ভার লগ (শেষ ১০ লাইন):"
+  tail -10 "$SRVLOG" 2>/dev/null | sed 's/^/     /'
+  echo "   পর্দার অবস্থা:"
+  adb shell dumpsys power 2>/dev/null </dev/null | grep -E 'mWakefulness=|mScreenOn' | head -3 | sed 's/^/     /'
+  echo
+  echo "   সবচেয়ে সম্ভাব্য কারণ: ফোনের পর্দা লক/ঘুমন্ত — তখন am start"
+  echo "   Activity খোলে না। ঠিক করতে:"
+  echo "     adb shell svc power stayon usb"
+  echo "     adb shell input keyevent KEYCODE_WAKEUP"
+  echo "   তারপর ফোন আনলক করে আবার চালাও।"
   exit 3
 fi
 adb shell am force-stop com.android.chrome >/dev/null 2>&1 </dev/null
