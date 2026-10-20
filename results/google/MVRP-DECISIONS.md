@@ -391,3 +391,26 @@ recorded as a closed surface.
 Surfaces examined: 40+. Valid bugs: zero. Tool defects found and fixed: seven,
 every one of which produced a false negative or, in the last case, a false
 validation. The target never once lied; the instruments did.
+
+### Static sweep round 1 — four leads, four closed
+
+First run over the 7 apps decompiled so far. Raw counts were 99 PendingIntent,
+34 IntentRedirect, 4 ZipTraversal — mostly noise until two filters were added:
+requiring `PendingIntent` in the file (the bare constant 33554432 is 2^25 and
+appears in desugared java.util concurrency code), and cross-referencing each
+candidate class against the exported, permission-less components in its
+manifest. That cut 49 intent-redirection candidates to 5 reachable ones.
+
+| lead | verdict |
+|---|---|
+| fitbit `FastPairLandingActivity` | FALSE — pulls a `BluetoothDevice`, not an Intent. The grep matched `getParcelableExtra` and `startActivity` in one file with no relation between them. |
+| photos `AlbumActivity` | DROP — lines 820-880 are `onNewIntent`: if the new intent differs from the current one it finishes and relaunches itself **with that same intent**, which the caller was already entitled to send. |
+| messaging `ShareIntentActivity` | DROP — the `EXTRA_STREAM` Uri goes only into a structured log field; the forwarded intent comes from the app's own builder with its component set. |
+| photos `EditActivity` | DROP — the `output` Uri from the caller is validated. `adtj.c()` runs it through `bpqk.i()`, unwraps the data Uri via `yny.b()`, checks the scheme against the allowlist `adtj.a` with `cuak.ab()`, re-checks with `ccgq.d()`, and handles the `file` scheme explicitly. |
+
+The two filters are the lasting result: without them this round would have
+been 137 files to read by hand instead of 5.
+
+**Standing: zero valid bugs.** Decompile of the remaining 21 packages is still
+running; the static sweep has never been run against any of them, and those
+three rewarded classes have never been examined there.
