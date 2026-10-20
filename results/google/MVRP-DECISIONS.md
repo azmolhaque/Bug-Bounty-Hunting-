@@ -1182,3 +1182,41 @@ the Google-adjacent ones, so a missing target is visible rather than silent.
 
 Passing package names as arguments bypasses the filter entirely, which is the
 immediate route for any new target.
+
+### 2026-10-21 — S54 AI Edge Gallery closed; the strongest remaining bet did not hold
+
+The one target among the fifteen untouched packages that could have been worth
+Tier 2 money. Pulled (after fixing defect 18), decoded, decompiled, swept.
+
+Static sweep: zero on all four rewarded classes, five controls POSITIVE first.
+FileProvider is tight — `<cache-path path="images/">` only, no root-path export.
+
+| S54 | gallery `MainActivity` deeplink | DROP | `MainActivity` is exported with a `com.google.ai.edge.gallery` scheme filter, and reads its deeplink from `getStringExtra("deeplink")` rather than `getData()`. That rules out the browser path — a web page sets data, not extras — so this is scenario 3, not the $18,750 scenario 2. An `http://`/`https://` value is handed to `startActivity(ACTION_VIEW, uri)`, which gains an attacker nothing since any app can open a URL itself. Anything else goes to `intent.setData()` and is consumed in `GalleryNavGraphKt`, where the model is resolved by `getModelByName(lastPathSegment)` against the allowlist — no URL and no path can be supplied — and the `query` parameter is `Uri.encode`d before being placed in the route. What an attacker gets is Gallery opened at an already-downloaded model's chat screen with a prefilled prompt, run by a local model. No data leaves, no code runs, no boundary is crossed. |
+
+| | gallery `BootReceiver` | DROP | Exported without permission, but checks the action and only reschedules notifications. |
+
+My main hypothesis for this app — that a deeplink could choose which model file
+gets loaded — was simply wrong. `importModel` is reached only from an
+`ActivityResult` carrying the user's own file-picker Uri, which an outside app
+cannot supply.
+
+One thing left standing, recorded but not submitted:
+`androidx.compose.ui.tooling.PreviewActivity` is exported in **both**
+GnssLogger and AI Edge Gallery. Two apps from two different in-scope developers
+shipping Compose's developer tooling activity in a release build is a pattern
+rather than an accident. It takes a `composable` string extra and reflectively
+invokes that composable. Impact is weak on its own — it renders app UI, it does
+not read data or run attacker code — so by §2 it does not clear the bar unless
+a specific composable can be shown to expose something. That is the one cheap,
+concrete test left on this path.
+
+### Standing back: 54 surfaces, 18 tool defects, zero reports
+
+Every rewarded class in Mobile VRP has now been swept across 37 apps with
+fixture-bound patterns and five controls: intent redirection, zip traversal,
+dex-from-archive and mutable PendingIntent. The mature apps hold at five
+layers, and the small apps from the untouched developers have almost no
+attack surface to hold.
+
+The honest read is that the tooling is now good and the target is wrong. This
+is a crowding problem, not a capability one.
