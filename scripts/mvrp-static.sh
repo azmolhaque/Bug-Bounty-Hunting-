@@ -118,8 +118,13 @@ DEX_RE='DexClassLoader|InMemoryDexClassLoader|BaseDexClassLoader|DexFile|loadDex
 PI_LIB='/sources/(androidx|android/support|kotlin|kotlinx|io/flutter|com/bumptech|expo|com/squareup|okhttp3|com/facebook|org/chromium|j\$)/'
 PI_CREATE='PendingIntent\.get(Activity|Activities|Broadcast|Service|ForegroundService)'
 PI_PINNED='setComponent\(|setClass\(|setClassName\(|setPackage\(|new Intent\([^;]*\.class'
+# সংখ্যাটা anchor করতেই হবে: 335544320 (= FLAG_ACTIVITY_NEW_TASK|CLEAR_TOP,
+# একটা Intent flag) -এর ভেতরে 33554432 আছে। Wallet-এর WalletTileService ঠিক
+# এভাবেই তালিকায় এসেছিল, অথচ তার PendingIntent 67108864 = FLAG_IMMUTABLE।
+# ত্রুটি ১৩-এর যমজ: substring-কে token ভাবা।
+PI_MUT='(^|[^0-9])33554432([^0-9]|$)'
 pi_files() {   # pi_files <sources-dir>
-  grep -rlE '33554432' --include='*.java' "$1" 2>/dev/null \
+  grep -rlE "$PI_MUT" --include='*.java' "$1" 2>/dev/null \
     | xargs -r grep -lE "$PI_CREATE" 2>/dev/null \
     | xargs -r grep -LE "$PI_PINNED" 2>/dev/null \
     | grep -vE "$PI_LIB"

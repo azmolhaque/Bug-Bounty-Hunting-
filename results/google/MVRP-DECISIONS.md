@@ -1133,3 +1133,30 @@ What the zip class actually taught: Google ships one shared archive extractor
 and it is guarded in every copy found — inline in seekh, hoisted into a helper
 in Messages. Finding two copies and diffing them was the right instinct; the
 diff just came out the other way.
+
+### 2026-10-20 — defect 17: an unanchored number, and the twin of defect 13
+
+`WalletTileService` appeared in the mutable-PendingIntent list while its actual
+call is
+
+    PendingIntent.getActivity(this, 0, a, 67108864)   // FLAG_IMMUTABLE
+
+the opposite of the class. It matched because of the line above it:
+
+    a.addFlags(335544320)   // FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TOP
+
+and `335544320` contains `33554432`. The constant was never anchored, so an
+Intent flag was counted as a PendingIntent flag.
+
+Exact twin of defect 13, where `Intent\.class` matched `PendingIntent.class`:
+a substring treated as a token. Two of seventeen defects are now this one
+mistake, which suggests checking every bare literal in these patterns rather
+than waiting for the next one to surface.
+
+Anchored to `(^|[^0-9])33554432([^0-9]|$)` and checked against four lines: the
+real flag with and without an OR'd neighbour still match, while `335544320` and
+an unrelated `133554432` no longer do.
+
+The 24-file PendingIntent list was produced under the unanchored pattern and is
+therefore inflated by an unknown amount — it has to be regenerated before any
+of it is read.
