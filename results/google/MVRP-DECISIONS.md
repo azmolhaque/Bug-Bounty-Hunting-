@@ -543,3 +543,55 @@ unsupported except three EMPTY (reachable, no rows at the root URI):
 
 scone's two providers returned NOPROVIDER — the app is not registered on this
 device, same situation as tycho. Undecidable, not closed.
+
+### 2026-10-20 — tooling correction 3: the logcat oracle was reading graphics noise
+
+`mvrp-payload.sh` decided whether a deeplink's URL had loaded by grepping
+logcat for `WebFrameActivity|WebViewClient|chromium`. That pattern matches
+
+    BufferQueueProducer: [com.fitbit.FitbitMobile/...WebFrameActivity...] disconnect
+
+which Android emits whenever the activity opens or closes, whether or not any
+URL was ever fetched. Consequence: the accept control (`fitbit.com/help`) and
+the reject control (`example.org`) both returned `WEBVIEW_ACTIVE`. An
+instrument that cannot separate two known-different states has no verdict
+worth printing — so every `WEBVIEW_ACTIVE` in that script's history means only
+"the string WebFrameActivity appeared in the log".
+
+This is the eighth tool defect in this effort and the third of the same
+species: confident conclusions drawn from noise. The pattern across all eight
+is that the control was either absent, or built so it could pass without the
+measurement working.
+
+**Fix.** The noise branch is deleted from `mvrp-payload.sh` (its only honest
+outputs are now the app's own strings: `Cannot load ... in this WebView`,
+`net::ERR_*`). The replacement oracle is `scripts/mvrp-screen.sh`, whose
+reading is `uiautomator dump` — the text actually rendered on screen. A
+directory listing, `net::ERR_ACCESS_DENIED`, and an app's own UI are three
+different strings; graphics logs are not among them.
+
+Two pieces of discipline are built into the new script rather than left to me:
+
+1. **STAGE 0 aborts the run.** It fingerprints three screens — HOME, a known
+   accepted URL, a known rejected URL — and exits 2 before any payload fires
+   if `H1 == H0` (the deeplink never routed) or `H1 == H2` (the instrument
+   cannot discriminate). The failure message says the result is *inconclusive,
+   not negative*, which is the distinction the previous 142-deeplink zero lost.
+2. **A nested control inside the payload.** STAGE 2 pushes a canary HTML that
+   prints `MVRP-CANARY` as a heading and then attempts an XHR to the app's own
+   `shared_prefs`. If the heading is absent, `file://` never loaded and a
+   read-failure means nothing; only with the heading present does
+   `MVRPREAD-FAIL` carry information. The canary writes its result to its own
+   screen, so nothing leaves the device.
+
+Classifier verified against eight fixtures, including the exact log line that
+fooled the old oracle — it now classifies as `SCREEN` (unnamed) rather than
+as a positive.
+
+STAGE 1 also stops guessing filenames: it mines `getSharedPreferences("...")`
+out of the decompiled source so the file:// probes name files that exist.
+
+Note on what STAGE 1 can and cannot earn: a directory listing is a
+**precondition**, not a crossing (CLAUDE.md 2.6). The crossing is STAGE 2 —
+an outside document reading the app's private file contents. Only that is
+Theft of Sensitive Data, and only if what it reads is a credential.

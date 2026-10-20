@@ -44,7 +44,11 @@ verdict() {
   elif grep -qiE 'ERR_CLEARTEXT_NOT_PERMITTED' <<<"$o"; then echo CLEARTEXT_BLOCKED
   elif grep -qiE 'ERR_ACCESS_DENIED|ERR_FILE_NOT_FOUND|ERR_UNKNOWN_URL_SCHEME' <<<"$o"; then echo LOAD_REFUSED
   elif grep -qiE 'net::ERR' <<<"$o"; then echo NET_ERROR
-  elif grep -qi 'WebFrameActivity\|WebViewClient\|chromium' <<<"$o"; then echo WEBVIEW_ACTIVE
+  # বাতিল করা শাখা: আগে এখানে 'WebFrameActivity|WebViewClient|chromium'
+  # মিললে WEBVIEW_ACTIVE বলা হতো। কিন্তু BufferQueueProducer প্রতিবার
+  # Activity খোলা/বন্ধ হলেই ওই নাম লেখে — URL লোড হওয়ার সাথে সম্পর্ক নেই।
+  # ফলে ACCEPT-control আর REJECT-control দুটোই WEBVIEW_ACTIVE দিয়েছিল।
+  # কোলাহলকে সংকেত বলা বন্ধ। পর্দা-ভিত্তিক oracle: mvrp-screen.sh
   else echo NO_SIGNAL
   fi
 }
@@ -97,10 +101,9 @@ REJECTED_BY_APP   app নিজে না বলেছে — যাচাই �
 CLEARTEXT_BLOCKED নীতিতে আটকেছে, app-এর যাচাইয়ে নয়। ভিন্ন জিনিস।
 LOAD_REFUSED      WebView scheme/ফাইল প্রত্যাখ্যান করেছে (ERR_ACCESS_DENIED =
                   file access বন্ধ; ERR_UNKNOWN_URL_SCHEME = scheme অসমর্থিত)।
-WEBVIEW_ACTIVE    WebView কাজ করেছে আর কোনো ত্রুটি বলেনি -> **সবচেয়ে আগ্রহের**।
-                  file:// হলে পর্দায় দেখো: ডিরেক্টরি তালিকা বা ফাইলের বিষয়বস্তু
-                  দেখালে app-এর ব্যক্তিগত ফাইল পড়া হয়েছে।
-NO_SIGNAL         deeplink রুট হয়নি, বা app কিছু বলেনি। অনিষ্পন্ন, নেতিবাচক নয়।
+NO_SIGNAL         logcat কিছু বলেনি। **অনিষ্পন্ন**, নেতিবাচক নয় — logcat দিয়ে
+                  "লোড হয়েছে" প্রমাণ করা যায় না, শুধু "app না বলেছে" প্রমাণ হয়।
+                  লোড হয়েছে কিনা জানতে পর্দা পড়তে হবে: ./mvrp-screen.sh
 
 শেষ পাঁচটা payload host-যাচাইয়ের ক্লাসিক বাইপাস: suffix (evilfitbit),
 subdomain-সদৃশ (fitbit.com.evil), userinfo (@), encoded slash, আর trailing dot।
