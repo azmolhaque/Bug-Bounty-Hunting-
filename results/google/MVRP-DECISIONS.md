@@ -456,3 +456,37 @@ photos EditActivity (output Uri validated in adtj.c()), docs ProjectorActivity
 
 Still zero valid bugs. 14 of 28 packages decompiled; the sweep has never run
 against the other 14.
+
+| S42 | tasks `TrampolineActivity` | DROP | See below. |
+
+### S42 — the loudest name of the session, and nothing behind it
+
+`com.google.android.apps.tasks.common.TrampolineActivity` is
+`android:exported="true"` with no permission — "trampoline" is literally the
+word for this bug class — and it has two paths worth reading.
+
+The redirect path constructs its own destination:
+
+    intent2.setComponent(new ComponentName(
+        intent.getComponent().getPackageName(),      // the package WE targeted = tasks
+        getString(R.string.task_list_class_name)));  // class from a string resource
+
+Neither half is attacker-controlled, so the redirect stays inside Tasks.
+
+The second path is reachable directly — action
+`com.google.android.apps.tasks.notification.OPEN_LINK_ACTION`, sent explicitly
+to the exported component — and pulls a URI out of an attacker-supplied proto
+in `LINK_EXTRA`, with no validation, into:
+
+    ldh.b(Context, Uri):
+        Intent intent = new Intent("android.intent.action.VIEW", uri);
+        intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(intent);
+
+No scheme check. Still not a finding: an implicit ACTION_VIEW resolves only to
+exported components, so no non-exported component is reachable; no
+FLAG_GRANT_*_URI_PERMISSION is added, so a `content://` URI conveys no grant;
+and opening `https://evil` is something the attacker could do directly. The
+answer to "what did the attacker get" is nothing.
+
+That is six exported static leads, six closed.
