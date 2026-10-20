@@ -1451,3 +1451,51 @@ exist on any non-Pixel device. By CLAUDE.md §2.6 that is a precondition, which
 is exactly the shape that killed G-F002, the Wiz report and S43. The next step
 is reading `ExportedSmartspaceTrampolineActivity` to find what it forwards and
 whether any of it is attacker-controlled.
+
+### 2026-10-21 — S55: AGSA re-verifies the permission's owner at runtime
+
+Step 3 answered, and the answer closes this target. The activity is a Hilt
+shell; the logic lives in its peer, `defpackage.cenk`:
+
+    getPackageInfo("com.google.android.apps.nexuslauncher", 4096)
+    ...
+    if (permissionInfoArr[i].name.equals("com.google.android.apps.nexuslauncher.permission.QSB")) {
+        if (ai != null && (ai.flags & 129) != 0 && this.d.b(pkgInfo.packageName)) { ...proceed... }
+    }
+    ...
+    "#onAccountChanged: QSB permission is not trusted."
+    this.b.finish();
+
+AGSA does not trust the permission it is guarded by. At runtime it asks whether
+`com.google.android.apps.nexuslauncher` is installed, whether that package is
+the one declaring `QSB`, whether it is a system app (`flags & 129` =
+`FLAG_SYSTEM | FLAG_UPDATED_SYSTEM_APP`) and whether it passes `this.d.b(...)`.
+On a Motorola device the package is absent, `getPackageInfo` throws
+`NameNotFoundException`, and control falls straight through to `finish()`.
+
+So the bypass opens the door and AGSA shuts it in the same breath — which is
+exactly why `topResumedActivity` stayed on the launcher in both runs. The
+observation that looked like a flat result was the defence working.
+
+`fvmq.b()`, the overridden `startActivity` hook, is not a guard: it only acts
+when `intent.getPackage()` equals the app's own package.
+
+Worth saying plainly: they anticipated this attack and defended against the
+precise thing I demonstrated. The permission check in the manifest is the
+advertised boundary; the real one is a runtime check that the permission's
+declared owner is an installed, system, Google-signed package.
+
+**S55 closed. The method is not.** Steps 1 and 2 remain proven, and fifteen
+other guarded components share the same orphaned-permission weakness — three
+more behind `QSB` alone (two activity-aliases and `OneSearchSuggestService`),
+two in GMS, plus Wellbeing, turbo, wallpaper and Messages. Whether each has
+AGSA's second layer is an empirical question, not an assumption.
+
+Built `mvrp-orphan-test.sh` to answer it in one run: it parses the orphan
+report and, for every guarded component, attempts to reach it twice — once from
+the permissioned build, once from the permissionless one — and prints the pair.
+Only a difference counts; a success in both means the component was open
+anyway, and a failure in both means something other than the permission is
+holding. A control aborts the run unless the two APKs actually differ in
+granted permissions. `broadcast` added to the probe, since six of the targets
+are receivers that neither `startact` nor `bind` can touch.

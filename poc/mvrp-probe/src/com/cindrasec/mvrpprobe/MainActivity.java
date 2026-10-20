@@ -64,7 +64,8 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             else if ("wellbeing".equals(action)) { doWellbeing(in); keepAlive = true; }
             else if ("start".equals(action))  doStart(in);
             else if ("startact".equals(action)) doStartActivity(in);
-            else Log.i(TAG, "actions: call | query | bind | transact | wellbeing | start | startact");
+            else if ("broadcast".equals(action)) doBroadcast(in);
+            else Log.i(TAG, "actions: call | query | bind | transact | wellbeing | start | startact | broadcast");
         } catch (Throwable t) {
             // শ্রেণির নামই প্রায়ই আসল উত্তর:
             // SecurityException = সীমানা ধরেছে। অন্য কিছু = অন্য কারণে ব্যর্থ।
@@ -276,6 +277,38 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
         try {
             startActivity(act);
             Log.i(TAG, "startActivity() ফেরত এসেছে, exception ছাড়া");
+        } catch (SecurityException e) {
+            Log.i(TAG, "SECURITY " + e.getMessage());
+        } catch (Throwable t) {
+            Log.i(TAG, "THROWN " + t.getClass().getName() + ": " + t.getMessage());
+        }
+    }
+
+    /**
+     * নির্দিষ্ট receiver-এ broadcast পাঠাও।
+     *
+     * অনাথ-permission তালিকার ছয়টা লক্ষ্য receiver — turbo-র
+     * BatterySaverChangedReceiver, wallpaper-এর DownloadableRestorer,
+     * Wellbeing-এর WindDownClockAlarmActionReceiver। activity বা service
+     * দিয়ে ওদের ছোঁয়া যায় না, তাই আলাদা কাজ।
+     *
+     * sendBroadcast() নীরবে ব্যর্থ হয়, তাই ফেরত মান দেখে লাভ নেই — প্রমাণ
+     * আসে ActivityManager-এর "Permission Denial" লাইন থেকে, আর সেটা
+     * control-বিল্ডের সাথে তুলনাতেই অর্থ পায়।
+     */
+    private void doBroadcast(Intent in) {
+        String pkg = req(in, "pkg");
+        String cls = req(in, "cls");
+        Log.i(TAG, "BROADCAST " + pkg + "/" + cls);
+        Intent b = new Intent();
+        b.setComponent(new ComponentName(pkg, cls));
+        String a = in.getStringExtra("svcAction");
+        if (a != null) b.setAction(a);
+        String ek = in.getStringExtra("extraKey");
+        if (ek != null) b.putExtra(ek, in.getStringExtra("extraVal"));
+        try {
+            sendBroadcast(b);
+            Log.i(TAG, "sendBroadcast() ফেরত এসেছে, exception ছাড়া");
         } catch (SecurityException e) {
             Log.i(TAG, "SECURITY " + e.getMessage());
         } catch (Throwable t) {
