@@ -333,3 +333,32 @@ apps carrying a networkSecurityConfig — Fitbit ships one.
 
 **So: not a negative result. An untested instrument.** Recorded so it is not
 later miscounted as a closed surface.
+
+### Instrument failure confirmed — the canary had to be HTTPS
+
+`fitbit://webview?url=https%3A%2F%2Fwww.fitbit.com%2Fhelp` lands on
+`com.fitbit.webviewcomms.impl.ui.WebFrameActivity` and tries to load the URL.
+So deeplink routing works, `onj.M = new onj("WEBVIEW", 38, "webview")` is the
+right host, and WebFrameActivity really does load an externally supplied URL
+without validating it when `authenticated` is absent — which S27 read in the
+source and this confirms on screen.
+
+What stopped the sweep was the canary, not the targets:
+
+    net::ERR_CLEARTEXT_NOT_PERMITTED
+
+Android 9+ blocks cleartext, so an `http://127.0.0.1:8777/...` canary can
+never load inside an app WebView. Every one of the 142 deeplinks was measured
+with an instrument that could not register a hit, and "0 hits" was one step
+away from being written up as "deeplink surface closed".
+
+Next: an HTTPS canary. `adb reverse` to a local server cannot work — a
+self-signed cert is rejected by WebView, and a user-installed CA is not
+trusted by apps unless their networkSecurityConfig says so, which Fitbit's
+does not. So the canary has to be a real HTTPS endpoint: either
+cindrasec.com with a valid certificate, or an OOB interaction service, which
+CLAUDE.md section 7 explicitly sanctions for benign canaries.
+
+Also observed in passing, not ours: `https://www.fitbit.com/help` redirects to
+`http://help.fitbit.com/` — a server-side HTTPS-to-HTTP downgrade on Fitbit's
+own site. Out of scope for Mobile VRP.
