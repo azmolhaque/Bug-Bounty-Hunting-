@@ -490,3 +490,38 @@ and opening `https://evil` is something the attacker could do directly. The
 answer to "what did the attacker get" is nothing.
 
 That is six exported static leads, six closed.
+
+| S43 | docs `GetMetadataActivity` | DROP | `getParcelableExtra("entrySpec.v2")` is a Drive identifier, not an Intent; `setResult(0)` returns RESULT_CANCELED with no data; the `startActivityForResult` target comes from the app's own builder. Asking for someone else's doc by EntrySpec runs straight into Google's own rule — "a clear path for the attacker to DISCOVER the needed ID" — the rule that closed G-F002. |
+| S44 | tasks `TaskListsActivity` | DROP | The GoogleHelp intent is `setPackage("com.google.android.gms")` and its Uri comes from an object the app built; the remaining `startActivity(data)` carries a hardcoded `https://support.google.com/android/answer/7431795`. |
+
+### Static sweep, final: seven exported leads, seven closed
+
+    fitbit     FastPairLandingActivity   BluetoothDevice, not an Intent
+    photos     AlbumActivity             relaunches itself with the caller's own intent
+    photos     EditActivity              output Uri validated in adtj.c()
+    messaging  ShareIntentActivity       Uri only logged; forwarded intent built internally
+    docs       ProjectorActivity         real redirection, unreachable onActivityResult path
+    docs       GetMetadataActivity       identifier not Intent; returns no data
+    tasks      TrampolineActivity        unvalidated URI, but ACTION_VIEW crosses nothing
+    tasks      TaskListsActivity         hardcoded support URL
+
+Three of these had genuinely promising shapes and failed for three different
+reasons: validation present, path unreachable, nothing gained on arrival.
+
+## Session close — 2026-10-19/20
+
+Surfaces examined: 47. Valid bugs: zero.
+
+Google's first-party Android apps held at five distinct layers, each time with
+the check somewhere other than where the manifest suggested: manifest,
+bindService, the binder itself, the gRPC transport's SecurityPolicy, and the
+source. That is no longer a guess — it is what 47 surfaces showed.
+
+Seven tool defects were found and fixed along the way, every one of which
+produced a false negative or, once, a false validation. The targets never lied;
+the instruments did. Nothing was submitted, so no reputation was spent.
+
+What remains and keeps working: eleven scripts, a permissionless PoC app, a
+Gradle-free APK build chain, 29 decompiled packages, and a static pipeline that
+takes 74 raw candidates down to 7 reachable ones. It runs on a new app, or a
+new version of an old one, in a single command.
