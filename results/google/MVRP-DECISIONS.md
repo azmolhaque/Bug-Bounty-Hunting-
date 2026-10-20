@@ -1322,3 +1322,41 @@ line is not mistaken for a permission.
 
 Two aborts, two real defects, no false result published either time. That is
 the control set doing exactly the job the previous eighteen defects argued for.
+
+### 2026-10-21 — the orphaned-permission sweep ran: 515 guards, 16 orphans
+
+First clean run after two control aborts. The ratio is itself a sanity signal —
+"16 of 515" is the shape of a real result, where "all of them" would have been
+the shape of defects 19 and 20.
+
+The orphans fall into two groups with different causes:
+
+**Vendor namespace, definer not installed on this device.**
+`com.google.android.apps.nexuslauncher.permission.QSB` is defined by the Pixel
+Launcher, absent from a Motorola phone. Same for
+`com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER`,
+`com.google.android.flipendo.SAVER_STATE_UPDATE` and
+`com.android.systemui.permission.SEND_ALERT_BROADCASTS`.
+
+**Platform namespace, newer than this OS.**
+`android.permission.BIND_APP_FUNCTION_SERVICE` arrives in API 36; the device is
+API 35. Likewise `BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE` and
+`BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE`.
+
+Two candidates stand out, both guarding Tier 1 components (ACE $15,000 /
+theft $9,000):
+
+| L1 | `QSB` → AGSA | LEAD | Guards four `com.google.android.googlequicksearchbox` components, including `...smartspace.trampolineactivity.ExportedSmartspaceTrampolineActivity`. A trampoline activity is the intent-redirection shape I failed to find anywhere in 37 apps, and here the guard on it does not exist on any non-Pixel device. |
+| L2 | `BIND_APP_FUNCTION_SERVICE` → GMS | LEAD | Guards `com.google.android.gms.appfunctions.GmsAppFunctionService`, plus the same service in Wellbeing and Maestro. AppFunctions is the API through which apps expose callable functions to the system assistant. |
+
+Still a precondition, and the step that decides it is whether the permission can
+actually be claimed — the exact point where the Wiz subdomain report died, with
+claimability assumed rather than demonstrated.
+
+Built as an experiment that separates hypotheses rather than confirming one:
+`AndroidManifest.orphan.xml` declares all seven orphans at `protectionLevel`
+`normal` and requests all seven, so a single install shows whether Android lets
+an app define names in the `android.permission.*` namespace, in a vendor
+namespace, in both, or in neither. The permissionless manifest is left
+untouched, since it is the instrument for a different claim; `build.sh` now
+takes a `MANIFEST` override.

@@ -10,6 +10,14 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# কোন manifest দিয়ে বিল্ড হবে। ডিফল্টটা permissionless probe — ওটাই
+# "একটা সাধারণ app যা পারে" প্রমাণের যন্ত্র, তাই ওটা অস্পৃশ্য রাখা হয়।
+#   MANIFEST=AndroidManifest.orphan.xml ./build.sh    # অনাথ-permission দাবির পরীক্ষা
+MANIFEST="${MANIFEST:-AndroidManifest.xml}"
+case "$MANIFEST" in /*) ;; *) MANIFEST="$HERE/$MANIFEST" ;; esac
+[ -f "$MANIFEST" ] || { echo "!! manifest নেই: $MANIFEST"; exit 1; }
+echo "[manifest] $(basename "$MANIFEST")"
 BT="${BT:-$HOME/tools/android-14}"
 AJ="${AJ:-$HOME/tools/android.jar}"
 OUT="$HERE/out"
@@ -89,7 +97,7 @@ if [ -n "${PKG:-}" ]; then
 fi
 
 if ! "$AAPT2" link -I "$AJ" \
-    --manifest "$HERE/AndroidManifest.xml" ${RENAME[@]+"${RENAME[@]}"} \
+    --manifest "$MANIFEST" ${RENAME[@]+"${RENAME[@]}"} \
     --min-sdk-version 24 --target-sdk-version 34 \
     -o "$OUT/base-unsigned.apk" 2> "$OUT/aapt2.err"; then
   cat "$OUT/aapt2.err"
