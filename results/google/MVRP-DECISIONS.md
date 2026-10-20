@@ -955,3 +955,43 @@ Added as a fourth category, `DexFromArchive`: a dex loader
 `loadDex`, or the literal `"classes.dex"`) in a file that also touches an
 archive. Reachability of the archive is still the question that decides it, and
 `jbd`'s own archive source is being read now.
+
+| C4 | voiceaccess `defpackage/jbd` | DROP | Not Voice Access's code at all: `Log.e("SplitCompat", "DexPathList.makeDexElement failed")`, `makePathElements`, `dexElements` reflection — this is Play Core's `SplitCompat`, which loads split APKs the Play Store has already placed in the app's own private directory (`file = jbeVar4.a`). Another app cannot write there. Same ground as CVE-2020-8913, fixed upstream in 2020. |
+
+**Defect 15 — a category broad enough to fire on ubiquitous library code.** All
+four `DexFromArchive` hits were the same bundled `SplitCompat`. A pattern that
+matches a library present in every app in the corpus reports presence, not
+candidates. Play Core's markers (`SplitCompat`, `makePathElements`) are now
+excluded, so the category only reports app-specific dex loading.
+
+### 2026-10-20 — all four rewarded classes now closed across this corpus
+
+With all five patterns controlled and bound by fixtures, the 35 apps that have
+source produce:
+
+- **Intent redirection**: 2 exported candidates, both closed — `ProjectorActivity`
+  (no external path to deliver a result) and `AlbumActivity` (a regex artifact;
+  `startActivity(r5)` is a self-restart whose component is pinned by delivery).
+- **Zip path traversal**: 13 candidates under the old guard list, 1 under the
+  full one, 0 after reading it — every extractor in the corpus either guards or
+  never derives a path from an entry name.
+- **Dex from archive**: 4 hits, all the same bundled Play Core library.
+- **Mutable PendingIntent**: 143 files, never cross-referenced against exported
+  components, so this is the one class still genuinely unexamined here.
+
+Total surfaces closed in this effort: 52, plus four candidate classes. Reports
+submitted: zero.
+
+**The strategic read, stated plainly.** These are mature, heavily-audited apps,
+and the pattern across all 52 closures is the same: the check exists, it is
+simply never where the manifest implies. That is not a skill gap, it is a
+crowding problem — this corpus has been swept by many hunters for years. Four
+in-scope developers have never been touched at all: Research at Google, Google
+Samples, Developed with Google, Red Hot Labs. Their apps are small, young, and
+far less swept, and the whole pipeline — pull, surface, probe, decompile,
+static, screen — is now instrumented and fixture-bound, so running it on a new
+app is an hour's work rather than a week's.
+
+The remaining work here, in order: the PendingIntent class cross-referenced
+against exported components (the only unexamined class in this corpus), then
+new targets from those four developers.

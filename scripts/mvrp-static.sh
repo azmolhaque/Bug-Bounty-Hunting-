@@ -255,8 +255,13 @@ for pkg in "${pkgs[@]}"; do
   fi
 
   # ---- ৪. archive থেকে dex লোড (ACE-র সম্ভাবনা) ----
+  # Play Core-এর SplitCompat বাদ: ওটা প্রতিটা Google app-এ ঢোকানো থাকে, আর
+  # split গুলো পড়ে app-এর নিজের প্রাইভেট ডিরেক্টরি থেকে যেখানে বাইরের app
+  # লিখতে পারে না। প্রথম রানে চারটে hit-ই এটাই ছিল — সর্বত্র-উপস্থিত
+  # লাইব্রেরি ধরলে শ্রেণিটা কোনো তথ্যই দেয় না (CVE-2020-8913, ২০২০-এ সারানো)।
   DX=$(grep -rlE "$DEX_RE" --include='*.java' "$d" 2>/dev/null \
-       | xargs -r grep -lE 'ZipEntry|ZipFile|ZipInputStream|\.apk|\.zip' 2>/dev/null | head -10)
+       | xargs -r grep -lE 'ZipEntry|ZipFile|ZipInputStream|\.apk|\.zip' 2>/dev/null \
+       | xargs -r grep -LE 'SplitCompat|makePathElements|splitcompat' 2>/dev/null | head -10)
   if [ -n "$DX" ]; then
     c=$(grep -c . <<<"$DX"); TOT_DEX=$((TOT_DEX+c))
     echo "  [DexFromArchive] archive + dex লোডার — $c ফাইল  *** ACE শ্রেণি"
