@@ -118,3 +118,8 @@ nest2/
 nest3/
 vtssrf/
 vtssrf2/
+
+# PoC app build output — APK, dex, intermediate classes, keystore paths.
+# Rebuilt in one command from poc/mvrp-probe/build.sh; a signed APK in the
+# repo is both noise and a thing nobody should fetch by accident.
+poc/*/out/
