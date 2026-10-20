@@ -300,3 +300,36 @@ because the same omission across four first-party apps is a pattern.
 **Honest state of the two live leads.** Both sit in Tier 1 (GMS, AGSA), the
 most heavily hunted Android surface there is, and reading `IGoogleAccountDataService`
 properly means decompiling GMS — 13 APKs. High ceiling, low probability.
+
+### 2026-10-20 — deeplink canary sweep: INCONCLUSIVE, not negative
+
+142 deeplinks across 8 data-heavy apps, 19 candidate URL parameters each,
+canary served over `adb reverse` so nothing left the device. Zero hits.
+
+That result carries no information, because the sweep never had a positive
+control. Chrome reaching the canary proves `adb reverse` works; it does not
+prove the sweep can detect an *app* fetching a URL.
+
+The obvious positive control — `fitbit://webview?url=...`, whose handler we
+read in S27 and which loads an unvalidated URL when `authenticated` is absent
+— does not fire:
+
+    Displayed .../WebviewGateway for user 0: +158ms
+    numActivities=0   type = CLOSE
+    determineRescueAppAfterAppFinishItself ... com.fitbit.FitbitMobile
+    VRI[WebviewGateway]: visibilityChanged oldVisibility=true newVisibility=false
+
+GatewayActivity starts, matches nothing, and finishes itself. No WebView is
+created, so `smd.d()` is never reached. In S27 I assumed host `webview` routed
+to that handler; `smd.c()` returns a singleton set I never actually read, so
+the assumption was never checked.
+
+Two unresolved confounds, either of which would also produce zero hits:
+  - the deeplink routing needs a form we have not found
+  - the apps may not be signed in, which was never established before the run
+
+Also unverified: whether a canary over cleartext http is reachable at all from
+apps carrying a networkSecurityConfig — Fitbit ships one.
+
+**So: not a negative result. An untested instrument.** Recorded so it is not
+later miscounted as a closed surface.
