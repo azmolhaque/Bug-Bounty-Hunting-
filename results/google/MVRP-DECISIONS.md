@@ -790,3 +790,43 @@ testable rather than guessed.
 Consequence: the static sweep must be re-run across every app with source,
 because its previous intent-redirection output was shape-blind everywhere, not
 only on Fitbit.
+
+### 2026-10-20 — the rewarded intent-redirection class is near-absent in this corpus
+
+With the shape requirement in place, the sweep across all 35 apps that have
+source returns exactly one exported, permission-less hit:
+`com/google/android/apps/viewer/ProjectorActivity.java` — which is S43, already
+dropped. Both controls printed POSITIVE first, so the zero carries information:
+under the loose pattern this class looked crowded, and almost all of that was
+shape-blindness rather than candidates.
+
+**S43 is reopened, with a specific reachability idea rather than a hope.** The
+drop reason was "the redirect sits in `onActivityResult`, unreachable from
+outside". That is incomplete. `onActivityResult` runs when a *child* activity
+returns a result, so if ProjectorActivity starts a child through an implicit
+intent that another app can register for — a picker, a chooser, an
+`ACTION_GET_CONTENT`-style request — then the attacker's own activity can be
+that child and can put `next_activity_result_key` into the Intent it returns.
+The sequence is: attacker launches ProjectorActivity, it opens the picker, the
+attacker's activity is selected, it returns a result, the redirect fires. Each
+step is testable, which is what separates this from the invalid chain in
+CLAUDE.md §4. What has to hold: the child is launched with an implicit intent,
+the attacker can match its filter, and the redirect's destination is actually
+non-exported.
+
+| C2 | `defpackage/nbd` (Fitbit) | DROP | Guarded, and my pattern was wrong. It walks every path component looking for `..`: `for (File f = new File(name); f != null; f = f.getParentFile()) if (f.getName().equals("..")) ...`. That is a valid alternative to a canonical-path check. |
+
+**Defect 12 — absence of one guard read as absence of all guards.** The zip
+condition was "does not contain `getCanonicalPath`, `getCanonicalFile` or
+`startsWith(`", which treats one idiom as the only way to be safe. Same species
+as the previous four: absence mistaken for proof.
+
+The guard list now covers the component walk, `Path.normalize()`, `toPath()`
+and any mention of `".."` in the file, and is bound by five fixtures with the
+run aborting on a mismatch: two unguarded extractors are caught, while the
+component-walk shape from `nbd`, the canonical-path check, and the
+`toPath().resolve().normalize()` idiom are not.
+
+Running tally of tool defects this session: 8 through 12, all five found by
+reading my own output rather than by being told. Four of the five are the same
+error — a conclusion drawn from something not being present.

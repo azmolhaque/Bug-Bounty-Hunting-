@@ -55,6 +55,22 @@ cls_of() { sed 's|^.*/sources/||; s|\.java$||; s|/|.|g' <<<"$1"; }
 #     startActivity((Intent) intent.getParcelableExtra("next_activity_result_key"));
 # তাই (Intent) cast, বা Intent.class সহ typed overload — এটাই শর্ত।
 IR_RE='\(Intent\)[^;]*getParcelable|getParcelableExtra\([^)]*Intent\.class|getParcelableArrayListExtra\([^)]*Intent\.class'
+
+# ---- zip traversal: পাহারার সব বৈধ রূপ ----
+# আগের শর্ত ছিল "getCanonicalPath / getCanonicalFile / startsWith( নেই"।
+# Fitbit-এর nbd.java ওতে প্রার্থী হয়ে এসেছিল, অথচ সে path-এর প্রতিটা অংশ
+# ধরে হেঁটে `..` খোঁজে:
+#     for (File f = new File(name); f != null; f = f.getParentFile())
+#         if (f.getName().equals("..")) ...
+# সেটা canonical-যাচাইয়ের বৈধ বিকল্প। অনুপস্থিতিকে প্রমাণ ভাবা হয়েছিল।
+# তাই পাহারার তালিকায় component-walk, Path.normalize, আর ফাইলে ".."
+# স্ট্রিং থাকা — সব ধরা হচ্ছে। lead-জেনারেটরে নির্ভুলতাই দামি।
+ZIP_GUARD='getCanonicalPath|getCanonicalFile|startsWith\(|normalize\(\)|toPath\(\)|"\.\."'
+zip_files() {   # zip_files <sources-dir>
+  grep -rlE 'ZipEntry|ZipInputStream|TarArchive' --include='*.java' "$1" 2>/dev/null \
+    | xargs -r grep -lE 'new File\(' 2>/dev/null \
+    | xargs -r grep -LE "$ZIP_GUARD" 2>/dev/null
+}
 IR_START='startActivity|startActivities|startService|startForegroundService|sendBroadcast|sendOrderedBroadcast|bindService'
 ir_files() {   # ir_files <sources-dir>
   grep -rlE "$IR_RE" --include='*.java' "$1" 2>/dev/null \
@@ -115,13 +131,44 @@ public class Neg extends android.app.Activity {
 }
 J
 HITS=$(ir_files "$FIX/sources" | sed "s|^$FIX/sources/||" | sort | tr '\n' ' ')
-rm -rf "$FIX"
 case "$HITS" in
   "Pos.java "*) [ "$HITS" = "Pos.java " ] \
       && echo "POSITIVE  IR প্যাটার্ন: আসল আকার ধরেছে, BluetoothDevice আকার ধরেনি" \
-      || { echo "!! IR প্যাটার্ন মিথ্যা-ধনাত্মক দিচ্ছে: [$HITS] — থামলাম"; exit 2; } ;;
-  *) echo "!! IR প্যাটার্ন জানা-আসল আকারই ধরতে পারছে না: [$HITS] — থামলাম"; exit 2 ;;
+      || { echo "!! IR প্যাটার্ন মিথ্যা-ধনাত্মক দিচ্ছে: [$HITS] — থামলাম"; rm -rf "$FIX"; exit 2; } ;;
+  *) echo "!! IR প্যাটার্ন জানা-আসল আকারই ধরতে পারছে না: [$HITS] — থামলাম"; rm -rf "$FIX"; exit 2 ;;
 esac
+
+# zip প্যাটার্নও একই ভাবে বাঁধা: একটা পাহারা-বিহীন extractor, আর একটা
+# component-walk দিয়ে পাহারা দেওয়া (Fitbit nbd.java-র আকার)।
+cat > "$FIX/sources/ZVuln.java" <<'J'
+import java.util.zip.ZipEntry; import java.util.zip.ZipFile; import java.io.File;
+public class ZVuln {
+  void x(ZipFile z, File dir) throws Exception {
+    ZipEntry e = z.entries().nextElement();
+    File out = new File(dir, e.getName());
+    new java.io.FileOutputStream(out).close();
+  }
+}
+J
+cat > "$FIX/sources/ZSafe.java" <<'J'
+import java.util.zip.ZipEntry; import java.util.zip.ZipFile; import java.io.File;
+public class ZSafe {
+  void x(ZipFile z, File dir) throws Exception {
+    ZipEntry e = z.entries().nextElement();
+    String name = e.getName();
+    for (File p = new File(name); p != null; p = p.getParentFile())
+      if (p.getName().equals("..")) throw new SecurityException("traversal");
+    new java.io.FileOutputStream(new File(dir, name)).close();
+  }
+}
+J
+ZHITS=$(zip_files "$FIX/sources" | sed "s|^$FIX/sources/||" | sort | tr '\n' ' ')
+rm -rf "$FIX"
+if [ "$ZHITS" = "ZVuln.java " ]; then
+  echo "POSITIVE  zip প্যাটার্ন: পাহারা-বিহীন ধরেছে, component-walk পাহারা ধরেনি"
+else
+  echo "!! zip প্যাটার্ন ভুল: [$ZHITS] (চাই: ZVuln.java) — থামলাম"; exit 2
+fi
 echo
 
 TOT_PI=0; TOT_IR=0; TOT_ZIP=0; TOT_HOT=0
@@ -173,9 +220,7 @@ for pkg in "${pkgs[@]}"; do
   # ZipEntry.getName() সরাসরি new File(dir, name)-এ গেলে ../ দিয়ে
   # ডিরেক্টরির বাইরে লেখা যায় — rules-এ "arbitrary file write"।
   # canonical path যাচাই থাকলে নিরাপদ, তাই সেটাও দেখি।
-  ZP=$(grep -rln -E 'ZipEntry|ZipInputStream|TarArchive' --include='*.java' "$d" 2>/dev/null \
-       | xargs -r grep -ln -E 'new File\(' 2>/dev/null \
-       | xargs -r grep -Ln -E 'getCanonicalPath|getCanonicalFile|startsWith\(' 2>/dev/null | head -20)
+  ZP=$(zip_files "$d" | head -20)
   if [ -n "$ZP" ]; then
     c=$(wc -l <<<"$ZP"); TOT_ZIP=$((TOT_ZIP+c))
     echo "  [ZipTraversal] zip + new File, canonical যাচাই নেই — $c ফাইল"
