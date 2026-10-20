@@ -1407,3 +1407,47 @@ about the permission unless the same reach fails without it. `PKG=` rename
 builds a second, permissionless copy (`com.cindrasec.mvrpctl`) so both can be
 installed side by side and the same two attempts run under each. The finding, if
 there is one, is the difference — not the success.
+
+### 2026-10-21 — step 2 PROVEN: the differential, with Android naming the reason
+
+Two APKs built from identical source. The only difference is that one declares
+`com.google.android.apps.nexuslauncher.permission.QSB` at `protectionLevel`
+`normal` and requests it; the other declares nothing. Both call
+`startActivity()` on the same component with the same intent.
+
+**With the claimed permission** (`com.cindrasec.mvrpprobe`, uid 10568):
+
+    I MVRP: startActivity() returned, no exception
+
+**Without it** (`com.cindrasec.mvrpctl`, uid 10569):
+
+    W ActivityTaskManager: Permission Denial: starting Intent {
+      cmp=com.google.android.googlequicksearchbox/com.google.android.apps.search.assistant
+          .verticals.ambient.smartspace.trampolineactivity.ExportedSmartspaceTrampolineActivity }
+      from ProcessRecord{... com.cindrasec.mvrpctl/u0a569} (pid=6127, uid=10569)
+      requires com.google.android.apps.nexuslauncher.permission.QSB
+    I MVRP: SECURITY Permission Denial: ... requires com.google.android.apps.nexuslauncher.permission.QSB
+
+The system names the permission as the reason for the denial, and the only
+variable between the two runs is whether that permission was claimed. This is
+the cleanest control result of the session: not "it worked", but "it worked
+here and failed there, for the stated reason".
+
+So two of the three steps are demonstrated rather than assumed:
+
+1. An ordinary third-party app can define an orphaned permission and is granted
+   it at install — shown in `install permissions: granted=true`.
+2. A Tier 1 component that Google restricts to the Pixel Launcher is reachable
+   with it and refused without it — shown in the differential above.
+
+**Step 3 is not done, and nothing is claimable until it is.** `topResumedActivity`
+remained the launcher in *both* runs, so the activity did not come to the front
+even when the start was accepted — consistent with a trampoline that forwards
+and finishes, or with an early exit on missing extras. What the attacker
+actually gets is still unknown.
+
+What exists right now is an access-control bypass on a restriction that does not
+exist on any non-Pixel device. By CLAUDE.md §2.6 that is a precondition, which
+is exactly the shape that killed G-F002, the Wiz report and S43. The next step
+is reading `ExportedSmartspaceTrampolineActivity` to find what it forwards and
+whether any of it is attacker-controlled.
