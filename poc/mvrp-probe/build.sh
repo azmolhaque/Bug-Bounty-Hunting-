@@ -75,8 +75,13 @@ find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
 "$D8" --lib "$AJ" --min-api 24 --output "$OUT" @"$OUT/classes.txt"
 
 echo "[3/5] aapt2 link"
-if ! "$AAPT2" link -I "$AJ" \
-    --manifest "$HERE/AndroidManifest.xml" \
+if ! # PKG দিলে manifest-এর package নাম বদলে যায় (ক্লাসের নাম নয়)। এটা দিয়ে
+# একই কোড ভিন্ন পরিচয়ে চালানো যায় — allowlist শুধু নাম দেখে না signature-ও,
+# সেটা যাচাই করার একমাত্র উপায়।
+RENAME=()
+[ -n "${PKG:-}" ] && RENAME=(--rename-manifest-package "$PKG")
+"$AAPT2" link -I "$AJ" \
+    --manifest "$HERE/AndroidManifest.xml" "${RENAME[@]+"${RENAME[@]}"}" \
     --min-sdk-version 24 --target-sdk-version 34 \
     -o "$OUT/base-unsigned.apk" 2> "$OUT/aapt2.err"; then
   cat "$OUT/aapt2.err"
@@ -115,11 +120,11 @@ if [ ! -f "$KS" ]; then
           -dname "CN=mvrp-probe, O=cindrasec, C=BD" >/dev/null 2>&1
 fi
 "$APKSIGNER" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
-    --out "$OUT/mvrp-probe.apk" "$OUT/base-aligned.apk"
-"$APKSIGNER" verify --print-certs "$OUT/mvrp-probe.apk" | head -3
+    --out "$OUT/${PKG:-mvrp-probe}.apk" "$OUT/base-aligned.apk"
+"$APKSIGNER" verify --print-certs "$OUT/${PKG:-mvrp-probe}.apk" | head -3
 
 echo
-echo "তৈরি: $OUT/mvrp-probe.apk"
+echo "তৈরি: $OUT/${PKG:-mvrp-probe}.apk   (package = ${PKG:-com.cindrasec.mvrpprobe})"
 echo
 echo "  adb install -r $OUT/mvrp-probe.apk"
 echo "  adb logcat -c"

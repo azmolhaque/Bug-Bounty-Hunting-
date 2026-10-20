@@ -39,6 +39,11 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
     private final Handler handler = new Handler();
     private int txCode = -1;          // -1 = শুধু bind, transact নয়
     private String txToken = null;
+    private boolean wellbeing = false;
+    private CallbackBinder cb = null;
+
+    static final String WB_SVC =
+        "org.chromium.chrome.browser.usage_stats.idl.IWellbeingService";
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -56,15 +61,16 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             else if ("query".equals(action))  doQuery(in);
             else if ("bind".equals(action)) { doBind(in); keepAlive = true; }
             else if ("transact".equals(action)) { doBind(in); keepAlive = true; }
+            else if ("wellbeing".equals(action)) { doWellbeing(in); keepAlive = true; }
             else if ("start".equals(action))  doStart(in);
-            else Log.i(TAG, "actions: call | query | bind | transact | start");
+            else Log.i(TAG, "actions: call | query | bind | transact | wellbeing | start");
         } catch (Throwable t) {
             // শ্রেণির নামই প্রায়ই আসল উত্তর:
             // SecurityException = সীমানা ধরেছে। অন্য কিছু = অন্য কারণে ব্যর্থ।
             Log.i(TAG, "THROWN " + t.getClass().getName() + ": " + t.getMessage());
         }
 
-        if (keepAlive) handler.postDelayed(this, 4000);
+        if (keepAlive) handler.postDelayed(this, wellbeing ? 9000 : 4000);
         else run();
     }
 
@@ -148,7 +154,47 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             Log.i(TAG, "  descriptor THREW " + t.getClass().getName() + ": " + t.getMessage());
         }
         Log.i(TAG, "  isBinderAlive = " + binder.isBinderAlive());
+        if (wellbeing) { sendWellbeing(binder); return; }
         if (txCode >= 0) transact(binder);
+    }
+
+    // ---------- IWellbeingService ----------
+    private void doWellbeing(Intent in) {
+        String pkg = in.getStringExtra("pkg");
+        if (pkg == null) pkg = "com.google.android.apps.wellbeing";
+        String cls = "com.google.android.apps.wellbeing.web.wellbeing.impl.WellbeingService";
+        wellbeing = true;
+        cb = new CallbackBinder();
+        Log.i(TAG, "WELLBEING bind " + pkg + "/" + cls);
+        Intent svc = new Intent();
+        svc.setComponent(new ComponentName(pkg, cls));
+        Log.i(TAG, "bindService() returned " + bindService(svc, this, Context.BIND_AUTO_CREATE));
+    }
+
+    /**
+     * transaction 1 = b(lpz request, IWellbeingCallback cb).
+     *
+     * request-টা ইচ্ছে করেই null (writeInt(0) = nullable parcelable, অনুপস্থিত)।
+     * সঠিক proto বানানোর দরকার নেই, কারণ আমরা ডেটা চাইছি না — আমরা দেখতে চাই
+     * **কোন ধাপে আটকায়**। service-এর নিজের status কোডই সেটা বলে দেয়:
+     *     7 = auth প্রত্যাখ্যান (অচেনা UID / একাধিক package / অচেনা browser /
+     *         Google সার্টিফিকেটে সই করা নয়)
+     *     5 = null/ভুল request       3 = unmarshal ব্যর্থ      4 = unsupported
+     * 7 ছাড়া অন্য কিছু মানে auth পার হয়ে গেছি। সেটাই পুরো পরীক্ষা।
+     */
+    private void sendWellbeing(IBinder binder) {
+        Parcel data = Parcel.obtain(), reply = Parcel.obtain();
+        try {
+            data.writeInterfaceToken(WB_SVC);
+            data.writeInt(0);                 // lpz request = null
+            data.writeStrongBinder(cb);       // callback — এখানেই উত্তর আসবে
+            Log.i(TAG, "WELLBEING transact(1) dataSize=" + data.dataSize());
+            boolean ok = binder.transact(1, data, reply, 0);
+            Log.i(TAG, "  transact() returned " + ok + " replySize=" + reply.dataSize());
+            Log.i(TAG, "  (উত্তর অ্যাসিঙ্ক্রোনাস — CALLBACK লাইনের অপেক্ষা করো)");
+        } catch (Throwable t) {
+            Log.i(TAG, "  transact THREW " + t.getClass().getName() + ": " + t.getMessage());
+        } finally { data.recycle(); reply.recycle(); }
     }
 
     /**
