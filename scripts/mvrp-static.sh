@@ -76,11 +76,27 @@ ZIP_GUARD='getCanonicalPath|getCanonicalFile|startsWith\(|normalize\(\)|toPath\(
 # — ধ্রুবক নাম, ধ্রুবক গন্তব্য। পাহারার কিছুই নেই কারণ পাহারা দেওয়ার মতো
 # কোনো চলকই নেই। শর্তটা কখনো দাবি করেনি নামটা entry থেকে আসছে।
 ZIP_ITER='getNextEntry\(|\.entries\(\)|getEntry\([^")]'
+# পাহারা অন্য ফাইলে থাকতে পারে। Messages-এর fauv.java প্রার্থী হয়েছিল কারণ
+# তার নিজের ভেতরে ".." নেই — কিন্তু সে নামটা নেয় fiae.a(entry) থেকে, আর
+# fiae.java-তে seekh-এর ZipFolderOpener-এর হুবহু একই component-walk আছে।
+# একই লাইব্রেরির নতুন সংস্করণ, guard একটা helper-এ তোলা।
+#
+# এটা আলগা regex নয়, বিশ্লেষণের সীমা: যাচাই ফাইল-ভিত্তিক, dataflow নয়।
+# সমাধান: যে ফাইলে ZipEntry আর ".." দুটোই আছে সেটা "পাহারা-helper", আর
+# প্রার্থী ওদের কাউকে ডাকলে নামটা পরিশোধিত হয়ে আসছে ধরে নাও।
 zip_files() {   # zip_files <sources-dir>
-  grep -rlE 'ZipEntry|ZipInputStream|TarArchive' --include='*.java' "$1" 2>/dev/null \
+  local d="$1" helpers cand re
+  helpers=$(grep -rlE 'ZipEntry' --include='*.java' "$d" 2>/dev/null \
+    | xargs -r grep -lE '"\.\."' 2>/dev/null \
+    | sed 's|.*/||; s|\.java$||' | sort -u)
+  cand=$(grep -rlE 'ZipEntry|ZipInputStream|TarArchive' --include='*.java' "$d" 2>/dev/null \
     | xargs -r grep -lE "$ZIP_ITER" 2>/dev/null \
     | xargs -r grep -lE 'new File\(|appendPath\(' 2>/dev/null \
-    | xargs -r grep -LE "$ZIP_GUARD" 2>/dev/null
+    | xargs -r grep -LE "$ZIP_GUARD" 2>/dev/null)
+  [ -z "$cand" ] && return 0
+  if [ -z "$helpers" ]; then printf '%s\n' "$cand"; return 0; fi
+  re=$(printf '%s' "$helpers" | tr '\n' '|' | sed 's/|$//')
+  printf '%s\n' "$cand" | xargs -r grep -LE "(^|[^A-Za-z0-9_])($re)\." 2>/dev/null
 }
 
 # ---- archive থেকে গতিশীল কোড লোড ----
@@ -217,6 +233,29 @@ public class ZConst {
     ZipEntry e = z.getEntry("classes.dex");
     File out = new File(dir, "dex");
     new java.io.FileOutputStream(out).close();
+  }
+}
+J
+# পাহারা অন্য ফাইলে: helper-টা নাম পরিশোধন করে, ডাকা ফাইলে ".." নেই
+cat > "$FIX/sources/ZHelper.java" <<'J'
+import java.util.zip.ZipEntry; import java.util.zip.ZipException; import java.io.File;
+public final class ZHelper {
+  public static String a(ZipEntry e) throws ZipException {
+    String name = e.getName();
+    if (name.contains("..")) {
+      for (File f = new File(name); f != null; f = f.getParentFile())
+        if (f.getName().equals("..")) throw new ZipException("Illegal name: " + name);
+    }
+    return name;
+  }
+}
+J
+cat > "$FIX/sources/ZViaHelper.java" <<'J'
+import java.util.zip.ZipEntry; import java.util.zip.ZipInputStream; import java.io.File;
+public class ZViaHelper {
+  void x(ZipInputStream z, File dir) throws Exception {
+    ZipEntry e;
+    while ((e = z.getNextEntry()) != null) new File(dir, ZHelper.a(e));
   }
 }
 J

@@ -1092,3 +1092,44 @@ in `dynamite/gvs`, `maps/iwn`, `messaging/uif`, `tachyon/hto`
 (`androidx/profileinstaller` dropped — baseline profiles, not dex loading, and a
 library). First question for all eight is the same and settles most of them in
 one line: does the archive come from the app's own private directory?
+
+### 2026-10-20 — the remaining eight candidates, all closed
+
+**Dex from archive — four, none real.**
+
+| | | |
+|---|---|---|
+| dynamite `gvs` | DROP | Zero once the pattern asks for an actual loader rather than the `"classes.dex"` literal. |
+| maps `DynamiteClient` | DROP | `new DexClassLoader(remoteContext.getPackageCodePath(), ...)` — the code path of an installed, GMS-resolved Dynamite module, not an attacker file. |
+| messaging / tachyon `org/chromium/base/BundleUtils` | DROP | Chromium, and it only calls `findLibrary`. Also kill-listed: "Chrome on Android -> Chrome VRP, not here". |
+
+**Zip — four, all guarded, and the last one found a defect in the tool.**
+
+| | | |
+|---|---|---|
+| maps `buyp`, nbu.files `qzy` | DROP | Play Core's native-library extractor. Entry names must satisfy `matcher.matches()` against a fixed pattern, and the archive is a split APK in the app's private directory. |
+| maps `kdu` | DROP | Lottie. Takes only `name.split("/")[len-1]`, the basename, and decodes to an in-memory Bitmap — no file is written. Third-party library besides. |
+| nbu.files `qdr` | DROP | Enumerates entries without writing. |
+| messaging `fauv` | DROP | Structurally identical to seekh's `ZipFolderOpener`, and it *is* guarded: the name comes from `fiae.a(nextEntry)`, and `fiae.java` holds the same `..` component walk, hoisted into a helper. Messages carries the newer refactor of the same library. |
+
+**Defect 16 — the guard can live in another file.** `fauv.java` was flagged
+because `".."` does not appear in it; it appears in `fiae.java`. This one is not
+a sloppy pattern like 11, 13 and 14 — it is a limit of file-scoped grep, which
+cannot follow a value into a helper. Worth separating from the others, because
+the fix is different in kind.
+
+Resolved one level: any file containing both `ZipEntry` and `".."` is treated as
+a sanitising helper, and a candidate that calls one is considered to receive a
+cleaned name. Fixtures extended to four, with the helper split across two files
+so the cross-file case is actually exercised: a direct `e.getName()` is caught,
+while the helper-sanitised call and the constant-entry shape are not.
+
+**Zip traversal and dex-from-archive are now closed across the whole corpus**,
+each candidate read rather than counted. Of the four rewarded classes, only the
+filtered PendingIntent list (24 files, down from 143) has not been read
+one by one.
+
+What the zip class actually taught: Google ships one shared archive extractor
+and it is guarded in every copy found — inline in seekh, hoisted into a helper
+in Messages. Finding two copies and diffing them was the right instinct; the
+diff just came out the other way.
