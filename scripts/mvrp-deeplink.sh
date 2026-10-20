@@ -39,16 +39,33 @@ SKIP='delete|remove|reset|wipe|logout|signout|unsubscribe|purchase|pay|buy|check
 
 cleanup() {
   [ -n "${SRV:-}" ] && kill "$SRV" 2>/dev/null
-  adb reverse --remove "tcp:$PORT" >/dev/null 2>&1
+  [ -z "${CANARY_BASE:-}" ] && adb reverse --remove "tcp:$PORT" >/dev/null 2>&1
 }
 trap cleanup EXIT
 
-# ---- canary সার্ভার ----
-python3 -m http.server "$PORT" --bind 127.0.0.1 >"$SRVLOG" 2>&1 &
-SRV=$!
-sleep 1
-kill -0 "$SRV" 2>/dev/null || { echo "!! পোর্ট $PORT-এ সার্ভার চালু হয়নি"; exit 1; }
-adb reverse "tcp:$PORT" "tcp:$PORT" >/dev/null || { echo "!! adb reverse ব্যর্থ"; exit 1; }
+# ---- canary ----
+# CANARY_BASE দিলে বাইরের HTTPS endpoint (interactsh ইত্যাদি), আর SRVLOG হবে
+# সেই ক্লায়েন্টের লগ ফাইল।
+#
+# কেন বাইরের: app-এর WebView `http://` লোড করে না — Android 9+ cleartext
+# ব্লক করে (net::ERR_CLEARTEXT_NOT_PERMITTED, চোখে দেখা)। আর স্থানীয় HTTPS-ও
+# চলে না: self-signed সার্টিফিকেট WebView প্রত্যাখ্যান করে, আর user-installed
+# CA app বিশ্বাস করে না যদি না তার networkSecurityConfig বলে দেয়।
+# তাই আসল সার্টিফিকেটওয়ালা endpoint ছাড়া উপায় নেই।
+if [ -n "${CANARY_BASE:-}" ]; then
+  SRVLOG="${CANARY_LOG:?CANARY_BASE দিলে CANARY_LOG-ও দাও (interactsh-এর -o ফাইল)}"
+  [ -f "$SRVLOG" ] || : > "$SRVLOG"
+  CAN="$CANARY_BASE"
+else
+  python3 -m http.server "$PORT" --bind 127.0.0.1 >"$SRVLOG" 2>&1 &
+  SRV=$!
+  sleep 1
+  kill -0 "$SRV" 2>/dev/null || { echo "!! পোর্ট $PORT-এ সার্ভার চালু হয়নি"; exit 1; }
+  adb reverse "tcp:$PORT" "tcp:$PORT" >/dev/null || { echo "!! adb reverse ব্যর্থ"; exit 1; }
+  CAN="http://127.0.0.1:$PORT"
+  echo "!! সতর্কতা: cleartext canary। app-এর WebView এটা লোড করবে না।"
+  echo "!! প্রকৃত sweep-এর জন্য CANARY_BASE=https://... দাও।"
+fi
 
 # grep -c শূন্য ম্যাচে "0" ছাপে **আর** exit 1 দেয়, তাই `|| echo 0` দ্বিতীয়
 # একটা 0 ছেপে "0\n0" বানায় — আর তুলনা "integer expression expected" বলে মরে,
@@ -59,7 +76,7 @@ hits() { local n; n=$(grep -c 'GET /c/' "$SRVLOG" 2>/dev/null) || n=0; echo "${n
 echo "# deeplink canary sweep"
 echo "# when   : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "# device : $(adb shell getprop ro.product.model | tr -d '\r') / Android $(adb shell getprop ro.build.version.release | tr -d '\r')"
-echo "# canary : http://127.0.0.1:$PORT/c/<id>   (adb reverse, ডিভাইস ছাড়ে না)"
+echo "# canary : $CAN/c/<id>"
 echo "# skip   : $SKIP"
 echo
 
@@ -67,7 +84,7 @@ echo
 echo "== CONTROL =="
 BEFORE=$(hits)
 adb shell am start -a android.intent.action.VIEW \
-    -d "http://127.0.0.1:$PORT/c/CONTROL" >/dev/null 2>&1 </dev/null
+    -d "$CAN/c/CONTROL" >/dev/null 2>&1 </dev/null
 sleep 8
 AFTER=$(hits)
 if [ "$AFTER" -gt "$BEFORE" ]; then
@@ -91,6 +108,30 @@ else
   exit 3
 fi
 adb shell am force-stop com.android.chrome >/dev/null 2>&1 </dev/null
+
+# ---- app-স্তরের positive control ----
+# ব্রাউজার canary-তে পৌঁছানো প্রমাণ করে পরিবহন ঠিক আছে — প্রমাণ করে না যে
+# একটা *app*-এর fetch আমরা ধরতে পারি। ওই ফাঁকের কারণেই ১৪২টা deeplink-এর
+# "০ hit" অর্থহীন ছিল। Fitbit-এর WebFrameActivity যাচাই ছাড়াই URL লোড করে
+# (S27, আর চোখে দেখা), তাই সেটাই আমাদের জানা-ভালো কেস।
+if adb shell pm path com.fitbit.FitbitMobile >/dev/null 2>&1 </dev/null; then
+  B2=$(hits)
+  enc=$(printf '%s' "$CAN/c/APPCTL" | sed 's|:|%3A|g; s|/|%2F|g')
+  adb shell am start -a android.intent.action.VIEW \
+      -d "'fitbit://webview?url=$enc'" >/dev/null 2>&1 </dev/null
+  sleep 8
+  if [ "$(hits)" -gt "$B2" ]; then
+    echo "POSITIVE  Fitbit WebFrameActivity canary এনেছে — app-এর fetch ধরা যাচ্ছে"
+  else
+    echo "!! APP CONTROL FAIL: জানা-ভালো deeplink-ও canary আনেনি।"
+    echo "!! তাই অন্য app-এর '০ hit' কোনো তথ্য দেবে না। থামছি।"
+    echo "   শেষ কয়েকটা interaction:"; tail -5 "$SRVLOG" 2>/dev/null | sed 's/^/     /'
+    exit 3
+  fi
+  adb shell am force-stop com.fitbit.FitbitMobile >/dev/null 2>&1 </dev/null
+else
+  echo "(Fitbit নেই — app-স্তরের control চালানো গেল না। ফলাফল দুর্বল।)"
+fi
 echo
 
 pkgs=("$@")
@@ -165,7 +206,7 @@ PY
       ID=$((ID+1))
       printf '%s\t%s\t%s\t%s\n' "$ID" "$pkg" "$p" "$url" >> "$MAP"
       sep='&'; [ -z "$q" ] && { [[ "$url" == *\?* ]] && sep='&' || sep='?'; }
-      q="$q$sep$p=http%3A%2F%2F127.0.0.1%3A$PORT%2Fc%2F$ID"
+      q="$q$sep$p=$(printf '%s' "$CAN/c/$ID" | sed 's|:|%3A|g; s|/|%2F|g')"
     done
     adb shell am start -a android.intent.action.VIEW -d "'$url$q'" \
         >/dev/null 2>&1 </dev/null
