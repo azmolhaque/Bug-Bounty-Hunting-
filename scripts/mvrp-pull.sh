@@ -16,7 +16,13 @@ mkdir -p "$APKDIR"
 
 # in-scope developer-দের package prefix. Play Store-এর developer পাতা থেকে
 # আরও package পেলে এখানে যোগ করো।
-PATTERNS='com\.fitbit|com\.nest|com\.obsidian\.v4|com\.waze|com\.waymo|com\.google\.android\.apps\.|com\.google\.android\.gm$|com\.google\.android\.gms$|com\.google\.android\.googlequicksearchbox$|com\.google\.ar|com\.google\.samples'
+# scope-mobile-vrp.yaml-এর in_scope_developers ধরে। শেষ চারটে বিভাগ
+# (Research at Google, Google Samples, Developed with Google, Red Hot Labs)
+# আগে ছাঁকনিতে ছিল না, তাই com.google.ai.edge.gallery নীরবে বাদ পড়ত আর
+# স্ক্রিপ্ট "৬৫ package টানা হলো" বলে সন্তুষ্ট রিপোর্ট দিত। যা বিবেচনাই
+# করা হয়নি তার অনুপস্থিতি আউটপুটে দেখা যায় না — সেজন্য নিচে বাদ-পড়ার
+# গণনাও ছাপা হয়।
+PATTERNS='com\.fitbit|com\.nest|com\.obsidian\.v4|com\.waze|com\.waymo|com\.google\.android\.apps\.|com\.google\.android\.gm$|com\.google\.android\.gms$|com\.google\.android\.googlequicksearchbox$|com\.google\.ar|com\.google\.samples|com\.google\.ai\.|com\.google\.fpl\.|com\.google\.looker$|com\.google\.play\.billing\.samples|com\.google\.audio\.hearing|com\.android\.developers\.|com\.redhotlabs\.'
 
 command -v adb >/dev/null || { echo "!! adb নেই — install করো"; exit 1; }
 
@@ -30,8 +36,20 @@ echo
 if [ $# -gt 0 ]; then
   PKGS="$*"
 else
-  PKGS=$(adb shell pm list packages 2>/dev/null | tr -d '\r' | sed 's/^package://' \
-         | grep -E "$PATTERNS" | sort -u)
+  ALL=$(adb shell pm list packages 2>/dev/null | tr -d '\r' | sed 's/^package://' | sort -u)
+  PKGS=$(printf '%s\n' "$ALL" | grep -E "$PATTERNS")
+  # ছাঁকনি কী বাদ দিল সেটা দেখাও: নইলে লক্ষ্য-app ইনস্টল থাকা সত্ত্বেও
+  # "N package টানা হলো" পড়ে মনে হবে সব ঠিক আছে।
+  nall=$(printf '%s\n' "$ALL" | grep -c .)
+  nsel=$(printf '%s\n' "$PKGS" | grep -c .)
+  echo "ডিভাইসে $nall টা package, ছাঁকনিতে মিলেছে $nsel টা, বাদ $((nall-nsel)) টা"
+  echo "(নির্দিষ্ট app টানতে ছাঁকনি লাগে না:  $0 <package.name>)"
+  if [ -n "${SHOW_SKIPPED:-}" ]; then
+    echo "-- বাদ পড়া Google/অংশীদার package:"
+    printf '%s\n' "$ALL" | grep -vE "$PATTERNS" \
+      | grep -E 'google|fitbit|waze|waymo|nest|redhotlabs|developers' | sed 's/^/   /'
+  fi
+  echo
 fi
 
 COUNT=0

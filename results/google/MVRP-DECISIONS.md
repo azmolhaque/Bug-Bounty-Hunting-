@@ -1160,3 +1160,25 @@ an unrelated `133554432` no longer do.
 The 24-file PendingIntent list was produced under the unanchored pattern and is
 therefore inflated by an unknown amount — it has to be regenerated before any
 of it is read.
+
+### 2026-10-20 — defect 18: the pull filter silently excluded the new targets
+
+`mvrp-pull.sh` selects packages with a fixed pattern list built when only the
+mature apps were in play. `com.google.ai.edge.gallery` matches none of it, so
+after installing the app the pull reported "65 package টানা হলো" and carried on
+— a satisfied report about a set that never contained the target.
+
+Same family as several of tonight's: what is never considered leaves no trace in
+the output. The lesson was already built into `mvrp-src.sh`, which counts the
+source tree before reporting a zero; it was not built into the pull.
+
+Fixed in two parts. The pattern now covers the remaining in-scope developers —
+`com.google.ai.`, `com.android.developers.`, `com.redhotlabs.`, `com.google.fpl.`,
+`com.google.looker`, `com.google.play.billing.samples`, `com.google.audio.hearing`
+— verified to match seven of a nine-package test list while correctly rejecting
+two unrelated apps. And the run now prints how many installed packages were
+seen, how many matched and how many were dropped, with `SHOW_SKIPPED=1` listing
+the Google-adjacent ones, so a missing target is visible rather than silent.
+
+Passing package names as arguments bypasses the filter entirely, which is the
+immediate route for any new target.
