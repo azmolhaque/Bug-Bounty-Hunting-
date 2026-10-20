@@ -876,3 +876,38 @@ testable reachability idea was right — the first drop reason ("it's in
 `onActivityResult`") was incomplete reasoning, and incomplete reasoning deserves
 a second look. And the follow-up was cheap: four greps settled it, where a PoC
 attempt would have cost hours and produced the same answer.
+
+### 2026-10-20 — defect 13: `Intent.class` matched `PendingIntent.class`
+
+The sweep's second exported intent-redirection hit was Photos
+`envelope/AlbumActivity`, and the reason was my regex. `getParcelableExtra\([^)]*Intent\.class`
+matches
+
+    getIntent().getParcelableExtra("EXTRA_NATIVE_SHARESHEET_RELAUNCH_INTENT", PendingIntent.class)
+
+because `PendingIntent.class` ends in `Intent.class`. And a PendingIntent taken
+from extras is the opposite of the dangerous pattern: it executes with its
+*creator's* identity, i.e. the attacker's, so forwarding one gains the attacker
+nothing. The class that pays is an app handing out a mutable PendingIntent, not
+an app receiving one.
+
+Fixed by requiring a non-letter before `Intent`, and the negative fixture set
+now includes this exact line. Eight fixtures: the cast, the typed overload, the
+Bundle route and the ArrayList overload are caught; the `BluetoothDevice` shape,
+`PendingIntent.class`, an Intent extracted but never started, and a `Uri`
+parcelable are not.
+
+Also corrected: I told the user the sweep found one exported hit. It found two —
+the summary line reads `IntentRedirect: 43 ফাইল (exported: 2)`. I had grepped
+the log while it was still being written.
+
+`AlbumActivity` stays interesting for an unrelated reason worth noting before
+moving on: it is `exported="true"` with an `autoVerify` VIEW/BROWSABLE filter for
+`https://photos.google.com/share/.*`, plus two aliases
+(`LegacyFdlIntentHandler` for `photos.app.goo.gl/.*`, and
+`PrivateAlbumDeepLinkActivity` for `/album/.*`, the latter
+`android:enabled="false"` and therefore unreachable). A web-reachable entry
+point matters because Mobile VRP scenario 2, "user follows a link", pays
+$18,750 for theft of sensitive data against scenario 3's $4,500 — but a web
+link cannot set Intent extras, so only the deeplink data path is reachable that
+way, not any extras-driven redirect.

@@ -54,7 +54,11 @@ cls_of() { sed 's|^.*/sources/||; s|\.java$||; s|/|.|g' <<<"$1"; }
 # jadx আসল আকারটা এভাবে লেখে (S43 ProjectorActivity):
 #     startActivity((Intent) intent.getParcelableExtra("next_activity_result_key"));
 # তাই (Intent) cast, বা Intent.class সহ typed overload — এটাই শর্ত।
-IR_RE='\(Intent\)[^;]*getParcelable|getParcelableExtra\([^)]*Intent\.class|getParcelableArrayListExtra\([^)]*Intent\.class'
+# `Intent\.class` লিখলে `PendingIntent.class`-ও মেলে — Photos-এর AlbumActivity
+# ঠিক ওই কারণে প্রার্থী হয়েছিল, অথচ সে extras থেকে একটা PendingIntent তোলে।
+# আর সেটা উল্টো দিকের জিনিস: বাইরে থেকে পাওয়া PendingIntent পাঠালে তা
+# আক্রমণকারীর পরিচয়েই চলে। তাই `Intent` শব্দের আগে অক্ষর থাকা চলবে না।
+IR_RE='\(Intent\)[^;]*getParcelable|getParcelable(ArrayList)?Extra\([^)]*[^A-Za-z]Intent\.class'
 
 # ---- zip traversal: পাহারার সব বৈধ রূপ ----
 # আগের শর্ত ছিল "getCanonicalPath / getCanonicalFile / startsWith( নেই"।
@@ -127,6 +131,16 @@ public class Neg extends android.app.Activity {
     BluetoothDevice d = (BluetoothDevice) getIntent().getParcelableExtra("android.bluetooth.device.extra.DEVICE");
     Intent aD = new Intent(this, Neg.class);
     startActivity(aD);
+  }
+}
+J
+cat > "$FIX/sources/Neg2.java" <<'J'
+import android.app.PendingIntent;
+import android.content.Intent;
+public class Neg2 extends android.app.Activity {
+  protected void onCreate(android.os.Bundle b) {
+    PendingIntent p = getIntent().getParcelableExtra("EXTRA_NATIVE_SHARESHEET_RELAUNCH_INTENT", PendingIntent.class);
+    startActivity(new Intent(this, Neg2.class));
   }
 }
 J
