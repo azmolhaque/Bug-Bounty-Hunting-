@@ -595,3 +595,73 @@ Note on what STAGE 1 can and cannot earn: a directory listing is a
 **precondition**, not a crossing (CLAUDE.md 2.6). The crossing is STAGE 2 —
 an outside document reading the app's private file contents. Only that is
 Theft of Sensitive Data, and only if what it reads is a credential.
+
+### 2026-10-20 — first screen-oracle run on Fitbit, and the ninth control gap
+
+First run of `mvrp-screen.sh` against `fitbit://webview?url=` on moto g stylus
+5G / Android 15. The instrument worked — it produced five distinguishable
+screens where the logcat oracle had produced one undifferentiated verdict:
+
+| fingerprint | produced by |
+|---|---|
+| `94e116a4` | HOME baseline, and `https://example.org/` |
+| `88ea95f5` | `https://www.fitbit.com/help` → `net::ERR_CLEARTEXT_NOT_PERMITTED`, top activity `com.fitbit.webviewcomms.impl.ui.WebFrameActivity` |
+| `c2349611` | six payloads, every one of whose host *begins* with `www.fitbit.com` |
+| `3efead3d` | six payloads whose host is `example.org` or malformed |
+| `a42dd6b1` | `content://` and `intent://` |
+
+Two things are established. The deeplink **does** route: `fitbit.com/help`
+brought `WebFrameActivity` to the front, and the cleartext error proves the URL
+reached the network stack rather than being dropped. And the six
+`www.fitbit.com`-prefixed hosts — `www.fitbit.com.evil.example`,
+`evilwww.fitbit.com`, `www.fitbit.com@example.org`, `www.fitbit.com%2f@...`,
+`www.fitbit.com../`, `www.fitbit.com.example.org` — all landed on one screen
+distinct from both baselines, consistent with a prefix- or substring-based host
+comparison accepting all of them. Consistent with; not yet shown.
+
+**The control gap.** `https://example.org/` left the launcher on screen, while
+`https://example.org/?x=...` and `https://example.org/#...` produced a third
+screen. Same host, same decision expected. The likely explanation is that the
+plain reject control simply did not open in time — a missed measurement, not a
+demonstrated rejection — and STAGE 0 passed it anyway, because the gate only
+required `H1 != H2` and treated `H2 == H0` as informative. It is not: a genuine
+rejection and a timed-out launch look identical from one sample.
+
+This is the same species as the previous eight: a control that can pass without
+the measurement having worked.
+
+**Fixes, both in the script rather than in my discipline:**
+
+1. **Replication.** Each control now fires `REPS` times (default 2) and the run
+   aborts with `UNSTABLE` unless the fingerprint repeats. One sample with an
+   8-second wait is not a measurement.
+2. **A second, unambiguous oracle.** Acceptance is now read from
+   `topResumedActivity` — whether an activity belonging to the target package
+   came to the front — not from screen text. `APP_OPENED` / `DROPPED` /
+   `OTHER_APP` has no noise term, and STAGE 0 aborts if the accept control does
+   not yield `APP_OPENED`.
+3. **A distinct-screens table.** The run now prints, for every unique
+   fingerprint, the resumed activity, the first five lines of screen text, the
+   app's own logcat lines, and every URL that produced it. Its absence is what
+   left me holding five fingerprints with no idea what was on any of them.
+
+Also recorded: `getSharedPreferences` mining found nothing because Fitbit has
+never been decompiled here (it was not in `mvrp-decompile.sh`'s priority list),
+so STAGE 1's file:// paths were guesses and that stage is weak by construction.
+The script now says so instead of reporting a quiet zero.
+
+**Where the value is, and it is not in STAGE 3's fingerprints.** From the
+earlier read of the decompiled WebView stack, `WebFrameActivity:221` is
+`if (this.x && !UrlValidator.isTrusted(uri4))`, where `x` is the
+`...AUTHENTICATED` boolean extra, and the `slw` constructor attaches both the
+JavaScript bridge and `DelegateTokenGenerator` behind that same flag. So the
+design is: untrusted URL allowed only when no bridge and no token are attached.
+The chain that would break it is a URL that satisfies `isTrusted` while being
+attacker-controlled, launched with `AUTHENTICATED` true — then the attacker's
+page receives the bridge and the delegate token, which is Theft of Sensitive
+Data rather than an informational redirect.
+
+That is a question about `UrlValidator.isTrusted`'s comparison, and it is
+answered by reading the method, not by fingerprinting error pages. Decompiling
+Fitbit is therefore the next step, and the host-validation sweep is on hold
+until that read says whether the prefix behaviour is real.

