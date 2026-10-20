@@ -43,7 +43,24 @@ done
 
 echo
 echo "== ${#MANIFESTS[@]} টা manifest বিশ্লেষণ =="
-python3 -I "$HERE/mvrp_surface.py" "${MANIFESTS[@]}" | tee "$REP/surface-$(date +%Y%m%d-%H%M).txt"
+# পুরো বিবরণ ফাইলে, টার্মিনালে শুধু সারাংশ। আগে সবটা stdout-এ ঢালত, আর
+# ৬৫টা manifest মানে হাজার হাজার লাইন — কাজের সংকেত তাতে চাপা পড়ত।
+# সবটা দেখতে চাইলে VERBOSE=1।
+OUTFILE="$REP/surface-$(date +%Y%m%d-%H%M).txt"
+if [ -n "${VERBOSE:-}" ]; then
+  python3 -I "$HERE/mvrp_surface.py" "${MANIFESTS[@]}" | tee "$OUTFILE"
+else
+  python3 -I "$HERE/mvrp_surface.py" "${MANIFESTS[@]}" > "$OUTFILE" 2>&1
+  echo
+  echo "== অরক্ষিত provider (সবচেয়ে দামি সংকেত) =="
+  grep -B1 'no permission\|কোনো permission নেই' "$OUTFILE" \
+    | grep -E '^\s+\[provider' | sed 's/^ */   /' | sort -u || echo "   (একটাও নেই)"
+  echo
+  echo "== app প্রতি P1 গণনা =="
+  awk '/^=====/{getline; pkg=$1} /--- P1 \(/{gsub(/[^0-9]/,"",$3); if(pkg!="") printf "%5s  %s\n", $3, pkg}' "$OUTFILE" | sort -rn | head -20
+  echo
+  echo "পুরো বিবরণ: $OUTFILE   (সব দেখতে: VERBOSE=1 ./scripts/mvrp-surface.sh)"
+fi
 
 echo
 echo "রিপোর্ট: $REP/"
