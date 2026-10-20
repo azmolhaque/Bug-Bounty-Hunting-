@@ -70,7 +70,14 @@ fi
 # grep -c শূন্য ম্যাচে "0" ছাপে **আর** exit 1 দেয়, তাই `|| echo 0` দ্বিতীয়
 # একটা 0 ছেপে "0\n0" বানায় — আর তুলনা "integer expression expected" বলে মরে,
 # আর সেটা CONTROL FAIL হিসেবে দেখায় যদিও canary ঠিকই কাজ করছিল।
-hits() { local n; n=$(grep -c 'GET /c/' "$SRVLOG" 2>/dev/null) || n=0; echo "${n:-0}"; }
+# দুই রকম লগ ফরম্যাট:
+#   python http.server : 127.0.0.1 - - [...] "GET /c/7 HTTP/1.1" 404 -
+#   interactsh-client  : [id] Received HTTP interaction from 1.2.3.4 at ...
+# interactsh ডিফল্টে অনুরোধের লাইনটা লেখে না — তাই গোনার জন্য দুটোই মেলাই।
+# কিন্তু **কোন** canary id সেটা জানতে অনুরোধের পথ লাগে, আর সেটা পেতে
+# interactsh-client -v দিয়ে চালাতে হয়। -v ছাড়া hit দেখা যাবে কিন্তু
+# কোন app/প্যারামিটার তা বলা যাবে না।
+hits() { local n; n=$(grep -cE 'GET /c/|Received HTTP interaction' "$SRVLOG" 2>/dev/null) || n=0; echo "${n:-0}"; }
 
 {
 echo "# deeplink canary sweep"
@@ -219,7 +226,12 @@ done
 sleep 5
 echo "== ফলাফল =="
 echo "deeplink ছোড়া হয়েছে: $FIRED   বাদ: $SKIPPED"
-H=$(grep -o 'GET /c/[0-9]*' "$SRVLOG" 2>/dev/null | sed 's#GET /c/##' | sort -u)
+H=$(grep -oE '/c/[0-9]+' "$SRVLOG" 2>/dev/null | sed 's#/c/##' | sort -u)
+if [ -z "$H" ] && [ "$(hits)" -gt 0 ]; then
+  echo "!! canary-তে hit আছে কিন্তু কোন id বলা যাচ্ছে না — লগে অনুরোধের পথ নেই।"
+  echo "!! interactsh-client -v দিয়ে আবার চালাও, নইলে hit কোন app/প্যারামিটারের"
+  echo "!! তা শনাক্ত করা যাবে না।"
+fi
 if [ -z "$H" ]; then
   echo "canary-তে কোনো app পৌঁছায়নি।"
   echo "এর মানে 'বন্ধ' নয় — এর মানে এই ১৯টা প্যারামিটার নামের কোনোটা মেলেনি,"
