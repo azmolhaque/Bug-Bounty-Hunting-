@@ -414,3 +414,45 @@ been 137 files to read by hand instead of 5.
 **Standing: zero valid bugs.** Decompile of the remaining 21 packages is still
 running; the static sweep has never been run against any of them, and those
 three rewarded classes have never been examined there.
+
+| S41 | docs `ProjectorActivity` — intent redirection | DROP — unreachable path | See below. |
+
+### S41 — the best-shaped lead of the session, and why it still fails
+
+`com.google.android.apps.viewer.ProjectorActivity`, inside
+`com.google.android.apps.docs` (Tier 2), is `android:exported="true"` with no
+`android:permission`, reachable by any app via `android.intent.action.QUICK_VIEW`.
+And it contains, verbatim:
+
+    startActivity((Intent) intent.getParcelableExtra("next_activity_result_key"));
+
+An unvalidated Intent taken from an extra and started — textbook intent
+redirection, the class the rules name.
+
+It is not reachable. That line sits in
+
+    public final void onActivityResult(int i, int i2, Intent intent)
+
+so the Intent carrying the extra is a *result* returned by a child activity
+that ProjectorActivity started, not anything an outside app can hand it. The
+chain would need the attacker to become that child, which needs the viewer to
+launch something implicit. It never launches anything: the whole
+`com/google/android/apps/viewer/` package contains no `startActivityForResult`,
+and no `registerForActivityResult` / `ActivityResultLauncher` / `.launch(`
+either — checked separately, because the modern API would not have matched the
+first grep and closing on a name mismatch is exactly the error made repeatedly
+today.
+
+So `onActivityResult` cannot be driven from outside, and the redirection cannot
+be reached.
+
+### Static sweep — five exported leads, five closed
+
+fitbit FastPairLandingActivity (BluetoothDevice, not an Intent), photos
+AlbumActivity (relaunches itself with the caller's own intent), messaging
+ShareIntentActivity (Uri only logged; forwarded intent built internally),
+photos EditActivity (output Uri validated in adtj.c()), docs ProjectorActivity
+(unreachable onActivityResult path).
+
+Still zero valid bugs. 14 of 28 packages decompiled; the sweep has never run
+against the other 14.
