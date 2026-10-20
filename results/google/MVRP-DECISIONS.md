@@ -264,3 +264,39 @@ Four of the five allowlisted names are absent from an ordinary phone, so the
 name really is claimable — the name is simply not sufficient. Worth recording
 as the shape of a bug that would have worked had the signature check been
 flagged off.
+
+### 2026-10-20 — AIDL transaction sweep, 30 services
+
+Sent transaction 1 with the correct interface token to every AIDL service that
+was safe to touch (9 skipped: clouddpc, FRP, provisioning, telecom, onboarding,
+tether — anything whose effect cannot be undone). 30/30 entries accounted for.
+
+Refusals, once the classifier was fixed to read refusal text and not only
+SecurityException:
+
+    IGoogleHttpService        "Uid is not Google Signed"
+    INearbyDirectService      "Illegal package [com.cindrasec.mvrpprobe]"
+    IWellbeingService         status 7 (S40)
+    IAdvertisingIdService     00000000-0000-0000-0000-000000000000
+                              — designed to be callable by any app; zeroes
+                                mean the user opted out. Working as intended.
+
+Reached the method body with no caller check visible at that layer:
+
+    IGoogleAccountDataService   "the name must not be empty: null"
+      (GMS, com.google.android.gms.auth.firstparty.dataservice)
+    android.os.IMessenger       NPE on Message.sendingUid  (AGSA SsbService)
+    android.content.ISyncAdapter  accepted, no reply — four services:
+      docs DocsSyncAdapterService, gm GmailImapSyncAdapterService,
+      tachyon contacts SyncService, gms subscribedfeeds SyncService
+
+**Sync adapter note.** Android's own guidance is that a sync adapter service
+carries `android:permission="android.permission.BIND_SYNC_ADAPTER"`. These four
+carry none, and an unprivileged app binds and calls them. The ceiling is low —
+`startSync` triggers a sync and `ISyncContext` reports counts, not data — so
+this is a configuration defect in search of an impact, not a finding. Recorded
+because the same omission across four first-party apps is a pattern.
+
+**Honest state of the two live leads.** Both sit in Tier 1 (GMS, AGSA), the
+most heavily hunted Android surface there is, and reading `IGoogleAccountDataService`
+properly means decompiling GMS — 13 APKs. High ceiling, low probability.
