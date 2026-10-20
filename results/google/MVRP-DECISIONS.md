@@ -757,3 +757,36 @@ With 59,659 java files it reports:
 | C1 | `com/fitbit/device/ui/setup/choose/FastPairLandingActivity` | LEAD | Exported, no permission, pulls an Intent out of extras and starts it. This is the named-and-rewarded class, "intent redirections leading to launching non-exported application components". Distinct from S43's `ProjectorActivity`, which had the same shape but whose redirect sat inside `onActivityResult` and was therefore unreachable from outside. A landing activity is more likely to be on the `onCreate` path. Not a finding until the three questions are answered: reachable from outside, the started Intent actually attacker-controlled, and the destination actually non-exported. |
 | C2 | `defpackage/nbd`, `defpackage/rmk` | LEAD | Zip extraction into `new File(...)` with no `getCanonicalPath` / `startsWith` check — the "path traversal leading to arbitrary file write" class. Open question is who supplies the archive; if an attacker can, overwriting a `.so` would raise it from Other ($2,250) to ACE ($7,500). |
 | C3 | six files with `FLAG_MUTABLE` and `PendingIntent` | LEAD | Needs the manifest cross-reference and a check that the base Intent is implicit. |
+
+### 2026-10-20 — C1 dropped, and the pattern that produced it tightened
+
+| C1 | `FastPairLandingActivity` | DROP | `android:exported="true"` with an `intent-filter` holding only `<category DEFAULT>` and no `<action>`, so it cannot match an implicit intent but can be launched explicitly by another app — question 1 passes. Question 2 fails: what it takes from extras is `(BluetoothDevice) getIntent().getParcelableExtra("android.bluetooth.device.extra.DEVICE")`, not an Intent, and the Intent passed to `startActivity` at line 105 is built internally. No attacker-controlled Intent, no redirection. |
+
+**Defect 11 — the intent-redirection pattern never required the redirection.**
+The condition was "file contains `getParcelableExtra(`" AND "contains
+`startActivity|startService|sendBroadcast`" AND "imports
+`android.content.Intent`". Nothing in that required the extracted parcelable to
+*be* the started Intent, which is the entire definition of the class. Any
+activity that reads any parcelable and separately starts anything matched. The
+earlier 49-to-5 filtering across other apps ran under this same loose
+condition, so those five were filtered for reachability, not for shape.
+
+Tightened to the shape jadx actually emits, taken from S43's
+`ProjectorActivity`:
+
+    startActivity((Intent) intent.getParcelableExtra("next_activity_result_key"));
+
+so the condition is now an `(Intent)` cast over a `getParcelable*` call, or the
+typed `Intent.class` overload, plus a start/bind call in the same file.
+
+Bound by six fixtures checked in the script itself, and the run aborts with
+`exit 2` if the pattern flags a negative. Three true shapes are caught — the
+cast, the Android 13 typed overload, and the Bundle route — and three false
+ones rejected: the `BluetoothDevice` shape from this very candidate, an Intent
+extracted but never started, and a `Uri` parcelable alongside an unrelated
+`startActivity`. Having a real false positive in hand is what made the fix
+testable rather than guessed.
+
+Consequence: the static sweep must be re-run across every app with source,
+because its previous intent-redirection output was shape-blind everywhere, not
+only on Fitbit.

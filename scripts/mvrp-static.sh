@@ -43,6 +43,24 @@ PY2
 }
 cls_of() { sed 's|^.*/sources/||; s|\.java$||; s|/|.|g' <<<"$1"; }
 
+# ---- intent redirection-এর আসল আকার ----
+# আগের শর্ত ছিল আলগা: "getParcelableExtra( আছে আর startActivity আছে আর
+# Intent import করা"। তাতে Fitbit-এর FastPairLandingActivity ধরা পড়েছিল,
+# অথচ সে extras থেকে তোলে একটা BluetoothDevice:
+#     (BluetoothDevice) getIntent().getParcelableExtra("android.bluetooth.device.extra.DEVICE")
+# আর যে Intent-টা start হয় সেটা ভেতরেই বানানো। শর্তটা কখনো দাবি করেনি যে
+# তোলা parcelable-টাই start হওয়া Intent — সেটাই পুরো শ্রেণির সংজ্ঞা।
+#
+# jadx আসল আকারটা এভাবে লেখে (S43 ProjectorActivity):
+#     startActivity((Intent) intent.getParcelableExtra("next_activity_result_key"));
+# তাই (Intent) cast, বা Intent.class সহ typed overload — এটাই শর্ত।
+IR_RE='\(Intent\)[^;]*getParcelable|getParcelableExtra\([^)]*Intent\.class|getParcelableArrayListExtra\([^)]*Intent\.class'
+IR_START='startActivity|startActivities|startService|startForegroundService|sendBroadcast|sendOrderedBroadcast|bindService'
+ir_files() {   # ir_files <sources-dir>
+  grep -rlE "$IR_RE" --include='*.java' "$1" 2>/dev/null \
+    | xargs -r grep -lE "$IR_START" 2>/dev/null
+}
+
 pkgs=("$@")
 [ ${#pkgs[@]} -eq 0 ] && mapfile -t pkgs < <(ls -1 "$SRC" 2>/dev/null | grep -v '\.log$')
 [ ${#pkgs[@]} -eq 0 ] && { echo "!! $SRC খালি — আগে mvrp-decompile.sh চালাও"; exit 1; }
@@ -71,6 +89,39 @@ if [ "$CTL" -eq 1 ]; then
 else
   echo "(wellbeing-এর সোর্স নেই — control চালানো গেল না। ফলাফল দুর্বল।)"
 fi
+
+# intent-redirection প্যাটার্নটা দুটো fixture-এ বাঁধা: একটা জানা-আসল আকার,
+# একটা জানা-মিথ্যা আকার (Fitbit FastPairLandingActivity, যেটা আগের আলগা
+# শর্তে ধরা পড়েছিল)। প্যাটার্ন negative-টা ধরলে রান বাতিল — কারণ তখন
+# প্রতিটা "প্রার্থী" আবার হাতে যাচাই করতে হবে, আর সেটাই সময় খায়।
+FIX=$(mktemp -d); mkdir -p "$FIX/sources"
+cat > "$FIX/sources/Pos.java" <<'J'
+import android.content.Intent;
+public class Pos extends android.app.Activity {
+  protected void onCreate(android.os.Bundle b) {
+    startActivity((Intent) getIntent().getParcelableExtra("next_activity_result_key"));
+  }
+}
+J
+cat > "$FIX/sources/Neg.java" <<'J'
+import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
+public class Neg extends android.app.Activity {
+  protected void onCreate(android.os.Bundle b) {
+    BluetoothDevice d = (BluetoothDevice) getIntent().getParcelableExtra("android.bluetooth.device.extra.DEVICE");
+    Intent aD = new Intent(this, Neg.class);
+    startActivity(aD);
+  }
+}
+J
+HITS=$(ir_files "$FIX/sources" | sed "s|^$FIX/sources/||" | sort | tr '\n' ' ')
+rm -rf "$FIX"
+case "$HITS" in
+  "Pos.java "*) [ "$HITS" = "Pos.java " ] \
+      && echo "POSITIVE  IR প্যাটার্ন: আসল আকার ধরেছে, BluetoothDevice আকার ধরেনি" \
+      || { echo "!! IR প্যাটার্ন মিথ্যা-ধনাত্মক দিচ্ছে: [$HITS] — থামলাম"; exit 2; } ;;
+  *) echo "!! IR প্যাটার্ন জানা-আসল আকারই ধরতে পারছে না: [$HITS] — থামলাম"; exit 2 ;;
+esac
 echo
 
 TOT_PI=0; TOT_IR=0; TOT_ZIP=0; TOT_HOT=0
@@ -98,9 +149,7 @@ for pkg in "${pkgs[@]}"; do
   # ---- ২. Intent redirection ----
   # exported component extras থেকে একটা Intent তুলে সেটা start করলে,
   # বাইরের app ভেতরের non-exported component-এ পৌঁছাতে পারে।
-  IR=$(grep -rln -E 'getParcelableExtra\(' --include='*.java' "$d" 2>/dev/null \
-       | xargs -r grep -ln -E 'startActivity|startService|sendBroadcast' 2>/dev/null \
-       | xargs -r grep -ln 'android.content.Intent' 2>/dev/null | head -40)
+  IR=$(ir_files "$d" | head -40)
   if [ -n "$IR" ]; then
     c=$(wc -l <<<"$IR"); TOT_IR=$((TOT_IR+c))
     echo "  [IntentRedirect] extras থেকে Intent + start — $c ফাইল"
