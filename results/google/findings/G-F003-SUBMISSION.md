@@ -15,7 +15,7 @@ device defines, so any app can declare those names and reach both
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:18 to 15:56 UTC (several runs; all output quoted below is from 15:55 UTC)
+Testing time: 13:18 to 16:07 UTC (several runs; all output quoted below is from 16:05 UTC)
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
@@ -106,31 +106,31 @@ the reason independently of anything either app logs. Both records below come fr
 run that produced the attached screenshot. The dump is several thousand lines; I have
 kept the caller, clock, outcome and reason lines verbatim and dropped the rest.
 
-Timestamps in these records are the device's local clock, UTC+06:00 — 21:55 local is
-15:55 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
+Timestamps in these records are the device's local clock, UTC+06:00 — 22:05 local is
+16:05 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
 than `00:00:00` is the same offset showing through.)
 
 **Control app, declares no permissions at all — refused at enqueue:**
 
 ```
-BroadcastRecord{f1ce935 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=795 uid=10569
-enqueueClockTime=2026-10-21 21:55:34.573 dispatchClockTime=1970-01-01 06:00:00.000
-SKIPPED terminal +4h54m31s681ms (-1) #0: (manifest)
-reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=795, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+BroadcastRecord{d2231d2 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=7410 uid=10569
+enqueueClockTime=2026-10-21 22:05:50.884 dispatchClockTime=1970-01-01 06:00:00.000
+SKIPPED terminal +5h4m47s992ms (-1) #0: (manifest)
+reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=7410, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
 ```
 
-The `+4h54m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still
-at the epoch because the broadcast was never dispatched, so the figure is measured from
-a time that was never set.
+The `+5h4m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still at
+the epoch because the broadcast was never dispatched, so the figure is measured from a
+time that was never set.
 
 **PoC app, three seconds later, declares the two names and nothing else — delivered:**
 
 ```
-BroadcastRecord{a404f6c com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=854 uid=10568
-enqueueClockTime=2026-10-21 21:55:37.775 dispatchClockTime=2026-10-21 21:55:37.775
-DELIVERED scheduled +5ms terminal +20ms (-1) #0: (manifest)
+BroadcastRecord{b73145d com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=7453 uid=10568
+enqueueClockTime=2026-10-21 22:05:54.073 dispatchClockTime=2026-10-21 22:05:54.073
+DELIVERED scheduled +1ms terminal +12ms (-1) #0: (manifest)
 reason: remote app
 ```
 
@@ -162,10 +162,10 @@ the activity from each, `MVRP` is the PoC's own tag and `ActivityTaskManager` is
 framework's (logcat, same run as above, three seconds apart):
 
 ```
-10-21 21:55:43.488   904   904 I MVRP    : STARTACT from com.cindrasec.mvrpctl -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
-10-21 21:55:43.489  2717  3676 W ActivityTaskManager: Permission Denial: starting Intent { flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity } from ProcessRecord{8c295a9 904:com.cindrasec.mvrpctl/u0a569} (pid=904, uid=10569) requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
-10-21 21:55:46.662   943   943 I MVRP    : STARTACT from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
-10-21 21:55:46.678   943   943 I MVRP    : startActivity() returned, no exception
+10-21 22:05:59.763  7507  7507 I MVRP    : STARTACT from com.cindrasec.mvrpctl -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
+10-21 22:05:59.764  2717  3672 W ActivityTaskManager: Permission Denial: starting Intent { flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity } from ProcessRecord{6a76df0 7507:com.cindrasec.mvrpctl/u0a569} (pid=7507, uid=10569) requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+10-21 22:06:02.926  7562  7562 I MVRP    : STARTACT from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
+10-21 22:06:02.942  7562  7562 I MVRP    : startActivity() returned, no exception
 ```
 
 The control's attempt is refused a millisecond later and the PoC's is not. Worth noting
@@ -300,7 +300,7 @@ Attach three things: `mvrp-poc.apk`, `mvrp-control.apk`, and one screenshot of
 The source tree goes with them — `poc/lockproximity-poc/`, which is English-only and has
 nothing in it but what this report describes.
 
-Every quoted line above is from the 15:55 UTC run with exactly those two APKs. If either
+Every quoted line above is from the 16:05 UTC run with exactly those two APKs. If either
 APK is rebuilt, the hashes change and the quoted output has to be recaptured — the report
 states that the attached files are the ones that produced the output, so that claim has
 to stay true.
