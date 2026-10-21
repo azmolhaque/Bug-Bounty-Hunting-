@@ -1967,3 +1967,32 @@ Worth naming the pattern, since it is the second time today: I reached for an
 explanation of someone else's system from data that was entirely a product of
 my own activity. The first was the worker log at 17:44. Both times the fix was
 to ask who generated the data before interpreting it.
+
+### 2026-10-21 — a second component, and the honest scope of the typo
+
+`FirstDockActivity` in the same app, guarded by
+`com.google.android.settings.setup.dock.RUN_DOCK_SETUP`, behaves exactly like
+`LockProximityReceiver`:
+
+    probe : startActivity() returned, no exception
+    ctl   : Permission Denial: ... requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+
+Reproduced twice, minutes apart. Two components, two different permissions, one
+app, one technique. That changes the report's ask from "fix this line" to "audit
+this pattern", which is more useful to whoever picks it up.
+
+The two differ in reach, and the difference is worth stating precisely. The
+malformed string cannot be held on any device or OS version, because it is not a
+permission name. `RUN_DOCK_SETUP` *can* be held on a Pixel, where its defining
+package exists — so that guard is void specifically on every non-Pixel device,
+which is most of them.
+
+Scope check on the typo itself: 159 distinct `android:permission` values across
+66 decoded manifests, exactly one containing `|`. So it is not a widespread
+typo, and the report says so rather than implying an epidemic. The orphaned-guard
+pattern is the broader finding: 16 guards across the corpus that no installed
+package defines.
+
+That is the fourth claim trimmed today rather than inflated, and the pattern in
+all four is the same — the temptation was always to generalise from one
+observation.

@@ -6,8 +6,8 @@ Status: READY. Evidence is Android's own broadcast history, reproducible in one 
 ---
 
 **Title:**
-Google Home: `LockProximityReceiver` is exported and guarded by a malformed
-permission string, so any app can claim that name and invoke it
+Google Home: two exported components are guarded by permissions that nothing on the
+device defines, so any app can declare those names and reach both
 
 ---
 
@@ -134,6 +134,43 @@ delivered broadcast — the Bluetooth check at the top of `onReceive` — and no
 the skipped ones. I repeated that comparison 15 times across three sessions, including a
 third branch where nothing was sent at all, and the result was 15/15 for the app with the
 declaration and 0/15 for both the control app and the silent branch.
+
+## A second component in the same app, same technique
+
+`LockProximityReceiver` is not the only one. The same sweep found
+`com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity`,
+exported and guarded by `com.google.android.settings.setup.dock.RUN_DOCK_SETUP`.
+That permission is defined by a Pixel-only package which is not installed on this
+phone — so on any non-Pixel device, nothing holds it.
+
+Adding that name to the same probe manifest, and starting the activity from each app:
+
+```
+# app that declares com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+I MVRP: STARTACT com.google.android.apps.chromecast.app/...titan.dock.activity.FirstDockActivity
+I MVRP: startActivity() returned, no exception
+
+# identical app that does not
+W ActivityTaskManager: Permission Denial: starting Intent {
+    flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity }
+    from ProcessRecord{... com.cindrasec.mvrpctl/u0a569} (pid=24061, uid=10569)
+    requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+I MVRP: SECURITY Permission Denial: ... requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+```
+
+Reproduced twice, minutes apart. Two components, two different permissions, one app, the
+same bypass — which is why I think the useful fix is an audit rather than a one-line
+change.
+
+The two have different reach. The malformed string can never be held on any device or OS
+version, because it is not a permission name at all. `RUN_DOCK_SETUP` can be held on a
+Pixel, where its defining package exists, and cannot be held anywhere else — so that guard
+is absent on every non-Pixel Android device running this app.
+
+For scope: across 66 decoded Google app manifests on this device there are 159 distinct
+`android:permission` values, and exactly one contains a `|`. I am not claiming the typo is
+widespread. The orphaned-guard pattern is the broader one: the same sweep found 16 guard
+permissions that no installed package defines, two of them in this app.
 
 ## Where this entry point leads
 
