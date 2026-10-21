@@ -53,6 +53,14 @@
                 android:protectionLevel="normal" />
     <uses-permission android:name="com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER" />
 
+    <!-- Google Home-এর manifest-ভুল। android:permission একটাই নাম নেয়, কিন্তু
+         ওরা লিখেছে দুটো, `|` দিয়ে জোড়া। Android পুরো স্ট্রিংটাকেই একটা নাম
+         ধরে, আর সেই নামে কোনো permission নেই — তাই বৈধ কলারও কেউ নেই।
+         নামটা দাবি করলে আমরাই একমাত্র যে LockProximityReceiver-এ পৌঁছাতে পারি। -->
+    <permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN" />
+
     <!-- ===== দল খ: platform নামস্থান, এই OS সংস্করণে এখনো সংজ্ঞায়িত নয় ===== -->
 
     <!-- GMS-এর GmsAppFunctionService পাহারা দেয় (Tier 1), সাথে Wellbeing
