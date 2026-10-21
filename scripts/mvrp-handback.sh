@@ -142,10 +142,34 @@ scan_pkg() {   # scan_pkg <pkg>  -> lines: GUARD<TAB>kind<TAB>component<TAB>hits
       local f="$srcdir/$rel"
       [ -f "$f" ] || continue
 
-      local hits
+      local hits via
       hits=$(grep -ohE "$HANDBACK" "$f" 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//')
+      via=""
+
+      # Many exported classes are thin: the component declares nothing and its
+      # superclass does the work. FirstDockActivity happened to hold its own
+      # hand-back, so the first version of this only read the component file
+      # and would have called a whole app clean on that basis. One level of
+      # `extends` is followed — jadx puts obfuscated parents in defpackage/.
+      if [ -z "$hits" ]; then
+        local sup supf
+        sup=$(grep -ohE 'class [A-Za-z0-9_$]+ +extends +[A-Za-z0-9_.$]+' "$f" 2>/dev/null \
+              | head -1 | awk '{print $NF}')
+        if [ -n "${sup:-}" ]; then
+          case "$sup" in
+            *.*) supf="$srcdir/${sup//.//}.java" ;;
+            *)   supf="$(dirname "$f")/$sup.java"
+                 [ -f "$supf" ] || supf="$srcdir/defpackage/$sup.java" ;;
+          esac
+          if [ -f "$supf" ]; then
+            hits=$(grep -ohE "$HANDBACK" "$supf" 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//')
+            [ -n "$hits" ] && via=" (via $sup)"
+          fi
+        fi
+      fi
+
       [ -n "$hits" ] || continue
-      printf '%s\t%s\t%s\t%s\n' "$g" "$kind" "$name" "$hits"
+      printf '%s\t%s\t%s\t%s%s\n' "$g" "$kind" "$name" "$hits" "$via"
     done
 }
 
