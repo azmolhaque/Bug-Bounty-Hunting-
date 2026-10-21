@@ -46,10 +46,15 @@ Because no package defines that name, a third-party app can declare it itself at
 `protectionLevel="normal"`, request it, and be granted it at install with no user prompt.
 It then passes the check that every other unprivileged app fails.
 
-The app's own scan deliveries are unaffected, because they arrive through a `PendingIntent`
-the app created and are therefore sent under its own identity. So the guard stops ordinary
-apps, as intended, and stops nothing else — the one case it was written to prevent is the
-one case it allows.
+I am deliberately not claiming anything about whether the receiver's intended deliveries
+still work. Every `BLE_SCANNED` record in this device's broadcast history carries a
+timestamp from my own test runs, and the account has no smart lock, so no legitimate
+delivery was expected or observed. Reading the code, the app registers its scan callback
+as a `PendingIntent`, which is dispatched under the app's own identity and so would not be
+affected — but I did not test that, and I am not asserting it.
+
+What I am asserting is only what the records show: the guard refuses ordinary apps, and an
+app that declares the name itself is not refused.
 
 ## What I demonstrated
 

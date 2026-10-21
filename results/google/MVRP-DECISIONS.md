@@ -1939,3 +1939,31 @@ was upstream of all of them.
 
 The report is rewritten around these two records. The notification and unlock
 chain stays as code read, with the sentence saying I did not reach it.
+
+### 2026-10-21 — corrected twice, in opposite directions, on the same sentence
+
+The report first said the feature must be broken in production, since nothing
+can hold the malformed permission. Looking at screenshots of the broadcast
+history I saw `BLE_SCANNED` records every few minutes and corrected it to the
+opposite: the app's own deliveries are fine, only outsiders are stopped.
+
+Both were wrong, and `mvrp-bcast.sh` showed why. Every record carrying a
+`caller=` line is one of my two test apps, and every dense cluster of
+timestamps in those screenshots — 19:08, 19:11, 19:14, 19:18, 19:22, 19:26,
+19:33, 19:48, 19:55, 20:02, 20:07, 20:11 — matches a run of my own tooling.
+`mvrp-ble-diff.sh` alone sends three broadcasts per round.
+
+So there is no evidence either way. The test account has no smart lock, so a
+legitimate delivery was never expected in this window. The code says the app
+registers its scan callback as a `PendingIntent`, which would be dispatched
+under its own identity, but that is reasoning and not a measurement.
+
+Both claims are now out of the report, replaced by a sentence saying explicitly
+that the question was not tested. The finding does not need it: the guard
+refusing ordinary apps and not refusing one that declares the name is the whole
+claim, and that part is in Android's own records.
+
+Worth naming the pattern, since it is the second time today: I reached for an
+explanation of someone else's system from data that was entirely a product of
+my own activity. The first was the worker log at 17:44. Both times the fix was
+to ask who generated the data before interpreting it.
