@@ -252,6 +252,12 @@ logcat if you want to see it.
 The two APKs differ in two `<permission>` rows. That is what decides which of them gets
 handed the account.
 
+On scope: I checked every Google app I decompiled on this device for the same shape — a
+class that takes an `IntentSender` out of `android.intent.extra.INTENT` and fires it with
+`startIntentSenderForResult`. `FirstDockActivity` is the only one. So this is one
+component, not a pattern of handoffs, and I am not suggesting otherwise. The pattern I do
+think is worth auditing is the orphaned guard itself, which the sweep found 16 times.
+
 The two guards differ in reach. The malformed string is not a permission name at all, so
 it can never be held, on any device or any OS version. `RUN_DOCK_SETUP` is an ordinary
 name whose defining package is simply not on this phone.
