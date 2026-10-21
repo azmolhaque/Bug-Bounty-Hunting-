@@ -88,6 +88,26 @@ case "$NEGV" in
 esac
 echo "POSITIVE  CameraPreviewProvider -> $POSV"
 echo "NEGATIVE  LockProximityReceiver -> $NEGV"
+
+# ---- third control: a check that lives somewhere else ----
+# AGSA's OneSearchSuggestService was taken apart earlier in this project. It
+# enforces a first-party-only gRPC SecurityPolicy, but the policy is in gitv
+# and gitp, not in the service class or its parent. Reading only those two
+# files calls it unchecked, which is wrong in the direction that wastes the
+# most time: it sends you to read a component that will refuse you.
+AGSA=com.google.android.googlequicksearchbox
+AGSAV=$(verdict "$AGSA" com.google.android.apps.search.googleapp.search.suggest.plugins.onesearch.server.OneSearchSuggestService)
+case "$AGSAV" in
+  CHECKED*) echo "POSITIVE  OneSearchSuggestService -> $AGSAV" ;;
+  NOSRC)    echo "SKIPPED   OneSearchSuggestService (AGSA not decompiled)" ;;
+  *)        echo "LIMIT     OneSearchSuggestService -> $AGSAV"
+            echo "          That service is known to enforce a first-party-only gRPC"
+            echo "          policy, in gitv/gitp rather than in its own class. So this"
+            echo "          tool cannot see checks that live one reference away, and"
+            echo "          every UNCHECKED below means only: no check in the component"
+            echo "          class or its direct parent. Treat it as a reading order,"
+            echo "          not as a verdict." ;;
+esac
 echo
 
 echo "# caller-check triage of $(basename "$RPT")"
@@ -116,11 +136,13 @@ while IFS= read -r line; do
 done < "$RPT"
 
 echo
-echo "== $UNC with no caller check, $CHK that check, $NOS without source =="
+echo "== $UNC with no check in the component class or its parent, $CHK that check there, $NOS without source =="
 cat <<'NOTE'
 
-Only the unchecked are listed. They are where a boundary can still be crossed,
-because nothing in the component is deciding who may ask.
+Only the unchecked are listed, and "unchecked" means only that the component
+class and its direct parent contain no caller check. A gRPC endpoint keeps its
+SecurityPolicy in another class entirely, so many of these will refuse you at
+the first call. The list is a reading order, not a set of findings.
 
 That is still not a finding. The next question is the one that cost a tier
 last time: what does it hand over? Read the unchecked ones in this order —
