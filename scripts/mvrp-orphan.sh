@@ -121,7 +121,13 @@ pkgs=("$@")
 [ ${#pkgs[@]} -eq 0 ] && mapfile -t pkgs < <(ls -1 "$DEC" 2>/dev/null | grep -v '\.log$')
 
 echo "== পাহারাদার permission, আর সেগুলো কে সংজ্ঞায়িত করে =="
-TOT=0; ORPH=0
+# অনাথ ছাড়াও একটা বড় শ্রেণি আছে যেটা আগে দেখিনি: permission সংজ্ঞায়িত,
+# কিন্তু protectionLevel **normal**। তখন আক্রমণকারীর কোনো কৌশলই লাগে না —
+# শুধু <uses-permission> লিখলেই install-এ স্বয়ংক্রিয় grant। অর্থাৎ ওই
+# component কার্যত অরক্ষিত, অনাথের চেয়েও সহজে।
+# dangerous হলে ব্যবহারকারীর সম্মতি লাগে — দুর্বল, কিন্তু এক ধাপ কঠিন।
+# signature / privileged / internal = আসল পাহারা।
+TOT=0; ORPH=0; WEAKN=0; WEAKD=0
 for pkg in "${pkgs[@]}"; do
   m="$DEC/$pkg/resources/AndroidManifest.xml"
   [ -f "$m" ] || continue
@@ -162,6 +168,19 @@ PY
       echo "  *** ORPHANED  $perm"
       echo "      কেউ সংজ্ঞায়িত করে না -> আক্রমণকারী নিজে ঘোষণা করে নিতে পারে"
       echo "      পাহারা দিচ্ছে: [$kind] $name  ($attr)"
+    elif grep -qE '^normal' <<<"${level:-}" ; then
+      [ "$printed" -eq 0 ] && { echo; echo "== $pkg"; printed=1; }
+      WEAKN=$((WEAKN+1))
+      echo "  ### WEAK-NORMAL  $perm"
+      echo "      level=$level  সংজ্ঞাদাতা=$definer"
+      echo "      যেকোনো app শুধু <uses-permission> লিখলেই পায় — পাহারা নামমাত্র"
+      echo "      পাহারা দিচ্ছে: [$kind] $name  ($attr)"
+    elif grep -qE '^dangerous' <<<"${level:-}" ; then
+      WEAKD=$((WEAKD+1))
+      if [ -n "${VERBOSE:-}" ]; then
+        [ "$printed" -eq 0 ] && { echo; echo "== $pkg"; printed=1; }
+        echo "  ##  WEAK-DANGEROUS  $perm   ([$kind] $name)"
+      fi
     elif [ "${VERBOSE:-}" ]; then
       [ "$printed" -eq 0 ] && { echo; echo "== $pkg"; printed=1; }
       echo "  defined   $perm"
@@ -173,7 +192,9 @@ done
 echo
 echo "== সারাংশ =="
 echo "পাহারাদার permission (exported component-এ): $TOT"
-echo "অনাথ: $ORPH"
+echo "অনাথ (কেউ সংজ্ঞায়িত করে না): $ORPH"
+echo "দুর্বল — normal (যে কেউ চাইলেই পায়): $WEAKN"
+echo "দুর্বল — dangerous (ব্যবহারকারীর সম্মতি লাগে): $WEAKD   [VERBOSE=1 দিলে তালিকা]"
 cat <<'NOTE'
 
 == পড়ার নিয়ম ==
