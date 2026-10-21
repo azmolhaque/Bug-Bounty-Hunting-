@@ -391,13 +391,36 @@ Both APKs and the full source are attached. It is one source tree and two manife
 
 ## Suggested fix
 
-Replace the malformed attribute value with one real permission name, or drop
-`android:permission` and check the caller inside `onReceive`. `android:permission` cannot
-express "either of these two", so if that was the intent it has to live in code.
+Three separate things, because the two components fail for different reasons.
 
-It would also be worth grepping the codebase for `android:permission` values containing
-`|`. This kind of typo fails closed, so it looks like it is working — the feature quietly
+**The receiver.** Replace the malformed attribute value with one real permission name, or
+drop `android:permission` and check the caller inside `onReceive`. `android:permission`
+cannot express "either of these two", so if that was the intent it has to live in code.
+Worth grepping the codebase for `android:permission` values containing a `|` while you are
+there: this kind of typo fails closed, so it looks like it is working — the feature quietly
 stops receiving and the guard quietly stops guarding, and neither shows up in testing.
+
+**The activity.** The permission name here is fine; the problem is that the guard is the
+only thing standing between an arbitrary caller and an account handed to a caller-supplied
+`IntentSender`. A manifest permission cannot carry that on its own, because it holds only
+as long as the defining package is installed — which is the failure in this report. The
+durable fix is to verify the caller in code before putting anything in that intent, and
+this app already contains the pattern: `CameraPreviewProvider` checks
+`getCallingPackage()` in both `openFile` and `query`, allows only SystemUI, the Wear
+companion and itself, and verifies the signature rather than trusting the name. AGSA does
+the same thing for the very permission in this report's own orphan sweep — its
+`ExportedSmartspaceTrampolineActivity` re-checks at runtime that the package declaring
+`QSB` is installed, is a system app and passes a signature check, and calls `finish()`
+when it is not. That check is why that component was not worth reporting. The same check
+in `FirstDockActivity.C()` would close this.
+
+**The class as a whole.** The sweep behind this report found 16 guard permissions that no
+installed package defines. Most are harmless — forward-compatibility names that resolve on
+a newer OS, or components whose code cannot load. The two here are not, and the difference
+is not visible from the manifest. A build-time check that every `android:permission` value
+either exists in the platform or is defined by a package in the same APK would have caught
+the typo outright, and would have flagged `RUN_DOCK_SETUP` as depending on a package that
+may not be present.
 
 ---
 
