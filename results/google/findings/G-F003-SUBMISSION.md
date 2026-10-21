@@ -30,6 +30,9 @@ Attached control APK — mvrp-control.apk, package com.cindrasec.mvrpctl.
   Built from the same source with the same key; its manifest declares no
   permissions at all. It is what the "SKIPPED" line below comes from.
   sha256 d59cfc29ab66c850eb3bc7a94685739cd77a4b8700875aa82db99c9756b34346
+Attached source — lockproximity-poc-src.zip, the full source both APKs are built
+  from: one source tree and two manifests.
+  sha256 b18ba6420c26b203f499f2653c9b5b8545a2f7ae394527f0f482d69fe675328c
 
 Both APKs attached here are the exact files installed on the test device when
 the output below was captured.
