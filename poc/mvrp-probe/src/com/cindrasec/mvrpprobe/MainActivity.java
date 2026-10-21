@@ -399,42 +399,68 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
      * ছুঁড়ে ফেলবে, আর আমরা সেটা লগে বলে null ফেরাব — নীরব ব্যর্থতা নয়।
      */
     private android.bluetooth.le.ScanResult buildScanResult() {
-        android.os.Parcel p = android.os.Parcel.obtain();
+        // ScanRecord বাইট: দৈর্ঘ্য-প্রিফিক্সড AD structure, manufacturer specific (0xFF)
+        //   05 FF 4C 00 01 02  ->  len=5, type=0xFF, company=0x004C (LE), data=01 02
+        final byte[] adv = new byte[] { 0x05, (byte) 0xFF, 0x4C, 0x00, 0x01, 0x02 };
+
+        android.bluetooth.BluetoothDevice dev = null;
         try {
-            // BluetoothDevice: writeToParcel = writeString(address)
-            p.writeInt(1);
-            p.writeString("AA:BB:CC:DD:EE:FF");
-            // ScanRecord: দৈর্ঘ্য-প্রিফিক্সড AD structure, manufacturer specific (0xFF)
-            //   05 FF 4C 00 01 02  ->  len=5, type=0xFF, company=0x004C (little endian), data=01 02
-            byte[] adv = new byte[] { 0x05, (byte) 0xFF, 0x4C, 0x00, 0x01, 0x02 };
-            p.writeInt(1);
-            p.writeByteArray(adv);
-            p.writeInt(-50);     // rssi
-            p.writeLong(0L);     // timestampNanos
-            p.writeInt(0);       // eventType
-            p.writeInt(1);       // primaryPhy
-            p.writeInt(0);       // secondaryPhy
-            p.writeInt(255);     // advertisingSid  (SID_NOT_PRESENT)
-            p.writeInt(127);     // txPower         (TX_POWER_NOT_PRESENT)
-            p.writeInt(0);       // periodicAdvertisingInterval
-            p.setDataPosition(0);
-            android.bluetooth.le.ScanResult sr =
-                    android.bluetooth.le.ScanResult.CREATOR.createFromParcel(p);
-            Object rec = sr.getScanRecord();
-            Log.i(TAG, "ScanResult parcel থেকে তৈরি — scanRecord=" + (rec == null ? "null" : "আছে")
-                       + " rssi=" + sr.getRssi());
-            if (rec != null) {
-                android.util.SparseArray<byte[]> m =
-                        ((android.bluetooth.le.ScanRecord) rec).getManufacturerSpecificData();
-                Log.i(TAG, "  manufacturerData[76]=" + (m != null && m.get(76) != null ? "আছে" : "নেই"));
-            }
-            return sr;
+            android.bluetooth.BluetoothAdapter ad = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+            if (ad != null) dev = ad.getRemoteDevice("AA:BB:CC:DD:EE:FF");
         } catch (Throwable t) {
-            Log.i(TAG, "parcel থেকে ScanResult ব্যর্থ: " + t.getClass().getName() + ": " + t.getMessage());
-            return null;
-        } finally {
-            p.recycle();
+            Log.i(TAG, "BluetoothDevice পাওয়া গেল না: " + t);
         }
+        if (dev == null) { Log.i(TAG, "BluetoothDevice null — ScanResult বানানো যাবে না"); return null; }
+
+        // হাতে লেখা BluetoothDevice অংশটা Android 15-এ ভুল ছিল: rssi পড়া
+        // গিয়েছিল 5046021 = 0x004CFF05, অর্থাৎ ঠিক আমার adv-বাইট — reader
+        // আগে একটা বাড়তি ক্ষেত্র খেয়েছে। ঠিকানার পরে কী আছে তা অনুমান না
+        // করে framework-কেই তার নিজের অংশ লিখতে দিচ্ছি।
+        //
+        // বাকি ক্ষেত্রগুলোর সংখ্যা OS ভেদে বদলাতে পারে, তাই অনুমান নয় —
+        // 0 থেকে 4টা বাড়তি int চেষ্টা করে দেখি কোনটায় rssi ঠিক ফেরত আসে।
+        // যাচাই ছাড়া কোনো বিন্যাস গ্রহণ করা হবে না।
+        for (int pad = 0; pad <= 4; pad++) {
+            android.os.Parcel p = android.os.Parcel.obtain();
+            try {
+                p.writeInt(1);
+                dev.writeToParcel(p, 0);
+                for (int k = 0; k < pad; k++) p.writeInt(0);
+                p.writeInt(1);
+                p.writeByteArray(adv);
+                p.writeInt(-50);     // rssi — এটাই আমাদের চেকসাম
+                p.writeLong(0L);     // timestampNanos
+                p.writeInt(0);       // eventType
+                p.writeInt(1);       // primaryPhy
+                p.writeInt(0);       // secondaryPhy
+                p.writeInt(255);     // advertisingSid
+                p.writeInt(127);     // txPower
+                p.writeInt(0);       // periodicAdvertisingInterval
+                p.setDataPosition(0);
+                android.bluetooth.le.ScanResult sr =
+                        android.bluetooth.le.ScanResult.CREATOR.createFromParcel(p);
+                android.bluetooth.le.ScanRecord rec = sr.getScanRecord();
+                boolean ok = sr.getRssi() == -50 && rec != null;
+                boolean mfg = false;
+                if (rec != null) {
+                    android.util.SparseArray<byte[]> m = rec.getManufacturerSpecificData();
+                    mfg = m != null && m.get(76) != null;
+                }
+                Log.i(TAG, "  pad=" + pad + " rssi=" + sr.getRssi()
+                           + " scanRecord=" + (rec == null ? "null" : "আছে")
+                           + " mfg[76]=" + (mfg ? "আছে" : "নেই"));
+                if (ok && mfg) {
+                    Log.i(TAG, "ScanResult বৈধ — pad=" + pad + " ক্ষেত্র মিলেছে");
+                    return sr;
+                }
+            } catch (Throwable t) {
+                Log.i(TAG, "  pad=" + pad + " ব্যর্থ: " + t.getClass().getSimpleName() + ": " + t.getMessage());
+            } finally {
+                p.recycle();
+            }
+        }
+        Log.i(TAG, "কোনো বিন্যাসেই বৈধ ScanResult বানানো গেল না");
+        return null;
     }
 
     private static String render(Object v) {
