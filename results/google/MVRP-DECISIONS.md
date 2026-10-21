@@ -2025,3 +2025,48 @@ notification-platform receivers. Recorded rather than guessed at.
 control-backed differentials, and evidence written by ActivityManager rather
 than by me. Everything else examined today closed, and nothing found today
 changes that report's claim either way.
+
+### 2026-10-21 — the API-36 orphans explained, and why that sharpens G-F003
+
+Chased the last plausible route to higher severity: the AppFunction services,
+on the theory that Find My Device exposing callable functions would be worth
+real money if reachable. Measured instead of assumed, and the answer is clean.
+
+`MemoryAppFunctionService` → `idp` → `idq` → `pj`, and `pj extends
+android.app.appfunctions.AppFunctionService`. Messages' transport service →
+`drdd extends android.service.messaging.AlternativeMessageTransportService`.
+Both base classes decompile to jadx stubs:
+
+    static { throw new NoClassDefFoundError(); }
+
+They are API 36 framework classes, absent on this API 35 device. So those five
+services pass the bind gate — their guard permissions are genuinely orphaned —
+and then cannot instantiate at all. My earlier assumption that an internal
+caller check was refusing them was wrong; nothing was refusing them, they were
+never able to run.
+
+That closes the highest-value remaining lead, and it improves the report rather
+than diminishing it. There are now two distinguishable kinds of orphaned guard
+on this device:
+
+- **API-36 permissions on API-36 components.** Claimable today, harmless today,
+  self-resolving on the next OS upgrade. Not worth reporting, and the report now
+  says so explicitly.
+- **Guards that stay orphaned after any upgrade.** A typo that is not a
+  permission name on any Android version, and a permission whose defining
+  package is Pixel-only and will never appear on a Motorola. Both guard ordinary
+  classes that run today, and one of them I have executing in ActivityManager's
+  own record.
+
+Pre-empting that objection in the report is worth more than another day of
+probing: "isn't this just forward-compat noise?" is the first thing a triager
+would reasonably ask, and the answer is now in the text with the evidence behind
+it.
+
+One live thread left unexplored, recorded honestly: GMS's
+`IntrusionDetectionEventTransportService` did connect, so its class is present.
+It returns a descriptor-less binder behind a Chimera-loaded implementation, and
+speaking an unknown protocol blind is a poor bet against a Tier 1 target. Left
+for a future session rather than guessed at.
+
+**Final: submit G-F003.**

@@ -172,6 +172,40 @@ For scope: across 66 decoded Google app manifests on this device there are 159 d
 widespread. The orphaned-guard pattern is the broader one: the same sweep found 16 guard
 permissions that no installed package defines, two of them in this app.
 
+## Why this is not just forward-compatibility noise
+
+While testing I found a separate class of orphaned guard on this device that is *not*
+worth your time, and I want to separate it out so this report is not read as that.
+
+Several Google apps ship components guarded by API 36 permissions —
+`android.permission.BIND_APP_FUNCTION_SERVICE` in Find My Device, Digital Wellbeing,
+Pixel Buds and GMS, and `android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE`
+in Google Messages. On this API 35 device those permission names are undefined, so they
+can be claimed exactly as described above and the bind request is accepted. But the
+services never start, because their base classes are also API 36 and absent:
+
+```
+package android.service.messaging;
+public class AlternativeMessageTransportService extends Service {
+    static { throw new NoClassDefFoundError(); }     // not present on API 35
+}
+
+public abstract class pj extends AppFunctionService   // android.app.appfunctions, same
+```
+
+So those are harmless today and resolve themselves when the device reaches Android 16.
+I am not reporting them.
+
+The two components in this report are different in kind. `LockProximityReceiver` and
+`FirstDockActivity` are ordinary classes that load and run on this OS right now — I have
+the receiver executing in Android's own record. Their guards are orphaned for reasons that
+do not resolve with an OS update:
+
+- `android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN` is a typo. It is not a
+  permission name on any version of Android and never will be.
+- `com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is defined by a Pixel-only
+  package. Upgrading the OS does not install it on a non-Pixel device.
+
 ## Where this entry point leads
 
 The following is read from the decompiled app. It is not something I performed.
