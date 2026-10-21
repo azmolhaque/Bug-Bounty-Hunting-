@@ -1,7 +1,25 @@
 # Submission draft — Google Home: exported receiver guarded by a permission that cannot exist
 
 Paste target: https://bughunters.google.com/report (Android / Mobile VRP)
-Status: DRAFT. One item left before sending — a terminal screenshot. See the bottom.
+Status: **ON HOLD — DO NOT SEND.**
+
+The differential this draft rests on did not reproduce. On 2026-10-21 the
+`HomeApp|LockProximityNotificationWorker: Device not found` line appeared 0.77s
+after the attacker app's broadcast and not after the control's, and I treated
+that as proof. It has never appeared again in any later run. Google Home does
+its own periodic BLE work, so that line was most likely coincidence, not an
+effect of my broadcast.
+
+What still reproduces every time: the receiver *is* entered — Google Home logs
+`BluetoothAdapter: isLeEnabled(): ON` right after the broadcast, which is the
+`trr.ds()` check at the top of `onReceive`. What never appears is
+`Found %d device`, the line the receiver logs when the `LIST_SCAN_RESULT` list
+is non-empty, so my `ScanResult` is not reaching that branch and the worker is
+never enqueued.
+
+Being re-tested with `scripts/mvrp-ble-diff.sh`, which runs many alternating
+rounds plus a send-nothing baseline, because a single-sample differential cannot
+separate an effect from background activity.
 
 ---
 
