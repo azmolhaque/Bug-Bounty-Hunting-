@@ -1611,3 +1611,30 @@ The orphaned-permission work is the furthest this effort has got: steps 1 and 2
 measured with controls, step 3 blocked by a layer below the manifest every time.
 Written up in `results/google/ORPHAN-PERMISSION.md` so the next session resumes
 at step 3 rather than at zero.
+
+### 2026-10-21 — update-driven hunt begins; defect 24 found on the first run
+
+14 of 66 packages updated since yesterday, including Docs, Messages, Translate,
+Wellbeing, Safety Hub, Health Connect, clouddpc and `debugdispatch`
+(1.0.1 → 1.1.0). `stale` decided that without pulling anything, by comparing the
+stored manifests' `versionName` against the device.
+
+The first `diff` run printed `comm: file 1 is not in sorted order` and then
+produced a result anyway. `comm` expects the locale's collation order; the
+Python extractor sorts by code point. The orders disagree, so the comparison was
+meaningless — and `comm` warned rather than failing, so a wrong answer was
+printed next to a `POSITIVE` control line. **"New exported components: 2" cannot
+be trusted.**
+
+A species not on yesterday's list: the tool emitted a warning and carried on. A
+warning that does not stop the run is a result that looks clean.
+
+Fixed by forcing `LC_ALL=C` on both sorts and on `comm`, and by capturing
+`comm`'s stderr — any complaint now drops that package from the report with a
+note, instead of letting a corrupt comparison through. Verified on a fixture
+pair where the unfixed version both warned and mis-ordered its output.
+
+Rationale for the whole approach, carried over from yesterday's conclusion:
+56 surfaces closed because of crowding rather than capability, and a fresh
+release lifts that crowd for a few days. Looking only at what changed is the
+one place where arriving first is still possible.

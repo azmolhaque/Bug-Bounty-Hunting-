@@ -161,7 +161,19 @@ if [ "$MODE" = "diff" ]; then
       echo "-- $p : এক পাশ নেই, তুলনা করা গেল না (অনিষ্পন্ন, শূন্য নয়)"
       continue
     fi
-    added=$(comm -13 <(comps "$o") <(comps "$n"))
+    # comm locale-এর collation ক্রম ধরে নেয়, কিন্তু python-এর sorted()
+    # কোডপয়েন্ট-ক্রমে সাজায়। দুটো মিলল না বলে comm "not in sorted order"
+    # সতর্ক করে — আর তবু আউটপুট দেয়, ভুল আউটপুট। নীরব দূষণ।
+    # দুই পাশে একই ক্রম বাধ্য করা হচ্ছে: LC_ALL=C।
+    added=$(LC_ALL=C comm -13 \
+              <(comps "$o" | LC_ALL=C sort) \
+              <(comps "$n" | LC_ALL=C sort) 2>"$REP/.comm.err")
+    if [ -s "$REP/.comm.err" ]; then
+      echo "!! $p : comm অভিযোগ করেছে — এই তুলনাটা বিশ্বাস করা যাবে না"
+      sed 's/^/     /' "$REP/.comm.err"
+      : > "$REP/.comm.err"
+      continue
+    fi
     [ -z "$added" ] && continue
     c=$(grep -c . <<<"$added"); TOTNEW=$((TOTNEW+c))
     echo "== $p   (+$c)"
