@@ -112,8 +112,13 @@ scan_pkg() {   # scan_pkg <pkg>  -> lines: GUARD<TAB>kind<TAB>component<TAB>hits
   local pkg="$1"
   local man="$DEC/$pkg/resources/AndroidManifest.xml"
   local srcdir="$SRC/$pkg/sources"
-  [ -f "$man" ] || return 0
-  [ -d "$srcdir" ] || return 0
+  # A missing manifest or missing sources is not "nothing found". Say which,
+  # on stderr, so a zero in the report is a measured zero.
+  [ -f "$man" ] || { echo "SKIP $pkg: no decoded manifest" >&2; return 0; }
+  [ -d "$srcdir" ] || { echo "SKIP $pkg: not decompiled" >&2; return 0; }
+  if [ "$(find "$srcdir" -name '*.java' -print -quit 2>/dev/null | grep -c . )" -eq 0 ]; then
+    echo "SKIP $pkg: source tree exists but holds no java" >&2; return 0
+  fi
 
   # Attributes sit on their own lines in these manifests, so collapse first and
   # take whole opening tags. Matching line by line finds nothing and says so
@@ -172,8 +177,9 @@ printf '%s\n' "$FIXOUT" | sed 's/^/          /'
 echo
 
 TOTAL=0
+SKIPS="$REP/.skips.$$"; : > "$SKIPS"
 for p in "${PKGS[@]}"; do
-  out=$(scan_pkg "$p")
+  out=$(scan_pkg "$p" 2>>"$SKIPS")
   n=$(printf '%s' "$out" | grep -c . || true)
   [ "$n" -eq 0 ] && continue
   TOTAL=$((TOTAL+n))
@@ -183,6 +189,13 @@ for p in "${PKGS[@]}"; do
 done
 
 echo "== total: $TOTAL components across ${#PKGS[@]} apps =="
+NSKIP=$(grep -c . "$SKIPS" || true)
+if [ "$NSKIP" -gt 0 ]; then
+  echo
+  echo "== $NSKIP app(s) could not be looked at — their zero means nothing =="
+  sed 's/^/   /' "$SKIPS"
+fi
+rm -f "$SKIPS"
 cat <<'NOTE'
 
 == what to do with this ==

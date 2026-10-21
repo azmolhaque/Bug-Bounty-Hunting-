@@ -55,7 +55,7 @@ echo "      parsed $PARSED permissions"
 # নিজের probe app যে permission ঘোষণা করে সেগুলো বাদ দাও। না দিলে আমরা যে
 # অনাথ permission খুঁজছি, আমাদের নিজের app সেটা ঘোষণা করে বসে থাকায় সেটা
 # আর অনাথ দেখায় না — আর "সমস্যা মিটে গেছে" বলে মনে হয়।
-SELF_RE="${MVRP_SELF_RE:-^com\.cindrasec\.}"
+SELF_RE="${MVRP_SELF_RE:-^com[.]cindrasec[.]}"
 SELFN=$(awk -F'|' -v re="$SELF_RE" '$2 ~ re' "$REP/.parsed" | grep -c . || true)
 if [ "$SELFN" -gt 0 ]; then
   echo "      নিজের app ঘোষিত $SELFN টা permission বাদ দেওয়া হলো ($SELF_RE)"
