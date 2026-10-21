@@ -48,7 +48,10 @@ if [ "$C" -eq 0 ]; then echo "   (কিছুই নেই)"; else perms "$CTL"
 echo
 
 # এই রানের শুরু, ডিভাইসের ঘড়িতে, dumpsys যে ফরম্যাটে ছাপায় সেই ফরম্যাটেই
-START=$(adb shell date '+%Y-%m-%d %H:%M:%S' </dev/null 2>/dev/null | tr -d '\r')
+# ফরম্যাটে ফাঁকা জায়গা দেওয়া যায় না: `adb shell` আর্গুমেন্টটা ডিভাইসের
+# shell-এ আবার ভাঙা হয়, তাই "%d %H" দুটো আর্গুমেন্ট হয়ে যায় আর date ব্যর্থ হয়।
+# তাই `_` দিয়ে জুড়ে পাঠিয়ে এখানে ফাঁকা জায়গা বসাই।
+START=$(adb shell date +%Y-%m-%d_%H:%M:%S </dev/null 2>/dev/null | tr -d '\r' | tr '_' ' ')
 [ -n "$START" ] || { echo "!! BROKEN: ডিভাইসের ঘড়ি পড়া গেল না"; exit 2; }
 echo "রান শুরু (ডিভাইসের ঘড়ি): $START"
 echo
