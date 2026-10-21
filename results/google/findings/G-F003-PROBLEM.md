@@ -319,135 +319,22 @@ For scope: across the 132 app manifests I decoded on this device there are 159 d
 widespread. The orphaned-guard pattern is the broader one: the same sweep found 16 guard
 permissions that no installed package defines, two of them in this app.
 
-## Why this is not just forward-compatibility noise
-
-While testing I found a separate class of orphaned guard on this device that is *not*
-worth your time, and I want to separate it out so this report is not read as that.
-
-Several Google apps ship components guarded by API 36 permissions —
-`android.permission.BIND_APP_FUNCTION_SERVICE` in Find My Device, Digital Wellbeing,
-Pixel Buds and GMS, and `android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE`
-in Google Messages. On this API 35 device those permission names are undefined, so they
-can be claimed exactly as described above and the bind request is accepted. But the
-services never start, because their base classes are also API 36 and absent:
-
-```
-package android.service.messaging;
-public class AlternativeMessageTransportService extends Service {
-    static { throw new NoClassDefFoundError(); }     // not present on API 35
-}
-
-public abstract class pj extends AppFunctionService   // android.app.appfunctions, same
-```
-
-So those are harmless today and resolve themselves when the device reaches Android 16.
-I am not reporting them.
-
-The two components in this report are different in kind. `LockProximityReceiver` and
-`FirstDockActivity` are ordinary classes that load and run on this OS right now — I have
-the receiver executing in Android's own record. Their guards are orphaned for reasons that
-do not resolve with an OS update:
-
-- `android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN` is a typo. It is not a
-  permission name on any version of Android and never will be.
-- `com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is missing an app, not an API
-  level, and an OS upgrade does not install a missing app.
-
 ## Where this entry point leads
 
-The following is read from the decompiled app. It is not something I performed.
+Read from the decompiled app, not something I performed. `onReceive` takes
+`hgs_device_id`, `device_name`, `request_id` and the scan-result list out of the intent
+with no caller check of any kind, and enqueues `tln_send_unlock_notification_worker`. That
+worker resolves the device id against the signed-in account and, for a device with a lock
+trait, posts a notification whose tap target is `LockProximityUnlockActivity`, which
+enqueues `LockProximityUnlockWorker` — the unlock call.
 
-`onReceive` takes `hgs_device_id`, `device_name`, `request_id` and the scan-result list
-straight out of the intent with no caller check of any kind, and when the list is
-non-empty it enqueues work named `tln_send_unlock_notification_worker`.
-`LockProximityNotificationWorker` resolves the device id against the signed-in account
-and, for a device with a lock trait, posts a notification on channel
-`tln_unlock_notification_channel_id` whose tap target is `LockProximityUnlockActivity`,
-carrying `hgs_device_id`, `request_id` and `manufacturer_data` through from the
-broadcast. That activity enqueues `LockProximityUnlockWorker`, whose body is the unlock
-call.
+I did not reach it, and I cannot say where it stopped: the log line that would tell me is
+written at a level the release build suppresses, so its absence shows nothing. What I do
+know is that the test account has no smart lock, so no device id I can supply resolves
+server side, and no notification appeared.
 
-I did not reach that path, and I cannot tell you exactly where it stopped. The log line
-that would say how far `onReceive` got is written at a level the release build suppresses,
-so its absence tells me nothing. What I do know is that I have no smart lock on the test
-account, so I could not supply a device id that resolves server side, and the notification
-never appeared. `LockProximityUnlockActivity` is `android:exported="false"`, so the
-unlock cannot be invoked directly and would still require the user to tap the
-notification.
-
-What I am reporting is the guard, not the unlock: a component you intended to restrict is
-reachable by any app, and it sits on the path to a physical lock.
-
-For what it is worth, the feature this receiver belongs to is public enough to have been
-written up from a teardown of an earlier build, so the path above is not my reading of
-dead code: https://jetstream.blog/en/google-home-smart-lock-ble-auto-unlock-app-teardown/
-I found nothing published about the permission guard itself, which is why I am sending
-this.
-
-## Reproduction
-
-```
-adb install -r mvrp-poc.apk        # declares and requests the malformed name
-adb install -r mvrp-control.apk    # identical source, declares nothing
-
-adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A3 'install permissions'
-
-# run each app once; each sends the broadcast described above
-# (the control keeps the original class name, only its package differs)
-adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action broadcast
-adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action broadcast
-
-# then read the system's own record of both
-adb shell dumpsys activity broadcasts \
-  | grep -E 'BroadcastRecord\{.*BLE_SCANNED|caller=com.cindrasec|enqueueClockTime|DELIVERED|SKIPPED|requires '
-
-# the account disclosure: each app hands FirstDockActivity an IntentSender of its own
-adb logcat -c
-adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action dock
-adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action dock
-adb logcat -d MVRP:I ActivityTaskManager:W '*:S'
-```
-
-One record reads DELIVERED, the other SKIPPED with a Permission Denial naming the
-malformed string. No logcat filtering, no timing, and nothing that depends on how the app
-chooses to log. The broadcast history keeps older entries too, so take the two records
-with the newest `enqueueClockTime`.
-
-In the logcat output, only the PoC's `SinkReceiver` gets a `com.android.wizard.NEXT`
-delivery, and it carries `accountName`. The control is refused before it gets there.
-
-Both APKs and the full source are attached. It is one source tree and two manifests; the
-`activity` action in the same app starts the second component described above.
-
-## Suggested fix
-
-Three separate things, because the two components fail for different reasons.
-
-**The receiver.** Replace the malformed attribute value with one real permission name, or
-drop `android:permission` and check the caller inside `onReceive`. `android:permission`
-cannot express "either of these two", so if that was the intent it has to live in code.
-Worth grepping the codebase for `android:permission` values containing a `|` while you are
-there: this kind of typo fails closed, so it looks like it is working — the feature quietly
-stops receiving and the guard quietly stops guarding, and neither shows up in testing.
-
-**The activity.** The permission name here is fine; the problem is that the guard is the
-only thing standing between an arbitrary caller and an account handed to a caller-supplied
-`IntentSender`. A manifest permission cannot carry that on its own, because it holds only
-as long as the defining package is installed — which is the failure in this report. The
-durable fix is to verify the caller in code before putting anything in that intent, and
-this app already contains the pattern: `CameraPreviewProvider` checks
-`getCallingPackage()` in both `openFile` and `query`, allows only SystemUI, the Wear
-companion and itself, and verifies the signature rather than trusting the name. AGSA does
-the same thing for the very permission in this report's own orphan sweep — its
-`ExportedSmartspaceTrampolineActivity` re-checks at runtime that the package declaring
-`QSB` is installed, is a system app and passes a signature check, and calls `finish()`
-when it is not. That check is why that component was not worth reporting. The same check
-in `FirstDockActivity.C()` would close this.
-
-**The class as a whole.** The sweep behind this report found 16 guard permissions that no
-installed package defines. Most are harmless — forward-compatibility names that resolve on
-a newer OS, or components whose code cannot load. The two here are not, and the difference
-is not visible from the manifest. A build-time check that every `android:permission` value
-either exists in the platform or is defined by a package in the same APK would have caught
-the typo outright, and would have flagged `RUN_DOCK_SETUP` as depending on a package that
-may not be present.
+I am reporting the guard, not the unlock. But the component sits on that path, and the
+feature is public enough to have been written up from a teardown of an earlier build, so
+this is not my reading of dead code:
+https://jetstream.blog/en/google-home-smart-lock-ble-auto-unlock-app-teardown/
+I found nothing published about the permission guard itself.
