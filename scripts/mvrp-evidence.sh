@@ -248,7 +248,10 @@ if [ "$dock_ok" -ne 0 ]; then
   exit 2
 fi
 
-grep -E 'DOCK from|SINK in|accountName|Permission Denial|  [a-zA-Z_]+ = ' "$ALOG" \
+# The extras' key pattern allows dots: without them the filter silently
+# dropped com.android.setupwizard.ResultCode, and a filter that quietly
+# loses lines is the thing to avoid here above all.
+grep -E 'DOCK from|SINK in|SINK [0-9]+ extras|Permission Denial|[A-Za-z_][A-Za-z0-9_.]* = ' "$ALOG" \
   | sed 's/^/   /'
 
 cat <<'NOTE'

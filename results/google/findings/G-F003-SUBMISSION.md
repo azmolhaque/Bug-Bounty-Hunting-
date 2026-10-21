@@ -15,7 +15,7 @@ device defines, and reaching one of them hands any app the signed-in Google acco
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:18 to 16:07 UTC (several runs; all output quoted below is from 16:05 UTC)
+Testing time: 13:18 to 17:28 UTC (several runs; all output quoted below is from 17:25 UTC)
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
@@ -23,11 +23,11 @@ Tools: adb, jadx, aapt2, apksigner — plain AOSP build chain, nothing exotic
 Attached PoC APK — mvrp-poc.apk, package com.cindrasec.mvrpprobe.
   Declares the two permission names below and nothing else. No real Android
   permission of any kind, so anything it can do, any app can do.
-  sha256 26bfc10213aa3c5251725eea7f0fbb2b64861a0439b4631206da906387e8eb08
+  sha256 7e7ef501d9be335a1e01acf9996a3c59e7538bdc60bc14870a1667ba58fabf9d
 Attached control APK — mvrp-control.apk, package com.cindrasec.mvrpctl.
   Built from the same source with the same key; its manifest declares no
   permissions at all. It is what the "SKIPPED" line below comes from.
-  sha256 86996f195a4985eea32a43ace9dec5a3c235ff6ae252a0c55044dc5c6c2d7ec2
+  sha256 d59cfc29ab66c850eb3bc7a94685739cd77a4b8700875aa82db99c9756b34346
 
 Both APKs attached here are the exact files installed on the test device when
 the output below was captured.
@@ -42,7 +42,7 @@ two permission names joined with a `|`, and `android:permission` takes one name.
 
 An app can declare those names itself at `protectionLevel="normal"` and is granted them at
 install with no prompt, which makes it the only party on the device that passes either
-guard. Doing so gets it the signed-in Google account out of Google Home, in 93 ms, with no
+guard. Doing so gets it the signed-in Google account out of Google Home, in 65 ms, with no
 user interaction, and it holds no real Android permission to do it.
 
 Attached are two APKs built from one source tree that differ only in two `<permission>`
@@ -120,31 +120,31 @@ the reason independently of anything either app logs. Both records below come fr
 run that produced the attached screenshot. The dump is several thousand lines; I have
 kept the caller, clock, outcome and reason lines verbatim and dropped the rest.
 
-Timestamps in these records are the device's local clock, UTC+06:00 — 22:05 local is
-16:05 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
+Timestamps in these records are the device's local clock, UTC+06:00 — 23:25 local is
+17:25 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
 than `00:00:00` is the same offset showing through.)
 
 **Control app, declares no permissions at all — refused at enqueue:**
 
 ```
-BroadcastRecord{d2231d2 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=7410 uid=10569
-enqueueClockTime=2026-10-21 22:05:50.884 dispatchClockTime=1970-01-01 06:00:00.000
-SKIPPED terminal +5h4m47s992ms (-1) #0: (manifest)
-reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=7410, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+BroadcastRecord{147f73b com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=22778 uid=10569
+enqueueClockTime=2026-10-21 23:25:51.796 dispatchClockTime=1970-01-01 06:00:00.000
+SKIPPED terminal +6h24m48s904ms (-1) #0: (manifest)
+reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=22778, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
 ```
 
-The `+5h4m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still at
+The `+6h24m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still at
 the epoch because the broadcast was never dispatched, so the figure is measured from a
 time that was never set.
 
 **PoC app, three seconds later, declares the two names and nothing else — delivered:**
 
 ```
-BroadcastRecord{b73145d com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=7453 uid=10568
-enqueueClockTime=2026-10-21 22:05:54.073 dispatchClockTime=2026-10-21 22:05:54.073
-DELIVERED scheduled +1ms terminal +12ms (-1) #0: (manifest)
+BroadcastRecord{17259ca com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=22855 uid=10568
+enqueueClockTime=2026-10-21 23:25:54.943 dispatchClockTime=2026-10-21 23:25:54.944
+DELIVERED scheduled +1ms terminal +17ms (-1) #0: (manifest)
 reason: remote app
 ```
 
@@ -178,10 +178,10 @@ the activity from each, `MVRP` is the PoC's own tag and `ActivityTaskManager` is
 framework's (logcat, same run as above, three seconds apart):
 
 ```
-10-21 22:05:59.763  7507  7507 I MVRP    : STARTACT from com.cindrasec.mvrpctl -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
-10-21 22:05:59.764  2717  3672 W ActivityTaskManager: Permission Denial: starting Intent { flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity } from ProcessRecord{6a76df0 7507:com.cindrasec.mvrpctl/u0a569} (pid=7507, uid=10569) requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
-10-21 22:06:02.926  7562  7562 I MVRP    : STARTACT from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
-10-21 22:06:02.942  7562  7562 I MVRP    : startActivity() returned, no exception
+10-21 23:26:00.694 22914 22914 I MVRP    : STARTACT from com.cindrasec.mvrpctl -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
+10-21 23:26:00.695  2717  2812 W ActivityTaskManager: Permission Denial: starting Intent { flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity } from ProcessRecord{777fe75 22914:com.cindrasec.mvrpctl/u0a569} (pid=22914, uid=10569) requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+10-21 23:26:03.898 22962 22962 I MVRP    : STARTACT from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
+10-21 23:26:03.914 22962 22962 I MVRP    : startActivity() returned, no exception
 ```
 
 The control's attempt is refused a millisecond later and the PoC's is not. Worth noting
@@ -225,17 +225,23 @@ a receiver that is `android:exported="false"`, so a delivery can only have come 
 that app's own `PendingIntent`:
 
 ```
-10-21 23:20:04.630 20730 20730 I MVRP: DOCK from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/...titan.dock.activity.FirstDockActivity  (handing over our own IntentSender)
-10-21 23:20:04.647 20730 20730 I MVRP: startActivity() returned, no exception
-10-21 23:20:04.723 20730 20730 I MVRP: SINK got a delivery, action=com.android.wizard.NEXT
-10-21 23:20:04.723 20730 20730 I MVRP: SINK 12 extras:
-10-21 23:20:04.724 20730 20730 I MVRP:   theme = "g…t" (String, len=13)
-10-21 23:20:04.724 20730 20730 I MVRP:   accountName = "a…m" (String, len=22)
-10-21 23:20:04.724 20730 20730 I MVRP:   com.android.setupwizard.ResultCode = Integer(1)
+10-21 23:26:09.311 23022 23022 I MVRP    : DOCK from com.cindrasec.mvrpctl -> com.google.android.apps.chromecast.app/...titan.dock.activity.FirstDockActivity  (handing over our own IntentSender)
+10-21 23:26:09.312  2717  3311 W ActivityTaskManager: Permission Denial: starting Intent { flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity (has extras) } from ProcessRecord{1c0d2fb 23022:com.cindrasec.mvrpctl/u0a569} (pid=23022, uid=10569) requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+10-21 23:26:12.467 23067 23067 I MVRP    : DOCK from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/...titan.dock.activity.FirstDockActivity  (handing over our own IntentSender)
+10-21 23:26:12.532 23067 23067 I MVRP    : SINK in com.cindrasec.mvrpprobe got a delivery, action=com.android.wizard.NEXT
+10-21 23:26:12.533 23067 23067 I MVRP    :   isSetupFlow = Boolean(true)
+10-21 23:26:12.533 23067 23067 I MVRP    :   firstRun = Boolean(true)
+10-21 23:26:12.533 23067 23067 I MVRP    :   theme = "g…t" (String, len=13)
+10-21 23:26:12.533 23067 23067 I MVRP    :   accountName = "a…m" (String, len=22)
+10-21 23:26:12.533 23067 23067 I MVRP    :   suw_lifecycle = Integer(0)
 ```
 
-93 milliseconds from `startActivity()` to the delivery. No tap, no prompt, no dialog, and
+Twelve extras arrive in all; the ones above are the ones that say anything. 65
+milliseconds from `startActivity()` to the delivery. No tap, no prompt, no dialog, and
 nothing on screen that would tell the user anything happened.
+
+The control, three seconds earlier in the same capture, is refused at `startActivity` and
+its `SinkReceiver` receives nothing at all.
 
 The PoC masks the value on purpose — showing that the key arrives with a real value
 attached does not need the address printed into a report. Its first character, last
@@ -243,8 +249,8 @@ character and length match the Google account signed into the Home app on this d
 and running the attached PoC on any account prints the same line unmasked in your own
 logcat if you want to see it.
 
-The control APK cannot get this far: it is refused at `startActivity` by the lines above,
-and its `SinkReceiver` receives nothing. The two differ in two `<permission>` rows.
+The two APKs differ in two `<permission>` rows. That is what decides which of them gets
+handed the account.
 
 The two guards differ in reach. The malformed string is not a permission name at all, so
 it can never be held, on any device or any OS version. `RUN_DOCK_SETUP` is an ordinary
@@ -387,7 +393,7 @@ one image fits, it is that one.
 The source tree goes with them — `poc/lockproximity-poc/`, which is English-only and has
 nothing in it but what this report describes.
 
-Every quoted line above is from the 16:05 UTC run with exactly those two APKs. If either
+Every quoted line above is from the 17:25 UTC run with exactly those two APKs. If either
 APK is rebuilt, the hashes change and the quoted output has to be recaptured — the report
 states that the attached files are the ones that produced the output, so that claim has
 to stay true.
