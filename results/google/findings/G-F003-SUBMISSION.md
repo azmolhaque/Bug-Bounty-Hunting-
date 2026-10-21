@@ -299,8 +299,15 @@ returns the account:
 
 So the condition is that the user has opened Google Home at some point since the phone
 last killed its process — which is true of anyone who has the app for the reason people
-have it. Nothing is required of the user at the moment the attack runs, and nothing tells
-them it did.
+have it. Nothing is required of them in Google Home at the moment the attack runs, and
+nothing tells them it did.
+
+Being exact about the other side of it: the PoC fires from its own launcher activity, and
+every measurement above starts with `am start` on that activity, which is the adb
+equivalent of the user tapping its icon. So the sequence is the one the Mobile VRP
+scenario describes — the user installs the app and opens it — and not a silent background
+run. Whether this works from the background I did not test; Android restricts background
+activity launches and I would expect it to be blocked, so I am not claiming it.
 
 (Timestamps in this subsection are 10-22 on the device's local clock, UTC+06:00, which is
 18:11 and 18:16 UTC on 10-21.)
@@ -378,6 +385,12 @@ notification.
 
 What I am reporting is the guard, not the unlock: a component you intended to restrict is
 reachable by any app, and it sits on the path to a physical lock.
+
+For what it is worth, the feature this receiver belongs to is public enough to have been
+written up from a teardown of an earlier build, so the path above is not my reading of
+dead code: https://jetstream.blog/en/google-home-smart-lock-ble-auto-unlock-app-teardown/
+I found nothing published about the permission guard itself, which is why I am sending
+this.
 
 ## Impact
 
