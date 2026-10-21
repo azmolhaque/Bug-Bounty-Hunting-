@@ -17,9 +17,17 @@ Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
 Tools: adb, jadx, aapt2, apksigner — plain AOSP build chain, nothing exotic
-Attached PoC APK (declares the two permission names):
-  sha256 41341016be562ea512771983aafaaba34818513299e4d268e84507769fe86de1
-Attached control APK: identical source, declares nothing
+Attached PoC APK — mvrp-poc.apk, package com.cindrasec.mvrpprobe.
+  Declares the two permission names below and nothing else. No real Android
+  permission of any kind, so anything it can do, any app can do.
+  sha256 a4ea40f5d42f5bb5c0a1adaf6367523d95da6a8c8dc6675c88e600e7c6815bba
+Attached control APK — mvrp-control.apk, package com.cindrasec.mvrpctl.
+  Built from the same source with the same key; its manifest declares no
+  permissions at all. It is what the "SKIPPED" line below comes from.
+  sha256 1aca408c964125ca446917f3e573d72b6066216a320bfc856214c5e232068020
+
+Both APKs attached here are the exact files installed on the test device when
+the output below was captured.
 
 ---
 
