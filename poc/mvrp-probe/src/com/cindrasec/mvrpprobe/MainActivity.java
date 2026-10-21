@@ -221,6 +221,26 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             Log.i(TAG, "TRANSACT code=" + txCode + " token=" + txToken + " dataSize=" + data.dataSize());
             boolean ok = binder.transact(txCode, data, reply, 0);
             Log.i(TAG, "  transact() returned " + ok + "  replySize=" + reply.dataSize());
+
+            // replySize একা কিছু বলে না। remote দিক exception ছুঁড়লে transact()
+            // true ফেরায় আর exception-টা reply parcel-এ marshalled হয়ে আসে —
+            // তাই "returned true, 132 বাইট" দেখে সাফল্য ভাবা যায় না। দশটা
+            // ভিন্ন কোডে একই আকারের উত্তর ঠিক ওটাই ছিল।
+            reply.setDataPosition(0);
+            try {
+                reply.readException();
+                Log.i(TAG, "  readException() ঠিকঠাক — reply-তে exception নেই");
+                int left = reply.dataSize() - reply.dataPosition();
+                Log.i(TAG, "  payload বাকি " + left + " বাইট");
+            } catch (Throwable e) {
+                Log.i(TAG, "  REPLY EXCEPTION " + e.getClass().getName() + ": " + e.getMessage());
+            }
+            // কাঁচা বাইট, প্রথম ৬৪টা — exception না হলেও কী এসেছে দেখার জন্য
+            reply.setDataPosition(0);
+            byte[] raw = reply.marshall();
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; i < raw.length && i < 64; i++) hex.append(String.format("%02x", raw[i]));
+            Log.i(TAG, "  reply[0:64] = " + hex);
             if (reply.dataSize() > 0) {
                 reply.setDataPosition(0);
                 byte[] raw = reply.marshall();
