@@ -215,10 +215,23 @@ if (intent.getExtras() != null) {
 startIntentSenderForResult(intentSender, 0, intent4, 0, 0, 0, null);
 ```
 
-That is a reasonable contract with the Setup Wizard, which is a privileged system
-component. `RUN_DOCK_SETUP` is presumably what is meant to keep it to the Setup Wizard.
-Since nothing on this device defines that permission, any app holds it, and the contract
-is with any app.
+That is a reasonable contract with the caller it is written for. The activity's own
+intent-filter says who that is:
+
+```xml
+<activity
+    android:name="com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity"
+    android:permission="com.google.android.settings.setup.dock.RUN_DOCK_SETUP"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="com.android.settings.action.FIRST_DOCK_GHA"/>
+    </intent-filter>
+```
+
+A `com.android.settings` action and a `com.google.android.settings.setup.dock` permission:
+the intended caller is a system component, and `RUN_DOCK_SETUP` is what is meant to hold
+it to that. Since nothing on this device defines that permission, any app holds it, and
+the contract is with any app.
 
 So the PoC hands over an `IntentSender` of its own and logs what comes back. It arrives in
 a receiver that is `android:exported="false"`, so a delivery can only have come through
@@ -262,7 +275,7 @@ The two guards differ in reach. The malformed string is not a permission name at
 it can never be held, on any device or any OS version. `RUN_DOCK_SETUP` is an ordinary
 name whose defining package is simply not on this phone.
 
-For scope: across 66 decoded Google app manifests on this device there are 159 distinct
+For scope: across the 132 app manifests I decoded on this device there are 159 distinct
 `android:permission` values, and exactly one contains a `|`. I am not claiming the typo is
 widespread. The orphaned-guard pattern is the broader one: the same sweep found 16 guard
 permissions that no installed package defines, two of them in this app.
