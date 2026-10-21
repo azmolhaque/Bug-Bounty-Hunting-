@@ -129,6 +129,10 @@ The system states the rule and the reason itself: the receiver requires that per
 name, the app that declared it passes, the app that did not is skipped at enqueue. The
 declaration is the only difference between the two APKs.
 
+The attached screenshot is a later run of the same two commands, filtered to the caller,
+outcome and reason lines so both records fit on one screen. The per-run dispatch timings
+differ by a few milliseconds, as they would; the outcomes do not.
+
 Google Home's own process also logs a `BluetoothAdapter` line immediately after each
 delivered broadcast — the Bluetooth check at the top of `onReceive` — and nothing after
 the skipped ones. I repeated that comparison 15 times across three sessions, including a
