@@ -1721,3 +1721,45 @@ verbatim logs, the decompiled chain, repro steps and remediation.
 valid `hgs_device_id` for a victim's lock. Also noted but untested: a valid and
 an invalid id take visibly different paths, which makes the receiver a candidate
 id oracle.
+
+### 2026-10-21 — the weak-normal class: two candidates, both closed
+
+Classifying all 517 guards by protection level found 3 at `normal` (anyone gets
+them by asking) and 9 at `dangerous` (a consent prompt). Two of the three were
+worth reading; both closed.
+
+| | | |
+|---|---|---|
+| carrierwifi `CarrierWifiTestReceiver` | DROP | A test receiver shipped in release, guarded only by `android.permission.CHANGE_WIFI_STATE` (normal). It reads no extras: two fixed actions, `ACCM_DOWNLOAD_LATEST` → `AccmDownloadWorker` and `GWP_DUMP` → `GwpDumpWorker`. The dump target is `getDir("gwp_persistent_logs", 0)`, i.e. MODE_PRIVATE, and S49 already established that reading it through `GwpDebugContentProvider.dump()` needs signature-level `DUMP`. An attacker can force a server config fetch and a private-directory log write, and gains nothing from either. |
+| searchlite `ThirdPartyWidgetBroadcastReceiver` | DROP | The better-looking of the two, and the name was the whole of it. |
+
+The searchlite one deserves its own note because the surrounding facts are real
+and only the payoff is not. Confirmed from the device, not from my parser:
+
+    + permission:com.google.android.finsky.permission.DSE
+        package:com.android.vending
+        protectionLevel:normal
+
+Play Store defines the Default Search Engine permission at `normal`, so any app
+is granted it silently at install. Google Go uses that permission as the sole
+guard on an exported receiver for `UPDATE_DSE` / `UPDATE_DSE_APP_STATE`, the
+channel carrying the DMA choice-screen result.
+
+But the handler reads one boolean:
+
+    boolean isInstall = intent.getBooleanExtra("is_install", true);
+    ComponentName cn = new ComponentName(context, "...SearchLiteWidgetProvider");
+    b(cn, isInstall ? 1 : 2);   // enable / disable the widget provider
+
+The effect is toggling Google Go's own widget component. No search engine
+changes, no data moves, no code runs. CLAUDE.md §2's question answers to
+nothing, and the kill list rules out availability-only impact.
+
+Third time today that a promising name did not survive its code —
+`/send-zip`, `LockProximity`'s notification path, and now `UPDATE_DSE`. Worth
+keeping as a habit rather than a complaint: the name decides what to read next,
+never what to claim.
+
+Still unexamined: the 9 `dangerous`-level guards. A consent prompt is a real
+obstacle, but a malicious app can ask for one under an ordinary pretext, so the
+class is not dead.
