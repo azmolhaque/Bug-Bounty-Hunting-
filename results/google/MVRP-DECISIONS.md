@@ -2070,3 +2070,31 @@ speaking an unknown protocol blind is a poor bet against a Tier 1 target. Left
 for a future session rather than guessed at.
 
 **Final: submit G-F003.**
+
+### 2026-10-21 — three things fixed before submitting
+
+Asked whether more testing was needed. Three gaps, all about credibility rather
+than discovery.
+
+**An unverified claim in my own report.** I wrote that
+`com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is "defined by a
+Pixel-only package" — inferred from the package name, never measured. All I
+established is that *no package on this device defines it*. A triager will
+likely test on a Pixel; if it resolves there, my second example does not
+reproduce for them and the whole report loses trust over a sentence I had no
+basis for. Rewritten to say exactly what was measured, and to note that the
+first component carries the report on its own because that permission name
+cannot be defined anywhere.
+
+That is the fifth unverified assertion cut today, and the only one that was
+mine rather than inherited from an instrument.
+
+**The PoC was not clean.** `AndroidManifest.orphan.xml` declares nine
+permissions — the investigation harness, built to test every orphan at once.
+Shipping that invites "why nine?" as the first question and buries the point.
+Added `AndroidManifest.poc.xml` with exactly the two permissions the report
+demonstrates, and no real Android permission at all, so the claim that this is
+what any ordinary app can do stays intact.
+
+**No record of what was sent.** Hash and version to be captured with the build,
+so there is a record of exactly which APK the report refers to.

@@ -144,8 +144,10 @@ declaration and 0/15 for both the control app and the silent branch.
 `LockProximityReceiver` is not the only one. The same sweep found
 `com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity`,
 exported and guarded by `com.google.android.settings.setup.dock.RUN_DOCK_SETUP`.
-That permission is defined by a Pixel-only package which is not installed on this
-phone — so on any non-Pixel device, nothing holds it.
+No package installed on this phone defines that permission, so nothing on it can hold
+that guard. I have not identified which package is meant to define it — if it is present
+on your test device this second example will not reproduce there, and the first one,
+which cannot be defined anywhere, still stands on its own.
 
 Adding that name to the same probe manifest, and starting the activity from each app:
 
@@ -207,8 +209,11 @@ do not resolve with an OS update:
 
 - `android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN` is a typo. It is not a
   permission name on any version of Android and never will be.
-- `com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is defined by a Pixel-only
-  package. Upgrading the OS does not install it on a non-Pixel device.
+- `com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is defined by no package on
+  this device. I have not established which package is supposed to define it, so I am
+  not claiming it is absent everywhere — only that it is absent here, and that an OS
+  upgrade does not install a missing app. If it resolves on your test device, the first
+  component alone carries the report, since that permission name cannot exist anywhere.
 
 ## Where this entry point leads
 
