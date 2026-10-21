@@ -2161,3 +2161,33 @@ and I counted the characters that had actually landed.
 
 Still open, for a later session: GMS `IntrusionDetectionEventTransportService` (connects,
 Chimera-loaded binder, protocol unknown), and `business/fb-business-audit/`, never started.
+
+### 2026-10-22 — 576322789 closed as Duplicate of canonical 1469
+
+Seven minutes from acknowledgement to close. Nobody read the report in that
+window; it was bucketed by class. Google's note on the close says 1469 is a
+shared canonical used across unrelated reports, which is as much as saying the
+class was already filed.
+
+The class is "exported component in a Google app guarded by a permission nothing
+defines". Spent. The 16 orphaned guards from that sweep are all presumably the
+same bucket, so there is nothing left to mine there no matter how clean the
+differential is.
+
+What this changes about how to pick targets:
+
+**Novelty of the class beats quality of the demonstration.** The evidence here
+was as good as I know how to make it — the system's own records, a control APK
+differing by two manifest rows, a measured precondition, four hashed artifacts.
+It bought nothing, because the class was known. Time spent polishing a report in
+a known class is time thrown away; the question to ask first is "has anyone
+plausibly filed this shape before", not "can I prove this cleanly".
+
+**What was probably novel got bucketed with the rest.** The account hand-back
+through FirstDockActivity's IntentSender has a different root cause and a
+different fix from the permission typo. It likely never got looked at
+separately. Worth one narrow question to the triager, asked once, and then
+dropped either way — not a re-argument, a scoping question.
+
+**For mvrp-handback.sh:** deprioritise ORPHAN hits. The value is in NONE and
+NORMAL guards, where the weakness is not the permission system at all.

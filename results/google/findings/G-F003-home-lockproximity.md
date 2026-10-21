@@ -1,6 +1,17 @@
 # G-F003 — Google Home: exported receiver guarded by an impossible permission
 
-**Status: SUBMITTED 2026-10-21. Issue 576322789 (buganizer).**
+**Status: CLOSED — Duplicate of canonical 1469. No reward, no credit.**
+Submitted 2026-10-21 01:35, acknowledged 01:36, closed 01:43. Seven minutes, so
+no human read 20,000 characters and seven attachments in between: this was
+bucketed by class, not judged on the demonstration. Google's own note says 1469
+is a shared canonical used across unrelated reports.
+
+Read that as: orphaned permission guards in Google apps are a known, already
+filed class. The other 15 orphans from the same sweep are almost certainly in
+the same bucket. That axis is spent, however good the evidence is.
+
+**Original status line follows.**
+**SUBMITTED 2026-10-21. Issue 576322789 (buganizer).**
 https://issuetracker.google.com/issues/576322789
 Intake state: Type Customer Issue, P4/S4, Status New, unassigned — the default
 landing state, not a triage verdict.
