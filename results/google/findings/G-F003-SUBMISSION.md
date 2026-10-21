@@ -3,6 +3,9 @@
 Paste target: https://bughunters.google.com/report (Android / Mobile VRP)
 Status: READY. Evidence is Android's own broadcast history, reproducible in one command.
 
+Everything above the next line is a note to self. The submission starts at **Title:** and
+ends at the horizontal rule before "Before sending".
+
 ---
 
 **Title:**
@@ -50,8 +53,6 @@ Google Home's manifest declares:
 Android does not split on `|`; it treats the whole string as a single permission name,
 and no package on the device defines a permission called
 `android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN`.
-
-That breaks the guard in both directions:
 
 Because no package defines that name, a third-party app can declare it itself at
 `protectionLevel="normal"`, request it, and be granted it at install with no user prompt.
@@ -105,8 +106,8 @@ the reason independently of anything either app logs. Both records below come fr
 run that produced the attached screenshot. The dump is several thousand lines; I have
 kept the caller, clock, outcome and reason lines verbatim and dropped the rest.
 
-Timestamps in these records are the device's local clock, UTC+06:00 — 21:41 local is
-15:41 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
+Timestamps in these records are the device's local clock, UTC+06:00 — 21:55 local is
+15:55 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
 than `00:00:00` is the same offset showing through.)
 
 **Control app, declares no permissions at all — refused at enqueue:**
@@ -176,12 +177,9 @@ comparison rests on.
 Two components, two different permissions, one app, the same bypass — which is why I think
 the useful fix is an audit rather than a one-line change.
 
-The two have different reach, and I can only be precise about the first. The malformed
-string can never be held on any device or OS version, because it is not a permission name
-at all. `RUN_DOCK_SETUP` is a normal name that some package is presumably meant to define;
-I did not find that package on this device, and I have not established which devices ship
-it, so all I can say is that on this phone the guard is absent and the activity is
-reachable.
+The two guards differ in reach. The malformed string is not a permission name at all, so
+it can never be held, on any device or any OS version. `RUN_DOCK_SETUP` is an ordinary
+name whose defining package is simply not on this phone.
 
 For scope: across 66 decoded Google app manifests on this device there are 159 distinct
 `android:permission` values, and exactly one contains a `|`. I am not claiming the typo is
@@ -219,11 +217,8 @@ do not resolve with an OS update:
 
 - `android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN` is a typo. It is not a
   permission name on any version of Android and never will be.
-- `com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is defined by no package on
-  this device. I have not established which package is supposed to define it, so I am
-  not claiming it is absent everywhere — only that it is absent here, and that an OS
-  upgrade does not install a missing app. If it resolves on your test device, the first
-  component alone carries the report, since that permission name cannot exist anywhere.
+- `com.google.android.settings.setup.dock.RUN_DOCK_SETUP` is missing an app, not an API
+  level, and an OS upgrade does not install a missing app.
 
 ## Where this entry point leads
 
@@ -239,9 +234,11 @@ carrying `hgs_device_id`, `request_id` and `manufacturer_data` through from the
 broadcast. That activity enqueues `LockProximityUnlockWorker`, whose body is the unlock
 call.
 
-I did not reach that path. In my testing the handler returns before the list branch, and
-I do not have a smart lock on the test account, so I could not supply a device id that
-resolves server side. `LockProximityUnlockActivity` is `android:exported="false"`, so the
+I did not reach that path, and I cannot tell you exactly where it stopped. The log line
+that would say how far `onReceive` got is written at a level the release build suppresses,
+so its absence tells me nothing. What I do know is that I have no smart lock on the test
+account, so I could not supply a device id that resolves server side, and the notification
+never appeared. `LockProximityUnlockActivity` is `android:exported="false"`, so the
 unlock cannot be invoked directly and would still require the user to tap the
 notification.
 
