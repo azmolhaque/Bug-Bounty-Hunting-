@@ -1888,3 +1888,54 @@ deliberately, because the receiver reads exactly that:
 The builder logs whether the object came back with a scan record and whether
 company 76 is present, and returns null loudly if the field order does not match
 this OS version, so a failure there cannot masquerade as a quiet negative.
+
+### 2026-10-21 — the evidence that ends the argument, from ActivityManager
+
+Every instrument I had tried measured what Google Home chose to log, and three
+times I read a silence as a negative. `dumpsys activity broadcasts` measures
+what the *system* did, and it settles the question in one command.
+
+Attacker app:
+
+    BroadcastRecord{...BLE_SCANNED/u0} to user 0
+    caller=com.cindrasec.mvrpprobe ... uid=10568
+    DELIVERED scheduled +2ms terminal +8ms (-1) #0: (manifest)
+      name=...LockProximityReceiver   exported=true
+      permission=android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+
+Control app, same intent, same target:
+
+    caller=com.cindrasec.mvrpctl ... uid=10569
+    SKIPPED
+      reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent {...}
+      from com.cindrasec.mvrpctl (pid=24061, uid=10569)
+      to ...LockProximityReceiver
+      requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+
+The system names the rule, names the malformed permission, and records both
+outcomes side by side in one dump. `terminal +8ms` also settles a separate
+question: the receiver did not merely receive, it ran to completion — and the
+Bluetooth-off record shows `DELIVERED` too, so the earlier all-zero run was the
+observable disappearing, not the delivery failing.
+
+This is better evidence than anything built from logcat. It does not depend on
+the app's logging levels, on Bluetooth state, on timing windows, or on my
+instrument at all. A triager reproduces it with one command.
+
+Two things that cost hours and are worth keeping:
+
+The hand-written `ScanResult` parcel was wrong on Android 15 — it decoded
+`rssi=5046021`, which is `0x004CFF05`, exactly the advertisement bytes, so the
+reader had consumed an extra field. Letting `BluetoothDevice.writeToParcel`
+write its own portion and validating the decode against `rssi == -50` fixed it
+at `pad=0` on the first try. The checksum is what made that safe: a misaligned
+layout cannot return the sentinel by chance.
+
+And the broadcast history explains the whole afternoon. The receiver was
+running every time; it simply logs nothing on the path it takes. Five separate
+observables — worker log, `Found` log, `isLeEnabled` log, JobScheduler, network
+counters — were all downstream of someone else's choices. The one that worked
+was upstream of all of them.
+
+The report is rewritten around these two records. The notification and unlock
+chain stays as code read, with the sentence saying I did not reach it.
