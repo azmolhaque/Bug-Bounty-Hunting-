@@ -2098,3 +2098,32 @@ what any ordinary app can do stays intact.
 
 **No record of what was sent.** Hash and version to be captured with the build,
 so there is a record of exactly which APK the report refers to.
+
+### 2026-10-21 — the shipped PoC, verified
+
+Built from `AndroidManifest.poc.xml` and confirmed on device:
+
+    install permissions:
+      android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN: granted=true
+      com.google.android.settings.setup.dock.RUN_DOCK_SETUP: granted=true
+
+Exactly two entries, both of them the report's subject, and no real Android
+permission anywhere. That matters for the central claim: the app demonstrating
+this holds no capabilities at all, so nothing it does can be attributed to
+something it was granted.
+
+sha256 of the attached PoC recorded in the report's metadata, along with the
+tested Google Home version (4.33.27.4) and the testing window, so there is a
+record of exactly which binary the evidence refers to.
+
+Two small things caught while doing it, both worth noting because both would
+have produced a misleading submission:
+
+The control APK had been overwritten in `out/` by later builds — the file named
+in the report did not exist. Attaching a stale or missing control would have
+been worse than attaching none, since the whole argument is the comparison.
+
+And the differential command's `head -6` was consumed by two duplicate control
+records, so the probe's `DELIVERED` line never appeared. The run looked like a
+failure and was a display truncation. Same shape as the morning's defects:
+reading a window as the world.

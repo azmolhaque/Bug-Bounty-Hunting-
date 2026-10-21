@@ -12,11 +12,14 @@ device defines, so any app can declare those names and reach both
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:18, 13:26 and 13:33 UTC (three runs)
+Testing time: 13:18 to 15:26 UTC (several runs)
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
-Tools: adb, jadx, aapt2, apksigner
+Tools: adb, jadx, aapt2, apksigner — plain AOSP build chain, nothing exotic
+Attached PoC APK (declares the two permission names):
+  sha256 41341016be562ea512771983aafaaba34818513299e4d268e84507769fe86de1
+Attached control APK: identical source, declares nothing
 
 ---
 
@@ -71,13 +74,16 @@ them:
 <uses-permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN" />
 ```
 
-It is granted at install, with no prompt and no entry anywhere in the UI, because the
-name is not a real permission:
+The attached PoC declares nothing else — no real Android permission of any kind — so
+everything below is what an app with no capabilities at all can do. Both names are granted
+at install, with no prompt and no entry anywhere in the UI, because neither is a real
+permission:
 
 ```
 $ adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A3 'install permissions'
     install permissions:
       android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN: granted=true
+      com.google.android.settings.setup.dock.RUN_DOCK_SETUP: granted=true
 ```
 
 Both apps then send the same broadcast: action
