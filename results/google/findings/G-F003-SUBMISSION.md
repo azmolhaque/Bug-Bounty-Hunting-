@@ -15,7 +15,9 @@ device defines, and reaching one of them hands any app the signed-in Google acco
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:18 to 17:28 UTC (several runs; all output quoted below is from 17:25 UTC)
+Testing time: 13:18 to 18:17 UTC. The three evidence sections below are all from one run
+at 17:25 UTC; the two cold-start lines are from 18:11 and 18:16 UTC and are labelled where
+they appear.
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
@@ -43,7 +45,9 @@ two permission names joined with a `|`, and `android:permission` takes one name.
 An app can declare those names itself at `protectionLevel="normal"` and is granted them at
 install with no prompt, which makes it the only party on the device that passes either
 guard. Doing so gets it the signed-in Google account out of Google Home, in 65 ms, with no
-user interaction, and it holds no real Android permission to do it.
+user interaction at the time, and it holds no real Android permission to do it. The one
+precondition — that Google Home has been opened since its process was last killed — is
+measured below rather than assumed.
 
 Attached are two APKs built from one source tree that differ only in two `<permission>`
 rows, and the system's own records of what it did about each.
@@ -265,6 +269,42 @@ logcat if you want to see it.
 The two APKs differ in two `<permission>` rows. That is what decides which of them gets
 handed the account.
 
+### One condition, which I went looking for
+
+The account comes back only if Google Home's process already has its account state
+loaded. I tested this rather than assuming it, because "no preconditions" is the kind of
+claim that should be measured.
+
+Straight after `am force-stop com.google.android.apps.chromecast.app`, the delivery still
+arrives and the extras still arrive — but the account is empty:
+
+```
+10-22 00:11:13.308   387   387 I MVRP: DOCK from com.cindrasec.mvrpprobe -> ...FirstDockActivity  (handing over our own IntentSender)
+10-22 00:11:13.698   387   387 I MVRP: SINK in com.cindrasec.mvrpprobe got a delivery, action=com.android.wizard.NEXT
+10-22 00:11:13.699   387   387 I MVRP:   accountName = null
+```
+
+Retrying immediately does not help, and the reason is in `onCreate`: it returns early on a
+recreate ("Not starting FirstDockFluxActivity on recreate"), so the inner flow does not
+run again and `C()` is not called. Three attempts in twelve seconds produced one delivery,
+still null.
+
+Launching Google Home once and pressing the home button is enough. The next attempt
+returns the account:
+
+```
+10-22 00:16:23.319  2195  2195 I MVRP: SINK in com.cindrasec.mvrpprobe got a delivery, action=com.android.wizard.NEXT
+10-22 00:16:23.320  2195  2195 I MVRP:   accountName = "a…m" (String, len=22)
+```
+
+So the condition is that the user has opened Google Home at some point since the phone
+last killed its process — which is true of anyone who has the app for the reason people
+have it. Nothing is required of the user at the moment the attack runs, and nothing tells
+them it did.
+
+(Timestamps in this subsection are 10-22 on the device's local clock, UTC+06:00, which is
+18:11 and 18:16 UTC on 10-21.)
+
 On scope: I checked every Google app I decompiled on this device for the same shape — a
 class that takes an `IntentSender` out of `android.intent.extra.INTENT` and fires it with
 `startIntentSenderForResult`. `FirstDockActivity` is the only one. So this is one
@@ -342,8 +382,10 @@ reachable by any app, and it sits on the path to a physical lock.
 ## Impact
 
 An app the user installs, holding no real Android permission of any kind, obtains the
-Google account signed into Google Home. No user interaction, no prompt, nothing visible
-on screen. That is the concrete gain, and it is the part I demonstrated end to end.
+Google account signed into Google Home. No prompt, no interaction while it runs, nothing
+visible on screen. It needs Google Home to have been opened since its process was last
+killed, which I measured and which holds for anyone who uses the app. That is the concrete
+gain, and it is the part I demonstrated end to end.
 
 It also reaches `LockProximityReceiver`, which means it can make a first-party app run
 its unlock-notification path on data the caller supplies. I did not get a notification
@@ -435,7 +477,8 @@ one image fits, it is that one.
 The source tree goes with them — `poc/lockproximity-poc/`, which is English-only and has
 nothing in it but what this report describes.
 
-Every quoted line above is from the 17:25 UTC run with exactly those two APKs. If either
+Every quoted line above is from the 17:25 UTC run with exactly those two APKs, apart from
+the cold-start subsection, which says so itself. If either
 APK is rebuilt, the hashes change and the quoted output has to be recaptured — the report
 states that the attached files are the ones that produced the output, so that claim has
 to stay true.
