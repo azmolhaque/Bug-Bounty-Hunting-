@@ -61,6 +61,14 @@
                 android:protectionLevel="normal" />
     <uses-permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN" />
 
+    <!-- Google Home-এর দ্বিতীয় অনাথ-পাহারা দেওয়া component:
+         [activity] ...titan.dock.activity.FirstDockActivity
+         সংজ্ঞাদাতা com.google.android.settings.setup.dock — Pixel-only, তাই
+         এই ডিভাইসে অনুপস্থিত। একই app, ভিন্ন permission, একই বাইপাস। -->
+    <permission android:name="com.google.android.settings.setup.dock.RUN_DOCK_SETUP"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="com.google.android.settings.setup.dock.RUN_DOCK_SETUP" />
+
     <!-- ===== দল খ: platform নামস্থান, এই OS সংস্করণে এখনো সংজ্ঞায়িত নয় ===== -->
 
     <!-- GMS-এর GmsAppFunctionService পাহারা দেয় (Tier 1), সাথে Wellbeing
