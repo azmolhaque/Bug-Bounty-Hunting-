@@ -50,12 +50,35 @@ FIX_CLS="${MVRP_FIX_CLS:-FirstDockActivity}"
 [ -d "$SRC" ] || { echo "!! no decompiled sources at $SRC"; exit 1; }
 [ -s "$MAP" ] || { echo "!! no device permission map at $MAP (run mvrp-perms.sh)"; exit 1; }
 
-# permission name -> protection level, from `pm list permissions -f`
+# permission name -> protection level, from `pm list permissions -f -g`.
+#
+# Both shapes have to parse. Without -g the lines read "+ permission:NAME";
+# with -g they are indented "permission:NAME" under a "group:" header. The
+# map is built with -g because without it the grouped permissions — CAMERA,
+# READ_CONTACTS, CALL_PHONE, ACCESS_COARSE_LOCATION — are simply absent, and
+# every guard naming one of them reads as orphaned.
+#
+# Permissions declared by this researcher's own probe apps are skipped. They
+# declare the very names under investigation, so leaving them in makes an
+# orphaned guard look defined.
 declare -A PROT
+SELF_RE="${MVRP_SELF_RE:-^com\.cindrasec\.}"
+cur=""; curpkg=""
 while IFS= read -r line; do
   case "$line" in
-    *"+ permission:"*) cur="${line##*permission:}"; cur="${cur%% *}" ;;
-    *protectionLevel:*) [ -n "${cur:-}" ] && PROT["$cur"]="${line##*protectionLevel:}" ; cur="" ;;
+    group:*) continue ;;
+    *permission:*)
+      cur="${line##*permission:}"; cur="${cur%% *}"; curpkg="" ;;
+    *package:*)
+      [ -n "$cur" ] && { curpkg="${line##*package:}"; curpkg="${curpkg%% *}"; } ;;
+    *protectionLevel:*)
+      if [ -n "$cur" ]; then
+        case "$curpkg" in
+          com.cindrasec.*) ;;
+          *) PROT["$cur"]="${line##*protectionLevel:}" ;;
+        esac
+      fi
+      cur=""; curpkg="" ;;
   esac
 done < <(tr -d '\r' < "$MAP")
 

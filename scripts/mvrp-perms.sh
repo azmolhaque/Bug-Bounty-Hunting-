@@ -26,7 +26,12 @@ command -v adb >/dev/null || { echo "!! adb নেই"; exit 1; }
 
 # ---- ডিভাইসের permission মানচিত্র একবার তোলো ----
 echo "[1/3] device permission map..."
-adb shell pm list permissions -f 2>/dev/null | tr -d '\r' > "$MAP"
+# -g দরকার। `pm list permissions -f` একা চালালে **grouped permission বাদ
+# পড়ে** — CAMERA, READ_CONTACTS, CALL_PHONE, ACCESS_COARSE_LOCATION কোনোটাই
+# আসে না। ফল: ওগুলো "এই ডিভাইসে ঘোষিত নয়" দেখায়, আর platform-এর নিজের
+# permission মিথ্যা করে অনাথ/PLATFORM শ্রেণিতে চলে যায়। এই ত্রুটি
+# mvrp-orphan.sh-এ আগে সারানো হয়েছিল, এখানে রয়ে গিয়েছিল।
+adb shell pm list permissions -f -g 2>/dev/null | tr -d '\r' > "$MAP"
 LINES=$(wc -l < "$MAP")
 echo "      $LINES lines -> $MAP"
 if [ "$LINES" -lt 100 ]; then
@@ -36,7 +41,9 @@ fi
 
 # perm|package|protectionLevel বানাও
 awk '
-  /^\+ permission:/ { if (p!="") print p "|" pk "|" pl; p=substr($0,14); pk=""; pl="" }
+  /^[ \t]*\+?[ \t]*permission:/ {
+      if (p!="") print p "|" pk "|" pl
+      p=$0; sub(/^[ \t]*\+?[ \t]*permission:/,"",p); pk=""; pl=""; next }
   /^[ \t]*package:/        { pk=$0; sub(/^[ \t]*package:/,"",pk) }
   /^[ \t]*protectionLevel:/{ pl=$0; sub(/^[ \t]*protectionLevel:/,"",pl) }
   END { if (p!="") print p "|" pk "|" pl }
@@ -44,6 +51,19 @@ awk '
 
 PARSED=$(wc -l < "$REP/.parsed")
 echo "      parsed $PARSED permissions"
+
+# নিজের probe app যে permission ঘোষণা করে সেগুলো বাদ দাও। না দিলে আমরা যে
+# অনাথ permission খুঁজছি, আমাদের নিজের app সেটা ঘোষণা করে বসে থাকায় সেটা
+# আর অনাথ দেখায় না — আর "সমস্যা মিটে গেছে" বলে মনে হয়।
+SELF_RE="${MVRP_SELF_RE:-^com\.cindrasec\.}"
+SELFN=$(awk -F'|' -v re="$SELF_RE" '$2 ~ re' "$REP/.parsed" | grep -c . || true)
+if [ "$SELFN" -gt 0 ]; then
+  echo "      নিজের app ঘোষিত $SELFN টা permission বাদ দেওয়া হলো ($SELF_RE)"
+  awk -F'|' -v re="$SELF_RE" '$2 !~ re' "$REP/.parsed" > "$REP/.parsed.tmp"
+  mv "$REP/.parsed.tmp" "$REP/.parsed"
+  PARSED=$(wc -l < "$REP/.parsed")
+  echo "      বাকি $PARSED"
+fi
 
 lookup() { grep -m1 "^$1|" "$REP/.parsed" 2>/dev/null; }
 
