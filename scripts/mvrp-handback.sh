@@ -105,8 +105,27 @@ guard_class() {   # guard_class <permission name or empty>
   esac
 }
 
-# Patterns that mean "this component gives the caller something back".
-HANDBACK='android\.intent\.extra\.INTENT|startIntentSenderForResult|IntentSender|ResultReceiver|android\.os\.Messenger|setResult\s*\('
+# What "hands something back" means depends on the kind of component, and the
+# first version only spoke activity. A service's hand-back is the binder it
+# returns from onBind; a provider's is query/openFile/call. Searching every
+# component for setResult and IntentSender missed, among others, the four
+# normal-guarded services in Google Messages — which is the opposite of the
+# point, since those are not orphan-guarded and so are not in the bucket the
+# last report was closed into.
+HB_COMMON='android\.intent\.extra\.INTENT|startIntentSenderForResult|IntentSender|ResultReceiver|android\.os\.Messenger'
+HB_ACTIVITY="$HB_COMMON|setResult\s*\("
+HB_RECEIVER="$HB_COMMON|setResultData|setResultExtras|getResultExtras"
+HB_SERVICE="$HB_COMMON|IBinder +onBind|\.Stub\b|asBinder"
+HB_PROVIDER="$HB_COMMON|public +[A-Za-z<>\[\] ]+ +(query|call|openFile|openAssetFile) *\("
+
+handback_re() {   # handback_re <kind>
+  case "$1" in
+    service)            printf '%s' "$HB_SERVICE" ;;
+    provider)           printf '%s' "$HB_PROVIDER" ;;
+    receiver)           printf '%s' "$HB_RECEIVER" ;;
+    *)                  printf '%s' "$HB_ACTIVITY" ;;
+  esac
+}
 
 scan_pkg() {   # scan_pkg <pkg>  -> lines: GUARD<TAB>kind<TAB>component<TAB>hits
   local pkg="$1"
@@ -142,8 +161,9 @@ scan_pkg() {   # scan_pkg <pkg>  -> lines: GUARD<TAB>kind<TAB>component<TAB>hits
       local f="$srcdir/$rel"
       [ -f "$f" ] || continue
 
-      local hits via
-      hits=$(grep -ohE "$HANDBACK" "$f" 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//')
+      local hits via re
+      re=$(handback_re "$kind")
+      hits=$(grep -ohE "$re" "$f" 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//')
       via=""
 
       # Many exported classes are thin: the component declares nothing and its
@@ -162,7 +182,7 @@ scan_pkg() {   # scan_pkg <pkg>  -> lines: GUARD<TAB>kind<TAB>component<TAB>hits
                  [ -f "$supf" ] || supf="$srcdir/defpackage/$sup.java" ;;
           esac
           if [ -f "$supf" ]; then
-            hits=$(grep -ohE "$HANDBACK" "$supf" 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//')
+            hits=$(grep -ohE "$re" "$supf" 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//')
             [ -n "$hits" ] && via=" (via $sup)"
           fi
         fi
