@@ -1996,3 +1996,32 @@ package defines.
 That is the fourth claim trimmed today rather than inflated, and the pattern in
 all four is the same — the temptation was always to generalise from one
 observation.
+
+### 2026-10-21 — Google Home's exported surface, walked end to end
+
+The orphan-permission work was a side door. The surface dump showed the front
+doors had never been looked at: 290 components, 8 of them exported with no
+permission at all. Each one closed, and the pattern is identical every time —
+the manifest is permissive and the code is not.
+
+| | | |
+|---|---|---|
+| `CameraPreviewProvider` | DROP | Exported, no permission, no `grantUriPermissions`, and it builds `new File(base, uri.getPath())` with no canonical check — a traversal waiting behind the door. The door holds: both `query()` and `openFile()` call `a(getCallingPackage(), uri)`, and that method allows only `com.android.systemui`, `com.google.android.apps.wear.companion` past a signature verifier, or the app itself. `getCallingPackage()` is framework-supplied and cannot be spoofed. |
+| `DeeplinkActivity` → `aarv` webview handler | DROP | `googlehome://webview?url=` requires `https` and exact membership in `{home.google.com, preview.home.google.com, assistant.google.com}`. Same shape as Fitbit's `UrlValidator`, same correctness. Noted but not pursued: `autologin=1` is attacker-settable, which would matter only given an open redirect on one of those three hosts — a different program's problem. |
+| `DeeplinkActivity` → `L(sr)` redirect | DROP, with a real defect inside | Three checks on the redirect intent. Explicit package and explicit component both fall through and block. The third iterates `queryIntentActivities` and, when a result resolves to the app's own package, **only logs** — then `startActivity(a)` runs anyway. The developer wrote the check and forgot to act on it. Unreachable all the same: `L` fires on an activity result, the child is launched by `H()`, and every call to `H()` passes an intent built internally (`bwhnVar.r(intent2)` at 398, `B(...)` at 770 and 782). The attacker's own intent is an input, never the destination. |
+| `SetupProxyActivity` | DROP | Takes `android.intent.extra.INTENT` straight out of its intent and launches it with no validation whatsoever — and is `android:exported="false"`. |
+
+So Google Home contains at least two pieces of unguarded redirect logic, both
+sitting behind doors that are shut. That is now the single most common shape in
+this effort: S43, ProjectorActivity, `SetupProxyActivity`, `L(sr)`. Writing the
+check and not returning, or writing no check and not exporting, both look the
+same from outside.
+
+Still unexamined in this app: `OAuthHandoffActivity`, `AccountLinkingActivity`
+(handles `https`), `MatterSetupProxyActivity`, and the exported
+notification-platform receivers. Recorded rather than guessed at.
+
+**Decision: submit G-F003 as it stands.** Two components, two orphaned guards,
+control-backed differentials, and evidence written by ActivityManager rather
+than by me. Everything else examined today closed, and nothing found today
+changes that report's claim either way.
