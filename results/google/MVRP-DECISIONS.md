@@ -1763,3 +1763,37 @@ never what to claim.
 Still unexamined: the 9 `dangerous`-level guards. A consent prompt is a real
 obstacle, but a malicious app can ask for one under an ordinary pretext, so the
 class is not dead.
+
+### 2026-10-21 — remaining classes closed; G-F003 drafted for submission
+
+`trr.dr()` turned out to build a PendingIntent back to `LockProximityReceiver`
+itself — the app registering its own BLE scan callback. An attacker can make
+Google Home start a scan, which costs battery and nothing else, and the device
+id stays unresolvable. It does not improve G-F003.
+
+The 9 `dangerous`-level guards are closed too: eight are `CALL_PHONE` on Meet's
+call activity-aliases, and an app holding `CALL_PHONE` can already place calls
+directly, so routing one through Meet is not an escalation. The ninth is
+`READ_CONTACTS` on `com.android.exchange.provider.ExchangeDirectoryProvider`,
+which is AOSP and kill-listed to the Android and Google Devices SRP.
+
+`finsky.permission.DSE` appears in only one other manifest, AGSA's, and there
+only as `<uses-permission>` — AGSA requests it, guards nothing with it.
+
+`debugdispatch` (1.0.1 → 1.1.0, 18,760 java files): all four classes clean, with
+the two intent-redirection hits in non-exported components and the dex hit in
+`androidx/profileinstaller`.
+
+So every class is now swept across this corpus and one finding survives.
+
+Drafted `results/google/findings/G-F003-SUBMISSION.md` against
+`REPORTING-STANDARDS.md`, which exists because M018 was closed as Spam for
+reading as polished AI prose with no raw evidence. The draft is first person,
+leads with researcher metadata and the device, pastes both runs' verbatim
+logcat, and states plainly what was *not* done: no notification was posted and
+nothing was unlocked, because the account has no smart lock and the id check is
+server side.
+
+Two items left before sending: a terminal screenshot and the exact installed
+version string. No CVSS argued upward, and no describing the unlock as
+performed.
