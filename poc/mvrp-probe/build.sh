@@ -18,6 +18,15 @@ MANIFEST="${MANIFEST:-AndroidManifest.xml}"
 case "$MANIFEST" in /*) ;; *) MANIFEST="$HERE/$MANIFEST" ;; esac
 [ -f "$MANIFEST" ] || { echo "!! manifest নেই: $MANIFEST"; exit 1; }
 echo "[manifest] $(basename "$MANIFEST")"
+
+# কোন source গাছ। ডিফল্ট এখানকার src/ — তদন্তের যন্ত্র, ৯টা action।
+# রিপোর্টে পাঠানো PoC আলাদা গাছে (../lockproximity-poc/src), ইংরেজিতে,
+# শুধু দুটো action — triager যা পড়বে সেখানে আমার যন্ত্রপাতির নাম থাকা
+# অর্থহীন, আর বাংলা লগ স্ট্রিং dex-এ রয়ে যায়।
+SRC="${SRC:-$HERE/src}"
+case "$SRC" in /*) ;; *) SRC="$HERE/$SRC" ;; esac
+[ -d "$SRC" ] || { echo "!! source গাছ নেই: $SRC"; exit 1; }
+echo "[source]   $SRC"
 BT="${BT:-$HOME/tools/android-14}"
 AJ="${AJ:-$HOME/tools/android.jar}"
 OUT="$HERE/out"
@@ -74,7 +83,7 @@ fi
 rm -rf "$OUT"; mkdir -p "$OUT/classes"
 
 echo "[1/5] javac"
-find "$HERE/src" -name '*.java' > "$OUT/sources.txt"
+find "$SRC" -name '*.java' > "$OUT/sources.txt"
 javac -source 8 -target 8 -nowarn -bootclasspath "$AJ" -cp "$AJ" \
       -d "$OUT/classes" @"$OUT/sources.txt" 2>&1 | grep -v 'bootstrap class path' || true
 

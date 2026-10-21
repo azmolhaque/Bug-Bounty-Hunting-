@@ -56,8 +56,8 @@ START=$(adb shell date +%Y-%m-%d_%H:%M:%S </dev/null 2>/dev/null | tr -d '\r' | 
 echo "রান শুরু (ডিভাইসের ঘড়ি): $START"
 echo
 
-fire() {
-  adb shell am start -n "$1/$ACT" --es action blescan </dev/null >/dev/null 2>&1
+fire() {   # fire <pkg> [action]
+  adb shell am start -n "$1/$ACT" --es action "${2:-broadcast}" </dev/null >/dev/null 2>&1
   sleep 3
   adb shell am force-stop "$1" </dev/null >/dev/null 2>&1
 }
@@ -143,4 +143,47 @@ cat <<'NOTE'
 <permission> সারি। control-এ SKIPPED আর reason-এ Permission Denial,
 poc-এ DELIVERED। ওই দুটো সারি বাদে দুই app অভিন্ন, তাই কারণটা অন্য
 কিছু হতে পারে না।
+NOTE
+
+# ======================================================================
+# দ্বিতীয় component: FirstDockActivity
+#
+# এখানে broadcast-এর মতো নীরব ব্যর্থতা নয় — startActivity() ছোঁড়ে, তাই
+# অস্বীকৃতিটা দুই দিক থেকেই দেখা যায়: app-এর ধরা SecurityException আর
+# ActivityTaskManager-এর নিজের লাইন। দুটোই logcat-এ, তাই আগে clear করে নিই।
+# ======================================================================
+echo
+echo "== দ্বিতীয় component: FirstDockActivity =="
+adb logcat -c </dev/null >/dev/null 2>&1
+
+echo "[1/2] CONTROL চেষ্টা করছে"
+fire "$CTL" activity
+echo "[2/2] POC চেষ্টা করছে"
+fire "$PROBE" activity
+sleep 2
+
+ALOG="$TMP/mvrp-evidence-act-$$.txt"
+adb logcat -d MVRP:I ActivityTaskManager:W '*:S' </dev/null 2>/dev/null \
+  | tr -d '\r' > "$ALOG"
+
+# ---- CONTROL ৪: দুটো app-ই আদৌ চেষ্টা করেছে তো ----
+# STARTACT লাইনে app নিজের package ছাপায়, তাই দুটো আলাদা করে খোঁজা যায়।
+for p in "$CTL" "$PROBE"; do
+  if [ "$(grep -c "STARTACT from $p" "$ALOG")" -eq 0 ]; then
+    echo "!! BROKEN: $p -এর STARTACT লাইন নেই — হয় চালু হয়নি, নয় logcat ধরা পড়েনি।"
+    rm -f "$ALOG"; exit 2
+  fi
+done
+
+grep -E 'STARTACT|startActivity\(\)|SECURITY|Permission Denial' "$ALOG" \
+  | sed 's/^/   /'
+rm -f "$ALOG"
+
+cat <<'NOTE'
+
+== পড়ার নিয়ম ==
+প্রতিটা STARTACT লাইন নিজের package ছাপায়, তাই কোনটা কার তা ক্রম দেখে
+অনুমান করতে হয় না। mvrpctl-এর পরে ActivityTaskManager-এর Permission Denial
+আর app-এর ধরা SECURITY লাইন; mvrpprobe-এর পরে "startActivity() returned,
+no exception"।
 NOTE

@@ -173,10 +173,12 @@ Reproduced twice, minutes apart. Two components, two different permissions, one 
 same bypass — which is why I think the useful fix is an audit rather than a one-line
 change.
 
-The two have different reach. The malformed string can never be held on any device or OS
-version, because it is not a permission name at all. `RUN_DOCK_SETUP` can be held on a
-Pixel, where its defining package exists, and cannot be held anywhere else — so that guard
-is absent on every non-Pixel Android device running this app.
+The two have different reach, and I can only be precise about the first. The malformed
+string can never be held on any device or OS version, because it is not a permission name
+at all. `RUN_DOCK_SETUP` is a normal name that some package is presumably meant to define;
+I did not find that package on this device, and I have not established which devices ship
+it, so all I can say is that on this phone the guard is absent and the activity is
+reachable.
 
 For scope: across 66 decoded Google app manifests on this device there are 159 distinct
 `android:permission` values, and exactly one contains a `|`. I am not claiming the typo is
@@ -261,8 +263,8 @@ adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A3 'install permission
 
 # run each app once; each sends the broadcast described above
 # (the control keeps the original class name, only its package differs)
-adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action blescan
-adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action blescan
+adb shell am start -n com.cindrasec.mvrpctl/com.cindrasec.mvrpprobe.MainActivity   --es action broadcast
+adb shell am start -n com.cindrasec.mvrpprobe/com.cindrasec.mvrpprobe.MainActivity --es action broadcast
 
 # then read the system's own record of both
 adb shell dumpsys activity broadcasts \
@@ -274,7 +276,8 @@ malformed string. No logcat filtering, no timing, and nothing that depends on ho
 chooses to log. The broadcast history keeps older entries too, so take the two records
 with the newest `enqueueClockTime`.
 
-Both APKs and their source are attached.
+Both APKs and the full source are attached. It is one source tree and two manifests; the
+`activity` action in the same app starts the second component described above.
 
 ## Suggested fix
 
