@@ -1,7 +1,7 @@
 # Submission draft — Google Home: exported receiver guarded by a permission that cannot exist
 
 Paste target: https://bughunters.google.com/report (Android / Mobile VRP)
-Status: DRAFT. Two items still missing before sending — see the bottom.
+Status: DRAFT. One item left before sending — a terminal screenshot. See the bottom.
 
 ---
 
@@ -16,8 +16,8 @@ Testing time: 11:44 UTC
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted, no developer
 hacks beyond USB debugging
-App: com.google.android.apps.chromecast.app (Google Home), version as installed from
-Play Store on 2026-10-21
+App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4,
+installed from Play Store
 Tools: adb 35.x, jadx, aapt2, apksigner — plain AOSP build chain, no frameworks
 
 ---
@@ -175,10 +175,6 @@ to repeat and impossible to spot at runtime — it fails closed and looks like i
 
 1. **Terminal screenshot.** REPORTING-STANDARDS requires at least one screenshot of the
    real terminal showing the two runs. Take it with both commands and their output on
-   screen.
-2. **Re-check the version string.** Record the exact Google Home version from
-   `adb shell dumpsys package com.google.android.apps.chromecast.app | grep versionName`
-   and put it in the metadata block.
-
+   screen. This is the only item left.
 Do not add a CVSS score argued upward, and do not describe the unlock as something that
 was performed. The strength here is that every claim has a log line behind it.
