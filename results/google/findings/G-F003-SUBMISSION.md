@@ -12,7 +12,7 @@ device defines, so any app can declare those names and reach both
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:18 to 15:45 UTC (several runs; the output quoted below is 15:41 UTC)
+Testing time: 13:18 to 15:56 UTC (several runs; all output quoted below is from 15:55 UTC)
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
@@ -20,11 +20,11 @@ Tools: adb, jadx, aapt2, apksigner — plain AOSP build chain, nothing exotic
 Attached PoC APK — mvrp-poc.apk, package com.cindrasec.mvrpprobe.
   Declares the two permission names below and nothing else. No real Android
   permission of any kind, so anything it can do, any app can do.
-  sha256 a4ea40f5d42f5bb5c0a1adaf6367523d95da6a8c8dc6675c88e600e7c6815bba
+  sha256 26bfc10213aa3c5251725eea7f0fbb2b64861a0439b4631206da906387e8eb08
 Attached control APK — mvrp-control.apk, package com.cindrasec.mvrpctl.
   Built from the same source with the same key; its manifest declares no
   permissions at all. It is what the "SKIPPED" line below comes from.
-  sha256 1aca408c964125ca446917f3e573d72b6066216a320bfc856214c5e232068020
+  sha256 86996f195a4985eea32a43ace9dec5a3c235ff6ae252a0c55044dc5c6c2d7ec2
 
 Both APKs attached here are the exact files installed on the test device when
 the output below was captured.
@@ -112,24 +112,24 @@ than `00:00:00` is the same offset showing through.)
 **Control app, declares no permissions at all — refused at enqueue:**
 
 ```
-BroadcastRecord{8372a94 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=25087 uid=10569
-enqueueClockTime=2026-10-21 21:41:52.366 dispatchClockTime=1970-01-01 06:00:00.000
-SKIPPED terminal +4h40m49s474ms (-1) #0: (manifest)
-reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=25087, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+BroadcastRecord{f1ce935 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpctl 0:com.cindrasec.mvrpctl/u0a569 pid=795 uid=10569
+enqueueClockTime=2026-10-21 21:55:34.573 dispatchClockTime=1970-01-01 06:00:00.000
+SKIPPED terminal +4h54m31s681ms (-1) #0: (manifest)
+reason: skipped by policy at enqueue: Permission Denial: broadcasting Intent { act=com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED flg=0x10 cmp=com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver (has extras) } from com.cindrasec.mvrpctl (pid=795, uid=10569) to com.google.android.apps.chromecast.app/.remotecontrol.safety.LockProximityReceiver requires android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
 ```
 
-The `+4h40m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still
+The `+4h54m` on that SKIPPED line is not a real duration — `dispatchClockTime` is still
 at the epoch because the broadcast was never dispatched, so the figure is measured from
 a time that was never set.
 
 **PoC app, three seconds later, declares the two names and nothing else — delivered:**
 
 ```
-BroadcastRecord{52cd4a6 com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
-caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=28740 uid=10568
-enqueueClockTime=2026-10-21 21:41:55.621 dispatchClockTime=2026-10-21 21:41:55.621
-DELIVERED scheduled +1ms terminal +9ms (-1) #0: (manifest)
+BroadcastRecord{a404f6c com.google.android.apps.chromecast.app.remotecontrol.safety.action.BLE_SCANNED/u0} to user 0
+caller=com.cindrasec.mvrpprobe 0:com.cindrasec.mvrpprobe/u0a568 pid=854 uid=10568
+enqueueClockTime=2026-10-21 21:55:37.775 dispatchClockTime=2026-10-21 21:55:37.775
+DELIVERED scheduled +5ms terminal +20ms (-1) #0: (manifest)
 reason: remote app
 ```
 
@@ -142,7 +142,9 @@ Google Home's own process also logs a `BluetoothAdapter` line immediately after 
 delivered broadcast — the Bluetooth check at the top of `onReceive` — and nothing after
 the skipped ones. I repeated that comparison 15 times across three sessions, including a
 third branch where nothing was sent at all, and the result was 15/15 for the app with the
-declaration and 0/15 for both the control app and the silent branch.
+declaration and 0/15 for both the control app and the silent branch. Those 15 rounds were
+run with an earlier build of this same code, before I trimmed it down to the attached
+PoC; the broadcast it sends is identical.
 
 ## A second component in the same app, same technique
 
@@ -154,24 +156,25 @@ that guard. I have not identified which package is meant to define it — if it 
 on your test device this second example will not reproduce there, and the first one,
 which cannot be defined anywhere, still stands on its own.
 
-Adding that name to the same probe manifest, and starting the activity from each app:
+The PoC declares that name too, so the same pair of APKs covers both components. Starting
+the activity from each, `MVRP` is the PoC's own tag and `ActivityTaskManager` is the
+framework's (logcat, same run as above, three seconds apart):
 
 ```
-# app that declares com.google.android.settings.setup.dock.RUN_DOCK_SETUP
-I MVRP: STARTACT com.google.android.apps.chromecast.app/...titan.dock.activity.FirstDockActivity
-I MVRP: startActivity() returned, no exception
-
-# identical app that does not
-W ActivityTaskManager: Permission Denial: starting Intent {
-    flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity }
-    from ProcessRecord{... com.cindrasec.mvrpctl/u0a569} (pid=24061, uid=10569)
-    requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
-I MVRP: SECURITY Permission Denial: ... requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+10-21 21:55:43.488   904   904 I MVRP    : STARTACT from com.cindrasec.mvrpctl -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
+10-21 21:55:43.489  2717  3676 W ActivityTaskManager: Permission Denial: starting Intent { flg=0x10000000 cmp=com.google.android.apps.chromecast.app/.titan.dock.activity.FirstDockActivity } from ProcessRecord{8c295a9 904:com.cindrasec.mvrpctl/u0a569} (pid=904, uid=10569) requires com.google.android.settings.setup.dock.RUN_DOCK_SETUP
+10-21 21:55:46.662   943   943 I MVRP    : STARTACT from com.cindrasec.mvrpprobe -> com.google.android.apps.chromecast.app/com.google.android.apps.chromecast.app.titan.dock.activity.FirstDockActivity
+10-21 21:55:46.678   943   943 I MVRP    : startActivity() returned, no exception
 ```
 
-Reproduced twice, minutes apart. Two components, two different permissions, one app, the
-same bypass — which is why I think the useful fix is an audit rather than a one-line
-change.
+The control's attempt is refused a millisecond later and the PoC's is not. Worth noting
+that the control app itself logs nothing after its `STARTACT` line: the denial is recorded
+by the framework, and no exception reached the caller. I did not chase down why, because
+the `ActivityTaskManager` line is written by the system either way and that is what the
+comparison rests on.
+
+Two components, two different permissions, one app, the same bypass — which is why I think
+the useful fix is an audit rather than a one-line change.
 
 The two have different reach, and I can only be precise about the first. The malformed
 string can never be held on any device or OS version, because it is not a permission name
@@ -293,9 +296,17 @@ stops receiving and the guard quietly stops guarding, and neither shows up in te
 
 ## Before sending
 
-Take one screenshot of the terminal showing the `dumpsys activity broadcasts` output with
-both records visible — the DELIVERED one and the SKIPPED one with its Permission Denial
-reason. That single screen is the whole report.
+(Notes to self — not part of the submission.)
+
+Attach three things: `mvrp-poc.apk`, `mvrp-control.apk`, and one screenshot of
+`./scripts/mvrp-evidence.sh` showing both broadcast records and the four logcat lines.
+The source tree goes with them — `poc/lockproximity-poc/`, which is English-only and has
+nothing in it but what this report describes.
+
+Every quoted line above is from the 15:55 UTC run with exactly those two APKs. If either
+APK is rebuilt, the hashes change and the quoted output has to be recaptured — the report
+states that the attached files are the ones that produced the output, so that claim has
+to stay true.
 
 Do not add a CVSS score argued upward. Do not describe the notification or the unlock as
 something that happened. Every sentence above has a log line or a manifest line behind it,

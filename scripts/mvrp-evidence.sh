@@ -183,7 +183,12 @@ cat <<'NOTE'
 
 == পড়ার নিয়ম ==
 প্রতিটা STARTACT লাইন নিজের package ছাপায়, তাই কোনটা কার তা ক্রম দেখে
-অনুমান করতে হয় না। mvrpctl-এর পরে ActivityTaskManager-এর Permission Denial
-আর app-এর ধরা SECURITY লাইন; mvrpprobe-এর পরে "startActivity() returned,
-no exception"।
+অনুমান করতে হয় না। mvrpctl-এর পরে ActivityTaskManager-এর Permission Denial;
+mvrpprobe-এর পরে "startActivity() returned, no exception"।
+
+লক্ষণীয়: control-এর পরে app-এর নিজের কোনো লাইন আসে না — SECURITY-ও নয়।
+অর্থাৎ অস্বীকৃতিটা framework লিখছে, কিন্তু caller-এর কাছে exception হয়ে
+পৌঁছাচ্ছে না। কারণটা খোঁজা হয়নি, দরকারও নেই: তুলনাটা framework-এর
+লাইনের ওপর দাঁড়ানো, app কী ছাপাল তার ওপর নয়। আগে এই নোটে SECURITY লাইন
+আশা করা ছিল — সেটা ভুল ছিল, তাই সরানো হলো।
 NOTE
