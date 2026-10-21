@@ -76,6 +76,12 @@ probe_once() {   # probe_once <pkg> <cls> -> verdict line
   if printf '%s\n' "$out" | grep -q '^.*BOUND '; then
     desc=$(printf '%s\n' "$out" | grep -oE 'descriptor = .*' | tail -1)
     printf 'CONNECTED  %s\n' "${desc:-descriptor unreadable}"
+  elif printf '%s\n' "$out" | grep -qE 'THROWN|SECURITY'; then
+    # bindService does not only return false: with a manifest permission in
+    # the way it throws SecurityException, and the first version of this
+    # script matched neither branch and called that NO-SIGNAL — a refusal
+    # read as a broken probe.
+    printf 'DENIED     %s\n' "$(printf '%s\n' "$out" | grep -oE '(THROWN|SECURITY).*' | tail -1 | cut -c1-110)"
   elif printf '%s\n' "$ret" | grep -q 'true'; then
     printf 'GATE-ONLY  bind accepted, no connection within %ss\n' "$WAIT"
   elif printf '%s\n' "$ret" | grep -q 'false'; then
@@ -91,16 +97,17 @@ echo "# when : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "# wait : ${WAIT}s per target"
 echo
 
-# ---- control 1: a target known to connect ----
-# AGSA's suggest service connects and then refuses every call on its gRPC
-# policy. If this does not come back CONNECTED the probe is not working and
-# every DENIED below would be a lie about the target rather than about us.
-POS=$(probe_once com.google.android.googlequicksearchbox \
-      com.google.android.apps.search.googleapp.search.suggest.plugins.onesearch.server.OneSearchSuggestService)
+# ---- control 1: our own service ----
+# This was AGSA's suggest service, on the grounds that it is known to connect.
+# It is — to a probe that declares the orphaned QSB permission, which this one
+# does not, so the control failed and called the probe broken when the probe
+# was fine. A control has to measure our pipeline, not another app's policy.
+POS=$(probe_once "$PROBE" com.cindrasec.mvrpprobe.SelfService)
 case "$POS" in
-  CONNECTED*) echo "POSITIVE  OneSearchSuggestService -> $POS" ;;
-  *) echo "!! BROKEN: the known-connectable control came back: $POS"
-     echo "!!         Fix the probe before trusting anything below."; exit 2 ;;
+  CONNECTED*) echo "POSITIVE  our own SelfService -> $POS" ;;
+  *) echo "!! BROKEN: binding our own service came back: $POS"
+     echo "!!         am start, onServiceConnected or logcat is not working."
+     echo "!!         Rebuild the probe; it needs SelfService in the manifest."; exit 2 ;;
 esac
 
 # ---- control 2: a class that does not exist ----

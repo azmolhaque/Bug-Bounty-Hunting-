@@ -37,5 +37,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- bindtest-এর control। exported=false: শুধু আমরাই bind করতে পারি,
+             তাই এটা দিয়ে অন্য কারো পাহারা মাপা হচ্ছে না, নিজের যন্ত্র মাপা হচ্ছে। -->
+        <service
+            android:name="com.cindrasec.mvrpprobe.SelfService"
+            android:exported="false" />
     </application>
 </manifest>
