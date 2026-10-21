@@ -1845,3 +1845,46 @@ a sentence saying plainly that I did not reach it.
 
 `G-F003-SUBMISSION.md` rewritten at that claim level. One item outstanding: a
 screenshot of a full `mvrp-ble-diff.sh` run.
+
+### 2026-10-21 — defect 27, and the reason the chain stalls
+
+I wrote that the `LIST_SCAN_RESULT` branch never runs because
+`"Found %d device"` never appeared. That line is written through
+`c.e()`, a low level of Google's logger which release builds suppress; the
+worker line that did appear once came through `a.g()` and reached logcat as W.
+So the missing line proves nothing. Absence read as evidence, for the third
+time today.
+
+Replaced the log with two log-independent observables. `mvrp-work-diff.sh`
+watches the target's JobScheduler entries across the same three branches, since
+a WorkManager enqueue lands there whatever the logger does. Result over three
+rounds: 49 entries before and after, in all three columns. The app already has
+five `androidx.work.systemjobscheduler` jobs, so a new enqueue would have shown.
+
+Putting that together with what does not happen:
+
+- The receiver runs — 15/15 on the Bluetooth check.
+- `hgs_device_id` is readable inside it, because the next line is
+  `stringExtra.getClass()` and a null would NPE and crash the receiver. No crash
+  appears, so the extras Bundle arrived intact.
+- No worker is enqueued, and no job appears.
+
+That isolates the failure to the one condition in between:
+`intent.getParcelableArrayListExtra(...) != null`. Android unparcels extras
+lazily per key, so a `ScanResult` the target cannot reconstruct makes that call
+return **null with no exception and no log** — which is exactly the silence
+observed.
+
+The `ScanResult` was built as `new ScanResult(dev, null, -50, 0L)`, with a null
+`ScanRecord`, because `ScanRecord` has no public constructor and
+`parseFromBytes` is hidden.
+
+Fixed by writing the Parcel by hand in the order `ScanResult.writeToParcel`
+uses and calling `CREATOR.createFromParcel`, which yields a real object with a
+real `ScanRecord`. The advertisement bytes carry company id 76 (`0x004C`)
+deliberately, because the receiver reads exactly that:
+`manufacturerSpecificData.get(76)` feeding `jfl.j("manufacturer_data", ...)`.
+
+The builder logs whether the object came back with a scan record and whether
+company 76 is present, and returns null loudly if the field order does not match
+this OS version, so a failure there cannot masquerade as a quiet negative.

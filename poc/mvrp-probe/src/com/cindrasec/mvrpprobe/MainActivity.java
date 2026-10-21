@@ -357,22 +357,14 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
         b.putExtra("device_name", nm);
         b.putExtra("request_id", 1);
 
-        try {
-            android.bluetooth.BluetoothAdapter ad = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
-            if (ad == null) {
-                Log.i(TAG, "BluetoothAdapter null — ScanResult ছাড়াই পাঠাচ্ছি");
-            } else {
-                android.bluetooth.BluetoothDevice dev = ad.getRemoteDevice("AA:BB:CC:DD:EE:FF");
-                android.bluetooth.le.ScanResult sr =
-                        new android.bluetooth.le.ScanResult(dev, null, -50, 0L);
-                java.util.ArrayList<android.os.Parcelable> list =
-                        new java.util.ArrayList<android.os.Parcelable>();
-                list.add(sr);
-                b.putParcelableArrayListExtra("android.bluetooth.le.extra.LIST_SCAN_RESULT", list);
-                Log.i(TAG, "ScanResult তৈরি হয়েছে (ScanRecord=null)");
-            }
-        } catch (Throwable t) {
-            Log.i(TAG, "ScanResult বানানো গেল না: " + t.getClass().getName() + ": " + t.getMessage());
+        android.bluetooth.le.ScanResult sr = buildScanResult();
+        if (sr != null) {
+            java.util.ArrayList<android.os.Parcelable> list =
+                    new java.util.ArrayList<android.os.Parcelable>();
+            list.add(sr);
+            b.putParcelableArrayListExtra("android.bluetooth.le.extra.LIST_SCAN_RESULT", list);
+        } else {
+            Log.i(TAG, "ScanResult বানানো গেল না — তালিকা ছাড়াই পাঠাচ্ছি");
         }
 
         Log.i(TAG, "BLESCAN -> " + pkg + "/" + cls + "  name=" + nm + " hgs=" + hgs);
@@ -383,6 +375,65 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             Log.i(TAG, "SECURITY " + e.getMessage());
         } catch (Throwable t) {
             Log.i(TAG, "THROWN " + t.getClass().getName() + ": " + t.getMessage());
+        }
+    }
+
+    /**
+     * একটা **বৈধ** ScanResult বানাও, Parcel হাতে লিখে।
+     *
+     * কেন দরকার হলো: `new ScanResult(dev, null, -50, 0L)` দিয়ে বানানো বস্তুর
+     * ScanRecord null। ওপাশে Android lazily unparcel করে, আর তৈরি করতে না
+     * পারলে getParcelableArrayListExtra() **null ফেরায়, নীরবে** — কোনো
+     * exception নয়, কোনো লগ নয়। ফলে receiver-এর list-শাখা কখনো চলে না,
+     * আর বাইরে থেকে সেটা "কিছু ঘটল না"-র মতো দেখায়।
+     *
+     * ScanRecord-এর public constructor নেই আর parseFromBytes @hide, তাই
+     * ScanResult.writeToParcel যে ক্রমে ক্ষেত্র লেখে সেই ক্রমে একটা Parcel
+     * ভরে CREATOR.createFromParcel() দিয়ে বস্তুটা তৈরি করা হচ্ছে।
+     *
+     * advertisement বাইটে ইচ্ছে করে company id 76 (0x004C) বসানো, কারণ
+     * LockProximityReceiver ঠিক ওটাই পড়ে:
+     *     manufacturerSpecificData.get(76)  ->  jfl.j("manufacturer_data", ...)
+     *
+     * ক্রম ব্যর্থ হলে (OS সংস্করণ ভেদে ক্ষেত্র বদলাতে পারে) createFromParcel
+     * ছুঁড়ে ফেলবে, আর আমরা সেটা লগে বলে null ফেরাব — নীরব ব্যর্থতা নয়।
+     */
+    private android.bluetooth.le.ScanResult buildScanResult() {
+        android.os.Parcel p = android.os.Parcel.obtain();
+        try {
+            // BluetoothDevice: writeToParcel = writeString(address)
+            p.writeInt(1);
+            p.writeString("AA:BB:CC:DD:EE:FF");
+            // ScanRecord: দৈর্ঘ্য-প্রিফিক্সড AD structure, manufacturer specific (0xFF)
+            //   05 FF 4C 00 01 02  ->  len=5, type=0xFF, company=0x004C (little endian), data=01 02
+            byte[] adv = new byte[] { 0x05, (byte) 0xFF, 0x4C, 0x00, 0x01, 0x02 };
+            p.writeInt(1);
+            p.writeByteArray(adv);
+            p.writeInt(-50);     // rssi
+            p.writeLong(0L);     // timestampNanos
+            p.writeInt(0);       // eventType
+            p.writeInt(1);       // primaryPhy
+            p.writeInt(0);       // secondaryPhy
+            p.writeInt(255);     // advertisingSid  (SID_NOT_PRESENT)
+            p.writeInt(127);     // txPower         (TX_POWER_NOT_PRESENT)
+            p.writeInt(0);       // periodicAdvertisingInterval
+            p.setDataPosition(0);
+            android.bluetooth.le.ScanResult sr =
+                    android.bluetooth.le.ScanResult.CREATOR.createFromParcel(p);
+            Object rec = sr.getScanRecord();
+            Log.i(TAG, "ScanResult parcel থেকে তৈরি — scanRecord=" + (rec == null ? "null" : "আছে")
+                       + " rssi=" + sr.getRssi());
+            if (rec != null) {
+                android.util.SparseArray<byte[]> m =
+                        ((android.bluetooth.le.ScanRecord) rec).getManufacturerSpecificData();
+                Log.i(TAG, "  manufacturerData[76]=" + (m != null && m.get(76) != null ? "আছে" : "নেই"));
+            }
+            return sr;
+        } catch (Throwable t) {
+            Log.i(TAG, "parcel থেকে ScanResult ব্যর্থ: " + t.getClass().getName() + ": " + t.getMessage());
+            return null;
+        } finally {
+            p.recycle();
         }
     }
 
