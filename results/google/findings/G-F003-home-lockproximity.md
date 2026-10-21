@@ -1,7 +1,13 @@
 # G-F003 — Google Home: exported receiver guarded by an impossible permission
 
-**Status: boundary crossing demonstrated. Severity depends on one open question.**
-**Not submitted yet.**
+**Status: SUBMITTED 2026-10-21. Issue 576322789 (buganizer).**
+https://issuetracker.google.com/issues/576322789
+Intake state: Type Customer Issue, P4/S4, Status New, unassigned — the default
+landing state, not a triage verdict.
+
+**The open question was answered, and it moved the finding.** Reaching the second
+component turned out to be worth something concrete: `FirstDockActivity` hands the
+caller the signed-in Google account. See section 9.
 
 Target: `com.google.android.apps.chromecast.app` (Google Home), Tier 2.
 Device: moto g stylus 5G (2024), Android 15 / API 35, unrooted, stock.
@@ -185,3 +191,60 @@ Replace the single malformed attribute with one real permission name, or drop
 `android:permission` and verify the caller in `onReceive`. The current value can
 never be held by the intended sender, so the feature it guards does not work
 either.
+
+
+---
+
+## 9. What reaching the second component is worth (added 2026-10-21, late)
+
+`FirstDockActivity` is one side of a Setup Wizard handoff. `C(sr)` reads an
+`IntentSender` out of `android.intent.extra.INTENT` on the intent that started
+it, merges an `accountName` extra holding the signed-in account into a
+`com.android.wizard.NEXT` intent, and fires it at that IntentSender. The guard
+`RUN_DOCK_SETUP` is what should hold that to the Setup Wizard; nothing on this
+device defines it.
+
+Measured, with the PoC handing over a PendingIntent of its own and a
+non-exported receiver catching the result:
+
+    SINK in com.cindrasec.mvrpprobe got a delivery, action=com.android.wizard.NEXT
+      accountName = "a…m" (String, len=22)
+
+73 ms from `startActivity()`, no interaction, no prompt. The control APK is
+refused at `startActivity` and receives nothing.
+
+**Precondition, measured rather than assumed:** straight after force-stopping
+Google Home the delivery still arrives but `accountName` is null, and retrying
+inside twelve seconds does not help — `onCreate` returns early on a recreate.
+Launching Home once is enough. So the condition is that Home has been opened
+since its process was last killed.
+
+**Not claimed:** the unlock (read from code, never performed), a background
+start (untested, Android restricts it), and `RUN_DOCK_SETUP` being absent on
+every device (only measured here).
+
+## 10. Severity
+
+CVSS 3.1: **4.0 Medium** — `AV:L/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N`.
+Local vector because the attacker app is installed on the device; no privileges
+because the app holds no real permission; no user interaction at the time of the
+attack; confidentiality Low because what crosses is an account identifier.
+
+Mobile VRP does not use CVSS. Its matrix applies: Google Home is **Tier 2** (Tier 1
+is Google Play Services, AGSA, Google Cloud and Gmail only), scenario 3 (user
+installs a malicious app). That puts this in the THEFT column at roughly $4,500 if
+the account identifier is accepted as sensitive data, and the OTHER column at
+roughly $2,250 if it is not. I had this wrong in conversation as Tier 1.
+
+## 11. Submission package
+
+| | sha256 |
+|---|---|
+| `mvrp-poc.apk` | `7e7ef501d9be335a1e01acf9996a3c59e7538bdc60bc14870a1667ba58fabf9d` |
+| `mvrp-control.apk` | `d59cfc29ab66c850eb3bc7a94685739cd77a4b8700875aa82db99c9756b34346` |
+| `lockproximity-poc-src.zip` | `b18ba6420c26b203f499f2653c9b5b8545a2f7ae394527f0f482d69fe675328c` |
+| `evidence.txt` | `65cb53fbcc32a41004035b3484087f063236c841be4743f014982baea135959b` |
+
+Plus two terminal screenshots and `reproduction-and-remediation.md`. Body sent in
+three parts because the form's description field caps at 20,000 characters:
+`G-F003-PROBLEM.md`, `G-F003-IMPACT.md`, and the remainder as that attachment.

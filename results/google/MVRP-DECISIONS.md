@@ -2127,3 +2127,37 @@ And the differential command's `head -6` was consumed by two duplicate control
 records, so the probe's `DELIVERED` line never appeared. The run looked like a
 failure and was a display truncation. Same shape as the morning's defects:
 reading a window as the world.
+
+### 2026-10-21 — G-F003 submitted: Issue 576322789
+
+https://issuetracker.google.com/issues/576322789 — Mobile VRP, Permissions Bypass,
+private, no planned public disclosure. Intake landed at Type Customer Issue, P4/S4,
+Status New, unassigned; that is where intake puts everything, not a verdict.
+
+What went in: the two orphaned guards in Google Home, the broadcast differential from
+ActivityManager's own history, the activity denial, and the account handed to the
+caller's IntentSender. Seven attachments, four of them hashed in the report body.
+
+Three things this last stretch taught me, all of them the same lesson in different
+clothes:
+
+**Reachability is not the finding.** I measured that `FirstDockActivity` was reachable
+and stopped there, and logged it as a second example of the same bypass. It took the
+user asking "is there any way to raise impact" for me to read what the component
+actually does once reached — and it hands over the signed-in account. The finding went
+from a reachable component to a demonstrated account disclosure on the strength of one
+question I had not asked.
+
+**Claims I never measured kept surviving into the report.** A log line I had translated
+into English and quoted as verbatim output. A `SECURITY` line the control app does not
+print. "No preconditions", when a cold start returns null. "66 decoded manifests" when
+the corpus had grown to 132. Tier 1 when Google Home is Tier 2. Each was caught by going
+back and measuring, never by re-reading what I had written.
+
+**Silent truncation looks like success.** The form's description field caps at 20,000
+characters and cut the paste mid-word, dropping the reproduction steps and the
+remediation. Nothing warned. It was visible only because the user sent the saved page
+and I counted the characters that had actually landed.
+
+Still open, for a later session: GMS `IntrusionDetectionEventTransportService` (connects,
+Chimera-loaded binder, protocol unknown), and `business/fb-business-audit/`, never started.
