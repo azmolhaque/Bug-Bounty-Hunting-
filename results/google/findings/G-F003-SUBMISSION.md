@@ -42,12 +42,14 @@ and no package on the device defines a permission called
 
 That breaks the guard in both directions:
 
-1. Nothing can hold it, so the intended protection never applies to any legitimate
-   caller either — including the system's BLE scan delivery, which is what this
-   receiver exists to receive.
-2. Because no package defines that name, a third-party app can declare it itself at
-   `protectionLevel="normal"`, request it, and be granted it at install with no user
-   prompt. That app then becomes the only party on the device able to reach the receiver.
+Because no package defines that name, a third-party app can declare it itself at
+`protectionLevel="normal"`, request it, and be granted it at install with no user prompt.
+It then passes the check that every other unprivileged app fails.
+
+The app's own scan deliveries are unaffected, because they arrive through a `PendingIntent`
+the app created and are therefore sent under its own identity. So the guard stops ordinary
+apps, as intended, and stops nothing else — the one case it was written to prevent is the
+one case it allows.
 
 ## What I demonstrated
 
@@ -158,10 +160,6 @@ that the manifest intends to protect, and make the app execute code on data the 
 supplies. No user interaction and no prompt. Nothing in the app's permission list would
 look unusual to a reviewer either, since the declared name is not a real permission and
 so does not appear as a capability anywhere in the UI.
-
-Separately, the feature itself appears to be broken in production: the system cannot hold
-that permission name either, so genuine BLE scan deliveries to this receiver should also
-be refused.
 
 ## Reproduction
 
