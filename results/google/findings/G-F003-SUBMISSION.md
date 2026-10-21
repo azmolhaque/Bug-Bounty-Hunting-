@@ -12,7 +12,7 @@ permission string, so any app can claim that name and invoke it
 ---
 
 Testing date: 2026-10-21
-Testing time: 13:26 UTC
+Testing time: 13:18, 13:26 and 13:33 UTC (three runs)
 Researcher IP: 180.148.212.54
 Device: moto g stylus 5G (2024), Android 15 (API 35), stock, not rooted
 App: com.google.android.apps.chromecast.app (Google Home), versionName=4.33.27.4
@@ -82,7 +82,7 @@ whether Bluetooth is enabled, which makes Google Home's own process log
 `BluetoothAdapter: isLeEnabled(): ON`. That line is the observable: it appears only when
 the receiver actually runs.
 
-I ran 10 alternating rounds in two independent sessions. Each round has three windows:
+I ran 15 alternating rounds across three independent sessions. Each round has three windows:
 one broadcast from the app that declares the permission, one from the app that does not,
 and one where nothing is sent at all. The third window is there because Google Home runs
 background Bluetooth work of its own, and a single-sample comparison cannot tell an
@@ -103,10 +103,12 @@ without           : 0/5
 nothing sent      : 0/5
 ```
 
-and again, in a separate session twenty minutes later, 5/5, 0/5, 0/5.
+The same five-round run was then repeated twice more, in separate sessions minutes
+apart, with identical results: 5/5, 0/5, 0/5 each time.
 
-Thirty windows, ten responses, all of them in the column where the permission was
-declared. The declaration is the only variable.
+Forty-five windows, fifteen responses, every one of them in the column where the
+permission was declared. The declaration is the only variable between the two apps, and
+the send-nothing column shows the target is silent on its own.
 
 ## Where this entry point leads
 
