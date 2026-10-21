@@ -1638,3 +1638,45 @@ Rationale for the whole approach, carried over from yesterday's conclusion:
 56 surfaces closed because of crowding rather than capability, and a fresh
 release lifts that crowd for a few days. Looking only at what changed is the
 one place where arriving first is still possible.
+
+### 2026-10-21 — defect 25: the instrument changed what it measures
+
+Today's orphan sweep reported 3 orphans where yesterday's reported 16, and the
+drop was my own doing. The probe app is still installed and *declares* all seven
+orphaned permissions at `protectionLevel="normal"` — that declaration is the
+experiment. So `pm list permissions` now reports them as defined, by the
+attacker.
+
+The most deceptive species yet: the new reading looks like the problem went
+away, and without noticing I would have written "16 down to 3, Google fixed it".
+
+Fixed by subtracting permissions whose *only* definer matches the probe's
+package prefix, with a `NOTE` line in the controls saying how many were
+excluded and where the list is. Verified on a fixture: a probe-only permission
+is dropped, while a platform permission and one co-defined by GMS are kept.
+
+### 2026-10-21 — a real manifest error in Google Home
+
+Of the three orphans that survive the correction, one is not a
+device-configuration artifact but a bug in the app's own manifest:
+
+    *** ORPHANED  android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN
+        guarding: [receiver] com.google.android.apps.chromecast.app
+                             .remotecontrol.safety.LockProximityReceiver
+
+`android:permission` takes exactly one permission name. The developer wrote two
+separated by `|`, apparently intending "either of these". Android reads the
+whole string as a single permission name, and no such permission exists — so the
+receiver is guarded by a lock whose key was never minted.
+
+Unlike the Pixel-Launcher and API-36 orphans, this does not depend on which
+device or OS version is running: it is a manifest error that ships to every
+install of Google Home.
+
+The package path is `remotecontrol.safety` and the class is `LockProximityReceiver`,
+which points at smart-lock proximity handling. Whether an attacker gains
+anything is the usual third question and is not yet answered — yesterday's
+differential showed this receiver as ACCEPTED both with and without the
+permission, but `sendBroadcast` does not throw and a denial may be logged
+outside the capture window, so that measurement is weak for receivers and needs
+redoing.

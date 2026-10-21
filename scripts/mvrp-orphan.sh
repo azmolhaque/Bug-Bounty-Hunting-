@@ -64,6 +64,23 @@ DEFSET="$REP/defined-names.txt"
   adb shell pm list permissions 2>/dev/null </dev/null | tr -d '\r' \
     | sed -n 's/^[[:space:]]*permission:\(.*\)$/\1/p'
 } | grep -v '^$' | sort -u > "$DEFSET"
+
+# ---- যন্ত্র নিজেই পরীক্ষিত বস্তুকে বদলে ফেলেছে ----
+# আক্রমণকারী probe app অনাথ permission গুলো **ঘোষণা করে** (সেটাই তো পরীক্ষা)।
+# ফলে পরের রানে pm ওগুলোকে "সংজ্ঞায়িত" বলে — সংজ্ঞাদাতা আমরা নিজেরা।
+# একবার ১৬টা অনাথ ৩-এ নেমেছিল, আর পাঠটা দেখতে "সমস্যা মিটে গেছে"-র মতো।
+# তাই কেবল-আমাদের-সংজ্ঞায়িত নামগুলো বাদ: ওগুলো আসলে এখনো অনাথ।
+SELF_RE="${MVRP_SELF_RE:-^com\.cindrasec\.}"
+SELFONLY="$REP/self-only.txt"
+awk -F'\t' -v re="$SELF_RE" '
+  $2 ~ re { self[$1]=1; next }
+  { other[$1]=1 }
+  END { for (n in self) if (!(n in other)) print n }
+' "$DEF" | sort -u > "$SELFONLY"
+NSELF=$(grep -c . "$SELFONLY")
+if [ "$NSELF" -gt 0 ]; then
+  grep -vxF -f "$SELFONLY" "$DEFSET" > "$DEFSET.tmp" && mv "$DEFSET.tmp" "$DEFSET"
+fi
 NDEF=$(wc -l < "$DEFSET")
 
 {
@@ -93,6 +110,10 @@ if grep -qx 'com.cindrasec.definitely.not.a.real.permission' "$DEFSET"; then
   echo "!! BROKEN: বানানো permission-ও সংজ্ঞায়িত দেখাচ্ছে"; exit 2
 fi
 echo "POSITIVE  বানানো permission ORPHANED হিসেবেই থাকছে"
+if [ "$NSELF" -gt 0 ]; then
+  echo "NOTE      $NSELF টা permission কেবল probe app ($SELF_RE) সংজ্ঞায়িত করে —"
+  echo "          বাদ দেওয়া হলো, কারণ ওগুলো আসলে এখনো অনাথ। তালিকা: $SELFONLY"
+fi
 echo
 
 # ---------- প্রতিটা manifest ----------
