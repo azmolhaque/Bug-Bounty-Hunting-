@@ -1680,3 +1680,44 @@ differential showed this receiver as ACCEPTED both with and without the
 permission, but `sendBroadcast` does not throw and a denial may be logged
 outside the capture window, so that measurement is weak for receivers and needs
 redoing.
+
+### 2026-10-21 — G-F003: the first demonstrated boundary crossing in this effort
+
+Google Home guards `LockProximityReceiver` with
+`android:permission="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN"`.
+The attribute takes one name; two were written joined by a pipe. Android reads
+the whole string as one permission name that nothing defines, so the guard fails
+closed for every legitimate caller — and opens exclusively for any app that
+declares that name itself, which yesterday's work proved is granted at install.
+
+With a control, measured not assumed:
+
+    attacker build: W HomeApp|LockProximityNotificationWorker: Device not found   (pid 6860 = Google Home)
+    control build:  nothing
+
+Identical source, identical intent; the permission declaration is the only
+variable. Broadcasts fail silently, so the control's *absence* of Google Home's
+own log line is the measurement.
+
+This is not a precondition. An app holding no real permissions caused code to run
+inside Google Home with its own data, and Google's log says so.
+
+Reading the chain further: the worker resolves the attacker's `hgs_device_id`
+against the victim's account, and for a device with a lock trait posts an unlock
+notification carrying attacker-chosen `request_id` and `manufacturer_data`, whose
+tap target enqueues `LockProximityUnlockWorker` — whose whole body is the unlock
+call. `LockProximityUnlockActivity` is not exported, so the unlock needs the
+user's tap; that caps the severity and rules out claiming a no-interaction
+unlock.
+
+Our canary id returned "Device not found": the server rejected an id not on the
+account. So the notification and the unlock are **read, not performed**, and the
+report must say exactly that.
+
+Written up as `results/google/findings/G-F003-home-lockproximity.md` with the
+verbatim logs, the decompiled chain, repro steps and remediation.
+
+**The open question that decides severity:** whether an attacker can obtain a
+valid `hgs_device_id` for a victim's lock. Also noted but untested: a valid and
+an invalid id take visibly different paths, which makes the receiver a candidate
+id oracle.
