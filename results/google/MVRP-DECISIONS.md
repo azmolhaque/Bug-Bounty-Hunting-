@@ -1797,3 +1797,51 @@ server side.
 Two items left before sending: a terminal screenshot and the exact installed
 version string. No CVSS argued upward, and no describing the unlock as
 performed.
+
+### 2026-10-21 — defect 26, the worst one, and the finding that survived it
+
+G-F003's evidence was a single observation: Google Home's notification worker
+logged 0.77s after the attacker app's broadcast and not after the control's. I
+wrote a submission draft on it and told the operator we had a valid bug.
+
+It never reproduced. Google Home does periodic BLE work of its own, and that
+line was almost certainly coincidence. A control that runs **once** cannot
+separate an effect from background activity — having a control is not the same
+as having enough of one.
+
+This is the same error the previous twenty-five defects all taught, made on the
+one result I wanted to be true. It was caught before sending, which is the only
+thing that makes it recoverable: a report closed as "cannot reproduce" would
+have cost more platform signal than the Spam close did.
+
+`mvrp-ble-diff.sh` is the fix: N alternating rounds of attacker, control, and a
+**send-nothing baseline**, counting what the target logs in each window. The
+baseline is the piece that was missing — if the target writes on its own, it
+shows up in all three columns.
+
+Under it, with Bluetooth on, in two independent sessions twenty minutes apart:
+
+    with permission : 5/5 and 5/5
+    without         : 0/5 and 0/5
+    nothing sent    : 0/5 and 0/5
+
+Thirty windows, ten responses, every one in the column where the permission was
+declared. The observable is `BluetoothAdapter: isLeEnabled(): ON` from Google
+Home's PID, which is the `trr.ds()` check at the top of `onReceive` — it appears
+only when the receiver actually runs.
+
+With Bluetooth off, all three columns read zero, including the attacker's. That
+is inconclusive rather than negative: with Bluetooth off the adapter is never
+touched, so the observable disappears along with the branch. The worker's own
+`Device not found` did not appear either, so the `LIST_SCAN_RESULT` branch is
+genuinely not being reached — why, is unresolved, and chasing it would be more
+guessing.
+
+**So the finding survives, smaller and solid.** The claim is now exactly what
+ten rounds support: the guard is void, an unprivileged app reaches the receiver,
+Google Home executes `onReceive`, and an identical app without the declaration
+does not. The notification and unlock chain is in the report as code read, with
+a sentence saying plainly that I did not reach it.
+
+`G-F003-SUBMISSION.md` rewritten at that claim level. One item outstanding: a
+screenshot of a full `mvrp-ble-diff.sh` run.
