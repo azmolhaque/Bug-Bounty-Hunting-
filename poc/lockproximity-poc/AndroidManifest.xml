@@ -45,5 +45,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Where anything sent to this app's IntentSender arrives. Not
+          exported: it is reachable only through the PendingIntent this app
+          creates, which carries this app's own identity.
+        -->
+        <receiver
+            android:name="com.cindrasec.mvrpprobe.SinkReceiver"
+            android:exported="false" />
     </application>
 </manifest>

