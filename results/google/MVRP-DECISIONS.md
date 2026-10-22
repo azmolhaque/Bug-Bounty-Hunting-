@@ -2392,3 +2392,44 @@ And the Messages service is now a live lead on the latest OS rather than a
 forward-compatibility curiosity. Next: declare that name on the Android 16
 device and see whether the bind connects, and if it does, what the binder
 hands over. Reaching it is still only a precondition.
+
+### 2026-10-23 — the Messages transport service: a crash, not a finding
+
+Declared BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE alone in a probe, installed
+on the Android 16 device, and bound to
+com.google.android.apps.messaging.shared.telephony.rcsupgrade.BugleAlternativeMessageTransportService.
+
+    install permissions: ...BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE: granted=true
+    bindService() returned true, no connection
+
+So the manifest guard is bypassed on the latest OS — the name is undefined,
+we declare it, we are granted it. That part reproduces.
+
+What happens instead of a connection, from logcat:
+
+    E dczv: Caused by: java.lang.NoClassDefFoundError
+    E dczv:   at android.service.messaging.AlternativeMessageTransportService.<clinit>
+    I ActivityManager: Showing crash dialog for package com.google.android.apps.messaging
+
+The base class is absent on Android 16 too, so the service cannot instantiate
+and Google Messages crashes. An app holding no real permission can crash
+Messages on the latest Android by binding to an exported component.
+
+**Not reporting it.** The attacker gets nothing — no data, no token, no
+execution. Mobile VRP pays for arbitrary code execution, theft of sensitive
+data, and the "other" column of things like path traversal and intent
+redirection. A crash is none of them, CLAUDE.md 2.1 says the same, and 0.3
+rules out DoS outright.
+
+The tempting framing is "crash it in a loop and block RCS, including 2FA
+codes". That is still availability, and several of this account's fifteen
+closures came from exactly that kind of argument — a story that sounds like
+impact and does not land in the table.
+
+What it does settle: permission undefined and class absent together mean the
+feature has not shipped. G-F003's sentence about these resolving at Android 16
+was wrong about the mechanism for this one, and the corrected note in the
+finding files now says so.
+
+Do not re-run the bind casually. It crashes a real app on a real phone, and
+there is nothing further to learn from repeating it.
