@@ -2309,3 +2309,26 @@ guard existed but did not run. The first was Photos, where an allowlist
 turned out to pick a telemetry label.
 
 Recording it as a precondition, not a finding (CLAUDE.md 2.6). Dropping it.
+
+### 2026-10-22 — a human confirmed the duplicate, and corrected my inference
+
+Comment #5, from a person rather than the bot: 1469 is "a generic identifier
+we use for duplicate reports, rather than a specific report ID", they cannot
+share details of other researchers' reports, and "we can confirm that this is
+indeed a duplicate".
+
+The scoping question was asked once and answered. Nothing further to send;
+re-arguing a rejection with the same evidence is how reputation gets spent.
+
+**What I got wrong, and it changed strategy.** When the close arrived I read
+the shared canonical ID as meaning the whole class — orphaned permission
+guards in Google apps — was known and filed, and advised dropping that axis
+and deprioritising ORPHAN hits in the hand-back sweep. That inference rested
+on 1469 being class-specific. It is not; it is a generic marker used across
+unrelated duplicates. So the only thing established is that this particular
+finding had been reported before. Whether the class is exhausted is unknown,
+and I presented a guess as a conclusion.
+
+The deprioritisation in mvrp-handback.sh stands on its own merits — NONE and
+NORMAL guards are not device-specific the way an orphan is — but the reason I
+gave for it was wrong.
