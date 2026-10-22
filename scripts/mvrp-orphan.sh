@@ -87,6 +87,12 @@ NDEF=$(wc -l < "$DEFSET")
 echo "# orphaned permission sweep"
 echo "# when   : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "# device : $(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r') / Android $(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r')"
+# দুই ফোন একসাথে লাগানো থাকলে এই দুটো লাইনই একমাত্র প্রমাণ যে manifest আর
+# permission map একই ডিভাইস থেকে এসেছে। ANDROID_SERIAL ভুল হলে A16-এর
+# manifest আর A15-এর permission map মিলে বানানো "অনাথ" পাওয়া যাবে, আর সেটা
+# নীরবে ঘটবে। mvrp-orphan-diff.sh এই দুটো লাইন পড়ে তুলনা আটকায়।
+echo "# serial : $(adb get-serialno 2>/dev/null | tr -d '\r')"
+echo "# source : $OUT"
 echo
 
 # ---------- CONTROL ----------
