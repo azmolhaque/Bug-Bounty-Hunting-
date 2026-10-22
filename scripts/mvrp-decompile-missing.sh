@@ -34,7 +34,13 @@ TODO=()
 while IFS= read -r d; do
   pkg="$(basename "$d")"
   tree="$SRC/$pkg/sources"
-  if [ -d "$tree" ] && [ "$(javacount "$tree")" -gt "$MIN_JAVA" ]; then continue; fi
+  # A completion marker, not a file count. Counting cannot tell a finished
+  # tree from one jadx was halfway through when the power went out, and the
+  # second kind gets skipped on the next run and then read as a measured zero.
+  # Trees from before this marker existed are still trusted on their count.
+  if [ -f "$SRC/$pkg/.jadx-complete" ]; then continue; fi
+  if [ -d "$tree" ] && [ ! -f "$SRC/$pkg/.jadx-started" ] \
+     && [ "$(javacount "$tree")" -gt "$MIN_JAVA" ]; then continue; fi
   # Prefer base.apk; some pulls land a single apk under another name.
   apk="$APK/$pkg/base.apk"
   if [ ! -f "$apk" ]; then
@@ -55,10 +61,12 @@ for e in "${TODO[@]}"; do
   echo "[$n/${#TODO[@]}] $pkg  ($(date -u +%H:%M:%SZ))"
   # -r skips resources: the manifests are already decoded and resources are
   # most of the wall clock on big apps.
+  mkdir -p "$SRC/$pkg"; : > "$SRC/$pkg/.jadx-started"
   "$JADX" -r -d "$SRC/$pkg" "$apk" > "$SRC/$pkg.jadx.log" 2>&1
   rc=$?
   c=$(find "$SRC/$pkg/sources" -name '*.java' 2>/dev/null | grep -c . )
   if [ "$c" -gt "$MIN_JAVA" ]; then
+    : > "$SRC/$pkg/.jadx-complete"; rm -f "$SRC/$pkg/.jadx-started"
     echo "      ok   $c java files (exit $rc)"
   else
     echo "      THIN $c java files (exit $rc) — see $SRC/$pkg.jadx.log"
