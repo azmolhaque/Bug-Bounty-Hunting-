@@ -2657,3 +2657,56 @@ One tool change: `poc/mvrp-probe/build.sh` only ever linked a manifest, so no
 PoC could reference a resource. A `WallpaperService` must point at an XML
 resource through meta-data, so the builder now takes an optional `RES` tree and
 an `OUT` override. Without `RES` it behaves exactly as before.
+
+### 2026-10-23 — S58 CROSSED. A permissionless app set the wallpaper component on Android 16.
+
+First demonstrated crossing of this effort. Device ZT422724JR, moto g 2026,
+Android 16 — the latest available OS, which is what the rules require.
+
+Attacker build holds exactly one permission, the orphaned one, and says so from
+the device's own records:
+
+    com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER: granted=true
+    WPPOC: guard permission com.google.pixel.livewallpaper...DOWNLOAD_LIVE_WALLPAPER
+    WPPOC:   held by me: true
+    WPPOC:   SET_WALLPAPER_COMPONENT held by me: false
+    WPPOC: current live wallpaper: none (static image)
+    WPPOC: asking for component com.fitbit.FitbitMobile/...StepsWallpaperService, restore_target=0
+    WPPOC: built WallpaperInfo for com.fitbit.FitbitMobile/...StepsWallpaperService
+    WPPOC: broadcast sent to com.google.android.apps.wallpaper/...DownloadableRestorer
+
+and the system's own records of what followed:
+
+    ActivityManager: Start proc 31426:com.google.android.apps.wallpaper/u0a394
+        for broadcast {com.google.android.apps.wallpaper/...module.DownloadableRestorer}
+    ActivityManager: Start proc 31461:com.fitbit.FitbitMobile/u0a466
+        for service {com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}
+
+    mWallpaperComponent=ComponentInfo{com.fitbit.FitbitMobile/...StepsWallpaperService}
+
+The control build — same code, same target, same command, no permission —
+produced neither line and left `mWallpaperComponent` on
+`com.android.systemui/...ImageWallpaper`.
+
+So the privileged app performed `setWallpaperComponentWithFlags` with a
+component chosen by a caller that cannot hold `SET_WALLPAPER_COMPONENT`.
+
+Two things to be careful about, written down now rather than at report time:
+
+**No `Permission Denial` line appeared in the control run.** I predicted one and
+it did not come. What the control actually shows is that the receiver's process
+was never started and the wallpaper did not change — which is evidence, but it
+is different evidence, and the report will say the second thing. G-F003 already
+cost one correction for quoting a line that never appeared; it will not cost a
+second.
+
+**Only one of the three `mWallpaperComponent` entries changed.** `restore_target=0`
+is the home screen, and that is exactly what moved. The claim is the home-screen
+engine, not the lock screen, until `restore_target=2` is tried.
+
+Still open before this is report-ready:
+- capture the control's refusal from unfiltered logcat, or state its absence
+- the canary build, for whether the attacker's own code is started this way
+- `restore_target=2`, for whether this reaches the lock screen
+- confirm the Wallpapers app is Google LLC's and settle its tier
+- re-run from a clean state to show it reproduces
