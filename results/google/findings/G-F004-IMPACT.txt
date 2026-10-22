@@ -1,0 +1,63 @@
+IMPACT
+
+An app that holds no permission a user would ever be asked about gains a
+capability that is `signature|privileged`:
+
+- It chooses which `WallpaperService` the system runs, including its own. The
+  system then starts that service and restarts it at boot, which gives the app
+  a long-running process it is not otherwise entitled to, with no foreground
+  service notification and no user involvement. A force stop does end it, so
+  this is persistence across reboots rather than something the user cannot
+  undo.
+- It can replace the user's wallpaper with any installed wallpaper service.
+- The wallpaper surface is full-screen behind the home screen, so whatever the
+  attacker's engine draws is displayed there.
+
+The user installs the app and opens it once. They are not prompted for any
+permission at any point, and nothing else is asked of them.
+
+WHAT I DID NOT DEMONSTRATE
+
+- **No lock screen.** I sent `restore_target=2`, which is the "both" value, and
+  only the home-screen entry in `dumpsys wallpaper` changed. I am reporting
+  that as an observation and not explaining it: the mechanism I first wrote
+  down came from a different build of the app than the one on this device.
+- **No access to anyone's data.** Nothing was read from any other app, and the
+  test wallpaper draws one flat colour.
+- **Not silent.** The wallpaper visibly changes, so a user looking at the home
+  screen can see that something happened.
+- **Sent from the foreground.** My PoC sends the broadcast from an activity, so
+  the app is running in the foreground when it fires. I have not tested
+  sending it from a background component such as a boot receiver, so I am not
+  claiming it works without the app being opened.
+- **Pixel behaviour unknown.** The permission name suggests it is defined by
+  `com.google.pixel.livewallpaper`, and that package is absent from both
+  devices I tested:
+
+  ```
+  $ adb shell pm path com.google.pixel.livewallpaper
+  $ adb shell pm list packages | grep -i pixel.livewallpaper
+  $
+  ```
+
+  (nothing, on both serials). The app also still contains the client code that
+  would talk to it — `IpcDownloadableService` binds
+  `com.google.pixel.livewallpaper/.split.DownloadService` — so the guard looks
+  like it was written for a device where that package exists. I have not
+  checked a Pixel, so I cannot say whether the guard works there; I can only
+  say it does not work here.
+
+ROOT CAUSE AND SUGGESTED FIX
+
+The receiver depends on a permission defined by a package that is not present
+on these devices, so the declared guard has no effect: any app can define the
+name itself at `normal` and be granted it.
+
+Two things would need to change:
+
+1. The receiver should not be exported, or should be guarded by a permission
+   the Wallpapers app itself defines at `signature`, so the name cannot be
+   claimed by a third party.
+2. The handler should not pass a caller-supplied `ComponentName` to
+   `setWallpaperComponentWithFlags`. If the restore path must accept one, it
+   should verify the sending package before acting on it.
