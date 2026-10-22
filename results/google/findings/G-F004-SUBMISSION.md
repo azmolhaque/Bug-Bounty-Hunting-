@@ -12,7 +12,7 @@
 
 - [x] external IP: `180.148.212.54`
 - [ ] screenshot of the terminal showing the control run and the attacker run
-- [ ] attach `poc/wallpaper-restore-poc/` as a zip (sources + the three manifests)
+- [ ] attach the zip — sources, three manifests, AND the three built APKs
 - [ ] re-read: does any sentence claim something not in the pasted output?
 
 ---
@@ -117,6 +117,20 @@ So an app that holds no real permission can make a privileged app perform a
 `signature|privileged` action with an argument of the attacker's choosing.
 
 ## Reproduction
+
+**Check this first, or the PoC will look broken.** The guard only fails on a
+device where no package defines the permission. Run:
+
+```
+adb shell pm list permissions -f -g | grep -A5 'permission:com.google.pixel.livewallpaper'
+```
+
+If that prints nothing, you are on an affected device and the steps below
+work. If it prints a package and a `protectionLevel`, that device defines the
+permission and my app cannot claim it — both of my builds will then fail
+identically, which is the guard working, not the PoC failing. Both devices I
+have print nothing, and `com.google.pixel.livewallpaper` is not installed on
+either.
 
 Two APKs, built from one source tree. They differ in one thing: whether the
 manifest declares the orphaned permission. Same code, same broadcast, same
