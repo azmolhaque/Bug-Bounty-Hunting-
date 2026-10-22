@@ -3200,3 +3200,46 @@ matters, and an explicit "no call logged" when it is absent.
 The lesson is not "avoid grep -q". It is that a fix recorded in one file's
 comments does not travel to the next file, and the screenshot is the one
 artifact nobody re-reads before attaching.
+
+### 2026-10-23 — G-F004 submitted 05:12, closed 05:17. Duplicate of 1469. Again.
+
+Issue 576807381. Five minutes from submission to close, same marker as
+G-F003 (576322789), P4, "Customer Issue".
+
+Nobody read it. Five minutes does not cover a 13,000-character report, three
+attachments and a two-device differential. The report was bucketed.
+
+**The conclusion, stated plainly: the orphaned-permission class is closed for
+this program.** Two findings that share nothing but the class — different app,
+different component, different sink, different impact — landed on the same
+marker. 1469 was already known to be generic; a human confirmed that after
+G-F003. So the marker covers the class, and the quality of the report is not
+the variable. No further report in this class is worth writing.
+
+**My failure, and it is the expensive kind.** G-F003 closed as duplicate of
+1469 on 2026-10-22. I was told 1469 is generic. I then spent the following
+night building a second report in the same class — tooling, PoC, five
+verification rounds, a dedup search of *public* sources — without once asking
+the question that mattered: what does 1469 cover? The dedup I ran checked
+CVEs and writeups. The duplicate that actually killed this was the one sitting
+in our own history, one line above, in this file.
+
+Every verification round improved the report and not one of them tested the
+assumption the whole effort rested on: that a well-built report in this class
+could be rewarded. That assumption had already been falsified once.
+
+What to carry:
+
+- Dedup means the program's own closes first, the public record second. A
+  marker that closed your last report is the first thing to check against the
+  next one, before any work begins.
+- A fast close is information about the class, not about the report. Reading
+  it as "they didn't read it properly" keeps you in the class; reading it as
+  "the class is bucketed" gets you out.
+- The quality work was not wasted and was also not the point. Six surfaces
+  closed, four instrument defects fixed, a method that produces measured
+  claims with controls. All of that transfers. The class does not.
+
+Mobile VRP standing: 2 submissions, 2 duplicates of the same generic marker,
+0 rewards. Per CLAUDE.md section 2, two closes means stop and rebuild rather
+than file a third in the same shape.
