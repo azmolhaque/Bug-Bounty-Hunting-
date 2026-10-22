@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Attacker build.
+  Attacker build, minimal.
 
   It declares one permission that no package on the device defines:
 
@@ -20,9 +20,12 @@
   SET_WALLPAPER, and above all no SET_WALLPAPER_COMPONENT, which is
   signature|privileged and is the permission the receiver's work actually needs.
 
-  The wallpaper service below is the canary. It is this app's own code, and the
-  point of the test is whether the system can be made to start it as the live
-  wallpaper by a caller that holds no permission entitling it to choose one.
+  This build carries no wallpaper service of its own. It aims the receiver at a
+  wallpaper service already installed on the device, which is all that is
+  needed to answer the question "can a permissionless caller choose the live
+  wallpaper component". AndroidManifest.canary.xml adds this app's own service,
+  for the second question: whether the attacker's code is then started by the
+  system.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cindrasec.wallpaperpoc">
@@ -59,17 +62,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <service
-            android:name="com.cindrasec.wallpaperpoc.CanaryWallpaperService"
-            android:permission="android.permission.BIND_WALLPAPER"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.wallpaper"
-                android:resource="@xml/canary_wallpaper" />
-        </service>
     </application>
 </manifest>

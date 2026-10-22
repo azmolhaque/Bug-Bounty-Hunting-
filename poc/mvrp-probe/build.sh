@@ -23,10 +23,17 @@ echo "[manifest] $(basename "$MANIFEST")"
 # রিপোর্টে পাঠানো PoC আলাদা গাছে (../lockproximity-poc/src), ইংরেজিতে,
 # শুধু দুটো action — triager যা পড়বে সেখানে আমার যন্ত্রপাতির নাম থাকা
 # অর্থহীন, আর বাংলা লগ স্ট্রিং dex-এ রয়ে যায়।
+# একাধিক source root দেওয়া যায়, ফাঁকা দিয়ে আলাদা করে। দরকার হলো কারণ
+# একই কোড থেকে দুটো build বানাতে হয় যেখানে একটায় বাড়তি একটা component
+# থাকে — সেই ক্লাসগুলো src/ এ রাখলে দুই build-এই compile হতো।
 SRC="${SRC:-$HERE/src}"
-case "$SRC" in /*) ;; *) SRC="$HERE/$SRC" ;; esac
-[ -d "$SRC" ] || { echo "!! source গাছ নেই: $SRC"; exit 1; }
-echo "[source]   $SRC"
+SRCDIRS=()
+for d in $SRC; do
+  case "$d" in /*) ;; *) d="$HERE/$d" ;; esac
+  [ -d "$d" ] || { echo "!! source গাছ নেই: $d"; exit 1; }
+  SRCDIRS+=("$d")
+done
+echo "[source]   ${SRCDIRS[*]}"
 # res/ গাছ — ঐচ্ছিক। আগে এই builder শুধু manifest link করত, তাই
 # `@xml/...` বা `@drawable/...` রেফারেন্স করা যেত না। WallpaperService-এর
 # meta-data-র জন্য একটা xml resource বাধ্যতামূলক, তাই RES দিলে aapt2 compile
@@ -94,7 +101,7 @@ fi
 rm -rf "$OUT"; mkdir -p "$OUT/classes"
 
 echo "[1/5] javac"
-find "$SRC" -name '*.java' > "$OUT/sources.txt"
+find "${SRCDIRS[@]}" -name '*.java' > "$OUT/sources.txt"
 # `| grep ... || true` ছিল এখানে, আর সেটা javac-এর ব্যর্থতা গিলে ফেলত:
 # compile error-এও বিল্ড "সফল" বলে এগোত, d8 পুরনো বা অসম্পূর্ণ class নিয়ে
 # APK বানাত, আর ডিভাইসে অকেজো app বসত। একটা duplicate variable ঠিক এভাবেই
@@ -109,7 +116,9 @@ grep -v 'bootstrap class path' "$OUT/javac.err" || true
 
 echo "[2/5] d8"
 find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
-"$D8" --lib "$AJ" --min-api 24 --output "$OUT" @"$OUT/classes.txt"
+# D8FLAGS দিয়ে বাড়তি পতাকা পাঠানো যায়। d8 নিজে ভেতরের ত্রুটিতে মরলে
+# (javac পাস করার পরেও "internal error") প্রথম চেষ্টা: D8FLAGS=--no-desugaring
+"$D8" --lib "$AJ" --min-api 24 ${D8FLAGS:-} --output "$OUT" @"$OUT/classes.txt"
 
 echo "[3/5] aapt2 link"
 # PKG দিলে manifest-এর package নাম বদলায় (ক্লাসের নাম নয়) — একই কোড ভিন্ন

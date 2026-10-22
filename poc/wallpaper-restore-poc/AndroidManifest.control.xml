@@ -3,14 +3,13 @@
   Control build. Identical to the attacker manifest except that it does not
   declare, and does not request, the orphaned permission.
 
-  Same code, same canary service, same broadcast. The only variable between the
-  two runs is the permission, so a difference in outcome can only be caused by
-  it. A result from the attacker build alone proves nothing: the receiver might
-  simply be open to everyone, and then there is no permission bypass to report.
+  Same code, same broadcast, same target component. The only variable between
+  the two runs is the permission, so a difference in outcome can only be caused
+  by it. A result from the attacker build alone proves nothing: the receiver
+  might simply be open to everyone, and then there is no permission bypass to
+  report.
 
-  Build it with a different package name so both can be installed at once:
-
-      PKG=com.cindrasec.wallpaperctl MANIFEST=AndroidManifest.control.xml ./build.sh
+      ./build.sh control
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cindrasec.wallpaperpoc">
@@ -37,17 +36,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <service
-            android:name="com.cindrasec.wallpaperpoc.CanaryWallpaperService"
-            android:permission="android.permission.BIND_WALLPAPER"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.wallpaper"
-                android:resource="@xml/canary_wallpaper" />
-        </service>
     </application>
 </manifest>
