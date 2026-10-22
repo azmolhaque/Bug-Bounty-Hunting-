@@ -269,6 +269,10 @@ broadcast. That is the framework's own record of a privileged app making the
 `SET_WALLPAPER_COMPONENT`-gated call with a component chosen by an app that
 does not hold that permission, and then the system binding to it.
 
+The attached transcript and screenshot are a fourth run, at 22:37:44Z, which
+also resolves the pid: `callingPid 7074 belongs to:
+com.google.android.apps.wallpaper`.
+
 Reproduced twice more. At 21:42:13Z / 21:43:04Z from a clean state — both apps
 uninstalled, rebuilt and reinstalled, following the steps above verbatim —
 with `setWallpaperComponent ... callingPid = 1094` preceded by
