@@ -28,7 +28,7 @@ echo "G-F004  Google Wallpapers: unprivileged app chooses the live wallpaper com
 echo "tester  Md. Azmol Haque Rony <azmolhaque95@gmail.com>  IP $(curl -s --max-time 5 ifconfig.me || echo '?')"
 echo "when    $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "device  $(dev getprop ro.product.model) / Android $(dev getprop ro.build.version.release) / $(adb get-serialno | tr -d '\r')"
-echo "app     $DEPUTY  versionName=$(dev dumpsys package $DEPUTY | grep -m1 versionName | tr -d ' ')"
+echo "app     $DEPUTY  $(dev dumpsys package $DEPUTY | grep -m1 versionName | tr -d ' ')"
 echo
 
 echo "[1] the guard names a permission the platform does not define; my app does, at normal"
@@ -38,10 +38,13 @@ echo
 echo "[2] the call behind it is signature|privileged, the deputy has it, my app does not"
 dev pm list permissions -f -g | grep -A4 'permission:android.permission.SET_WALLPAPER_COMPONENT' \
   | grep -E 'permission:|package:|protectionLevel:' | sed 's/^/    /'
-printf '    %-32s holds it: ' "$DEPUTY"
-dev dumpsys package $DEPUTY | grep -q 'SET_WALLPAPER_COMPONENT: granted=true' && echo yes || echo no
-printf '    %-32s holds it: ' "$ATT"
-dev dumpsys package $ATT | grep -q 'SET_WALLPAPER_COMPONENT: granted=true' && echo yes || echo no
+# grep -c, not grep -q: -q exits on the first match, the pipe breaks, tr dies on
+# SIGPIPE and `set -o pipefail` turns the whole pipeline into a failure. That
+# printed "the deputy does not hold SET_WALLPAPER_COMPONENT", which is the
+# opposite of the truth. The same bug was found and fixed in build.sh once.
+holds() { [ "$(dev dumpsys package "$1" | grep -c 'SET_WALLPAPER_COMPONENT: granted=true')" -gt 0 ] && echo yes || echo no; }
+printf '    %-36s holds it: %s\n' "$DEPUTY" "$(holds $DEPUTY)"
+printf '    %-36s holds it: %s\n' "$ATT"    "$(holds $ATT)"
 echo
 
 echo "[3] the two builds differ in that permission and nothing else"
@@ -66,10 +69,17 @@ run() {   # run <label> <package>
   adb logcat -d -s WPPOC 2>/dev/null | grep -E 'held by me|asking for component' | sed 's/.*WPPOC *: */    /'
   echo "    before  $before"
   echo "    after   $after   (${i}s)"
-  adb logcat -d 2>/dev/null | grep -E 'WallpaperManagerService: setWallpaperComponent name=' \
-    | sed 's/.*setWallpaperComponent/    framework: setWallpaperComponent/' | head -1
-  adb logcat -d 2>/dev/null | grep -cE 'Start proc .*com.google.android.apps.wallpaper.*DownloadableRestorer' \
-    | sed 's/^/    receiver process started: /'
+  # Only the framework's own line counts. A "Start proc" counter was here and
+  # printed 0 for a successful run, because the Wallpapers process was already
+  # alive from an earlier run — a zero that meant "already running", read as
+  # "never ran".
+  local fw
+  fw=$(adb logcat -d 2>/dev/null | grep -m1 'WallpaperManagerService: setWallpaperComponent name=')
+  if [ -n "$fw" ]; then
+    printf '%s\n' "$fw" | sed 's/.*setWallpaperComponent/    framework: setWallpaperComponent/'
+  else
+    echo "    framework: no setWallpaperComponent call logged"
+  fi
 }
 
 # The target must not already be set, or neither run proves anything.

@@ -3161,3 +3161,42 @@ persistence held, the code quotes were wrong about the build and were
 replaced, force-stop resistance was disproved and is now denied in the report,
 the Pixel package's absence was confirmed, and the control's permission-free
 state was proved with a control of its own.
+
+### 2026-10-23 — defect 31: the evidence script said the opposite of the truth, in the screenshot
+
+The transcript written for the report's screenshot printed:
+
+    com.google.android.apps.wallpaper holds it: no
+
+The deputy does hold `SET_WALLPAPER_COMPONENT` — measured an hour earlier,
+`granted=true`, and the whole report rests on it. Had that screenshot been
+attached, a triager's first act would have been to notice the evidence
+contradicting the claim.
+
+Cause, reproduced rather than guessed:
+
+    big() { printf 'granted=true\n'; yes padding | head -200000; }
+    big | tr -d '\r' | grep -q 'granted=true' && echo yes || echo no   ->  no
+    [ "$(big | tr -d '\r' | grep -c 'granted=true')" -gt 0 ]           ->  yes
+
+`grep -q` exits at the first match, the pipe breaks, `tr` dies on SIGPIPE, and
+`set -o pipefail` makes the pipeline fail. Small streams finish before grep
+exits, which is why a quick test of the same construct passes — the bug needs
+a big `dumpsys` to appear.
+
+**This exact bug was found and fixed in `poc/mvrp-probe/build.sh` earlier in
+this project**, where `unzip -l | grep -q 'resources.arsc'` made a good
+android.jar look like a classes-only stub. The fix there was `grep -c`, with a
+comment explaining why. I then wrote `grep -q` again in a new script.
+
+Two more defects in the same output: `versionName=versionName=16` from a label
+printed twice, and `receiver process started: 0` on a *successful* run,
+because the Wallpapers process was already alive from an earlier run and no
+new `Start proc` line was logged. The second is the dangerous kind — a zero
+that meant "already running" presented as "never ran". Replaced with the
+framework's own `setWallpaperComponent` line, which is the thing that actually
+matters, and an explicit "no call logged" when it is absent.
+
+The lesson is not "avoid grep -q". It is that a fix recorded in one file's
+comments does not travel to the next file, and the screenshot is the one
+artifact nobody re-reads before attaching.
