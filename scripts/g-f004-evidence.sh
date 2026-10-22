@@ -77,6 +77,16 @@ run() {   # run <label> <package>
   fw=$(adb logcat -d 2>/dev/null | grep -m1 'WallpaperManagerService: setWallpaperComponent name=')
   if [ -n "$fw" ]; then
     printf '%s\n' "$fw" | sed 's/.*setWallpaperComponent/    framework: setWallpaperComponent/'
+    # Name the caller. callingPid is the line that carries the whole claim, and
+    # it means nothing until the process behind it is identified. The "Start
+    # proc" line does that only when the receiver's process was not already
+    # alive, which is most of the time false after the first run.
+    local pid owner
+    pid=$(printf '%s\n' "$fw" | sed -n 's/.*callingPid = \([0-9]*\).*/\1/p')
+    if [ -n "$pid" ]; then
+      owner=$(dev ps -A | awk -v p="$pid" '$2==p {print $NF}')
+      echo "    callingPid $pid belongs to: ${owner:-(process has since exited)}"
+    fi
   else
     echo "    framework: no setWallpaperComponent call logged"
   fi
