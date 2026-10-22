@@ -223,6 +223,10 @@ broadcast. That is the framework's own record of a privileged app making the
 `SET_WALLPAPER_COMPONENT`-gated call with a component chosen by an app that
 does not hold that permission, and then the system binding to it.
 
+The APKs in the attached zip are the ones I tested: I unpacked the zip,
+installed from it, and ran the pair again at 22:06:27Z and 22:07:17Z —
+control unchanged for 45 seconds, attacker in 2 seconds, same framework lines.
+
 I repeated the whole thing an hour later from a clean state — both apps
 uninstalled, rebuilt and reinstalled, following the steps above verbatim — and
 got the same pair: control unchanged for the full 45 seconds at 21:42:13Z,
