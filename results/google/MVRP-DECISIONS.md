@@ -2773,3 +2773,48 @@ rather than assert how Pixels behave.
 Still to do before submitting: reproduce from a clean install, check whether it
 survives a reboot, and run the same pair on the Android 15 phone so the report
 can say which versions it was seen on.
+
+### 2026-10-23 — defect 28: I recorded a reproducibility failure that was my own stopwatch
+
+The clean-state run was written down as "did not reproduce": broadcast sent,
+`sleep 3`, `dumpsys` still showed `ImageWallpaper`. It had not failed. Three
+minutes later, with nothing else having touched that phone, the next run opened
+with
+
+    WPPOC: current live wallpaper: com.cindrasec.wallpapercan/...CanaryWallpaperService
+
+so the change had landed, late. A freshly installed app plus a cold start of
+the Wallpapers app takes longer than three seconds, and a fixed sleep measures
+the sleep rather than the device.
+
+This is the same family as defects 13 and 23: a weak instrument given a strong
+reading. It is worse than those because the reading was negative — I was about
+to tell the user the finding did not meet our own reproducibility bar and to go
+hunting for a non-existent precondition.
+
+`run-poc.sh` replaces the sleep with a poll to a deadline, and prints the
+framework's own lines either way.
+
+And those lines are the best evidence in the whole finding, better than
+anything the PoC logs about itself:
+
+    WallpaperManagerService: setWallpaperComponent
+        name=ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService},
+        which = 1; callingPid = 14942
+    WallpaperManagerService: bindWallpaperComponentLocked:
+        componentName=ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+
+`callingPid` is the Wallpapers app's process. The system is recording that a
+privileged app made the `SET_WALLPAPER_COMPONENT`-gated call with a component
+chosen by an app that holds no such permission. The report leads with this
+rather than with our own log.
+
+Two smaller facts from the same runs: repeating the attack when it is already
+in place gives `Changing to the same component, ignoring`, so a repeat run is
+not a second proof; and `Cannot extract colors because wallpaper could not be
+read` is the canary having no bitmap, not an error in the attack.
+
+Confirmed so far: Android 16 (ZT422724JR) and Android 15 (ZD222W5X3R), two
+different Motorola models, and the component survives a reboot — after
+`adb reboot` the canary was still the home wallpaper, so the system starts the
+attacker's code again at every boot.
