@@ -2818,3 +2818,46 @@ Confirmed so far: Android 16 (ZT422724JR) and Android 15 (ZD222W5X3R), two
 different Motorola models, and the component survives a reboot — after
 `adb reboot` the canary was still the home wallpaper, so the system starts the
 attacker's code again at every boot.
+
+### 2026-10-23 — defect 29: my own instrument produced a false positive, on the control
+
+The clean-state pair ran, and `run-poc.sh` printed for the **control** build:
+
+    RESULT  component changed: ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+                            -> ComponentInfo{com.android.systemui/...ImageWallpaper}
+
+A control that "works" would have killed the finding — it would mean the
+receiver is open to everyone and there is no permission bypass. It did not
+work. The framework's lines say what actually happened:
+
+    WallpaperManagerService: clearWallpaperLocked which = 1; userId = 0
+    WallpaperManagerService: setWallpaperComponent name=null, which = 1; callingPid = 1767
+    WallpaperManagerService: bindWallpaperComponentLocked: componentName=null
+    WPMS.onServiceConnected-ComponentInfo{com.android.systemui/...ImageWallpaper}
+
+`name=null` and `callingPid = 1767` — system_server, not the Wallpapers app.
+The canary package had just been uninstalled while it was the live wallpaper,
+so the system was clearing it and falling back to the default, and that landed
+inside the same few seconds as the control's broadcast. The control's actual
+request, the Fitbit service, was never set.
+
+The defect is in the question I asked: "did the component change" instead of
+"is the component now the one that was requested". Fixed — the script polls for
+the requested component, and a change to anything else now prints as *not* the
+attack, naming this exact cause.
+
+Three instrument defects in two days (27, 28, 29) and all three the same shape:
+a weaker question than the one that matters, with a confident answer. The
+pattern to watch for is a script that reports a difference rather than a
+destination.
+
+The canary run in the same pair was clean and is the one to quote:
+
+    before : ComponentInfo{com.android.systemui/...ImageWallpaper}
+    after  : ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+    WPMS.onServiceConnected-ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+    WPMS.connectLocked-ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+    WPPOC: canary engine created by the system: uid=10541 pid=16798
+
+Still needed: a control run from a settled state, so its "unchanged" is not
+competing with the system tearing down an uninstalled package.

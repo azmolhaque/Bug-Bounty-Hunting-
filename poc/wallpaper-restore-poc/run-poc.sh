@@ -54,8 +54,21 @@ if ! adb shell pm path "$PKG" 2>/dev/null </dev/null | grep -q package:; then
   exit 1
 fi
 
+# What this run asked for. Comparing against this, rather than against "did
+# anything change", is the difference between a result and a false positive:
+# a control run once reported "component changed" because the system was
+# clearing an uninstalled package's wallpaper at that moment
+# (setWallpaperComponent name=null, callingPid = system_server), which has
+# nothing to do with the broadcast and is not the attack working.
+if [ -n "$TARGET" ]; then
+  EXPECT="ComponentInfo{$TARGET}"
+else
+  EXPECT="ComponentInfo{$PKG/com.cindrasec.wallpaperpoc.CanaryWallpaperService}"
+fi
+
 BEFORE="$(comp)"
 echo "before : $BEFORE"
+echo "asked  : $EXPECT"
 
 adb logcat -c
 if [ -n "$TARGET" ]; then
@@ -66,11 +79,11 @@ else
       --es action set >/dev/null 2>&1
 fi
 
-# ---- poll, do not sleep ----
-CHANGED=0
+# ---- poll for the requested component, do not sleep ----
+GOT=0
 for i in $(seq 1 "$DEADLINE"); do
   AFTER="$(comp)"
-  if [ -n "$AFTER" ] && [ "$AFTER" != "$BEFORE" ]; then CHANGED=1; break; fi
+  if [ "$AFTER" = "$EXPECT" ]; then GOT=1; break; fi
   sleep 1
 done
 echo "after  : ${AFTER:-?}      (waited ${i}s of ${DEADLINE}s)"
@@ -90,17 +103,29 @@ else
 fi
 echo
 
-if [ "$CHANGED" -eq 1 ]; then
-  echo "RESULT  component changed: $BEFORE"
-  echo "                        -> $AFTER"
+if [ "$GOT" -eq 1 ]; then
+  echo "RESULT  the requested component is now the home wallpaper (after ${i}s)"
+  echo "          $BEFORE"
+  echo "       -> $AFTER"
   echo
-  echo "That is the device's own report, not this script's opinion. Whether it"
-  echo "means anything depends on which build was run: from the control build"
-  echo "it would mean the receiver is open to everyone and there is no bypass."
+  echo "That is the device's own report, not this script's opinion. What it means"
+  echo "depends on the build: from the control it would mean the receiver is open"
+  echo "to everyone and there is no bypass to report."
+elif [ "$AFTER" != "$BEFORE" ]; then
+  echo "RESULT  the component changed, but NOT to what was asked for."
+  echo "          $BEFORE"
+  echo "       -> $AFTER"
+  echo "       asked for $EXPECT"
+  echo
+  echo "This is not the attack working. Read the setWallpaperComponent line above:"
+  echo "name=null with callingPid of system_server is the framework clearing an"
+  echo "uninstalled package's wallpaper and falling back to the default, which can"
+  echo "land in the same few seconds and look like a result."
 else
-  echo "RESULT  no change within ${DEADLINE}s."
+  echo "RESULT  unchanged after ${DEADLINE}s: $AFTER"
   echo
-  echo "For the control build that is the expected outcome. For an attacker"
-  echo "build, check the framework lines above before calling it a failure —"
-  echo "'Changing to the same component, ignoring' means it was already set."
+  echo "For the control build that is the expected outcome. For an attacker build,"
+  echo "check the framework lines above before calling it a failure — 'Changing to"
+  echo "the same component, ignoring' means it was already set, so the run proved"
+  echo "nothing and the wallpaper has to be set to something else first."
 fi
