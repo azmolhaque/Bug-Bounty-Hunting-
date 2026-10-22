@@ -2332,3 +2332,31 @@ and I presented a guess as a conclusion.
 The deprioritisation in mvrp-handback.sh stands on its own merits — NONE and
 NORMAL guards are not device-specific the way an orphan is — but the reason I
 gave for it was wrong.
+
+### 2026-10-22 — the AppSheet SSRF was ruled Duplicate, not WAI
+
+Reading the full thread on 525815004:
+
+- Jun 20: submitted (twice, as 525815004 and 525815219)
+- Jul 4: an internal AI triage note was published to the thread by mistake —
+  "WAI Status: WAI / Duplicate Bug ID: 377539803 / Assessed Severity: LOW /
+  Recommendation: DISQUALIFY"
+- Jul 6: Google retracted it: a configuration error in their tooling, the note
+  "does not represent a final decision", the report was still open
+- Sep 21: closed by the Cloud VRP team as Duplicate of 1469
+
+So the official outcome is Duplicate. The twin, 525815219, is still open at
+P2/New four months on.
+
+Our kill list in CLAUDE.md cited this as "AppSheet SSRF → WAI", which took the
+retracted AI note as the verdict. That entry has been steering decisions since
+— it would have us drop a connector SSRF on the grounds that Google ruled the
+class intended, which Google never did. Corrected to cite the real outcome and
+keep the heuristic on its own merits.
+
+Worth noticing what a retracted machine judgement cost: it sat in our rules as
+fact for three months because it was written down once and never checked
+against the thread it came from.
+
+Standing instruction from this: do not touch AppSheet connector SSRF. One copy
+is still open at P2 and anything further there duplicates our own report.
