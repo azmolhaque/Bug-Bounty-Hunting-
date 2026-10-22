@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One permission, nothing else.
+
+  BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE guards an exported service in
+  Google Messages:
+
+      com.google.android.apps.messaging.shared.telephony.rcsupgrade
+          .BugleAlternativeMessageTransportService
+
+  G-F003 said that name was an API 36 permission and would be defined once the
+  device reached Android 16. Measured on an Android 16 device, it is not:
+
+      android.permission.BIND_APP_FUNCTION_SERVICE                        defined, signature
+      android.permission.BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE defined, signature
+      android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE       still undefined
+
+  So on the latest Android, that guard names a permission nothing declares,
+  and this app declares it at protectionLevel="normal" to be granted it at
+  install.
+
+  Deliberately only this one. The orphan manifest declares nine, which was
+  right for a sweep and wrong here: a result has to be attributable to one
+  name. SelfService is kept because mvrp-bindtest.sh binds it as its control.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cindrasec.mvrpprobe">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+    </queries>
+
+    <permission android:name="android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE" />
+
+    <application
+        android:label="mvrp-amt"
+        android:allowBackup="false"
+        android:hasCode="true">
+        <activity
+            android:name="com.cindrasec.mvrpprobe.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- the bind test's positive control: our own binder -->
+        <service
+            android:name="com.cindrasec.mvrpprobe.SelfService"
+            android:exported="false" />
+    </application>
+</manifest>
