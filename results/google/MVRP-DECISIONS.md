@@ -2433,3 +2433,26 @@ finding files now says so.
 
 Do not re-run the bind casually. It crashes a real app on a real phone, and
 there is nothing further to learn from repeating it.
+
+### 2026-10-23 — `env VAR=~/path` does not expand the tilde in zsh
+
+The Android 16 pull reported "52 package টানা হলো -> ~/mvrp16/apk" and
+~/mvrp16/apk did not exist. The files were real — 169 APKs, 2.7 GB — sitting
+in a directory literally named `~` inside the repository.
+
+zsh expands a leading tilde in an assignment prefix (`MVRP_OUT=~/x cmd`) but
+not in an ordinary argument, and `env MVRP_OUT=~/x cmd` is the second kind
+unless MAGIC_EQUAL_SUBST is set, which it is not by default. So MVRP_OUT held
+the literal string and every path built from it was relative to the cwd.
+
+The tell was in the output all along: the closing line printed `~/mvrp16/apk`
+with a literal tilde rather than an expanded path, and I read past it.
+
+Two things to carry:
+
+Use `MVRP_OUT=~/x nohup ./script &` rather than `nohup env MVRP_OUT=~/x ./script &`.
+Or pass "$HOME/x", which survives either form.
+
+And a script that prints a destination should print the resolved path. Had the
+pull echoed /home/gorib/mvrp16/apk, the mismatch would have been obvious
+instead of taking a `find` to locate 2.7 GB.
