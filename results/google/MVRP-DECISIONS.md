@@ -2710,3 +2710,66 @@ Still open before this is report-ready:
 - `restore_target=2`, for whether this reaches the lock screen
 - confirm the Wallpapers app is Google LLC's and settle its tier
 - re-run from a clean state to show it reproduces
+
+### 2026-10-23 — S58 complete: the attacker's own code, started by the system
+
+All three remaining questions answered on ZT422724JR (Android 16).
+
+**The canary ran.** This is the escalation, and it holds:
+
+    WPPOC: package  com.cindrasec.wallpapercan
+    WPPOC:   held by me: true
+    WPPOC:   SET_WALLPAPER_COMPONENT held by me: false
+    WPPOC: current live wallpaper: com.glance.lockscreenM/...LooksWallpaperService
+    WPPOC: asking for component com.cindrasec.wallpapercan/...CanaryWallpaperService, restore_target=0
+    WPPOC: broadcast sent to com.google.android.apps.wallpaper/...DownloadableRestorer
+    WPPOC: canary engine created by the system: uid=10539 pid=32016
+
+    mWallpaperComponent=ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+
+An app holding one self-declared permission and nothing else had its own code
+started by the system, in its own process, as the live wallpaper. d8 did not
+crash this time either — moving the engine to a top-level class was the fix.
+
+**The lock-screen claim is dead, and I am glad it was tested.** `restore_target=2`
+changed only the home entry; the other stayed on `ImageWallpaper`. The reason is
+in the code I had already read and skimmed past:
+
+    if (!wallpaperManager.isLockscreenLiveWallpaperEnabled() && i == 2) {
+        wallpaperManager.clear(2);
+    }
+
+so asking for both *clears* the lock screen on a device without that feature.
+The report claims the home screen only. Had I written the report before running
+this, it would have carried a sentence the vendor could disprove in one minute.
+
+**The control is refused silently.** A grep of unfiltered logcat for `denial`
+found nothing, the Wallpapers process was never started for the broadcast, and
+`mWallpaperComponent` stayed where it was. So the evidence of refusal is the
+absence of the receiver's process plus the unchanged component — not a log
+line. My earlier prediction of a `Permission Denial` line was simply wrong, and
+the report will not quote one.
+
+**Scope, measured:**
+
+    codePath=/system_ext/priv-app/GoogleWallpapers
+    versionName=16
+    pkgFlags=[ SYSTEM HAS_CODE ... ]
+    privatePkgFlags=[ ... PRIVILEGED SYSTEM_EXT ... ]
+    package:com.google.android.apps.wallpaper  installer=null
+
+Google's own app, privileged, preinstalled. The vulnerable receiver lives in
+`com.google.android.apps.wallpaper.module`, i.e. Google's own code, not in the
+AOSP `com.android.wallpaper.*` picker library that the app also bundles. So it
+belongs in Mobile VRP rather than the Android and Google Devices SRP.
+
+Root cause, stated as what it is: the guard names a permission that a package
+not present on this device would define — the name is
+`com.google.pixel.livewallpaper...`, and `com.google.pixel.livewallpaper` is not
+installed here. That part is inference from the name and from the permission
+being undefined; it has not been checked on a Pixel, and the report will say so
+rather than assert how Pixels behave.
+
+Still to do before submitting: reproduce from a clean install, check whether it
+survives a reboot, and run the same pair on the Android 15 phone so the report
+can say which versions it was seen on.
