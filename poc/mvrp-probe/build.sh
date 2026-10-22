@@ -155,8 +155,15 @@ if ! "$AAPT2" link -I "$AJ" \
 !! এই aapt2 ওই android.jar-এর resources.arsc পড়তে পারছে না।
 !! কারণ: নতুন platform (API 34/35+) কমপ্যাক্ট এনকোডিং ব্যবহার করে, আর
 !!        distro-র পুরনো aapt2 সেটা চেনে না।
-!! সমাধান: পুরনো একটা platform নামাও — লিঙ্ক করার জন্যই শুধু, manifest-এর
-!!        targetSdkVersion এতে বদলায় না।
+!! সমাধান: পুরনো একটা platform দিয়ে link করো। targetSdkVersion এতে বদলায় না।
+!!
+!! আগে দেখো কী আছে — নামানোর আগে। একটা platform সাধারণত আগেই নামানো থাকে,
+!! আর এই বার্তাটা সেটা না বলায় ৬৪ MB অকারণে নামানো হয়েছিল:
+!!
+!!   ls -1 ~/tools/*/android.jar
+!!   AJ=~/tools/android-12/android.jar ./build.sh      # সবচেয়ে পুরনোটা আগে
+!!
+!! একটাও না থাকলে তবেই:
 !!
 !!   cd ~/tools
 !!   Z=$(curl -s https://dl.google.com/android/repository/repository2-3.xml \
