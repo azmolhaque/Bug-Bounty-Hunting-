@@ -2963,3 +2963,49 @@ Still open from the 52-package sweep: wellbeing's `api` and `autodnd` providers
 `partnercontentprovider`, and Messages' `SharedStorageProvider` and
 `AvatarContentProvider`. All REACHED, meaning they answered and the root path
 was wrong, so each needs its UriMatcher read before another probe.
+
+### 2026-10-23 — the Wallpapers app's other exported surface: three closures, one real flaw worth nothing
+
+With A16's APK decompiled, the three remaining questions about that app are
+answered.
+
+**`StandalonePreviewActivity` — the check is broken, and it does not matter.**
+Exported, no permission, takes `CROP_AND_SET_WALLPAPER` with `image/*`:
+
+```java
+if (checkUriPermission(data, Binder.getCallingPid(), Binder.getCallingUid(), 1) == 0
+    || getPackageManager().checkPermission("android.permission.READ_MEDIA_IMAGES", getPackageName()) == 0) {
+    return;
+}
+```
+
+Both halves fail. `Binder.getCallingUid()` inside an Activity's `onCreate`
+returns this process's own uid — there is no binder transaction on that
+thread — so the first clause asks whether the app has permission on its own
+Uri. And `getPackageName()` is the Wallpapers app, which does hold
+`READ_MEDIA_IMAGES`, so the second clause is unconditionally true. The guard
+passes for every caller.
+
+It still is not reportable. The privileged app opens the attacker's Uri under
+its own identity and renders it **on screen**. The bytes never reach the
+attacker: a third-party app cannot read the wallpaper back, and nothing is
+returned to the caller. The one-sentence answer to "what did the attacker
+get?" is "the user saw a picture", so by 2.1 it drops.
+
+Writing it down anyway because the flaw is real and the shape is reusable: an
+`||` where one side is a self-check and the other asks whether the deputy
+itself holds the permission is a guard that cannot fail. If that pattern ever
+sits in front of a sink that returns data, it is a finding.
+
+**`MissingHashCodeGenerator`** — exported with no guard, and inert: `onReceive`
+only acts on `MY_PACKAGE_REPLACED`, a protected broadcast the system alone can
+send. Closed.
+
+**`getSettingsActivity`** — the redirection idea is dead. The picker builds
+`new ComponentName(wallpaperInfo.getPackageName(), settingsActivity)`, scoped
+to the wallpaper's own package, so a caller-supplied settingsActivity cannot
+name another app's component.
+
+Running total on this surface: one crossing (G-F004) and five closures around
+it. The orphaned-permission class gave exactly one sink that does something,
+and chasing the neighbours has not improved it.
