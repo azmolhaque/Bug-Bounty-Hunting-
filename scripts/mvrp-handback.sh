@@ -149,6 +149,13 @@ scan_pkg() {   # scan_pkg <pkg>  -> lines: GUARD<TAB>kind<TAB>component<TAB>hits
       local name perm kind
       name=$(printf '%s' "$tag" | grep -oE 'android:name="[^"]*"' | head -1 | cut -d'"' -f2)
       perm=$(printf '%s' "$tag" | grep -oE 'android:permission="[^"]*"' | head -1 | cut -d'"' -f2)
+      # A provider is not guarded only by android:permission. readPermission
+      # and writePermission are separate attributes and either one can be the
+      # real gate, so a provider carrying one of those was being reported as
+      # unguarded — pointing at exactly the components that are not.
+      if [ -z "${perm:-}" ] && [ "$(printf '%s' "$tag" | grep -oE '^<[a-z-]+' | tr -d '<')" = "provider" ]; then
+        perm=$(printf '%s' "$tag" | grep -oE 'android:(read|write)Permission="[^"]*"' | head -1 | cut -d'"' -f2)
+      fi
       [ -n "$name" ] || continue
       kind=$(printf '%s' "$tag" | grep -oE '^<[a-z-]+' | tr -d '<')
 
