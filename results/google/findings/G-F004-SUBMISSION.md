@@ -242,6 +242,24 @@ the user choosing it. It survives a reboot: after `adb reboot`,
 `dumpsys wallpaper` still reported the canary as the home wallpaper, so the
 system starts the attacker's code again at every boot.
 
+It does not survive a force stop, and I checked rather than assuming:
+
+```
+$ adb shell dumpsys wallpaper | grep -m1 mWallpaperComponent
+  mWallpaperComponent=ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+$ adb shell ps -A | grep wallpapercan
+u0_a548  3905  970  ...  com.cindrasec.wallpapercan
+
+$ adb shell am force-stop com.cindrasec.wallpapercan
+$ adb shell ps -A | grep wallpapercan
+$ adb shell dumpsys wallpaper | grep -m1 mWallpaperComponent
+  mWallpaperComponent=ComponentInfo{com.android.systemui/...ImageWallpaper}
+```
+
+The process stays dead and the wallpaper reverts to the system default, so
+Settings' "Force stop" does end it. The persistence claim is therefore limited
+to surviving reboots, not to resisting the user.
+
 Also reproduced on moto g stylus 5G (2024), Android 15, serial ZD222W5X3R —
 same result, including the canary engine starting.
 
@@ -253,7 +271,9 @@ capability that is `signature|privileged`:
 - It chooses which `WallpaperService` the system runs, including its own. The
   system then starts that service and restarts it at boot, which gives the app
   a long-running process it is not otherwise entitled to, with no foreground
-  service notification and no user involvement.
+  service notification and no user involvement. A force stop does end it, so
+  this is persistence across reboots rather than something the user cannot
+  undo.
 - It can replace the user's wallpaper with any installed wallpaper service.
 - The wallpaper surface is full-screen behind the home screen, so whatever the
   attacker's engine draws is displayed there.

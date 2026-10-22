@@ -3092,3 +3092,29 @@ That is the fourth time in two days that a correct-looking sentence rested on
 something not measured on the device in question. The habit worth keeping:
 every quote in a report carries the build it came from, and the build has to be
 the one in the title.
+
+### 2026-10-23 — force stop ends it, and that goes in the report
+
+Tested the one claim that could have raised the impact: does the system keep
+restarting the attacker's wallpaper service after the user force-stops the app.
+
+    dumpsys wallpaper -> ...CanaryWallpaperService
+    ps -A | grep wallpapercan -> u0_a548 3905 ... com.cindrasec.wallpapercan
+    am force-stop com.cindrasec.wallpapercan
+    ps -A | grep wallpapercan -> (nothing)
+    dumpsys wallpaper -> com.android.systemui/...ImageWallpaper
+
+The process stays dead and the wallpaper reverts to the system default. So
+"the user's Force stop button cannot stop this" — which would have been the
+strongest version of the persistence claim — is false, and the report now says
+so in both places it talks about persistence.
+
+Worth doing even though it came back negative, for two reasons. A triager runs
+force stop in the first minute, and a claim they can disprove costs more than
+the claim was worth. And the finding does not depend on it: the bypass is the
+signature-permission-gated call being made on an unprivileged caller's behalf,
+which force stop does not touch.
+
+That is three claims tested before submission and one survived intact
+(reboot), one corrected (the code quote's build), one withdrawn (force-stop
+resistance, never claimed, now explicitly denied).
