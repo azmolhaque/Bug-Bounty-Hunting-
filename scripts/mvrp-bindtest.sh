@@ -60,13 +60,21 @@ TARGETS_IN=""
 case "${1:-}" in
   -f) TARGETS_IN=$(cat "$2") ;;
   "") TARGETS_IN="$SHORTLIST" ;;
-  *)  TARGETS_IN="$1 $2" ;;
+  *)  TARGETS_IN="$1 $2 ${3:-}" ;;
 esac
 
-probe_once() {   # probe_once <pkg> <cls> -> verdict line
+probe_once() {   # probe_once <pkg> <cls> [bools] -> verdict line
   adb logcat -c </dev/null >/dev/null 2>&1
-  adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
-      </dev/null >/dev/null 2>&1
+  # BOOLS, e.g. isSetupWizard=true, is passed to the bind intent. onBind can
+  # hand back a different binder depending on what the caller sends, so which
+  # one you get is part of the test rather than a fixed property of the target.
+  if [ -n "${3:-}" ]; then
+    adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
+        --es bools "$3" </dev/null >/dev/null 2>&1
+  else
+    adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
+        </dev/null >/dev/null 2>&1
+  fi
   sleep "$WAIT"
   local out ret desc
   out=$(adb logcat -d MVRP:I '*:S' </dev/null 2>/dev/null | tr -d '\r')
@@ -123,8 +131,9 @@ while IFS= read -r line; do
   [ -n "$line" ] || continue
   pkg=$(printf '%s' "$line" | awk '{print $1}')
   cls=$(printf '%s' "$line" | awk '{print $2}')
+  bools=$(printf '%s' "$line" | awk '{print $3}')
   [ -n "$pkg" ] && [ -n "$cls" ] || continue
-  v=$(probe_once "$pkg" "$cls")
+  v=$(probe_once "$pkg" "$cls" "${bools:-}")
   printf '%-10s %-38s %s\n' "${v%% *}" "${cls##*.}" "$pkg"
   case "$v" in CONNECTED*) printf '           %s\n' "${v#CONNECTED  }" ;; esac
 done <<< "$TARGETS_IN"

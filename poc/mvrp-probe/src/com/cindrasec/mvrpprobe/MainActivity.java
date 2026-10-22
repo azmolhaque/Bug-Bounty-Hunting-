@@ -145,6 +145,31 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
         String act = in.getStringExtra("svcAction");
         if (act != null) svc.setAction(act);
 
+        // Boolean extras on the bind intent, as "name=true,other=false".
+        //
+        // Needed because onBind can branch on what the caller sends. The
+        // migration service in com.google.android.apps.restore does exactly
+        // that:
+        //
+        //     if (intent.getBooleanExtra("isSetupWizard", false)) return new mpz();
+        //     return new dhh(this);
+        //
+        // Binding with no extras gets the second one, which is what we did,
+        // and every transaction code came back false. Which binder you are
+        // handed is the caller's choice, so the probe has to be able to make
+        // that choice.
+        String bx = in.getStringExtra("bools");
+        if (bx != null) {
+            for (String kv : bx.split(",")) {
+                int eq = kv.indexOf('=');
+                if (eq <= 0) continue;
+                String k = kv.substring(0, eq).trim();
+                boolean v = Boolean.parseBoolean(kv.substring(eq + 1).trim());
+                svc.putExtra(k, v);
+                Log.i(TAG, "  extra " + k + "=" + v);
+            }
+        }
+
         // false = system চেষ্টাও করতে দেয়নি (component নেই / exported নয় /
         // visibility নেই)। true = অনুরোধ গেছে; আসল উত্তর callback-এ।
         if (in.getStringExtra("code") != null) {

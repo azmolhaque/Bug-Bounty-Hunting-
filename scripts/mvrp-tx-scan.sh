@@ -53,13 +53,14 @@ adb shell pm path "$PROBE" </dev/null 2>/dev/null | tr -d '\r' | grep -qF 'packa
 
 one() {   # one <pkg> <cls> <token> <code> -> outcome
   adb logcat -c </dev/null >/dev/null 2>&1
-  if [ "$3" = "-" ]; then
-    adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
-        --es code "$4" </dev/null >/dev/null 2>&1
-  else
-    adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
-        --es code "$4" --es token "$3" </dev/null >/dev/null 2>&1
-  fi
+  # BOOLS picks which binder onBind hands back, when it branches on the
+  # caller's extras. Same reason as in the bind test.
+  local tokarg=() boolarg=()
+  [ "$3" = "-" ] || tokarg=(--es token "$3")
+  [ -n "${BOOLS:-}" ] && boolarg=(--es bools "$BOOLS")
+  adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
+      --es code "$4" ${tokarg[@]+"${tokarg[@]}"} ${boolarg[@]+"${boolarg[@]}"} \
+      </dev/null >/dev/null 2>&1
   sleep "$WAIT"
   local out
   out=$(adb logcat -d MVRP:I '*:S' </dev/null 2>/dev/null | tr -d '\r')
