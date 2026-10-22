@@ -3009,3 +3009,45 @@ name another app's component.
 Running total on this surface: one crossing (G-F004) and five closures around
 it. The orphaned-permission class gave exactly one sink that does something,
 and chasing the neighbours has not improved it.
+
+### 2026-10-23 — the provider path is closed. Six walls, one shape.
+
+Last two candidates read:
+
+    WellbeingSettingsProvider.java:416,441,466   String callingPackage = getCallingPackage();
+    PartnerContentProvider.java:243              throw new SecurityException(... " is not trusted.");
+    PartnerContentProvider.java:375              throw new SecurityException(callingPackage + " is not authorized to access the content.");
+
+Both authorise the caller inside. That closes the provider thread.
+
+The tally for the night, written plainly because the shape is the lesson:
+
+| surface | manifest | what actually stopped it |
+|---|---|---|
+| restore `AppDataWriter` (S47) | open | uid -> package -> `signingInfo` |
+| AGSA QSB activity (S55)       | orphaned guard | runtime check that the permission's owner is a system Google app |
+| AGSA `OneSearchSuggest` (S56) | orphaned guard | gRPC first-party-only security policy |
+| GMS `auth.accounts` (S59)     | open | `GoogleCertificatesRslt: not allowed` |
+| Wellbeing `api`               | open | `getCallingPackage()` |
+| Photos `partnercontentprovider` | open | `SecurityException: not trusted` |
+
+Six for six. **An open Google manifest is not a signal.** The guard is below
+it, every time, and the manifest sweep that finds these is a generator of
+leads with a base rate near zero. Treating it as a prior from now on: do not
+probe an open GMS/Google component before reading the uid check underneath —
+the read is minutes, the probe-and-hope is hours.
+
+Which makes G-F004 stand out for the right reason. It is not that the manifest
+was open; it is that beneath the open manifest the Wallpapers app does the
+privileged thing on the caller's behalf instead of checking who asked. That is
+the rare case, and it is the one already written up and waiting to be filed.
+
+Next class, chosen because it sidesteps this wall entirely: intent forwarding.
+An exported activity that takes `android.intent.extra.INTENT` (or any
+caller-supplied Intent/PendingIntent) and calls `startActivity` with it cannot
+be saved by a uid check, because forwarding is the feature — the app is not
+supposed to be deciding whether the caller is trusted, it is just passing an
+intent along under its own identity. The rules name it: "Intent redirection ->
+launching non-exported components". `mvrp-handback.sh` looked for this from
+manifests alone and was blind without sources; the sources now exist for 52
+packages on A16.
