@@ -231,8 +231,8 @@ capability that is `signature|privileged`:
 - The wallpaper surface is full-screen behind the home screen, so whatever the
   attacker's engine draws is displayed there.
 
-The user installs the app; nothing else is asked of them, and they are not
-prompted at any point.
+The user installs the app and opens it once. They are not prompted for any
+permission at any point, and nothing else is asked of them.
 
 ## What I did not demonstrate
 
@@ -244,6 +244,10 @@ prompted at any point.
   test wallpaper draws one flat colour.
 - **Not silent.** The wallpaper visibly changes, so a user looking at the home
   screen can see that something happened.
+- **Sent from the foreground.** My PoC sends the broadcast from an activity, so
+  the app is running in the foreground when it fires. I have not tested
+  sending it from a background component such as a boot receiver, so I am not
+  claiming it works without the app being opened.
 - **Pixel behaviour unknown.** The permission name suggests it is defined by
   `com.google.pixel.livewallpaper`, which is not installed on either device I
   tested. I have not checked a Pixel, so I cannot say whether the guard works
