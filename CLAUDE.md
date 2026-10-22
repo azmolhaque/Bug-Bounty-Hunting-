@@ -121,7 +121,13 @@ they chain to a confirmed Medium+ impact:
 - SSRF that only reaches attacker-owned infrastructure, or reaches IMDS/internal
   hosts but reads NOTHING sensitive (no creds/token/data — VT IMDS-root → Low ceiling)
 - Connector / webhook fetching a user-supplied URL and forwarding user-supplied
-  creds to it (intended connector behavior — AppSheet SSRF → WAI)
+  creds to it, where nothing internal is actually read (AppSheet SSRF, 525815004 —
+  closed 2026-09-21 as **Duplicate**, NOT as WAI. The "WAI" label came from an AI
+  triage note published to the thread by mistake on 2026-07-04 and retracted by
+  Google two days later as "not a final decision". Keep the heuristic; the class
+  was never officially ruled intended behaviour.)
+  Also: the twin report 525815219 is still open at P2. Do not test AppSheet
+  connector SSRF — further work there duplicates our own submission.
 
 **DNS / Infrastructure:**
 - SPF, DKIM, DMARC email misconfigs (treated as informational in most VRP)
