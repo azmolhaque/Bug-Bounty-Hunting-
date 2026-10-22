@@ -330,7 +330,7 @@ The two guards differ in reach. The malformed string is not a permission name at
 it can never be held, on any device or any OS version. `RUN_DOCK_SETUP` is an ordinary
 name whose defining package is simply not on this phone.
 
-For scope: across the 132 app manifests I decoded on this device there are 159 distinct
+For scope: across the 66 app manifests I decoded on this device there are 159 distinct
 `android:permission` values, and exactly one contains a `|`. I am not claiming the typo is
 widespread. The orphaned-guard pattern is the broader one: the same sweep found 16 guard
 permissions that no installed package defines, two of them in this app.

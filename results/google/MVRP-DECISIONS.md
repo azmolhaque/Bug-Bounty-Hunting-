@@ -2257,3 +2257,26 @@ empty-parcel scan had given the answer and I read it as silence.
 
 And the allowlist that turned out to be a label. An allowlist in the source is
 not an access check until you find the branch that refuses.
+
+### 2026-10-22 — the verification pass introduced the error it went looking for
+
+Before submitting I re-measured every number in the report. One did not match:
+the report said 66 decoded manifests and `ls -1 ~/mvrp/decoded | wc -l` said
+132, so I changed it to 132 and recorded that the original count was stale.
+
+It was not. `~/mvrp/decoded` holds 66 package directories and 66 `.jadx.log`
+files beside them. `ls` counted both; the 159 distinct guard values were
+measured with a glob that only matches directories, so 159 was always a figure
+over 66 apps. The original number was right and I replaced it with a wrong one
+while checking it.
+
+Caught by the hand-back sweep printing "across 66 apps", because that one
+counts directories.
+
+The lesson is narrow and worth keeping: a re-measurement is only a correction
+if it measures the same thing the original did. `ls | wc -l` and
+`find -type d | wc -l` are not the same question, and the first one is the one
+that happens to be easy to type.
+
+Numbers corrected in the finding files. The report itself is closed as a
+duplicate so there is nothing to amend with Google.
