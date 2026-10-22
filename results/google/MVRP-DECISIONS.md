@@ -2521,3 +2521,62 @@ These have to run on the Pi. The session keeping this log is the cloud
 container: no adb, no devices, no `~/mvrp16`, and `android.googlesource.com`
 is not reachable through its proxy, so the setupcompat AIDL cannot be read
 from the upstream source either.
+
+### 2026-10-23 — S57 restore D2D portal interface: CLOSED. Five no-ops, and the 8 bytes meant "nothing".
+
+Read the whole dispatch (`mvrp-stub-read.sh`, A15 tree, 14,879 java files, so
+the zeros are measured). Every branch of `mpz.bw` does one thing: log.
+
+    code 1  onPortalSessionStart   log only
+    code 2  onSetCallback          readStrongBinder, queryLocalInterface, then
+                                   `if (qli instanceof mpy) { }` — empty block.
+                                   The callback is read and dropped.
+    code 3  onSuspend              log only
+    code 4  onAllowMobileData      cwl.g(parcel) reads the boolean into nothing
+    code 5  onGetRemainingValues   cwl.e(parcel2, null) — returns null
+
+jadx kept the source coordinates: these are the overrides of
+`D2dMigrateService$1`, lines 301-322 of `D2dMigrateService.java`. It is the
+anonymous class the SetupWizard portal contract forces the service to
+implement, with the body left empty because this app does not use the portal
+progress callbacks.
+
+So the drop rule I fixed in advance resolves against the lead on both codes:
+1 and 2 take no path, no PendingIntent, and code 2 takes a callback binder it
+then throws away.
+
+**The correction worth keeping.** The transaction scan was what made this look
+promising, and I read it backwards. "No SecurityException on any handled code"
+I wrote down as *nothing checks the caller*; the real reason is that there is
+no code in that path to check anything. And code 5's `replySize=8, payload
+remaining 4` I took as data coming back — it is `writeNoException` (4 bytes)
+plus a null marker (4 bytes). The parcel was telling me "null" and I recorded
+it as a return value.
+
+That is the second time an empty response has been read as a positive signal
+(the first was `transact() returned true` on Photos). The lesson is specific:
+a reply parcel is not evidence until its bytes are accounted for. 8 = 4 + 4 is
+an empty answer, and the scan should name it as such rather than printing a
+size.
+
+`dhh`, the binder a caller gets *without* the `isSetupWizard` extra, has no
+`onTransact` and no `bw` at all — it extends `Binder` with local methods
+reaching `cze`/`dhd`/`oli`. A Binder subclass with no dispatch cannot be
+driven over IPC: a remote `transact()` falls through to Binder's default, and
+the methods are reachable only in-process through `queryLocalInterface`. So
+that branch is inert from outside too.
+
+Both branches of the caller-chosen `onBind` are therefore dead ends. The
+caller-picks-its-own-binder pattern in `dhi.onBind` stays on the list as a
+*shape* worth recognising elsewhere — it is how a privileged interface gets
+handed out on an attacker-supplied flag — but here the privileged interface
+does nothing.
+
+One defect fixed on the way: section 2 of `mvrp-stub-read.sh` printed an empty
+block for `dhh` and let me read silence as absence. It now says that no
+dispatch means the class is not a stub, and what that implies for a remote
+caller.
+
+A16's copy of restore is decompiling in the background. The A15 reading above
+is what decides the thread; if A16 somehow implements these methods the diff
+will say so, and nothing else here depends on it.

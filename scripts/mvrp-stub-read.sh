@@ -88,7 +88,7 @@ echo "== 2. transaction dispatch =="
 # the argument marshalling is the part that decides whether a code is
 # interesting, so a context window around a grep hit loses exactly the lines
 # that matter.
-awk '
+DISPATCH=$(awk '
   !inm && /(onTransact|[ \t]bw)[ ]*\(/ && /\(int|\(Parcel|Parcel/ { inm=1; depth=0; seen=0 }
   inm {
     print NR "\t" $0
@@ -97,7 +97,25 @@ awk '
     depth += n - m
     if (seen && depth <= 0) inm = 0
   }
-' "$F" | head -200
+' "$F" | head -200)
+if [ -z "$DISPATCH" ]; then
+  cat <<'NODISPATCH'
+none in this file — so this class is NOT a transaction stub.
+
+Say what that means before moving on, because an empty section here has twice
+been read as "nothing to see". A Binder subclass with no onTransact cannot be
+driven over IPC at all: a remote caller's transact() falls through to
+Binder's default and the local methods are reachable only in-process, via
+queryLocalInterface, by code already inside this app. If a service hands this
+back, that branch of the service is inert from outside.
+
+Check two things anyway: that the dispatch is not inherited from the class it
+extends (section 4), and that no method here is annotated or named for the
+one-way path.
+NODISPATCH
+else
+  printf '%s\n' "$DISPATCH"
+fi
 echo
 
 echo "== 3. does anything check the caller =="
