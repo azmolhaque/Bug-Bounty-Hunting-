@@ -29,7 +29,10 @@ set -uo pipefail
 
 PKG="${1:?usage: $0 <pkg> <cls> <token> [first] [last]}"
 CLS="${2:?need the service class}"
-TOKEN="${3:?need the interface descriptor}"
+# A raw binder has no descriptor to enforce, and writing an empty token
+# changes the parcel into something the other side was never going to parse.
+# Pass "-" for those: the probe then sends no interface token at all.
+TOKEN="${3:?need the interface descriptor, or - for a raw binder}"
 FIRST="${4:-1}"
 LAST="${5:-10}"
 
@@ -45,8 +48,13 @@ adb shell pm path "$PROBE" </dev/null 2>/dev/null | tr -d '\r' | grep -qF 'packa
 
 one() {   # one <pkg> <cls> <token> <code> -> outcome
   adb logcat -c </dev/null >/dev/null 2>&1
-  adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
-      --es code "$4" --es token "$3" </dev/null >/dev/null 2>&1
+  if [ "$3" = "-" ]; then
+    adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
+        --es code "$4" </dev/null >/dev/null 2>&1
+  else
+    adb shell am start -n "$ACT" --es action bind --es pkg "$1" --es cls "$2" \
+        --es code "$4" --es token "$3" </dev/null >/dev/null 2>&1
+  fi
   sleep "$WAIT"
   local out
   out=$(adb logcat -d MVRP:I '*:S' </dev/null 2>/dev/null | tr -d '\r')
