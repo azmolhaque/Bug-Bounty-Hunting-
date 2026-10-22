@@ -49,6 +49,19 @@ echo "# when   : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "# device : $(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r') / Android $(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r')"
 echo "# serial : $(adb get-serialno 2>/dev/null | tr -d '\r')"
 echo "# from   : $GAPS"
+# Which sweep this report came from. `ls -t` picks the newest file, and the
+# newest is often a one-package run made while chasing something specific —
+# that is how a triage meant for 62 providers silently ran against 18. The
+# scope now has to be read, not assumed.
+SCOPE=$(grep -m1 'manifest(s)' "$GAPS" || echo "?")
+echo "# scope  : $SCOPE"
+NMAN=$(printf '%s' "$SCOPE" | grep -oE '[0-9]+' | head -1)
+if [ -n "${NMAN:-}" ] && [ "$NMAN" -lt 10 ]; then
+  echo "#"
+  echo "# NOTE: that report covers only $NMAN manifest(s). If you meant the full"
+  echo "#       sweep, pass it explicitly:"
+  echo "#       $0 \$(ls -1t $REP/gaps-*.txt | sed -n 2p)"
+fi
 echo
 
 echo "== CONTROL =="
