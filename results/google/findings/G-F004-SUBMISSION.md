@@ -260,8 +260,21 @@ The process stays dead and the wallpaper reverts to the system default, so
 Settings' "Force stop" does end it. The persistence claim is therefore limited
 to surviving reboots, not to resisting the user.
 
-Also reproduced on moto g stylus 5G (2024), Android 15, serial ZD222W5X3R —
-same result, including the canary engine starting.
+Also reproduced on moto g stylus 5G (2024), Android 15, serial ZD222W5X3R.
+Same APK, same command, and the canary started there too:
+
+```
+  I WPPOC   :   held by me: true
+  I WPPOC   :   SET_WALLPAPER_COMPONENT held by me: false
+  I WPPOC   : current live wallpaper: com.motorola.livewallpaper3/.wallpapers.SunlitSmileWallpaperService
+  I WPPOC   : asking for component com.cindrasec.wallpapercan/...CanaryWallpaperService, restore_target=0
+  I WPPOC   : canary engine created by the system: uid=10568 pid=26875
+
+  mWallpaperComponent=ComponentInfo{com.cindrasec.wallpapercan/...CanaryWallpaperService}
+```
+
+Two different Motorola models and two Android versions, so this is not a quirk
+of one device image.
 
 ## Impact
 
