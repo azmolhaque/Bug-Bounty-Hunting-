@@ -2191,3 +2191,37 @@ dropped either way — not a re-argument, a scoping question.
 
 **For mvrp-handback.sh:** deprioritise ORPHAN hits. The value is in NONE and
 NORMAL guards, where the weakness is not the permission system at all.
+
+### 2026-10-22 — Duo's account authenticator: closed by the framework
+
+`com.google.android.apps.tachyon.contacts.sync.DuoAccountService` is exported
+with no permission and hands a permissionless app the binder for
+`android.accounts.IAccountAuthenticator`. The service checks nothing itself —
+`onBind` returns `lbn.getIBinder()` and that is the whole method.
+
+Every transaction answers the same way:
+
+    SecurityException: Access denied, requires: android.permission.ACCOUNT_MANAGER
+
+Signature|privileged, so no third-party app reaches it. `AbstractAccountAuthenticator`
+checks before reading arguments, which is why an empty parcel was enough to
+settle it. Closed.
+
+Two things this cost and taught:
+
+The reply size decided nothing. Ten codes came back at exactly 132 bytes and I
+read that as ten answers; it was one exception marshalled back ten times,
+because binder returns true and puts the throwable in the reply parcel. The
+harness logged only the size, so the one fact that mattered was invisible.
+
+And the patch that taught the harness to read the reply did not compile —
+duplicate `byte[] raw` — but `build.sh` piped javac through grep with `|| true`,
+so the build claimed success and installed an APK that could not work. Caught
+by the control that binds our own service, not by the build and not by the
+install. javac failures are fatal now.
+
+Still open from the bind test: ExternalRcsEndpointService and
+CustomD2DSourceEndpointService (Messages), PhotosBackupApiService and
+PhotosRestoreApiService (Photos), SleepStateExportedService (Wear companion) —
+all raw binders — and ReachabilityService (Meet), which has a real AIDL with
+four transaction codes in `defpackage/lai.java`.
