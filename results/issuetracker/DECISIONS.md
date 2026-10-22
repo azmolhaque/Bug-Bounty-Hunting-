@@ -28,9 +28,16 @@ returned. Worth noting as a pattern: a 200 among 403s is worth opening, and
 usually turns out to be an empty envelope.
 
 **Attachments.** The obvious gap on a tracker is files served from a separate
-origin that does not re-check the issue ACL. It does re-check:
-doc-4b8g-4510-issuetracker.googleusercontent.com/attachments/... returns 403
-to B.
+origin that does not re-check the issue ACL. It does re-check. The same URL,
+three ways:
+
+    A, the owner      200, file renders
+    B, other account  403
+    logged out        403
+
+The path carries two long opaque tokens, which on some systems act as a
+capability — have the link, have the file. Not here: the ACL is evaluated per
+request and the token alone buys nothing.
 
 No finding. Recording it so this ground is not dug twice.
 
