@@ -67,6 +67,22 @@ one() {   # one <pkg> <cls> <token> <code> -> outcome
     return
   fi
   ret=$(printf '%s\n' "$out" | grep -oE 'transact\(\) returned (true|false) *replySize=[0-9]+' | tail -1)
+
+  # The size on its own decided nothing: ten codes came back at 132 bytes each
+  # and that was one exception marshalled back ten times. The harness now
+  # reads the reply, so surface what it found rather than the size again.
+  local rex
+  rex=$(printf '%s\n' "$out" | grep -oE 'REPLY EXCEPTION .*' | tail -1)
+  if [ -n "$rex" ]; then
+    printf '%s | %s' "${ret:-?}" "$(printf '%s' "$rex" | cut -c1-120)"
+    return
+  fi
+  if printf '%s\n' "$out" | grep -q 'readException()'; then
+    local left
+    left=$(printf '%s\n' "$out" | grep -oE 'payload [^ ]+ [0-9]+' | tail -1)
+    printf '%s | no exception in reply, %s' "${ret:-?}" "${left:-payload size unknown}"
+    return
+  fi
   printf '%s' "${ret:-no verdict line}"
 }
 
