@@ -2580,3 +2580,80 @@ caller.
 A16's copy of restore is decompiling in the background. The A15 reading above
 is what decides the thread; if A16 somehow implements these methods the diff
 will say so, and nothing else here depends on it.
+
+### 2026-10-23 — S58 Wallpapers `DownloadableRestorer`: the first orphan that reaches a privileged API
+
+The orphan diff across both phones left six guards orphaned on Android 15 and
+16 alike. Five were already-closed threads (two are G-F003, one is the Messages
+crash, two are AGSA's QSB, closed at S55/S56). The sixth had never been read.
+
+```xml
+<receiver android:name="com.google.android.apps.wallpaper.module.DownloadableRestorer"
+          android:permission="com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER"
+          android:exported="true">
+    <intent-filter>
+        <action android:name="com.google.android.apps.wallpaper.action.RESTORE_DOWNLOADABLE"/>
+    </intent-filter>
+</receiver>
+```
+
+and what it does with the broadcast:
+
+```java
+Object extra  = intent.getExtra("android.live_wallpaper.info");
+int    target = intent.getIntExtra("android.live_wallpaper.restore_target", 0);
+LiveWallpaperInfo info = new LiveWallpaperInfo((WallpaperInfo) extra);
+...
+WallpaperSetter.setWallpaperComponent(wallpaperManager, info, target);
+    -> wallpaperManager.setWallpaperComponentWithFlags(
+           liveWallpaperInfo.mInfo.getComponent(), destinationToFlags(i));
+```
+
+`setWallpaperComponent` / `setWallpaperComponentWithFlags` require
+`SET_WALLPAPER_COMPONENT`, which is `signature|privileged`. The `ComponentName`
+reaching that API comes out of the caller's extra with no check of the caller.
+`Intrinsics.checkNotNull` tests the cast, not the origin.
+
+Why this one is different from everything else in the orphan work: every
+previous target ended at a precondition because a layer below the manifest
+refused — AGSA re-verified the permission's owner, GMS's gRPC policy checked
+signatures, restore's portal interface turned out to be five no-ops. Here the
+layer below the manifest does the privileged thing on the caller's behalf. The
+question stops being "can I reach it" and becomes "did the device do it".
+
+Scope, checked rather than assumed. `config/scope-mobile-vrp.yaml`, read from
+Google's own rules repo, lists under `other`:
+
+    Path traversal / zip path traversal -> arbitrary file write
+    Intent redirection -> launching non-exported components
+    Unsafe PendingIntent usage
+    Orphaned permissions
+    (These are "not strictly in scope" but rewarded if security impact is shown.)
+
+So the class is named in the rules and the whole weight falls on the impact.
+The impact to claim is the one that was demonstrated: a signature|privileged
+capability exercised on behalf of an app that holds no permission at all. If
+the canary engine starts, the second sentence is that the attacker's own code
+is launched and kept alive by the system as the wallpaper.
+
+`poc/wallpaper-restore-poc/` builds two APKs from one source tree, differing
+only in whether the manifest declares the orphaned permission. The control
+exists because a success from the attacker build alone proves nothing — the
+receiver could simply be open, and then there is no bypass to report.
+
+Kill criteria, written before running:
+
+- control also sets the wallpaper -> receiver is open, no bypass, drop
+- broadcast accepted but `dumpsys wallpaper` unchanged -> a layer below
+  refused, precondition again, drop (this is the S55 outcome)
+- works on 15 but not on 16 -> the rules exclude it
+- the device's wallpaper app is not Google LLC's -> out of scope
+
+Untested as of this entry: nothing has been run. The PoC is written, the chain
+is read from the installed APK, and the next thing that happens is the pair of
+runs on the Android 16 device.
+
+One tool change: `poc/mvrp-probe/build.sh` only ever linked a manifest, so no
+PoC could reference a resource. A `WallpaperService` must point at an XML
+resource through meta-data, so the builder now takes an optional `RES` tree and
+an `OUT` override. Without `RES` it behaves exactly as before.

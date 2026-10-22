@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Required by WallpaperService. android.app.WallpaperInfo refuses to parse a
+  service without this meta-data, and both the Wallpapers app and the system
+  build a WallpaperInfo before accepting a component, so without this file the
+  test fails for a reason that has nothing to do with the permission.
+
+  The thumbnail is a stock framework drawable: nothing is drawn from this app's
+  own resources, so there is nothing here to mistake for an exploit payload.
+-->
+<wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:thumbnail="@android:drawable/ic_menu_gallery" />

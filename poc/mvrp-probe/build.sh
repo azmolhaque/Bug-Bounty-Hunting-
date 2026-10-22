@@ -27,9 +27,20 @@ SRC="${SRC:-$HERE/src}"
 case "$SRC" in /*) ;; *) SRC="$HERE/$SRC" ;; esac
 [ -d "$SRC" ] || { echo "!! source গাছ নেই: $SRC"; exit 1; }
 echo "[source]   $SRC"
+# res/ গাছ — ঐচ্ছিক। আগে এই builder শুধু manifest link করত, তাই
+# `@xml/...` বা `@drawable/...` রেফারেন্স করা যেত না। WallpaperService-এর
+# meta-data-র জন্য একটা xml resource বাধ্যতামূলক, তাই RES দিলে aapt2 compile
+# ধাপটা যোগ হয়। RES না দিলে আচরণ আগের মতোই — পুরনো PoC গুলো অক্ষত।
+RES="${RES:-}"
+if [ -n "$RES" ]; then
+  case "$RES" in /*) ;; *) RES="$HERE/$RES" ;; esac
+  [ -d "$RES" ] || { echo "!! res গাছ নেই: $RES"; exit 1; }
+  echo "[res]      $RES"
+fi
 BT="${BT:-$HOME/tools/android-14}"
 AJ="${AJ:-$HOME/tools/android.jar}"
-OUT="$HERE/out"
+# OUT ওভাররাইড করা যায়, যাতে অন্য PoC নিজের ফোল্ডারে artifact রাখতে পারে।
+OUT="${OUT:-$HERE/out}"
 KS="$HOME/tools/mvrp-debug.keystore"
 
 # ---- টুল বাছাই: যেটা এই আর্কিটেকচারে আসলে চলে ----
@@ -114,8 +125,18 @@ if [ -n "${PKG:-}" ]; then
   echo "      package  $PKG"
 fi
 
+RESARG=()
+if [ -n "$RES" ]; then
+  if ! "$AAPT2" compile --dir "$RES" -o "$OUT/res.zip" 2> "$OUT/aapt2-compile.err"; then
+    cat "$OUT/aapt2-compile.err"
+    echo "!! aapt2 compile ব্যর্থ — res/ ঠিক করো। APK বানানো হয়নি।"
+    exit 1
+  fi
+  RESARG=(-R "$OUT/res.zip")
+fi
+
 if ! "$AAPT2" link -I "$AJ" \
-    --manifest "$MANIFEST" ${RENAME[@]+"${RENAME[@]}"} \
+    --manifest "$MANIFEST" ${RENAME[@]+"${RENAME[@]}"} ${RESARG[@]+"${RESARG[@]}"} \
     --min-sdk-version 24 --target-sdk-version 34 \
     -o "$OUT/base-unsigned.apk" 2> "$OUT/aapt2.err"; then
   cat "$OUT/aapt2.err"

