@@ -2891,3 +2891,27 @@ the second command was.
 Worth keeping as a rule: `-B` on a key/value listing answers about the wrong
 record. Four instrument defects now (26-29), and three of them are the same
 mistake wearing different clothes.
+
+### 2026-10-23 — defect 30: the screenshot run proved nothing, and said it proved everything
+
+Ran the pair for the report screenshot while the wallpaper was already the
+Fitbit service, which was also the component both builds asked for. Output:
+
+    build  : control
+    before : ...StepsWallpaperService
+    asked  : ...StepsWallpaperService
+    after  : ...StepsWallpaperService      (waited 1s of 45s)
+    RESULT  the requested component is now the home wallpaper (after 1s)
+
+The control "succeeded". Taken at face value that reads as the receiver being
+open to anyone, i.e. as there being no bypass and no finding — on a run where
+nothing happened at all.
+
+Third false reading from the same instrument in two days, and the third time
+the question was weaker than the one that matters. 29 was "did it change"
+instead of "did it change to what was asked"; 30 is "is it the requested
+component" without "was it already". The script now aborts when the requested
+component is already set, and prints the three-step order that avoids it.
+
+I had written the warning in prose to the user instead of into the script. A
+precondition that only exists in a sentence is not a control.

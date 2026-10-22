@@ -69,6 +69,24 @@ fi
 BEFORE="$(comp)"
 echo "before : $BEFORE"
 echo "asked  : $EXPECT"
+echo
+
+# ---- control: a run that asks for what is already set proves nothing ----
+# This is not hypothetical. A run was made with the wallpaper already on the
+# requested component, and both builds then reported success, the control
+# included — which read as "the receiver is open to everyone", i.e. as the
+# finding being void. Nothing had happened in either run.
+if [ "$BEFORE" = "$EXPECT" ]; then
+  echo "!! ABORTED: the requested component is already the wallpaper."
+  echo "!!"
+  echo "!! Nothing this run does could be distinguished from the state it"
+  echo "!! started in, for either build. Set something else first, e.g."
+  echo "!!"
+  echo "!!   ./run-poc.sh attacker <some other pkg/cls>   # prep, not evidence"
+  echo "!!   ./run-poc.sh control  $TARGET"
+  echo "!!   ./run-poc.sh attacker $TARGET"
+  exit 2
+fi
 
 adb logcat -c
 if [ -n "$TARGET" ]; then
