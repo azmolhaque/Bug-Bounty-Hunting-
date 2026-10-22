@@ -309,9 +309,21 @@ permission at any point, and nothing else is asked of them.
   sending it from a background component such as a boot receiver, so I am not
   claiming it works without the app being opened.
 - **Pixel behaviour unknown.** The permission name suggests it is defined by
-  `com.google.pixel.livewallpaper`, which is not installed on either device I
-  tested. I have not checked a Pixel, so I cannot say whether the guard works
-  there.
+  `com.google.pixel.livewallpaper`, and that package is absent from both
+  devices I tested:
+
+  ```
+  $ adb shell pm path com.google.pixel.livewallpaper
+  $ adb shell pm list packages | grep -i pixel.livewallpaper
+  $
+  ```
+
+  (nothing, on both serials). The app also still contains the client code that
+  would talk to it — `IpcDownloadableService` binds
+  `com.google.pixel.livewallpaper/.split.DownloadService` — so the guard looks
+  like it was written for a device where that package exists. I have not
+  checked a Pixel, so I cannot say whether the guard works there; I can only
+  say it does not work here.
 
 ## Root cause and suggested fix
 
