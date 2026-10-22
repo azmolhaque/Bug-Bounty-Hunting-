@@ -96,12 +96,62 @@ NBOTH=$(comm -12 "$PA" "$PB" | grep -c . || true)
 [ "$NBOTH" -eq 0 ] && echo "  (none)"
 echo
 
+# ---- why is a pair asymmetric ----
+# Three different causes produce an A-only row, and they mean opposite things:
+# the other OS defines the permission (the guard works there, nothing to see),
+# the app is not installed on the other phone (the row says nothing at all), or
+# the app is there with the name still undefined and yet not flagged (the app's
+# own manifest differs between versions — that one is worth reading).
+#
+# This is only guessable if the two logs come from one phone on two OS
+# versions. They do not: these are two Motorola models with different OEM
+# packages and different app versions. So each asymmetric row gets asked
+# directly, on the other device.
+explain() {   # explain <other-serial> <pkg> <perm>
+  local s="$1" pkg="$2" perm="$3"
+  [ -n "$s" ] || { echo "no-serial"; return; }
+  if ! adb -s "$s" get-state >/dev/null 2>&1; then echo "device-absent"; return; fi
+  local defined installed
+  defined=$(adb -s "$s" shell pm list permissions 2>/dev/null </dev/null | tr -d '\r' \
+            | grep -cx "permission:$perm")
+  installed=$(adb -s "$s" shell pm path "$pkg" 2>/dev/null </dev/null | tr -d '\r' | grep -c .)
+  if [ "$defined" -gt 0 ]; then
+    echo "OS-DEFINES    the other device declares this permission, so the guard works there"
+  elif [ "$installed" -eq 0 ]; then
+    echo "APP-ABSENT    $pkg is not installed on the other device — the row says nothing"
+  else
+    echo "GUARD-DIFFERS app present, permission undefined there, yet not flagged: that"
+    echo "                version's manifest guards the component differently — read it"
+  fi
+}
+
+# One control for the whole cross-check: if the other device cannot be reached,
+# every row would come back "device-absent" and the labels would be noise.
+XCHECK=1
+for s in "$SER_A" "$SER_B"; do
+  [ -n "$s" ] && adb -s "$s" get-state >/dev/null 2>&1 || XCHECK=0
+done
+if [ "$XCHECK" -eq 0 ]; then
+  echo "NOTE  both phones are not reachable by serial right now, so the asymmetric"
+  echo "      rows below are listed without an explanation. Attach both and re-run"
+  echo "      (or re-run the older sweep so its log carries a serial) to get one."
+  echo
+fi
+
 echo "== only on A ($DEV_A) =="
-comm -23 "$PA" "$PB" | awk -F'\t' '{printf "  %-52s %s\n", $2, $1}'
+while IFS=$'\t' read -r pkg perm; do
+  [ -n "${pkg:-}" ] || continue
+  printf '  %-52s %s\n' "$perm" "$pkg"
+  [ "$XCHECK" -eq 1 ] && explain "$SER_B" "$pkg" "$perm" | sed 's/^/      /'
+done < <(comm -23 "$PA" "$PB")
 echo
 
 echo "== only on B ($DEV_B) =="
-comm -13 "$PA" "$PB" | awk -F'\t' '{printf "  %-52s %s\n", $2, $1}'
+while IFS=$'\t' read -r pkg perm; do
+  [ -n "${pkg:-}" ] || continue
+  printf '  %-52s %s\n' "$perm" "$pkg"
+  [ "$XCHECK" -eq 1 ] && explain "$SER_A" "$pkg" "$perm" | sed 's/^/      /'
+done < <(comm -13 "$PA" "$PB")
 echo
 
 echo "== summary =="
@@ -115,13 +165,18 @@ BOTH is the list worth working. The permission is defined on neither release,
 so the guard cannot start working by itself and the component behind it is
 reachable by any app that declares the name.
 
-A-only usually means the newer OS defines it — that is the API-36 pattern that
-cost G-F003 one of its three claims. Not a bug; a guard waiting for its
-platform.
+An asymmetric row means nothing until the label under it says why, and the
+label is measured on the other device, not inferred from the OS version. Two
+different phones were used here, so "only on the newer one" is as likely to be
+a missing OEM package or a different app version as anything about Android.
 
-B-only is the interesting accident: a guard that used to work and is orphaned
-on the newer release, i.e. a regression the vendor introduced. Check the
-component behind each of those first.
+  OS-DEFINES     the guard works on that release. Not a bug; a guard waiting
+                 for its platform. This is the API-36 pattern that cost G-F003
+                 one of its three claims.
+  APP-ABSENT     the comparison never happened for that app. Not evidence.
+  GUARD-DIFFERS  the only interesting one: same permission undefined on both,
+                 but only one version's manifest leans on it. Read that
+                 component.
 
 And none of the three is a finding yet. ORPHANED is a precondition
 (CLAUDE.md 2.6): declare the name, confirm it is granted at install, reach the
