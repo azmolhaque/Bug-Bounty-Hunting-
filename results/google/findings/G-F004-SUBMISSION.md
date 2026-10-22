@@ -1,23 +1,45 @@
 # G-F004 — Google Wallpapers: any app can choose the live wallpaper component
 
+*Everything above "Problem description" is working notes. Do not paste it into
+the form.*
+
 **Status:** draft, not submitted
 **Target:** Google Mobile VRP
 **Package:** `com.google.android.apps.wallpaper` (GoogleWallpapers, privileged, versionName 16)
 **Category:** orphaned permission (listed under "other" in the program rules)
 **CVSS 3.1:** 4.3 Medium — `AV:L/AC:L/PR:N/UI:N/S:C/C:N/I:L/A:N`
 
----
+**Dedup:** no public prior art. Searched for `DownloadableRestorer`,
+`DOWNLOAD_LIVE_WALLPAPER`, and a `SET_WALLPAPER_COMPONENT` bypass in Google
+Wallpapers; nothing in CVE listings, Android security bulletins or writeups.
+Nothing in this account's own `results/` either — the permission appeared in
+the orphan sweep of 2026-10-21 and was never worked or reported.
 
-## FILL BEFORE SUBMITTING
+**Form mapping**
+
+| form field | paste |
+|---|---|
+| Vulnerability type | orphaned permission / permission bypass (privilege escalation) |
+| Problem description | `## Problem description` + `## Reproduction` + `## Evidence` |
+| Impact analysis | `## Impact` + `## What I did not demonstrate` + `## Root cause and suggested fix` |
+| Attachments | `wallpaper-restore-poc.zip`, terminal screenshot |
 
 - [x] external IP: `180.148.212.54`
+- [x] zip carries sources, three manifests and the three built APKs, and the
+      shipped APKs were installed from the zip and re-run
 - [ ] screenshot of the terminal showing the control run and the attacker run
-- [ ] attach the zip — sources, three manifests, AND the three built APKs
-- [ ] re-read: does any sentence claim something not in the pasted output?
+- [ ] on pasting: does any sentence claim something not in the pasted output?
 
 ---
 
 ## Problem description
+
+An app holding no permission can make Google Wallpapers — a privileged system
+app — call `WallpaperManager.setWallpaperComponentWithFlags`, which is gated by
+`SET_WALLPAPER_COMPONENT` (`signature|privileged`), with a `ComponentName` the
+app chooses, including one of its own. The receiver that does this is exported
+behind a permission that no package on the device defines, so any app can
+declare that permission itself and be granted it at install.
 
 `com.google.android.apps.wallpaper` exports a broadcast receiver that is
 guarded by a permission no package on the device defines:
@@ -109,12 +131,10 @@ $ adb shell dumpsys package com.google.android.apps.wallpaper | grep -i WALLPAPE
 The Wallpapers app is privileged and holds it. A third-party app cannot, and
 my test app's own log line confirms it does not.
 
-The `ComponentName` handed to that API comes straight out of an extra supplied
-by whoever sent the broadcast. Nothing checks who sent it — the
-`Intrinsics.checkNotNull` on the extra tests the cast, not the sender.
-
-So an app that holds no real permission can make a privileged app perform a
-`signature|privileged` action with an argument of the attacker's choosing.
+The `ComponentName` handed to that API is `liveWallpaperInfo.mInfo
+.getComponent()`, and `mInfo` is the `WallpaperInfo` taken straight from the
+broadcast extra. Between the extra and the privileged call there is a cast and
+nothing else: no check of the sending package, no check of the calling uid.
 
 ## Reproduction
 
@@ -164,8 +184,34 @@ sendBroadcast(b);
 
 ## Evidence
 
-Device: moto g (2026), Android 16, serial ZT422724JR. Both runs start from the
-same wallpaper and ask for the same component, fifty seconds apart.
+Device: moto g (2026), Android 16, serial ZT422724JR.
+
+**Setup: the two builds differ in the permission and in nothing else.** The
+attacker build is granted it at install, and the device says so:
+
+```
+$ adb shell dumpsys package com.cindrasec.wallpaperpoc | grep -A3 'install permissions'
+    install permissions:
+      com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER: granted=true
+
+$ for P in com.cindrasec.wallpaperctl com.cindrasec.wallpaperpoc; do
+    echo "--- $P"
+    adb shell pm path $P | sed 's/^/  installed: /'
+    printf '  mentions of DOWNLOAD_LIVE_WALLPAPER: '
+    adb shell dumpsys package $P | grep -c DOWNLOAD_LIVE_WALLPAPER
+  done
+--- com.cindrasec.wallpaperctl
+  installed: package:/data/app/~~Q7vXd8n7hLjHhcFlCoPdaQ==/com.cindrasec.wallpaperctl-.../base.apk
+  mentions of DOWNLOAD_LIVE_WALLPAPER: 0
+--- com.cindrasec.wallpaperpoc
+  installed: package:/data/app/~~vXM4uUh63DxycYBZ9HRTdw==/com.cindrasec.wallpaperpoc-.../base.apk
+  mentions of DOWNLOAD_LIVE_WALLPAPER: 5
+```
+
+Both installed; one mentions the name, one does not.
+
+The two runs below start from the same wallpaper and ask for the same
+component, fifty seconds apart.
 
 **Control — same code, no permission:**
 
@@ -223,44 +269,14 @@ broadcast. That is the framework's own record of a privileged app making the
 `SET_WALLPAPER_COMPONENT`-gated call with a component chosen by an app that
 does not hold that permission, and then the system binding to it.
 
-The APKs in the attached zip are the ones I tested: I unpacked the zip,
-installed from it, and ran the pair again at 22:06:27Z and 22:07:17Z —
-control unchanged for 45 seconds, attacker in 2 seconds, same framework lines.
-
-I repeated the whole thing an hour later from a clean state — both apps
-uninstalled, rebuilt and reinstalled, following the steps above verbatim — and
-got the same pair: control unchanged for the full 45 seconds at 21:42:13Z,
-attacker in 2 seconds at 21:43:04Z with
-`setWallpaperComponent name=ComponentInfo{com.glance.lockscreenM/...LooksWallpaperService}, callingPid = 1094`
-and `Start proc 1094:com.google.android.apps.wallpaper ... for broadcast` one
-line before it.
-
-The permission really is granted at install, from the device's records:
-
-```
-$ adb shell dumpsys package com.cindrasec.wallpaperpoc | grep -A3 'install permissions'
-    install permissions:
-      com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER: granted=true
-```
-
-And the two builds differ in that permission and nothing else, which the
-device will say for itself — both installed, one mentions the name, one does
-not:
-
-```
-$ for P in com.cindrasec.wallpaperctl com.cindrasec.wallpaperpoc; do
-    echo "--- $P"
-    adb shell pm path $P | sed 's/^/  installed: /'
-    printf '  mentions of DOWNLOAD_LIVE_WALLPAPER: '
-    adb shell dumpsys package $P | grep -c DOWNLOAD_LIVE_WALLPAPER
-  done
---- com.cindrasec.wallpaperctl
-  installed: package:/data/app/~~Q7vXd8n7hLjHhcFlCoPdaQ==/com.cindrasec.wallpaperctl-.../base.apk
-  mentions of DOWNLOAD_LIVE_WALLPAPER: 0
---- com.cindrasec.wallpaperpoc
-  installed: package:/data/app/~~vXM4uUh63DxycYBZ9HRTdw==/com.cindrasec.wallpaperpoc-.../base.apk
-  mentions of DOWNLOAD_LIVE_WALLPAPER: 5
-```
+Reproduced twice more. At 21:42:13Z / 21:43:04Z from a clean state — both apps
+uninstalled, rebuilt and reinstalled, following the steps above verbatim —
+with `setWallpaperComponent ... callingPid = 1094` preceded by
+`Start proc 1094:com.google.android.apps.wallpaper ... for broadcast`. And at
+22:06:27Z / 22:07:17Z from the APKs in the attached zip, unpacked and
+installed from the zip itself, so the binaries attached here are the ones
+these results came from. Both times: control unchanged for the full 45
+seconds, attacker in 2 seconds.
 
 **The component can be the attacker's own code.** A third build adds a
 `WallpaperService` to the same app and points the receiver at it:
