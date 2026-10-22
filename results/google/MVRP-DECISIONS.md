@@ -3118,3 +3118,46 @@ which force stop does not touch.
 That is three claims tested before submission and one survived intact
 (reboot), one corrected (the code quote's build), one withdrawn (force-stop
 resistance, never claimed, now explicitly denied).
+
+### 2026-10-23 — the last two gaps, and a silent zero I nearly accepted from my own hand
+
+Two sentences in the report were still assertions. Both now measured.
+
+`com.google.pixel.livewallpaper` is absent from both devices — `pm path` and
+`pm list packages` print nothing on either serial. The app still carries the
+client code that would bind it (`IpcDownloadableService` ->
+`com.google.pixel.livewallpaper/.split.DownloadService`), which is what makes
+the guard's origin legible, and that pair is now in the report.
+
+The second one is the better lesson. To show the control build holds no
+permission I ran `dumpsys package ... | sed -n '/install permissions/,/runtime
+permissions/p'` and got nothing back. Nothing is what a package with no
+permissions prints, because dumpsys omits the section — and it is also what an
+uninstalled package prints. I was one step from writing "the control holds
+nothing" on the strength of an empty terminal.
+
+The fix was to make the zero visible and give it a control, in one command:
+
+    for P in com.cindrasec.wallpaperctl com.cindrasec.wallpaperpoc; do
+      adb shell pm path $P
+      printf '  mentions: '; adb shell dumpsys package $P | grep -c DOWNLOAD_LIVE_WALLPAPER
+    done
+
+    wallpaperctl : installed, mentions 0
+    wallpaperpoc : installed, mentions 5
+
+Both installed, so the zero is a measured zero, and the five is the positive
+control that proves the command can find the name at all.
+
+This is the fourth silent-zero defect in two days, and the first one I made at
+the prompt rather than in a script. Every control I added tonight went into
+`mvrp-src.sh`, `mvrp-orphan-diff.sh`, `mvrp-stub-read.sh` and
+`mvrp-provider-probe.sh` — and then I typed a bare `sed` range by hand and
+read its silence as an answer. Putting the rule in the tooling does not install
+it in the operator.
+
+Verification is complete. Five claims tested before submission: reboot
+persistence held, the code quotes were wrong about the build and were
+replaced, force-stop resistance was disproved and is now denied in the report,
+the Pixel package's absence was confirmed, and the control's permission-free
+state was proved with a control of its own.

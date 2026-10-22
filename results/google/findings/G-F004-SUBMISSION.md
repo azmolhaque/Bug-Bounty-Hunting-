@@ -225,6 +225,25 @@ $ adb shell dumpsys package com.cindrasec.wallpaperpoc | grep -A3 'install permi
       com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER: granted=true
 ```
 
+And the two builds differ in that permission and nothing else, which the
+device will say for itself — both installed, one mentions the name, one does
+not:
+
+```
+$ for P in com.cindrasec.wallpaperctl com.cindrasec.wallpaperpoc; do
+    echo "--- $P"
+    adb shell pm path $P | sed 's/^/  installed: /'
+    printf '  mentions of DOWNLOAD_LIVE_WALLPAPER: '
+    adb shell dumpsys package $P | grep -c DOWNLOAD_LIVE_WALLPAPER
+  done
+--- com.cindrasec.wallpaperctl
+  installed: package:/data/app/~~Q7vXd8n7hLjHhcFlCoPdaQ==/com.cindrasec.wallpaperctl-.../base.apk
+  mentions of DOWNLOAD_LIVE_WALLPAPER: 0
+--- com.cindrasec.wallpaperpoc
+  installed: package:/data/app/~~vXM4uUh63DxycYBZ9HRTdw==/com.cindrasec.wallpaperpoc-.../base.apk
+  mentions of DOWNLOAD_LIVE_WALLPAPER: 5
+```
+
 **The component can be the attacker's own code.** A third build adds a
 `WallpaperService` to the same app and points the receiver at it:
 
