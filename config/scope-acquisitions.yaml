@@ -1,0 +1,1037 @@
+# scope-acquisitions.yaml — GENERATED, do not hand-edit.
+# Source: acquisitions_domains_tiers.asciipb
+# Built : 2026-10-22T12:44:02Z by scripts/scope-from-tiers.sh
+# In scope tiers: TIER0 TIER1 TIER2 TIER3.  TIER4 is listed under out_of_scope, since
+# Google's scheme marks it never in scope and out_of_scope is checked first.
+
+program: "Google & Alphabet VRP — acquisitions (derived from tier protobuf)"
+platform: "bughunters.google.com"
+
+in_scope:
+  - "accounts.ft.nest.com"   # TIER0
+  - "accounts.nest.com"   # TIER0
+  - "admin.pring.app"   # TIER0
+  - "api.appsheet.com"   # TIER0
+  - "api.pring.jp"   # TIER0
+  - "app.validation.mandiant.com"   # TIER0
+  - "argocd-dwh-eu-dev.photomath.net"   # TIER0
+  - "argocd-dwh-us-dev.photomath.net"   # TIER0
+  - "argocd-gke-app-eu-dev.photomath.net"   # TIER0
+  - "argocd-gke-app-eu-prod.photomath.net"   # TIER0
+  - "argocd-gke-app-eu-test.photomath.net"   # TIER0
+  - "argocd-gke-app-us-prod.photomath.net"   # TIER0
+  - "argocd-gke-app-us-test.photomath.net"   # TIER0
+  - "argocd-platform-eu-dev.photomath.net"   # TIER0
+  - "argocd-platform-eu-test.photomath.net"   # TIER0
+  - "argocd-platform-prod-eu.photomath.net"   # TIER0
+  - "azure.cloudsimple.com"   # TIER0
+  - "baja.photomath.net"   # TIER0
+  - "callback.pring.app"   # TIER0
+  - "cameyo.com"   # TIER0
+  - "cameyo.net"   # TIER0
+  - "cuvar.photomath.net"   # TIER0
+  - "daportal.photomath.net"   # TIER0
+  - "de.looker.com"   # TIER0
+  - "dev-api.pring.jp"   # TIER0
+  - "dpcapi-admin.photomath.com"   # TIER0
+  - "dpcapi-admin.photomath.net"   # TIER0
+  - "dpcapi.photomath.net"   # TIER0
+  - "dwealliance.com"   # TIER0
+  - "eu.appsheet.com"   # TIER0
+  - "future-api.pring.jp"   # TIER0
+  - "googleacquisitionmigration.com"   # TIER0
+  - "gw2-pbvpn.looker.com"   # TIER0
+  - "help.fitbit.com"   # TIER0
+  - "internal.photomath.com"   # TIER0
+  - "keybox.looker.com"   # TIER0
+  - "lapi.photomath.net"   # TIER0
+  - "login.mandiant.com"   # TIER0
+  - "mankey.photomath.net"   # TIER0
+  - "marketplace.cameyo.com"   # TIER0
+  - "metabase.photomath.net"   # TIER0
+  - "myhelp.fitbit.com"   # TIER0
+  - "online.cameyo.com"   # TIER0
+  - "pbvpn.looker.com"   # TIER0
+  - "rampart.looker.com"   # TIER0
+  - "service.cloudvmwareengine.google"   # TIER0
+  - "staging.callback.pring.app"   # TIER0
+  - "taportal.photomath.net"   # TIER0
+  - "tlapi.photomath.net"   # TIER0
+  - "virtual-app.com"   # TIER0
+  - "www.appsheet.com"   # TIER0
+  - "zuja.photomath.net"   # TIER0
+  - "accounts.fitbit.com"   # TIER1
+  - "adhawkdev.com"   # TIER1
+  - "admin.store.ft.nest.com"   # TIER1
+  - "admin.store.nest.com"   # TIER1
+  - "adsapi-proxy-il.waze.com"   # TIER1
+  - "adsapi-proxy-na.waze.com"   # TIER1
+  - "adsapi-proxy-row.waze.com"   # TIER1
+  - "adsapi-proxy.waze.com"   # TIER1
+  - "adsapi-staging.waze.com"   # TIER1
+  - "adsapi.waze.com"   # TIER1
+  - "advantage-api.mandiant.com"   # TIER1
+  - "advantage.mandiant.com"   # TIER1
+  - "alpha.home.ft.nest.com"   # TIER1
+  - "alpha.home.nest.com"   # TIER1
+  - "api.advantage.mandiant.com"   # TIER1
+  - "api.home.ft.nest.com"   # TIER1
+  - "api.home.nest.com"   # TIER1
+  - "api.home.production.nest.com"   # TIER1
+  - "api.intelligence.mandiant.com"   # TIER1
+  - "api.srt01.iad01.ft.nest.com"   # TIER1
+  - "apigee.com"   # TIER1
+  - "apigee.google.com"   # TIER1
+  - "aportal.photomath.net"   # TIER1
+  - "app.dataform.co"   # TIER1
+  - "autodiscover.c.fitbit.com"   # TIER1
+  - "autodiscover.fitbit.com"   # TIER1
+  - "autodiscover.v.fitbit.com"   # TIER1
+  - "beta.home.ft.nest.com"   # TIER1
+  - "bi.corp.fitbit.com"   # TIER1
+  - "bidev.corp.fitbit.com"   # TIER1
+  - "biqas.corp.fitbit.com"   # TIER1
+  - "censuslooker.com"   # TIER1
+  - "chronicle.security"   # TIER1
+  - "clips.camera.home.nest.com"   # TIER1
+  - "cloud-file-service-gcp.elastifile.com"   # TIER1
+  - "cms.photomath.net"   # TIER1
+  - "coaching-dashboard.fitbit.com"   # TIER1
+  - "content.validation.mandiant.com"   # TIER1
+  - "core.photomath.net"   # TIER1
+  - "corp.looker.com"   # TIER1
+  - "cs-tableau-bpo.corp.fitbit.com"   # TIER1
+  - "customersupport-tableau.site-ops.fitbit.com"   # TIER1
+  - "dacp.photomath.net"   # TIER1
+  - "dcms.photomath.net"   # TIER1
+  - "developer-api-ft.nest.com"   # TIER1
+  - "developer-api.nest.com"   # TIER1
+  - "devops-survey.com"   # TIER1
+  - "dlapi.photomath.nettier"   # TIER1
+  - "dropcam.com"   # TIER1
+  - "dsnom.photomath.com"   # TIER1
+  - "dsnom.photomath.net"   # TIER1
+  - "dtap.photomath.net"   # TIER1
+  - "dtranslator.photomath.net"   # TIER1
+  - "enterprise.apigee.com"   # TIER1
+  - "feed-moderation.fitbit.com"   # TIER1
+  - "feeder.photomath.net"   # TIER1
+  - "fiori-dev.corp.fitbit.com"   # TIER1
+  - "fiori.corp.fitbit.com"   # TIER1
+  - "fleet.home.ft.nest.com"   # TIER1
+  - "fleet.home.nest.com"   # TIER1
+  - "getip.cameyo.com"   # TIER1
+  - "gwebhook.svc.cameyo.com"   # TIER1
+  - "health-admin.fitbit.com"   # TIER1
+  - "hms-integration.fitbit.com"   # TIER1
+  - "home.ft.nest.com"   # TIER1
+  - "home.nest.com"   # TIER1
+  - "iafwsjwcmh.com"   # TIER1
+  - "idp.photomath.net"   # TIER1
+  - "instancemanagerui.looker.com"   # TIER1
+  - "intelligence.fireeye.com"   # TIER1
+  - "iportal.photomath.net"   # TIER1
+  - "kb.cameyo.com"   # TIER1
+  - "lk.looker.com"   # TIER1
+  - "looker-opensource-components.looker.com"   # TIER1
+  - "looker.com"   # TIER1
+  - "lookercdn.com"   # TIER1
+  - "lookerdata.com"   # TIER1
+  - "lookermail.com"   # TIER1
+  - "md-us.mandiant.com"   # TIER1
+  - "md.mandiant.com"   # TIER1
+  - "mgmt.fitbit.com"   # TIER1
+  - "msvportal.mandiant.com"   # TIER1
+  - "my.neverware.com"   # TIER1
+  - "myaccount.ft.nest.com"   # TIER1
+  - "myaccount.nest.com"   # TIER1
+  - "nexusapi-eu1.camera.home.nest.com"   # TIER1
+  - "nexusapi-gl1.camera.home.nest.com"   # TIER1
+  - "nexusapi-us1.camera.home.nest.com"   # TIER1
+  - "ngw.fitbit.com"   # TIER1
+  - "noc.elastifile.com"   # TIER1
+  - "nssbridge.nest.com"   # TIER1
+  - "opensky.wing.com"   # TIER1
+  - "passbolt.siemplify.co"   # TIER1
+  - "pdb.photomath.net"   # TIER1
+  - "phoenixapi-cam.production.nest.com"   # TIER1
+  - "plextrac.mandiant.com"   # TIER1
+  - "pms-doc.photomath.net"   # TIER1
+  - "pointy.com"   # TIER1
+  - "portal.photomath.net"   # TIER1
+  - "problem-lifecycle.photomath.net"   # TIER1
+  - "prod.respond-software.com"   # TIER1
+  - "qa1synclair.fitbit.com"   # TIER1
+  - "result.photomath.net"   # TIER1
+  - "rip.photomath.net"   # TIER1
+  - "sense-ui.apigee.com"   # TIER1
+  - "session.cameyo.com"   # TIER1
+  - "setup.camera.home.nest.com"   # TIER1
+  - "siemplifycloud.com"   # TIER1
+  - "simulator-updates.fitbit.com"   # TIER1
+  - "snom.photomath.net"   # TIER1
+  - "sr.photomath.net"   # TIER1
+  - "srs.photomath.net"   # TIER1
+  - "srv4.photomath.net"   # TIER1
+  - "strava.fitbit.com"   # TIER1
+  - "support.cameyo.com"   # TIER1
+  - "support.pring.jp"   # TIER1
+  - "supportadmin.nestlabs.com"   # TIER1
+  - "tacp.photomath.net"   # TIER1
+  - "tcms.photomath.net"   # TIER1
+  - "tcopper.photomath.net"   # TIER1
+  - "tenor.com"   # TIER1
+  - "tfeeder.photomath.net"   # TIER1
+  - "tidp.photomath.net"   # TIER1
+  - "tportal.photomath.net"   # TIER1
+  - "tproblem-lifecycle.photomath.net"   # TIER1
+  - "translator.photomath.net"   # TIER1
+  - "trip.photomath.net"   # TIER1
+  - "tsnom.photomath.net"   # TIER1
+  - "ttranslator.photomath.net"   # TIER1
+  - "validation.mandiant.com"   # TIER1
+  - "vapi.srt01.iad01.production.nest.com"   # TIER1
+  - "vpn.owlchemylabs.com"   # TIER1
+  - "wallet-service.store.nest.com"   # TIER1
+  - "wayfinder.goog"   # TIER1
+  - "waze.com"   # TIER1
+  - "webapi.camera.home.nest.com"   # TIER1
+  - "webpass.net"   # TIER1
+  - "wing.com"   # TIER1
+  - "work.webpass.net"   # TIER1
+  - "wwn5-api.nest.com"   # TIER1
+  - "www.pring.jp"   # TIER1
+  - "www.virustotal.com"   # TIER1
+  - "www.waze.com"   # TIER1
+  - "acp.photomath.net"   # TIER2
+  - "adp.photomath.net"   # TIER2
+  - "alexa.nest.com"   # TIER2
+  - "alphagoteach.deepmind.com"   # TIER2
+  - "alx-api.nest.com"   # TIER2
+  - "api.isightpartners.com"   # TIER2
+  - "app-staging.alooma.com"   # TIER2
+  - "app.alooma.com"   # TIER2
+  - "appfe-http2-global-lb.production.nest.com"   # TIER2
+  - "appsheet.com"   # TIER2
+  - "artifactory.cpie.io"   # TIER2
+  - "auth.nest.com"   # TIER2
+  - "b2c.pring.app"   # TIER2
+  - "bamboo-ui.nestlabs.com"   # TIER2
+  - "beta.fitbit.com"   # TIER2
+  - "beta.waze.com"   # TIER2
+  - "bigsur.ai"   # TIER2
+  - "breezometer.com"   # TIER2
+  - "bronze-eagle.gcp.elastifile.com"   # TIER2
+  - "callhome.actifio.com"   # TIER2
+  - "callhome.actifio.net"   # TIER2
+  - "certified-legacy.nest.com"   # TIER2
+  - "certified.nest.com"   # TIER2
+  - "cf-mysight.isightpartners.com"   # TIER2
+  - "chorussystems.net"   # TIER2
+  - "chunkedswarm.com"   # TIER2
+  - "coach.fitbit.com"   # TIER2
+  - "console.developers.ft.nest.com"   # TIER2
+  - "console.developers.nest.com"   # TIER2
+  - "contact.nest.com"   # TIER2
+  - "corporate.fitbit.com"   # TIER2
+  - "corpusant.ai"   # TIER2
+  - "coverity.nestlabs.com"   # TIER2
+  - "dadp.photomath.com"   # TIER2
+  - "dadp.photomath.net"   # TIER2
+  - "data-export-api.store.ft.nest.com"   # TIER2
+  - "data-export-api.store.nest.com"   # TIER2
+  - "dataform.co"   # TIER2
+  - "deepmind.host"   # TIER2
+  - "dev.fitbit.com"   # TIER2
+  - "developers.breezometer.com"   # TIER2
+  - "development.www.pring.jp"   # TIER2
+  - "dfa.nestlabs.com"   # TIER2
+  - "dninjask.photomath.com"   # TIER2
+  - "dninjask.photomath.net"   # TIER2
+  - "docs-staging.isightpartners.com"   # TIER2
+  - "docs.isightpartners.com"   # TIER2
+  - "downloads.nest.com"   # TIER2
+  - "dpcapi.photomath.com"   # TIER2
+  - "dpdimages.photomath.net"   # TIER2
+  - "dqapdimages.photomath.net"   # TIER2
+  - "drip.photomath.net"   # TIER2
+  - "drop.isightpartners.com"   # TIER2
+  - "dynamic-swarm175.rts-test01.iad02.build.nestlabs.com"   # TIER2
+  - "email.subscriptions.fitbit.com"   # TIER2
+  - "energytraits.energy.production.nest.com"   # TIER2
+  - "enterprise.ft.nest.com"   # TIER2
+  - "enterprise.nest.com"   # TIER2
+  - "enterprise.web01.iad01.ft.nest.com"   # TIER2
+  - "entitle.ft.nest.com"   # TIER2
+  - "entitle.nest.com"   # TIER2
+  - "eps-mx1.actifio.com"   # TIER2
+  - "eps-mx2.actifio.com"   # TIER2
+  - "explore.deepmind.com"   # TIER2
+  - "fieldtesting.fitbit.com"   # TIER2
+  - "fileserv.siemplify.co"   # TIER2
+  - "fiori-test.corp.fitbit.com"   # TIER2
+  - "forum.waze.com"   # TIER2
+  - "freemap.co.il"   # TIER2
+  - "frontdoor-aws.ft.nest.com"   # TIER2
+  - "frontdoor-aws.production.nest.com"   # TIER2
+  - "frontdoor-weighted.ft.nest.comm"   # TIER2
+  - "frontdoor-weighted.production.nest.com"   # TIER2
+  - "frontdoor.srt01.iad01.ft.nest.com"   # TIER2
+  - "frontdoor.srt01.iad01.production.nest.com"   # TIER2
+  - "ftp.actifio.com"   # TIER2
+  - "gam.fitbit.com"   # TIER2
+  - "gitlab.neverware.com"   # TIER2
+  - "globalweathercorp.com"   # TIER2
+  - "gridaware.app"   # TIER2
+  - "grpc-web.ft.nest.com"   # TIER2
+  - "grpc-web.production.nest.com"   # TIER2
+  - "home-assistant.nest.com"   # TIER2
+  - "horsea.photomath.net"   # TIER2
+  - "hub.fitbit.com"   # TIER2
+  - "hvac-diag.nest.com"   # TIER2
+  - "ifttt.fitbit.com"   # TIER2
+  - "images-ui.nestlabs.com"   # TIER2
+  - "inbox-g-am.waze.com"   # TIER2
+  - "inbox-na.waze.com"   # TIER2
+  - "inbox.waze.com"   # TIER2
+  - "info.isightpartners.com"   # TIER2
+  - "integration.store.ft.nest.com"   # TIER2
+  - "integration.store.nest.com"   # TIER2
+  - "integrations.mandiant.com"   # TIER2
+  - "inv.semihalf.com"   # TIER2
+  - "investor.fitbit.com"   # TIER2
+  - "investors.fitbit.com"   # TIER2
+  - "isightpartners.com"   # TIER2
+  - "jenkins-embedded.nestlabs.com"   # TIER2
+  - "jetbridge.net"   # TIER2
+  - "jira.fitbit.com"   # TIER2
+  - "jira.nestlabs.com"   # TIER2
+  - "json.photomath.net"   # TIER2
+  - "lab.mandiant.com"   # TIER2
+  - "labs.deepmind.com"   # TIER2
+  - "letstalkselfdriving.com"   # TIER2
+  - "login.alooma.com"   # TIER2
+  - "logsink.devices.nest.com"   # TIER2
+  - "logsink.home.ft.nest.com"   # TIER2
+  - "logsink.home.nest.com"   # TIER2
+  - "mailhost.cloudsimple.com"   # TIER2
+  - "marketing-cms.ft.nest.com"   # TIER2
+  - "marketing-cms.nest.com"   # TIER2
+  - "mitre.siemplify.co"   # TIER2
+  - "mobile-web-new.waze.co.il"   # TIER2
+  - "mobile-web-new.waze.com"   # TIER2
+  - "mobile-web-new.world.waze.co.il"   # TIER2
+  - "mobile-web-new.world.waze.com"   # TIER2
+  - "mobile-web.waze.com"   # TIER2
+  - "msv-ci.cpie.io"   # TIER2
+  - "mysight.isightpartners.com"   # TIER2
+  - "ninjask.photomath.net"   # TIER2
+  - "npk.services.mandiant.com"   # TIER2
+  - "offers.ft.nest.com"   # TIER2
+  - "offers.nest.com"   # TIER2
+  - "opensky-autopush.wing.com"   # TIER2
+  - "opensky-staging.wing.com"   # TIER2
+  - "ordering.app"   # TIER2
+  - "orders.fitbit.com"   # TIER2
+  - "pdimages.photomath.net"   # TIER2
+  - "phoenixapi-eu.production.nest.com"   # TIER2
+  - "phoenixapi-us.ft.nest.com"   # TIER2
+  - "phoenixapi-us.production.nest.com"   # TIER2
+  - "phoenixapi.production.nest.com"   # TIER2
+  - "photomath.app"   # TIER2
+  - "photomath.net"   # TIER2
+  - "portal.strivecast.com"   # TIER2
+  - "pro.nest.com"   # TIER2
+  - "pro.web01.iad01.production.nest.com"   # TIER2
+  - "prod-candidate.isightpartners.com"   # TIER2
+  - "producer.ai"   # TIER2
+  - "pulse.fitbit.com"   # TIER2
+  - "pws.photomath.net"   # TIER2
+  - "riff.ing"   # TIER2
+  - "riffusion.com"   # TIER2
+  - "rpasplatform.net"   # TIER2
+  - "rtproxy-am-gcp.waze.com"   # TIER2
+  - "rtproxy-row-gcp.waze.com"   # TIER2
+  - "rubyfe-grpc-global-lb.production.nest.com"   # TIER2
+  - "savageplanetgame.ca"   # TIER2
+  - "savageplanetgame.com"   # TIER2
+  - "sc-bronze-eagle.gcp.elastifile.com"   # TIER2
+  - "sc-cloud-file-service-gcp.elastifile.com"   # TIER2
+  - "sc-silver-eagle.gcp.elastifile.com"   # TIER2
+  - "scout.parts"   # TIER2
+  - "secureconnect0.actifio.com"   # TIER2
+  - "secureconnect2.actifio.com"   # TIER2
+  - "selling.mandiant.com"   # TIER2
+  - "shop.pring.app"   # TIER2
+  - "sidewalkinc.com"   # TIER2
+  - "sidewalklabs.com"   # TIER2
+  - "siemplify.co"   # TIER2
+  - "snapdragon-ws.fitbit.com"   # TIER2
+  - "somosfitbit.com"   # TIER2
+  - "spectacles.dev"   # TIER2
+  - "squeakydoor.ft.nest.com"   # TIER2
+  - "squeakydoor.nest.com"   # TIER2
+  - "staging.www.pring.jp"   # TIER2
+  - "stash-ui.nestlabs.com"   # TIER2
+  - "status.waze.com"   # TIER2
+  - "storagegateway-am.waze.com"   # TIER2
+  - "storagegateway-il.waze.com"   # TIER2
+  - "storagegateway-na.waze.com"   # TIER2
+  - "storagegateway-row.waze.com"   # TIER2
+  - "store.fitbit.com"   # TIER2
+  - "store.ft.nest.com"   # TIER2
+  - "store.nest.com"   # TIER2
+  - "stories.fitbit.com"   # TIER2
+  - "strivetech.io"   # TIER2
+  - "studio.fitbit.com"   # TIER2
+  - "studio.pebble.app"   # TIER2
+  - "support.nest.com"   # TIER2
+  - "support.siemplify.co"   # TIER2
+  - "tadp.photomath.net"   # TIER2
+  - "threatscape.isightpartners.com"   # TIER2
+  - "tninjask.photomath.net"   # TIER2
+  - "tpdimages.photomath.net"   # TIER2
+  - "tpws.photomath.net"   # TIER2
+  - "tqapdimages.photomath.net"   # TIER2
+  - "transport.home.ft.nest.com"   # TIER2
+  - "transport.home.nest.com"   # TIER2
+  - "tsapi-stg.isightpartners.com"   # TIER2
+  - "typhoonstudios.ca"   # TIER2
+  - "typhoonstudios.com"   # TIER2
+  - "update.validation.mandiant.com"   # TIER2
+  - "update.verodinservices.com"   # TIER2
+  - "vaventurine.web01.iad01.production.nest.com"   # TIER2
+  - "voice-prompts.waze.com"   # TIER2
+  - "waymo.com"   # TIER2
+  - "wazeopedia.waze.com"   # TIER2
+  - "welcome.ft.nest.com"   # TIER2
+  - "welcome.nest.com"   # TIER2
+  - "whereismytrain.in"   # TIER2
+  - "wiki.waze.com"   # TIER2
+  - "wingoperations.net"   # TIER2
+  - "wipeout.apigeeks.net"   # TIER2
+  - "wtfe.weave.production.nest.com"   # TIER2
+  - "wwn-api-ft.nest.com"   # TIER2
+  - "wwn-api.nest.com"   # TIER2
+  - "www.breezometer.com"   # TIER2
+  - "www.cameyo.com"   # TIER2
+  - "www.deepmind.com"   # TIER2
+  - "www.elastifile.com"   # TIER2
+  - "www.fitbit.com"   # TIER2
+  - "www.help.fitbit.com"   # TIER2
+  - "www.savageplanetgame.ca"   # TIER2
+  - "www.stratozone.com"   # TIER2
+  - "www.typhoonstudios.ca"   # TIER2
+  - "www.typhoonstudios.com"   # TIER2
+  - "xtapestry.app"   # TIER2
+  - "xviaduct.app"   # TIER2
+  - "about.appsheet.com"   # TIER3
+  - "actifio.com"   # TIER3
+  - "actifiogo.com"   # TIER3
+  - "api-intelligence-staging.mandiant.com"   # TIER3
+  - "api-staging.intelligence.mandiant.com"   # TIER3
+  - "api.fitbit.com"   # TIER3
+  - "appfe-http2-global-lb.ft.nest.com"   # TIER3
+  - "appfe-http2-global-lb.ft.nest.com:8080"   # TIER3
+  - "appfe.ft.nest.com"   # TIER3
+  - "aqi-info.com"   # TIER3
+  - "aspen.team"   # TIER3
+  - "assets.fitbit.com"   # TIER3
+  - "athena.fitbit.com"   # TIER3
+  - "auth.ft.nest.com"   # TIER3
+  - "avs-control.virustotal.com"   # TIER3
+  - "az-westus-maas.cloudsimple.com"   # TIER3
+  - "badges.fitbit.com"   # TIER3
+  - "bbportals.com"   # TIER3
+  - "botsociety.cc"   # TIER3
+  - "botsociety.com"   # TIER3
+  - "botsociety.eu"   # TIER3
+  - "botsociety.io"   # TIER3
+  - "botsociety.online"   # TIER3
+  - "botsociety.tv"   # TIER3
+  - "brand.isolabs.ai"   # TIER3
+  - "btsc.io"   # TIER3
+  - "bvi.debugproject.com"   # TIER3
+  - "bvi.dev.debugproject.com"   # TIER3
+  - "bvi.preprod.debugproject.com"   # TIER3
+  - "bynorth.com"   # TIER3
+  - "cache.fitbit.com"   # TIER3
+  - "calendar.fitbit.com"   # TIER3
+  - "calicolabs.com"   # TIER3
+  - "canaryapi.fitbit.com"   # TIER3
+  - "canarywww.fitbit.com"   # TIER3
+  - "capitalg.com"   # TIER3
+  - "cdap.io"   # TIER3
+  - "cellular-coverage.nest.com"   # TIER3
+  - "cftest.fitbit.com"   # TIER3
+  - "cloud.virustotal.com"   # TIER3
+  - "cloudpebble.com"   # TIER3
+  - "cloudpebble.net"   # TIER3
+  - "cloudseis.rocks"   # TIER3
+  - "collab.sidewalklabs.com"   # TIER3
+  - "commonspace.sidewalklabs.com"   # TIER3
+  - "compass.apigee.com"   # TIER3
+  - "connect.fitbit.com"   # TIER3
+  - "contact.fitbit.com"   # TIER3
+  - "content.fitbit.com"   # TIER3
+  - "conversationdesign.org"   # TIER3
+  - "cpbl.io"   # TIER3
+  - "cs.cloudsimple.io"   # TIER3
+  - "debug.com"   # TIER3
+  - "debugproject.com"   # TIER3
+  - "deepmind.com"   # TIER3
+  - "design-thefuture.com"   # TIER3
+  - "designcompose.vehiclesw.com"   # TIER3
+  - "designthefuture.cc"   # TIER3
+  - "dev-advantage.mandiant.com"   # TIER3
+  - "dev-web.pring.jp"   # TIER3
+  - "dev-www.pring.jp"   # TIER3
+  - "dev.mandiant.com"   # TIER3
+  - "developer.fitbit.com"   # TIER3
+  - "developerblog.myo.com"   # TIER3
+  - "device.fitbit.com"   # TIER3
+  - "device101.fitbit.com"   # TIER3
+  - "dggb-frame.photomath.net"   # TIER3
+  - "directsearch.fitbit.com"   # TIER3
+  - "docs.actifio.com"   # TIER3
+  - "docs.breezometer.com"   # TIER3
+  - "docs.mandiant.com"   # TIER3
+  - "doki.com"   # TIER3
+  - "download.actifio.com"   # TIER3
+  - "dpws.photomath.com"   # TIER3
+  - "dpws.photomath.net"   # TIER3
+  - "drapi.photomath.com"   # TIER3
+  - "drapi.photomath.net"   # TIER3
+  - "drestrict.photomath.net"   # TIER3
+  - "drive.fitbit.com"   # TIER3
+  - "dsfc.photomath.net"   # TIER3
+  - "dtpr.sidewalklabs.com"   # TIER3
+  - "dttsp.photomath.com"   # TIER3
+  - "dttsp.photomath.net"   # TIER3
+  - "e.fitbit.com"   # TIER3
+  - "e2e.apigee.net"   # TIER3
+  - "em1323.fitbit.com"   # TIER3
+  - "em4713.fitbit.com"   # TIER3
+  - "em8269.fitbit.com"   # TIER3
+  - "em8295.fitbit.com"   # TIER3
+  - "em900.fitbit.com"   # TIER3
+  - "email.careers.elastifile.com"   # TIER3
+  - "email.fitbit.com"   # TIER3
+  - "energy.sidewalklabs.com"   # TIER3
+  - "energytraits.energy.ft.nest.com"   # TIER3
+  - "eng.fitbit.com"   # TIER3
+  - "entelotrack.fitbit.com"   # TIER3
+  - "events.fitbit.com"   # TIER3
+  - "experiments.fitbit.com"   # TIER3
+  - "ext.fitbit.com"   # TIER3
+  - "fat.debugproject.com"   # TIER3
+  - "fat.dev.debugproject.com"   # TIER3
+  - "fat.preprod.debugproject.com"   # TIER3
+  - "firmwareci.fitbit.com"   # TIER3
+  - "fitbit-devel.com"   # TIER3
+  - "fitbit-int.com"   # TIER3
+  - "fitbit-perf.com"   # TIER3
+  - "fitbit-pluto.com"   # TIER3
+  - "fitbit-stage.com"   # TIER3
+  - "fitbit.com"   # TIER3
+  - "fitbit.com.es"   # TIER3
+  - "fitbitcaptivate.com"   # TIER3
+  - "fitbitcloud.net"   # TIER3
+  - "fitbitcompetitions.com"   # TIER3
+  - "fitbitdevelopercontent.com"   # TIER3
+  - "fitbithealthsolutions.com"   # TIER3
+  - "fitbitiam.net"   # TIER3
+  - "fitbitqa.com"   # TIER3
+  - "fitbitstatus.com"   # TIER3
+  - "fitbittv.com"   # TIER3
+  - "fitbitusercontent.com"   # TIER3
+  - "fitforgood.fitbit.com"   # TIER3
+  - "fleet-test.home.ft.nest.com"   # TIER3
+  - "fpat.co"   # TIER3
+  - "fsc.fitbit.com"   # TIER3
+  - "fulfillment-service.store.ft.nest.com"   # TIER3
+  - "fusa.vehicle.software"   # TIER3
+  - "future-web.pring.jp"   # TIER3
+  - "future-www.pring.jp"   # TIER3
+  - "fw.fitbit.com"   # TIER3
+  - "gallery-webview.fitbit.com"   # TIER3
+  - "gallery.fitbit.com"   # TIER3
+  - "gapps.fitbit.com"   # TIER3
+  - "getpebble.com"   # TIER3
+  - "gfsvc.com"   # TIER3
+  - "gofitbit.com"   # TIER3
+  - "google312587ef093f9031.fitbit.com"   # TIER3
+  - "grafana-v2.nestlabs.com"   # TIER3
+  - "grafana.nestlabs.com"   # TIER3
+  - "groups.fitbit.com"   # TIER3
+  - "gsemail.fitbit.com"   # TIER3
+  - "gslink.fitbit.com"   # TIER3
+  - "gstest.fitbit.com"   # TIER3
+  - "guccy.fitbit.com"   # TIER3
+  - "gv.com"   # TIER3
+  - "haw.debugproject.com"   # TIER3
+  - "haw.dev.debugproject.com"   # TIER3
+  - "haw.preprod.debugproject.com"   # TIER3
+  - "healthsolutions.fitbit.com"   # TIER3
+  - "healthypet.fitbit.com"   # TIER3
+  - "hello.gendes.sidewalklabs.com"   # TIER3
+  - "hellopebble.com"   # TIER3
+  - "home-assistant.ft.nest.com"   # TIER3
+  - "hvac-diag.ft.nest.com"   # TIER3
+  - "idahoedtrends.com"   # TIER3
+  - "idahoedtrends.net"   # TIER3
+  - "idahoedtrends.org"   # TIER3
+  - "iedc.fitbit.com"   # TIER3
+  - "img0.fitbit.com"   # TIER3
+  - "img1.fitbit.com"   # TIER3
+  - "img2.fitbit.com"   # TIER3
+  - "img3.fitbit.com"   # TIER3
+  - "infraweb.fitbit.com"   # TIER3
+  - "inputs.alooma.com"   # TIER3
+  - "int.fitbit.com"   # TIER3
+  - "internal.fitbit.com"   # TIER3
+  - "interussplatform.com"   # TIER3
+  - "interussplatform.dev"   # TIER3
+  - "iron-eagle.gcp.elastifile.com"   # TIER3
+  - "isodb-specs.isolabs.ai"   # TIER3
+  - "isomorphiclabs.com"   # TIER3
+  - "jenkins.fitbit.com"   # TIER3
+  - "jenkins.neverware.com"   # TIER3
+  - "jetbridge.dev"   # TIER3
+  - "jobs.fitbit.com"   # TIER3
+  - "kaggle.com"   # TIER3
+  - "korulab.com"   # TIER3
+  - "kyschoolreportcard.com"   # TIER3
+  - "lex.debugproject.com"   # TIER3
+  - "lex.dev.debugproject.com"   # TIER3
+  - "lex.preprod.debugproject.com"   # TIER3
+  - "link.fitbit.com"   # TIER3
+  - "list.fitbit.com"   # TIER3
+  - "livehealthysg.com"   # TIER3
+  - "livehealthysg.sg"   # TIER3
+  - "loginstage.mandiant.com"   # TIER3
+  - "logs.fitbit.com"   # TIER3
+  - "logsink.devices.ft.nest.com"   # TIER3
+  - "m.fitbit.com"   # TIER3
+  - "mail.fitbit.com"   # TIER3
+  - "marcopoller.fitbit.com"   # TIER3
+  - "marketing-assets.nest.com"   # TIER3
+  - "marketing.fitbit.com"   # TIER3
+  - "marmo.design"   # TIER3
+  - "marmostudio.ai"   # TIER3
+  - "mcp.isolabs.ai"   # TIER3
+  - "mdstage.mandiant.com"   # TIER3
+  - "mmr.debugproject.com"   # TIER3
+  - "mmr.dev.debugproject.com"   # TIER3
+  - "mmr.preprod.debugproject.com"   # TIER3
+  - "molcraft-explore.isolabs.ai"   # TIER3
+  - "mp.fitbit.com"   # TIER3
+  - "msoid.fitbit.com"   # TIER3
+  - "msv-portal-test.mandiant.com"   # TIER3
+  - "navigator.com"   # TIER3
+  - "nest.com"   # TIER3
+  - "neverware.com"   # TIER3
+  - "nexusapi-eu1-ft.camera.home.ft.nest.com"   # TIER3
+  - "nexusapi-us1-ft.camera.home.ft.nest.com"   # TIER3
+  - "nssbridge.nest-sec.nestlabs.com"   # TIER3
+  - "oldto.sidewalklabs.com"   # TIER3
+  - "ops.cloudsimple.io"   # TIER3
+  - "owa.fitbit.com"   # TIER3
+  - "pages.fitbit.com"   # TIER3
+  - "partners.elastifile.com"   # TIER3
+  - "partners.fitbit.com"   # TIER3
+  - "payables.co"   # TIER3
+  - "pdttsp.photomath.net"   # TIER3
+  - "peanut.sproute.net"   # TIER3
+  - "pebble-sockets.com"   # TIER3
+  - "pebble.com"   # TIER3
+  - "pebble.technology"   # TIER3
+  - "pebble.watch"   # TIER3
+  - "pebblecasts.com"   # TIER3
+  - "pebblecorp.com"   # TIER3
+  - "pebbledev.org"   # TIER3
+  - "pebblehacks.com"   # TIER3
+  - "pebbleinstant.com"   # TIER3
+  - "pebblesnap.com"   # TIER3
+  - "pebbletimesmartwatch.com"   # TIER3
+  - "penja-tools.nestlabs.com"   # TIER3
+  - "phoenixapi-cam.ft.nest.com"   # TIER3
+  - "phoenixapi-eu.ft.nest.com"   # TIER3
+  - "phoenixapi.ft.nest.com"   # TIER3
+  - "photomath.com"   # TIER3
+  - "play.space"   # TIER3
+  - "plextrac-dev.mandiant.com"   # TIER3
+  - "plus.fitbit.com"   # TIER3
+  - "portal-dev.isolabs.ai"   # TIER3
+  - "portal-ng-usonly.mandiant.com"   # TIER3
+  - "portal-ng.mandiant.com"   # TIER3
+  - "portal-staging.isolabs.ai"   # TIER3
+  - "portal.isolabs.ai"   # TIER3
+  - "pr.debugproject.com"   # TIER3
+  - "pr.dev.debugproject.com"   # TIER3
+  - "pr.preprod.debugproject.com"   # TIER3
+  - "pre-prod-advantage.mandiant.com"   # TIER3
+  - "press.fitbit.com"   # TIER3
+  - "pttsp.photomath.net"   # TIER3
+  - "ptttsp.photomath.net"   # TIER3
+  - "pulsedam.fitbit.com"   # TIER3
+  - "qa-advantage.mandiant.com"   # TIER3
+  - "qa.fitbit.com"   # TIER3
+  - "qa1accounts.fitbit.com"   # TIER3
+  - "qa1app3.fitbit.com"   # TIER3
+  - "qa1app4.fitbit.com"   # TIER3
+  - "qa1fsc.fitbit.com"   # TIER3
+  - "qa2accounts.fitbit.com"   # TIER3
+  - "qa2app001corporate.fitbit.com"   # TIER3
+  - "qa2app002corporate.fitbit.com"   # TIER3
+  - "qa2app3.fitbit.com"   # TIER3
+  - "qa2app4.fitbit.com"   # TIER3
+  - "qa2corporate.fitbit.com"   # TIER3
+  - "qa2directsearch.fitbit.com"   # TIER3
+  - "qa2marketing.fitbit.com"   # TIER3
+  - "qa2snappea.fitbit.com"   # TIER3
+  - "qa2store-au.fitbit.com"   # TIER3
+  - "qa2store-nz.fitbit.com"   # TIER3
+  - "qa2synclair.fitbit.com"   # TIER3
+  - "qaapp001corporate.fitbit.com"   # TIER3
+  - "qaapp002corporate.fitbit.com"   # TIER3
+  - "qacorporate.fitbit.com"   # TIER3
+  - "qadirectserch.fitbit.com"   # TIER3
+  - "qamarketing.fitbit.com"   # TIER3
+  - "qasinclair.fitbit.com"   # TIER3
+  - "qasnappea.fitbit.com"   # TIER3
+  - "quidfaf7.fitbit.com"   # TIER3
+  - "qvp.sidewalklabs.com"   # TIER3
+  - "rapi.photomath.net"   # TIER3
+  - "raxium.com"   # TIER3
+  - "recycle.sidewalklabs.com"   # TIER3
+  - "register.elastifile.com"   # TIER3
+  - "registry.gcp.elastifile.com"   # TIER3
+  - "repos.nestlabs.com"   # TIER3
+  - "resizer.nest.com"   # TIER3
+  - "resizer.web01.iad01.production.nest.com"   # TIER3
+  - "resource-gateway.api.ft.nest.com"   # TIER3
+  - "resource-gateway.api.nest.com"   # TIER3
+  - "restrict.photomath.net"   # TIER3
+  - "revolv.com"   # TIER3
+  - "rogerchallenger.fitbit.com"   # TIER3
+  - "rpasplatform.dev"   # TIER3
+  - "rubyfe-grpc-global-lb.ft.nest.com"   # TIER3
+  - "s.photomath.net"   # TIER3
+  - "seismancer.com"   # TIER3
+  - "semihalf.com"   # TIER3
+  - "server-logs.nestlabs.com"   # TIER3
+  - "ses.fitbit.com"   # TIER3
+  - "sfc.photomath.net"   # TIER3
+  - "share.photomath.net"   # TIER3
+  - "sherlockholmesboarding.fitbit.com"   # TIER3
+  - "silver-eagle.gcp.elastifile.com"   # TIER3
+  - "sin.debugproject.com"   # TIER3
+  - "sin.dev.debugproject.com"   # TIER3
+  - "sin.preprod.debugproject.com"   # TIER3
+  - "snappea.fitbit.com"   # TIER3
+  - "source.fitbit.com"   # TIER3
+  - "src.fitbit.com"   # TIER3
+  - "ssf.debugproject.com"   # TIER3
+  - "ssf.dev.debugproject.com"   # TIER3
+  - "ssf.preprod.debugproject.com"   # TIER3
+  - "stage.fitbit.com"   # TIER3
+  - "stage.mandiant.com"   # TIER3
+  - "staging.cloudsimple.com"   # TIER3
+  - "staging.sidewalklabs.com"   # TIER3
+  - "static0.fitbit.com"   # TIER3
+  - "static2.fitbit.com"   # TIER3
+  - "static3.fitbit.com"   # TIER3
+  - "static4.fitbit.com"   # TIER3
+  - "static5.fitbit.com"   # TIER3
+  - "static6.fitbit.com"   # TIER3
+  - "static7.fitbit.com"   # TIER3
+  - "static8.fitbit.com"   # TIER3
+  - "static9.fitbit.com"   # TIER3
+  - "staticcs.fitbit.com"   # TIER3
+  - "status.fitbit.com"   # TIER3
+  - "stg-advantage.mandiant.com"   # TIER3
+  - "store-au.fitbit.com"   # TIER3
+  - "store-in.fitbit.com"   # TIER3
+  - "store-nz.fitbit.com"   # TIER3
+  - "stratozone.com"   # TIER3
+  - "strivecast.com"   # TIER3
+  - "subscriptions.fitbit.com"   # TIER3
+  - "support.fitbit.com"   # TIER3
+  - "support.getmyo.com"   # TIER3
+  - "synclair.fitbit.com"   # TIER3
+  - "techhub.elastifile.com"   # TIER3
+  - "tenant.cloudsimple.com"   # TIER3
+  - "test.cloudsimple.io"   # TIER3
+  - "testrail.nestlabs.com"   # TIER3
+  - "thirdparty.ops.nestlabs.com"   # TIER3
+  - "totx.sidewalklabs.com"   # TIER3
+  - "transit.sidewalklabs.com"   # TIER3
+  - "trapi.photomath.net"   # TIER3
+  - "trestrict.photomath.net"   # TIER3
+  - "tsfc.photomath.net"   # TIER3
+  - "ttsp.photomath.net"   # TIER3
+  - "tttsp.photomath.net"   # TIER3
+  - "twinehealth.com"   # TIER3
+  - "twinehealthapp.com"   # TIER3
+  - "updates.nest.com"   # TIER3
+  - "vehicle.software"   # TIER3
+  - "vehiclesw.com"   # TIER3
+  - "video.ft.nest.com"   # TIER3
+  - "video.nest.com"   # TIER3
+  - "voiceux.ai"   # TIER3
+  - "voiceux.cc"   # TIER3
+  - "voiceux.club"   # TIER3
+  - "voiceux.co"   # TIER3
+  - "wallet-service.store.ft.nest.com"   # TIER3
+  - "web.pring.jp"   # TIER3
+  - "webapi.camera.home.ft.nest.com"   # TIER3
+  - "wellness.fitbit.com"   # TIER3
+  - "whereismytrain.com"   # TIER3
+  - "whereswereware.com"   # TIER3
+  - "widevine.com"   # TIER3
+  - "widgets.ft.nest.com"   # TIER3
+  - "widgets.nest.com"   # TIER3
+  - "wiki.fitbit.com"   # TIER3
+  - "wiki.nestlabs.com"   # TIER3
+  - "wimt.co"   # TIER3
+  - "windchill.fitbit.com"   # TIER3
+  - "wing.co"   # TIER3
+  - "wing.dev"   # TIER3
+  - "wp1.actifio.com"   # TIER3
+  - "wtfe.weave.ft.nest.com"   # TIER3
+  - "www-apps.ft.nest.com"   # TIER3
+  - "www-apps2.ft.nest.com"   # TIER3
+  - "www.actifio.com"   # TIER3
+  - "www.actifio.net"   # TIER3
+  - "www.ft.nest.com"   # TIER3
+  - "www.socratic.com"   # TIER3
+  - "www.vehicle.software"   # TIER3
+  - "www.vehiclesw.com"   # TIER3
+  - "www.vespr.org"   # TIER3
+  - "wwwfitbit.com"   # TIER3
+  - "wwwinternal.fitbit.com"   # TIER3
+  - "xd-hub.isolabs.ai"   # TIER3
+  - "y.fitbit.com"   # TIER3
+
+out_of_scope:
+  - "_5b420f87491a751dbf21630ec444e691.settings.firebase.crashlytics.com"   # TIER4 — never in scope
+  - "_8810976066ee955c1706fa28929d8f45.crashlytics.com"   # TIER4 — never in scope
+  - "_validate_domain.answers.io"   # TIER4 — never in scope
+  - "_validate_domain.betas.to"   # TIER4 — never in scope
+  - "_validate_domain.codesigning.guide"   # TIER4 — never in scope
+  - "_validate_domain.crash.io"   # TIER4 — never in scope
+  - "_validate_domain.crashes.to"   # TIER4 — never in scope
+  - "_validate_domain.crashlytics.com"   # TIER4 — never in scope
+  - "_validate_domain.fabric.io"   # TIER4 — never in scope
+  - "_validate_domain.fastlane.tools"   # TIER4 — never in scope
+  - "_validate_domain.spaceship.airforce"   # TIER4 — never in scope
+  - "_validate_domain.symmetricinfinity.com"   # TIER4 — never in scope
+  - "_validate_domain.zeropush.com"   # TIER4 — never in scope
+  - "academy.mandiant.com"   # TIER4 — never in scope
+  - "adfs.az.cloudsimple.io"   # TIER4 — never in scope
+  - "adhawk.co"   # TIER4 — never in scope
+  - "adhawk.io"   # TIER4 — never in scope
+  - "adhawkmicrosystems.com"   # TIER4 — never in scope
+  - "adhawkmindlinkair.ca"   # TIER4 — never in scope
+  - "adhawkmindlinkair.com"   # TIER4 — never in scope
+  - "ads-resources-legacy.waze.com"   # TIER4 — never in scope
+  - "ads-resources.waze.com"   # TIER4 — never in scope
+  - "adsassets.waze.com"   # TIER4 — never in scope
+  - "api.waze.com"   # TIER4 — never in scope
+  - "apidocs.apigee.com"   # TIER4 — never in scope
+  - "apigee.net"   # TIER4 — never in scope
+  - "aptest.waze.com"   # TIER4 — never in scope
+  - "artifactory.witools.foo"   # TIER4 — never in scope
+  - "autodiscover.cloudsimple.com"   # TIER4 — never in scope
+  - "azuresupport.cloudsimple.com"   # TIER4 — never in scope
+  - "blog.appsheet.com"   # TIER4 — never in scope
+  - "blog.cloudsimple.com"   # TIER4 — never in scope
+  - "blog.mandiant.com"   # TIER4 — never in scope
+  - "blog.socratic.org"   # TIER4 — never in scope
+  - "blog.virustotal.com"   # TIER4 — never in scope
+  - "calendar.1track.com"   # TIER4 — never in scope
+  - "calendar.cloudsimple.com"   # TIER4 — never in scope
+  - "cameyo.dev"   # TIER4 — never in scope
+  - "carpool-groups-images.waze.com"   # TIER4 — never in scope
+  - "carpool-itinerary-images.waze.com"   # TIER4 — never in scope
+  - "cdn.alooma.com"   # TIER4 — never in scope
+  - "client-assets.waze.com"   # TIER4 — never in scope
+  - "cloudsimple.com"   # TIER4 — never in scope
+  - "cloudsimple.io"   # TIER4 — never in scope
+  - "community.apigee.com"   # TIER4 — never in scope
+  - "community.appsheet.com"   # TIER4 — never in scope
+  - "community.fitbit.com"   # TIER4 — never in scope
+  - "corpusants.com"   # TIER4 — never in scope
+  - "cosmonioushigh.com"   # TIER4 — never in scope
+  - "cosmonioushighgame.com"   # TIER4 — never in scope
+  - "cpanel.deepmind.co"   # TIER4 — never in scope
+  - "cres.waze.com"   # TIER4 — never in scope
+  - "cresg.waze.com"   # TIER4 — never in scope
+  - "cs-demo.cloudsimple.com"   # TIER4 — never in scope
+  - "cs-staging.cloudsimple.com"   # TIER4 — never in scope
+  - "ctiles-g-am.waze.com"   # TIER4 — never in scope
+  - "ctiles-il.waze.com"   # TIER4 — never in scope
+  - "ctiles-na.waze.com"   # TIER4 — never in scope
+  - "ctiles-row.waze.com"   # TIER4 — never in scope
+  - "ctiles.waze.com"   # TIER4 — never in scope
+  - "ctilesg-il.waze.com"   # TIER4 — never in scope
+  - "ctilesg-row.waze.com"   # TIER4 — never in scope
+  - "dealreg.cloudsimple.com"   # TIER4 — never in scope
+  - "deepmind.co"   # TIER4 — never in scope
+  - "deepmind.deepmind.co"   # TIER4 — never in scope
+  - "dev.siemplifycloud.com"   # TIER4 — never in scope
+  - "developers.virustotal.com"   # TIER4 — never in scope
+  - "devops-research.com"   # TIER4 — never in scope
+  - "devtest.cloudsimple.com"   # TIER4 — never in scope
+  - "digitalworkspacealliance.com"   # TIER4 — never in scope
+  - "digitalworkspacealliance.org"   # TIER4 — never in scope
+  - "docs.1track.com"   # TIER4 — never in scope
+  - "dwealliance.org"   # TIER4 — never in scope
+  - "dyscourse.com"   # TIER4 — never in scope
+  - "editor-assets.waze.com"   # TIER4 — never in scope
+  - "email-assets.waze.com"   # TIER4 — never in scope
+  - "email.cloudsimple.com"   # TIER4 — never in scope
+  - "embed.waze.com"   # TIER4 — never in scope
+  - "enterpriseenrollment.vehicle.software"   # TIER4 — never in scope
+  - "enterpriseregistration.vehicle.software"   # TIER4 — never in scope
+  - "frontseat.waze.com"   # TIER4 — never in scope
+  - "ftp.cloudsimple.com"   # TIER4 — never in scope
+  - "ftp.deepmind.co"   # TIER4 — never in scope
+  - "fusa.vehiclesw.com"   # TIER4 — never in scope
+  - "gapi.waze.com"   # TIER4 — never in scope
+  - "gcp.wazestg.com"   # TIER4 — never in scope
+  - "gdrive.cloudsimple.com"   # TIER4 — never in scope
+  - "getbigsur.ai"   # TIER4 — never in scope
+  - "getmindlink.ca"   # TIER4 — never in scope
+  - "getmindlink.com"   # TIER4 — never in scope
+  - "getmindlinkair.ca"   # TIER4 — never in scope
+  - "getmindlinkair.com"   # TIER4 — never in scope
+  - "google80798106d763643c.stratozone.com"   # TIER4 — never in scope
+  - "googlevad.com"   # TIER4 — never in scope
+  - "googlevad.net"   # TIER4 — never in scope
+  - "groups.cloudsimple.com"   # TIER4 — never in scope
+  - "gstatic.apigee.com"   # TIER4 — never in scope
+  - "healthapix.apigee.io"   # TIER4 — never in scope
+  - "help.alooma.com"   # TIER4 — never in scope
+  - "help.appsheet.com"   # TIER4 — never in scope
+  - "help.cloudsimple.com"   # TIER4 — never in scope
+  - "helpcentercameyo.com"   # TIER4 — never in scope
+  - "il-livemap-tiles1.waze.com"   # TIER4 — never in scope
+  - "il-livemap-tiles2.waze.com"   # TIER4 — never in scope
+  - "il-livemap-tiles3.waze.com"   # TIER4 — never in scope
+  - "il-livemap-tiles4.waze.com"   # TIER4 — never in scope
+  - "incidents.waze.com"   # TIER4 — never in scope
+  - "info.cloudsimple.com"   # TIER4 — never in scope
+  - "jacklumbergame.com"   # TIER4 — never in scope
+  - "jobsimulatorgame.com"   # TIER4 — never in scope
+  - "latentlogic.com"   # TIER4 — never in scope
+  - "livemap-tiles1.waze.com"   # TIER4 — never in scope
+  - "livemap-tiles2.waze.com"   # TIER4 — never in scope
+  - "livemap-tiles3.waze.com"   # TIER4 — never in scope
+  - "livemap-tiles4.waze.com"   # TIER4 — never in scope
+  - "lookersandbox.com"   # TIER4 — never in scope
+  - "ltad.com"   # TIER4 — never in scope
+  - "lyncdiscover.cloudsimple.com"   # TIER4 — never in scope
+  - "lyncdiscover.vehicle.software"   # TIER4 — never in scope
+  - "mail-images.wazeads.com"   # TIER4 — never in scope
+  - "mail.1track.com"   # TIER4 — never in scope
+  - "mandiant.com"   # TIER4 — never in scope
+  - "mindlinkai.com"   # TIER4 — never in scope
+  - "mindlinkair.ca"   # TIER4 — never in scope
+  - "mindlinkair.com"   # TIER4 — never in scope
+  - "mindlinkglasses.ca"   # TIER4 — never in scope
+  - "mindlinkglasses.com"   # TIER4 — never in scope
+  - "morpheuslabs.co.uk"   # TIER4 — never in scope
+  - "movies.waze.com"   # TIER4 — never in scope
+  - "msoid.cloudsimple.com"   # TIER4 — never in scope
+  - "mwise.mandiant.com"   # TIER4 — never in scope
+  - "new-wazeopedia.waze.com"   # TIER4 — never in scope
+  - "okta.cloudsimple.it"   # TIER4 — never in scope
+  - "openbank.apigee.io"   # TIER4 — never in scope
+  - "opsstatus.cloudsimple.it"   # TIER4 — never in scope
+  - "owlchemy.tv"   # TIER4 — never in scope
+  - "owlchemylabs.com"   # TIER4 — never in scope
+  - "owlchemymr.com"   # TIER4 — never in scope
+  - "owlchemytv.com"   # TIER4 — never in scope
+  - "owlchemyvr.com"   # TIER4 — never in scope
+  - "public-preview-portal.cloudsimple.com"   # TIER4 — never in scope
+  - "push-assets.waze.com"   # TIER4 — never in scope
+  - "radio.new"   # TIER4 — never in scope
+  - "releases.virustotal.com"   # TIER4 — never in scope
+  - "rfp.apigee.com"   # TIER4 — never in scope
+  - "riffusionlabs.com"   # TIER4 — never in scope
+  - "roadshields.waze.com"   # TIER4 — never in scope
+  - "roadshieldsap.waze.com"   # TIER4 — never in scope
+  - "roadshieldssa.waze.com"   # TIER4 — never in scope
+  - "routing-livemap-am.waze.com"   # TIER4 — never in scope
+  - "routing-livemap-il.waze.com"   # TIER4 — never in scope
+  - "routing-livemap-row.waze.com"   # TIER4 — never in scope
+  - "sdk.waze.com"   # TIER4 — never in scope
+  - "service.elastifile.com/"   # TIER4 — never in scope
+  - "sip.cloudsimple.com"   # TIER4 — never in scope
+  - "smplylab.com"   # TIER4 — never in scope
+  - "smuggletruck.com"   # TIER4 — never in scope
+  - "snuggletruck.com"   # TIER4 — never in scope
+  - "socstock.com"   # TIER4 — never in scope
+  - "socstock2020.com"   # TIER4 — never in scope
+  - "socstock2021.com"   # TIER4 — never in scope
+  - "solutions.appsheet.com"   # TIER4 — never in scope
+  - "sonnet.dev"   # TIER4 — never in scope
+  - "sproute.com"   # TIER4 — never in scope
+  - "status-il.waze.com"   # TIER4 — never in scope
+  - "status.cloudsimple.com"   # TIER4 — never in scope
+  - "status.nest.com"   # TIER4 — never in scope
+  - "support.cloudsimple.com"   # TIER4 — never in scope
+  - "support.elastifile.com"   # TIER4 — never in scope
+  - "support.stratozone.com"   # TIER4 — never in scope
+  - "team.deepmind.co"   # TIER4 — never in scope
+  - "tilesworld.waze.com"   # TIER4 — never in scope
+  - "tilesworld1.waze.com"   # TIER4 — never in scope
+  - "tilesworld2.waze.com"   # TIER4 — never in scope
+  - "tilesworld3.waze.com"   # TIER4 — never in scope
+  - "tolls.waze.com"   # TIER4 — never in scope
+  - "track.cloudsimple.com"   # TIER4 — never in scope
+  - "transform-engine.apigee.com"   # TIER4 — never in scope
+  - "transform.apigee.com"   # TIER4 — never in scope
+  - "trustworthy.ai"   # TIER4 — never in scope
+  - "tts.waze.com"   # TIER4 — never in scope
+  - "ttsgw.waze.com"   # TIER4 — never in scope
+  - "ttsgw.world.waze.com"   # TIER4 — never in scope
+  - "uswest-rp.cloudsimple.com"   # TIER4 — never in scope
+  - "vacationsimulatorgame.com"   # TIER4 — never in scope
+  - "virtualappdelivery.co"   # TIER4 — never in scope
+  - "virtualappdelivery.com"   # TIER4 — never in scope
+  - "virtualappdelivery.io"   # TIER4 — never in scope
+  - "virtualappdelivery.net"   # TIER4 — never in scope
+  - "virtualappdelivery.org"   # TIER4 — never in scope
+  - "vpn-sv4.cloudsimple.com"   # TIER4 — never in scope
+  - "wam-api.waze.com"   # TIER4 — never in scope
+  - "waymo.com.cn"   # TIER4 — never in scope
+  - "waze-tiles-new-cdn.waze.com"   # TIER4 — never in scope
+  - "web-assets.waze.com"   # TIER4 — never in scope
+  - "web-login-oauth.waze.com"   # TIER4 — never in scope
+  - "webdisk.deepmind.co"   # TIER4 — never in scope
+  - "webmail.cloudsimple.com"   # TIER4 — never in scope
+  - "webmail.deepmind.co"   # TIER4 — never in scope
+  - "webpass.withgoogle.com"   # TIER4 — never in scope
+  - "whm.deepmind.co"   # TIER4 — never in scope
+  - "wingmerchandisestore.com"   # TIER4 — never in scope
+  - "worldtiles1.waze.com"   # TIER4 — never in scope
+  - "worldtiles2.waze.com"   # TIER4 — never in scope
+  - "worldtiles3.waze.com"   # TIER4 — never in scope
+  - "worldtiles4.waze.com"   # TIER4 — never in scope
+  - "worldtilesnew.waze.com"   # TIER4 — never in scope
+  - "www.alooma.com"   # TIER4 — never in scope
+  - "www.cloudsimple.com"   # TIER4 — never in scope
+  - "www.cloudsimple.io"   # TIER4 — never in scope
+  - "www.cosmonioushighgame.com"   # TIER4 — never in scope
+  - "www.etlacademy.com"   # TIER4 — never in scope
+  - "www.freemap.co.il"   # TIER4 — never in scope
+  - "yara-ci.cloud.virustotal.com"   # TIER4 — never in scope
+  - "zb15350596.devtest.cloudsimple.io"   # TIER4 — never in scope
+  - "zendesk.alooma.com"   # TIER4 — never in scope
+  - "zendesk1.cloudsimple.com"   # TIER4 — never in scope
+  - "zendesk2.cloudsimple.com"   # TIER4 — never in scope
+  - "zendesk3.cloudsimple.com"   # TIER4 — never in scope
+  - "zendesk4.cloudsimple.com"   # TIER4 — never in scope
