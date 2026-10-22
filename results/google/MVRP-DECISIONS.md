@@ -2225,3 +2225,35 @@ CustomD2DSourceEndpointService (Messages), PhotosBackupApiService and
 PhotosRestoreApiService (Photos), SleepStateExportedService (Wear companion) —
 all raw binders — and ReachabilityService (Meet), which has a real AIDL with
 four transaction codes in `defpackage/lai.java`.
+
+### 2026-10-22 — Photos backup API: open manifest, signature gate underneath
+
+`PhotosBackupApiService` is exported, has no permission, and hands any app a
+live binder. Inside, `tpg` holds an allowlist of four first-party packages —
+but reading it closely, `n()` never refuses anything: it picks between
+`SOURCE_BBG1` and `SOURCE_CARBON`, a label for attribution. I first read that
+table as "four methods check, five do not"; none of them check.
+
+The real gate is in `onTransact`:
+
+    if (!bgfo.c(context)) { ...; return false; }
+
+and `bgfo.c` resolves `Binder.getCallingUid()` to a package name and passes it
+to `bsrc.b()`, which is Google's signature verifier — the same class that
+compares `packageInfo.signatures[0]` against known Google certificates. A
+self-signed app cannot pass it whatever it calls itself, and all four
+allowlisted packages are installed here anyway, so there is no absent name to
+squat. Closed.
+
+What `c()` would have returned if the gate were weaker is worth recording,
+because it says what this surface is worth to anyone who does get through: the
+signed-in account name, the backup quality setting, and a flag.
+
+Two reading errors on the way, both mine:
+
+"returned false on every code" — I wrote in the tool that this means the code
+is unhandled. Here it was an explicit refusal, written into onTransact. The
+empty-parcel scan had given the answer and I read it as silence.
+
+And the allowlist that turned out to be a label. An allowlist in the source is
+not an access check until you find the branch that refuses.

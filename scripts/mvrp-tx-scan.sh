@@ -16,7 +16,12 @@
 #                              arguments that are not there. Worth building a
 #                              real call for.
 #   returned true, reply>0 ... it answered an empty parcel. Read the reply.
-#   returned false ........... no such transaction code.
+#   returned false ........... unhandled code, OR a refusal written into
+#                              onTransact. Photos' backup binder returns false
+#                              for every code when its signature check fails,
+#                              and reading that as "no such code" cost an hour.
+#                              The two are told apart by reading onTransact,
+#                              not from here.
 #
 # Usage:
 #   ./mvrp-tx-scan.sh <pkg> <cls> <interface-token> [first] [last]
@@ -127,6 +132,10 @@ cat <<'NOTE'
 A SecurityException naming a signature or privileged permission is the end of
 the road: no third-party app will ever hold it, and the binder being reachable
 is a precondition, not a finding.
+
+"returned false" on every code is not proof of anything on its own. It is what
+an unhandled code looks like, and also what a refusal inside onTransact looks
+like. Read onTransact before concluding either.
 
 Any other exception means nothing checked who was asking and it died reading
 arguments. That is the case worth building a real call for.
