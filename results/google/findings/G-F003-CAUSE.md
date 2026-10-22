@@ -101,6 +101,12 @@ public abstract class pj extends AppFunctionService   // android.app.appfunction
 So those are harmless today and resolve themselves when the device reaches Android 16.
 I am not reporting them.
 
+(Correction, measured on an Android 16 device after this report was filed: two
+of the three do resolve — BIND_APP_FUNCTION_SERVICE and
+BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE are both defined at signature
+level on API 36. BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE is not defined on
+Android 16 either, so the sentence above is wrong for that one.)
+
 The two components in this report are different in kind. `LockProximityReceiver` and
 `FirstDockActivity` are ordinary classes that load and run on this OS right now — I have
 the receiver executing in Android's own record. Their guards are orphaned for reasons that

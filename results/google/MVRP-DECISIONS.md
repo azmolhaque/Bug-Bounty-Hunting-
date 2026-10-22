@@ -2360,3 +2360,35 @@ against the thread it came from.
 
 Standing instruction from this: do not touch AppSheet connector SSRF. One copy
 is still open at P2 and anything further there duplicates our own report.
+
+### 2026-10-23 — Android 16 in hand: one of my three claims was wrong
+
+Second device connected: moto g 2026, Android 16, API 36, patch 2026-09-01.
+Permission map taken into ~/mvrp16 so the two devices' data stay apart.
+
+G-F003 told Google that three guard permissions were API 36 names, undefined
+on API 35, and that they "resolve themselves when the device reaches Android
+16". That was read off decompiled stubs, not measured. Measured now:
+
+    BIND_APP_FUNCTION_SERVICE                        defined, signature
+    BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE defined, signature
+    BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE       STILL UNDEFINED
+
+Two out of three right. The third is wrong, and wrong in the direction that
+matters: Google Messages' BugleAlternativeMessageTransportService is guarded
+by a name that nothing defines on the latest Android either. I told Google
+that class of guard fixes itself, and for this one it does not.
+
+The report is closed as a duplicate so there is nothing to amend there, but
+the claim is corrected here and in the finding files.
+
+Two things follow:
+
+The GMS IntrusionDetection thread, left open in these notes since the AGSA
+work, is closed: signature-level on 16, so no third-party app reaches it, and
+a bug that only works on 15 is excluded by the program's own latest-OS rule.
+
+And the Messages service is now a live lead on the latest OS rather than a
+forward-compatibility curiosity. Next: declare that name on the Android 16
+device and see whether the bind connects, and if it does, what the binder
+hands over. Reaching it is still only a precondition.
