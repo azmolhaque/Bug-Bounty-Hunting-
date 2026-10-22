@@ -1,6 +1,6 @@
 G-F004  Google Wallpapers: unprivileged app chooses the live wallpaper component
 tester  Md. Azmol Haque Rony <azmolhaque95@gmail.com>  IP 180.148.212.54
-when    2026-10-22T22:35:29Z
+when    2026-10-22T22:37:44Z
 device  moto g - 2026 / Android 16 / ZT422724JR
 app     com.google.android.apps.wallpaper  versionName=16
 
@@ -22,5 +22,26 @@ app     com.google.android.apps.wallpaper  versionName=16
     com.cindrasec.wallpaperctl       installed=1  declares/uses the guard=0
     com.cindrasec.wallpaperpoc       installed=1  declares/uses the guard=5
 
-!! com.glance.lockscreenM/com.glance.surfaceart.feature.wallpaperService.data.service.LooksWallpaperService is already the wallpaper — set something else first, or both
-!! runs below would show it unchanged and prove nothing.
+[4] control: same code, no permission
+    build   com.cindrasec.wallpaperctl
+    held by me: false
+    SET_WALLPAPER_COMPONENT held by me: false
+    asking for component com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService, restore_target=0
+    before  ComponentInfo{com.glance.lockscreenM/com.glance.surfaceart.feature.wallpaperService.data.service.LooksWallpaperService}
+    after   ComponentInfo{com.glance.lockscreenM/com.glance.surfaceart.feature.wallpaperService.data.service.LooksWallpaperService}   (45s)
+    framework: no setWallpaperComponent call logged
+
+[5] attacker: same code, same request, with the self-declared permission
+    build   com.cindrasec.wallpaperpoc
+    held by me: true
+    SET_WALLPAPER_COMPONENT held by me: false
+    asking for component com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService, restore_target=0
+    before  ComponentInfo{com.glance.lockscreenM/com.glance.surfaceart.feature.wallpaperService.data.service.LooksWallpaperService}
+    after   ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}   (2s)
+    framework: setWallpaperComponent name=ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}, which = 1; callingPid = 7074
+    callingPid 7074 belongs to: com.google.android.apps.wallpaper
+
+[6] result
+    the component an unprivileged app asked for is now the home wallpaper,
+    set by a privileged app on its behalf, while the same app without the
+    permission was refused.
