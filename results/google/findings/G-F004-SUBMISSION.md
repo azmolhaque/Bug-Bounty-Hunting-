@@ -131,19 +131,19 @@ sendBroadcast(b);
 
 ## Evidence
 
-Device: moto g (2026), Android 16, serial ZT422724JR. Both runs started from
-the same state: the default static wallpaper.
+Device: moto g (2026), Android 16, serial ZT422724JR. Both runs start from the
+same wallpaper and ask for the same component, fifty seconds apart.
 
 **Control — same code, no permission:**
 
 ```
-# when   : 2026-10-22T20:39:24Z
+# when   : 2026-10-22T20:51:59Z
 # device : moto g - 2026 / Android 16
 # build  : control (com.cindrasec.wallpaperctl)
 
-before : ComponentInfo{com.android.systemui/com.android.systemui.wallpapers.ImageWallpaper}
+before : ComponentInfo{com.glance.lockscreenM/...LooksWallpaperService}
 asked  : ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}
-after  : ComponentInfo{com.android.systemui/com.android.systemui.wallpapers.ImageWallpaper}      (waited 45s of 45s)
+after  : ComponentInfo{com.glance.lockscreenM/...LooksWallpaperService}      (waited 45s of 45s)
 
   I WPPOC   :   held by me: false
   I WPPOC   :   SET_WALLPAPER_COMPONENT held by me: false
@@ -153,18 +153,19 @@ after  : ComponentInfo{com.android.systemui/com.android.systemui.wallpapers.Imag
 RESULT  unchanged after 45s
 ```
 
-The Wallpapers app's process was never started and the framework logged
-nothing. The broadcast is dropped silently — the sender is told nothing and no
-`Permission Denial` line appears anywhere in unfiltered logcat.
+The Wallpapers app's process was never started and the framework recorded
+nothing about the broadcast. It is dropped silently: the sender is told
+nothing, and no `Permission Denial` line appears anywhere in unfiltered
+logcat.
 
 **Attacker — same code, with the self-declared permission:**
 
 ```
-# when   : 2026-10-22T20:40:14Z
+# when   : 2026-10-22T20:52:49Z
 # device : moto g - 2026 / Android 16
 # build  : attacker (com.cindrasec.wallpaperpoc)
 
-before : ComponentInfo{com.android.systemui/com.android.systemui.wallpapers.ImageWallpaper}
+before : ComponentInfo{com.glance.lockscreenM/...LooksWallpaperService}
 asked  : ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}
 after  : ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}      (waited 2s of 45s)
 
@@ -173,21 +174,21 @@ after  : ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWal
   I WPPOC   : asking for component com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService, restore_target=0
   I WPPOC   : broadcast sent to com.google.android.apps.wallpaper/com.google.android.apps.wallpaper.module.DownloadableRestorer
 
-  I ActivityManager      : Start proc 20099:com.google.android.apps.wallpaper/u0a394
-        for broadcast {com.google.android.apps.wallpaper/com.google.android.apps.wallpaper.module.DownloadableRestorer}
   V WallpaperManagerService: setWallpaperComponent
         name=ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService},
-        which = 1; callingPid = 20099
+        which = 1; callingPid = 23428
   V WallpaperManagerService: bindWallpaperComponentLocked:
         componentName=ComponentInfo{com.fitbit.FitbitMobile/com.fitbit.livewallpaper.StepsWallpaperService}; Which = 1
+  D WallpaperManagerService: WPMS.onServiceConnected-ComponentInfo{com.fitbit.FitbitMobile/...StepsWallpaperService}
+  D WallpaperManagerService: WPMS.connectLocked-ComponentInfo{com.fitbit.FitbitMobile/...StepsWallpaperService}
 
 RESULT  the requested component is now the home wallpaper (after 2s)
 ```
 
-`callingPid = 20099` is the Wallpapers app process started one line earlier for
-this broadcast. That is the framework's own record of a privileged app making
-the `SET_WALLPAPER_COMPONENT`-gated call with a component chosen by an app
-that does not hold that permission.
+`callingPid = 23428` is the Wallpapers app's process, started for this
+broadcast. That is the framework's own record of a privileged app making the
+`SET_WALLPAPER_COMPONENT`-gated call with a component chosen by an app that
+does not hold that permission, and then the system binding to it.
 
 The permission really is granted at install, from the device's records:
 
