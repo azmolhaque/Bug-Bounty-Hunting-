@@ -2456,3 +2456,68 @@ Or pass "$HOME/x", which survives either form.
 And a script that prints a destination should print the resolved path. Had the
 pull echoed /home/gorib/mvrp16/apk, the mismatch would have been obvious
 instead of taking a `find` to locate 2.7 GB.
+
+### 2026-10-23 — restore's D2D migrate service: the caller picks the binder, and nothing checks the caller
+
+`com.google.android.apps.restore/...UsbD2dMigrateService` is exported with no
+`android:permission` and it CONNECTED from `com.cindrasec.mvrpprobe`, which
+holds no permission at all. Measured on the Android 16 device (ZT422724JR).
+
+The part worth writing down is how it chooses what to hand back. The parent
+class `dhi.onBind` reads an extra off the *caller's* intent:
+
+    if (intent != null && intent.getBooleanExtra("isSetupWizard", false)) {
+        return new mpz();
+    }
+    return new dhh(this);
+
+So an unprivileged app decides which of the two interfaces it gets. With
+`isSetupWizard=true` the binder is `mpz`, whose descriptor is
+`com.google.android.setupcompat.portal.IPortalProgressService`.
+
+The empty-parcel scan with that token:
+
+    code 1   transact() true   replySize=0   no exception in reply
+    code 2   transact() true   replySize=0   no exception
+    code 3   transact() true   replySize=0   no exception
+    code 4   transact() true   replySize=0   no exception
+    code 5   transact() true   replySize=8   no exception, 4 bytes of payload
+    code 6-8 transact() false
+
+No SecurityException on any handled code. Nothing in that path looks at
+`Binder.getCallingUid()` — which is the opposite of S47, where `djd` resolved
+the uid, verified `signingInfo`, and threw `UNAUTHORIZED`.
+
+From `mpz`'s dispatch, read so far: 3 = `onSuspend`, 4 = `onAllowMobileData`
+(unmarshals one boolean), 5 = `onGetRemainingValues` (writes a value back).
+Codes 1 and 2 are unread.
+
+**Not a finding, and the ceiling looks low.** Holding a binder is a
+precondition (CLAUDE.md 2.6), and the three methods I can name are the wrong
+shape: `onSuspend` pauses a migration, which is availability and 0.3 rules out
+DoS; `onAllowMobileData` flips a data-usage consent on the attacker's own
+device; `onGetRemainingValues` returns progress counts, i.e. metadata, which
+Section 3 drops by name. None of them is theft of sensitive data or code
+execution, so none lands in the Mobile VRP table.
+
+Decided before looking, so the answer cannot be argued into existence: this
+thread stays alive only if code 1 or code 2 takes a path/Uri/filename, a
+PendingIntent/IntentSender, or a callback binder it then writes migration data
+into. Those are the shapes that reach the "other" column (traversal, intent
+redirection) or data theft. Anything else and it closes with S47's reasoning.
+
+Two reads settle it, and `scripts/mvrp-stub-read.sh` was written for exactly
+this so the sequence stops being hand-typed differently each time:
+
+    MVRP_OUT=$HOME/mvrp16 ./scripts/mvrp-stub-read.sh com.google.android.apps.restore mpz
+    MVRP_OUT=$HOME/mvrp16 ./scripts/mvrp-stub-read.sh com.google.android.apps.restore dhh
+
+`dhh` matters as much as `mpz`: it is what a normal caller gets, so if `dhh`
+carries the uid check and `mpz` does not, the caller-chosen branch *is* the
+bypass and the finding is about reaching the privileged interface, not about
+any one method.
+
+These have to run on the Pi. The session keeping this log is the cloud
+container: no adb, no devices, no `~/mvrp16`, and `android.googlesource.com`
+is not reachable through its proxy, so the setupcompat AIDL cannot be read
+from the upstream source either.
