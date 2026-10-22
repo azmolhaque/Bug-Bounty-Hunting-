@@ -2280,3 +2280,32 @@ that happens to be easy to type.
 
 Numbers corrected in the finding files. The report itself is closed as a
 duplicate so there is nothing to amend with Google.
+
+### 2026-10-22 — Drive's legacy storage provider: real gap, no way to reach it
+
+`LegacyStorageBackendContentProvider` in Google Drive is exported with no
+permission, no readPermission, no writePermission and no grantUriPermissions.
+It does hold a URI permission check — `d(uri, mode)` throws SecurityException
+when `checkCallingUriPermission` fails — but all three call sites (`call`,
+`openFile`, `openTypedAssetFile`) wrap it in the same flag:
+
+    if (((aide) ((adzv) aidd.a.b).a).a()) { d(uri, i); }
+
+On this device the flag is off, measured rather than assumed: reading a
+nonsense URI as shell, which holds no grant for it, returns
+FileNotFoundException and not SecurityException. So the check does not run.
+
+Dead end anyway, for the same reason as the Home receiver yesterday: no way
+to discover a valid URI. `mbg.c` accepts `?local_id=<LocalSpec>`, and
+`mwk.java:40` shows what a real one looks like —
+`acc=<id>;doc=encoded=<cello doc id>`. Not a small integer, not enumerable,
+and the UriMatcher requires exactly one path segment so there is no listing
+path to walk. Google's rule is explicit that the attacker needs a clear path
+to discover the ID, and there is none.
+
+Worth keeping as a shape to look for, though: a permission check behind a
+feature flag is a real pattern and this is the second one today where the
+guard existed but did not run. The first was Photos, where an allowlist
+turned out to pick a telemetry label.
+
+Recording it as a precondition, not a finding (CLAUDE.md 2.6). Dropping it.
