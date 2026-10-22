@@ -68,11 +68,11 @@ What the receiver does with the broadcast (decompiled from the APK on the
 device):
 
 ```java
-Object extra  = intent.getExtra("android.live_wallpaper.info");
-int    target = intent.getIntExtra("android.live_wallpaper.restore_target", 0);
-LiveWallpaperInfo info = new LiveWallpaperInfo((WallpaperInfo) extra);
+WallpaperInfo wallpaperInfo = (WallpaperInfo) this.$intent.getExtra("android.live_wallpaper.info");
+int intExtra = this.$intent.getIntExtra("android.live_wallpaper.restore_target", 0);
+LiveWallpaperInfo liveWallpaperInfo = new LiveWallpaperInfo(wallpaperInfo);
 ...
-WallpaperSetter.setWallpaperComponent(wallpaperManager, info, target);
+WallpaperSetter.setWallpaperComponent(WallpaperManager.getInstance(context), liveWallpaperInfo, intExtra);
 ```
 
 and that helper:
@@ -80,15 +80,34 @@ and that helper:
 ```java
 public static void setWallpaperComponent(WallpaperManager wallpaperManager,
                                          LiveWallpaperInfo liveWallpaperInfo, int i) {
-    wallpaperManager.setWallpaperComponentWithFlags(
-            liveWallpaperInfo.mInfo.getComponent(), WallpaperPersister.destinationToFlags(i));
-    ...
+    try {
+        wallpaperManager.getClass().getMethod("setWallpaperComponentWithFlags", ComponentName.class, Integer.TYPE);
+        wallpaperManager.setWallpaperComponentWithFlags(
+                liveWallpaperInfo.mInfo.getComponent(), DefaultWallpaperPersister.destinationToFlags(i));
+    } catch (NoSuchMethodException unused) {
+        Log.d("WallpaperSetter", "setWallpaperComponentWithFlags not available, using setWallpaperComponent");
+        wallpaperManager.setWallpaperComponent(liveWallpaperInfo.mInfo.getComponent());
+    }
 }
 ```
 
 `setWallpaperComponent` and `setWallpaperComponentWithFlags` require
-`android.permission.SET_WALLPAPER_COMPONENT`, which is `signature|privileged`.
-The Wallpapers app is privileged and holds it. A normal app cannot.
+`android.permission.SET_WALLPAPER_COMPONENT`. On the device I tested:
+
+```
+$ adb shell pm list permissions -f -g | grep -A5 'permission:android.permission.SET_WALLPAPER_COMPONENT'
+  + permission:android.permission.SET_WALLPAPER_COMPONENT
+    package:android
+    label:null
+    description:null
+    protectionLevel:signature|privileged
+
+$ adb shell dumpsys package com.google.android.apps.wallpaper | grep -i WALLPAPER_COMPONENT
+      android.permission.SET_WALLPAPER_COMPONENT: granted=true
+```
+
+The Wallpapers app is privileged and holds it. A third-party app cannot, and
+my test app's own log line confirms it does not.
 
 The `ComponentName` handed to that API comes straight out of an extra supplied
 by whoever sent the broadcast. Nothing checks who sent it — the
@@ -190,6 +209,14 @@ broadcast. That is the framework's own record of a privileged app making the
 `SET_WALLPAPER_COMPONENT`-gated call with a component chosen by an app that
 does not hold that permission, and then the system binding to it.
 
+I repeated the whole thing an hour later from a clean state — both apps
+uninstalled, rebuilt and reinstalled, following the steps above verbatim — and
+got the same pair: control unchanged for the full 45 seconds at 21:42:13Z,
+attacker in 2 seconds at 21:43:04Z with
+`setWallpaperComponent name=ComponentInfo{com.glance.lockscreenM/...LooksWallpaperService}, callingPid = 1094`
+and `Start proc 1094:com.google.android.apps.wallpaper ... for broadcast` one
+line before it.
+
 The permission really is granted at install, from the device's records:
 
 ```
@@ -236,10 +263,10 @@ permission at any point, and nothing else is asked of them.
 
 ## What I did not demonstrate
 
-- **No lock screen.** `restore_target=2` changed only the home-screen entry.
-  The app clears the lock screen when the device has no lock-screen live
-  wallpaper (`if (!isLockscreenLiveWallpaperEnabled() && i == 2) clear(2)`), so
-  on this device the lock screen is not reachable this way.
+- **No lock screen.** I sent `restore_target=2`, which is the "both" value, and
+  only the home-screen entry in `dumpsys wallpaper` changed. I am reporting
+  that as an observation and not explaining it: the mechanism I first wrote
+  down came from a different build of the app than the one on this device.
 - **No access to anyone's data.** Nothing was read from any other app, and the
   test wallpaper draws one flat colour.
 - **Not silent.** The wallpaper visibly changes, so a user looking at the home

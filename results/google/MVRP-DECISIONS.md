@@ -3051,3 +3051,44 @@ intent along under its own identity. The rules name it: "Intent redirection ->
 launching non-exported components". `mvrp-handback.sh` looked for this from
 manifests alone and was blind without sources; the sources now exist for 52
 packages on A16.
+
+### 2026-10-23 — the pre-submission pass: four claims measured, one quote was from the wrong build
+
+Checked the report's load-bearing sentences against evidence rather than
+against memory, which is how G-F003 lost a claim.
+
+Measured, all four confirming what the report says:
+
+    + permission:android.permission.SET_WALLPAPER_COMPONENT
+        package:android
+        protectionLevel:signature|privileged
+
+    com.google.android.apps.wallpaper:
+        android.permission.SET_WALLPAPER_COMPONENT: granted=true
+
+    A16 manifest, lines 300-307: the receiver block is byte-for-byte what the
+    report quotes, on the device under test rather than on the other phone.
+
+    Clean-state rehearsal following the README verbatim: control unchanged for
+    45s, attacker in 2s, callingPid matching the Wallpapers process started one
+    line earlier.
+
+Until this pass, `signature|privileged` was written from memory. It happened to
+be right. It was still the same unmeasured-assertion habit that produced the
+API-36 error, and the fix is the pass, not the luck.
+
+**And one thing was wrong.** The code I quoted came from the Android 15 tree
+while the report claims Android 16. The A16 build differs: `WallpaperSetter.
+setWallpaperComponent` ends at the try/catch with no lock-screen clear, and the
+receiver's `invokeSuspend` has no `isLockscreenLiveWallpaperEnabled` throw. So
+the sentence explaining why `restore_target=2` left the lock screen alone cited
+a line that is not in the build I tested.
+
+The observation was fine; the mechanism was imported from another version. Both
+code quotes now come from the A16 tree, and the lock-screen note states the
+measurement and explicitly declines to explain it.
+
+That is the fourth time in two days that a correct-looking sentence rested on
+something not measured on the device in question. The habit worth keeping:
+every quote in a report carries the build it came from, and the build has to be
+the one in the title.
