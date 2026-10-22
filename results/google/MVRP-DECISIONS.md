@@ -2915,3 +2915,51 @@ component is already set, and prints the three-step order that avoids it.
 
 I had written the warning in prose to the user instead of into the script. A
 precondition that only exists in a sentence is not a control.
+
+### 2026-10-23 — S59 GMS accounts provider: open manifest, Google-signature gate underneath
+
+`com.google.android.gms.auth.accounts` has no read permission in the manifest
+and was the most valuable name the gap sweep produced: Tier 1, and accounts.
+
+`query` is not implemented (`UnsupportedOperationException`), which is not a
+refusal — GMS's own client code shows the real door:
+
+    acquireUnstableContentProviderClient("com.google.android.gms.auth.accounts")
+    bundle.putString("callingActivity", str)
+    call("get_accounts", "com.google", bundle)  ->  getParcelableArray("accounts", Account.class)
+
+Called that way from adb:
+
+    SecurityException: GoogleCertificatesRslt: not allowed: pkg=com.android.shell,
+    sha256=[0ad6202e02eb347d4d705e582f1b226245e32aaaa026fc3b66a290e2b8694213],
+    atk=false, ver=263737035.true (go/gsrlt)
+
+and the code says the same thing:
+
+    bkae.j(...)  ->  bkfa.b(this.j, str, Integer.valueOf(Binder.getCallingUid()), this.k)
+    AccountChimeraContentProvider: "get_accounts".equals(str) -> a.k(callingUid)
+
+So the caller's uid is resolved to its packages and checked for first-party
+signing. Shell is refused; a self-signed app is refused sooner.
+
+**Closed.** And closed well: shell holds more than an app does, so a refusal
+here settles it without building anything. That is the rule the triage script
+states — DENIED is the only conclusion adb alone can reach, and it reached it.
+
+Fourth time this exact shape has appeared: S47 (restore AppDataWriter),
+S55 (AGSA QSB), S56 (OneSearch gRPC), S59 (GMS accounts). The manifest is not
+where Google enforces anything; `bsrc`/`GoogleCertificatesRslt` is. Worth
+treating as the prior from now on: an open GMS manifest means nothing until
+the uid check below it is read or a call is actually refused.
+
+Also settled cheaply: `com.google.android.gms.settings.persistent` takes paths
+`getGoogleSettingsAlertCount`, `getGoogleSettingsTitle`,
+`getGoogleSettingsSummary` (from `GoogleSettingsEntryChimeraContentProvider`).
+Those are strings for a settings entry. Dropped without probing — Section 3
+drops UI metadata by name.
+
+Still open from the 52-package sweep: wellbeing's `api` and `autodnd` providers
+(usage data), safetyhub's `suggestionstateprovider` (emergency info), Photos'
+`partnercontentprovider`, and Messages' `SharedStorageProvider` and
+`AvatarContentProvider`. All REACHED, meaning they answered and the root path
+was wrong, so each needs its UriMatcher read before another probe.
