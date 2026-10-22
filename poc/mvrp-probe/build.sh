@@ -84,8 +84,17 @@ rm -rf "$OUT"; mkdir -p "$OUT/classes"
 
 echo "[1/5] javac"
 find "$SRC" -name '*.java' > "$OUT/sources.txt"
-javac -source 8 -target 8 -nowarn -bootclasspath "$AJ" -cp "$AJ" \
-      -d "$OUT/classes" @"$OUT/sources.txt" 2>&1 | grep -v 'bootstrap class path' || true
+# `| grep ... || true` ছিল এখানে, আর সেটা javac-এর ব্যর্থতা গিলে ফেলত:
+# compile error-এও বিল্ড "সফল" বলে এগোত, d8 পুরনো বা অসম্পূর্ণ class নিয়ে
+# APK বানাত, আর ডিভাইসে অকেজো app বসত। একটা duplicate variable ঠিক এভাবেই
+# রাতভর টিকে ছিল। এখন javac ব্যর্থ হলে বিল্ড থামে।
+if ! javac -source 8 -target 8 -nowarn -bootclasspath "$AJ" -cp "$AJ" \
+     -d "$OUT/classes" @"$OUT/sources.txt" > "$OUT/javac.err" 2>&1; then
+  grep -v 'bootstrap class path' "$OUT/javac.err" || true
+  echo "!! javac ব্যর্থ — উপরের ত্রুটি দেখো। APK বানানো হয়নি।"
+  exit 1
+fi
+grep -v 'bootstrap class path' "$OUT/javac.err" || true
 
 echo "[2/5] d8"
 find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"

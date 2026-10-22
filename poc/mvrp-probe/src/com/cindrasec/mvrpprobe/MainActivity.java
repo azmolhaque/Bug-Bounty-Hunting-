@@ -235,12 +235,6 @@ public class MainActivity extends Activity implements ServiceConnection, Runnabl
             } catch (Throwable e) {
                 Log.i(TAG, "  REPLY EXCEPTION " + e.getClass().getName() + ": " + e.getMessage());
             }
-            // কাঁচা বাইট, প্রথম ৬৪টা — exception না হলেও কী এসেছে দেখার জন্য
-            reply.setDataPosition(0);
-            byte[] raw = reply.marshall();
-            StringBuilder hex = new StringBuilder();
-            for (int i = 0; i < raw.length && i < 64; i++) hex.append(String.format("%02x", raw[i]));
-            Log.i(TAG, "  reply[0:64] = " + hex);
             if (reply.dataSize() > 0) {
                 reply.setDataPosition(0);
                 byte[] raw = reply.marshall();
