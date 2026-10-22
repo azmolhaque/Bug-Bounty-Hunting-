@@ -10,7 +10,7 @@
 
 ## FILL BEFORE SUBMITTING
 
-- [ ] external IP: run `curl -s ifconfig.me` on the Pi and put it in **Researcher**
+- [x] external IP: `180.148.212.54`
 - [ ] screenshot of the terminal showing the control run and the attacker run
 - [ ] attach `poc/wallpaper-restore-poc/` as a zip (sources + the three manifests)
 - [ ] re-read: does any sentence claim something not in the pasted output?
@@ -35,6 +35,34 @@ guarded by a permission no package on the device defines:
 A permission that nothing defines can be defined by any app, at
 `protectionLevel="normal"`, and is then granted to it at install with no
 prompt and no user interaction. So the guard stops nobody.
+
+With my test apps removed, no package on the device declares that name:
+
+```
+$ adb uninstall com.cindrasec.wallpaperpoc
+Success
+$ adb uninstall com.cindrasec.wallpaperctl
+Success
+$ adb shell pm list permissions -f -g | grep -A5 'permission:com.google.pixel.livewallpaper'
+$
+```
+
+Nothing is printed. After installing an app whose manifest declares it at
+`normal`, the declarer is that app:
+
+```
+$ adb install -r com.cindrasec.wallpaperpoc.apk
+Success
+$ adb shell pm list permissions -f -g | grep -A5 'permission:com.google.pixel.livewallpaper'
+  + permission:com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER
+    package:com.cindrasec.wallpaperpoc
+    label:null
+    description:null
+    protectionLevel:normal
+```
+
+An ordinary app is now the owner of the permission that guards the receiver,
+and is granted it at install.
 
 What the receiver does with the broadcast (decompiled from the APK on the
 device):
@@ -238,7 +266,7 @@ Two things would need to change:
 ## Researcher
 
 - Md. Azmol Haque Rony — azmolhaque95@gmail.com — handle `cindrasec`
-- Tested 2026-10-22/23 (UTC), from external IP `FILL ME`
+- Tested 2026-10-22/23 (UTC), from external IP `180.148.212.54`
 - Devices: moto g (2026) Android 16 `ZT422724JR`; moto g stylus 5G (2024)
   Android 15 `ZD222W5X3R`. Both unrooted, both with the stock preinstalled
   `com.google.android.apps.wallpaper` (`/system_ext/priv-app/GoogleWallpapers`,

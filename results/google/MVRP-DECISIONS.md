@@ -2861,3 +2861,33 @@ The canary run in the same pair was clean and is the one to quote:
 
 Still needed: a control run from a settled state, so its "unchanged" is not
 competing with the system tearing down an uninstalled package.
+
+### 2026-10-23 — the premise, measured from both sides (and a grep that nearly reversed it)
+
+`pm list permissions -f` prints a permission's attributes *below* its name, so
+`grep -B3` attributed the previous entry's `protectionLevel:signature|privileged`
+to `DOWNLOAD_LIVE_WALLPAPER` and briefly looked like the whole finding was
+built on a misreading. With `-A5`, from a device with my test apps removed:
+
+    $ adb shell pm list permissions -f -g | grep -A5 'permission:com.google.pixel.livewallpaper'
+    $
+
+Nothing. After installing an app that declares the name at `normal`:
+
+      + permission:com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER
+        package:com.cindrasec.wallpaperpoc
+        protectionLevel:normal
+
+So an ordinary app becomes the owner of the permission guarding a privileged
+app's exported receiver. That pair is the root cause shown from both sides, and
+it is now the opening evidence in the report rather than an assertion.
+
+It was also consistent all along, which is why the misread was worth checking
+rather than panicking over: if a system package really defined that name at
+`signature|privileged`, our declaration would have been ignored and
+`granted=true` could never have been measured. But the logic was not the proof —
+the second command was.
+
+Worth keeping as a rule: `-B` on a key/value listing answers about the wrong
+record. Four instrument defects now (26-29), and three of them are the same
+mistake wearing different clothes.
