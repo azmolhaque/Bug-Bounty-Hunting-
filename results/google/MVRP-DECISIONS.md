@@ -3389,3 +3389,30 @@ certificate is an outage, not a vulnerability: the attacker gains nothing and
 the users are the ones locked out. It stays in the notes as evidence that
 nobody is watching that host, which is a reason to look at it, not a finding
 to file.
+
+### 2026-10-24 — both TIER0/TIER1 candidates closed
+
+`www.pring.jp/admin` is HTTP Basic (`realm="Application"`) in front of a Rails
+app, CSP reporting to `csp.withgoogle.com/csp/pring/pring-customer-portal`.
+The gate holds: `/admin`, `/admin/`, `//admin`, `/admin/.` all 401;
+`/admin%2f` and `/ADMIN` 404. No bypass. Guessing credentials would be brute
+force and the rules forbid it, so pring's admin path is closed.
+
+`vpn.owlchemylabs.com/admin` serves OpenVPN Access Server's ordinary admin
+login ("Cookie support required"). An admin login page reachable from the
+internet is how that product is deployed; nothing is exposed.
+
+So TIER0/TIER1 is done: 195 hosts, 82 live, 2 control surfaces, both properly
+guarded. That is the expected outcome for Google's most visible assets and it
+is worth having measured rather than assumed.
+
+The surface that remains is TIER2/TIER3 — 238 live hosts out of 830, the
+smaller acquisitions (Owlchemy, Cameyo, Pointy, Neverware, Siemplify,
+Elastifile and the rest). The path probe is running against them now, with
+the comparison fixed, so for the first time its output should be readable.
+
+Day's tally, honestly: no finding, and six instrument defects repaired — three
+of which were silently writing the map (`--max-filesize` in three scripts, a
+half-written table being read twice, and a 404's own echo counted as a
+discovery). Every "lead" examined before those fixes was an artifact. The map
+is true now, which it was not this morning.
