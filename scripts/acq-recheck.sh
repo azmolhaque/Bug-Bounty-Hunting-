@@ -36,7 +36,10 @@ body=$(mktemp); trap 'rm -f "$body"' EXIT
 probe() {   # probe <host> -> "code<TAB>size<TAB>verify<TAB>title"  (empty on failure)
   : > "$body"                       # never let the previous host's page survive
   local w
-  w=$(curl -sS -k -m 10 -A "$UA" --max-filesize 262144 \
+  # No --max-filesize. curl treats exceeding it as a failure, so a large page
+  # reads as "host did not answer" — which is how www.waze.com (348 KB) broke
+  # the control below and stopped the run. -m bounds the request instead.
+  w=$(curl -sS -k -m 10 -A "$UA" \
         -o "$body" -w '%{http_code}\t%{size_download}\t%{ssl_verify_result}' \
         "https://$1/" 2>/dev/null) || return 1
   local code="${w%%$'\t'*}"
@@ -51,11 +54,19 @@ probe() {   # probe <host> -> "code<TAB>size<TAB>verify<TAB>title"  (empty on fa
 # A host that must answer, and one that must not. Without both, "n of m
 # answered" is a statement about this machine.
 echo "== CONTROL =="
-if ! probe www.waze.com >/dev/null; then
-  echo "!! BROKEN: a known-live host did not answer. Fix connectivity first."; exit 2
+# www.appsheet.com, because acq-live.sh already uses it as its control and it
+# is therefore known to answer from this machine. The first version used
+# www.waze.com, whose page is larger than the --max-filesize that was set
+# here, so the control failed for a reason that had nothing to do with
+# connectivity.
+CTL="${CTL_HOST:-www.appsheet.com}"
+if ! probe "$CTL" >/dev/null; then
+  echo "!! BROKEN: $CTL did not answer, so every 'no answer' below would be"
+  echo "!!         about this machine. Check connectivity, or set CTL_HOST."
+  exit 2
 fi
-echo "POSITIVE  www.waze.com answered"
-if probe "nonexistent-canary-$RANDOM.waze.com" >/dev/null; then
+echo "POSITIVE  $CTL answered"
+if probe "nonexistent-canary-$RANDOM.appsheet.com" >/dev/null; then
   echo "!! BROKEN: a host that does not exist answered."; exit 2
 fi
 echo "NEGATIVE  a nonexistent host did not"
