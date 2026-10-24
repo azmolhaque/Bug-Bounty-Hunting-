@@ -3310,3 +3310,30 @@ each one failed.
 Fourth defect of the morning, and the same shape as the other three: the
 instrument reported something, it looked like data, and I did not ask what the
 flag I had passed did to the number.
+
+### 2026-10-24 — defect 34: `--max-filesize` was writing the acquisition map
+
+The recheck came back with `tls=ok` on nearly every host the sweep had called
+DEAD. The certificates were fine; the sweep was wrong, and not about TLS.
+
+`acq-live.sh` passed `--max-filesize 262144`. curl treats exceeding that as a
+failed transfer, so any host whose home page is larger than 256 KB was
+recorded DEAD. `www.waze.com` (348 KB), `wing.com` (646 KB) and `tenor.com`
+(273 KB) were all filed as dead acquisition hosts by that one flag.
+
+So the three hours of reasoning about dangling CNAMEs and neglected
+certificates were spent on a list whose main selection criterion was page
+size.
+
+The same flag had already broken `acq-recheck.sh`'s own control an hour
+earlier — `www.waze.com` "did not answer" — and I fixed it there without
+asking where else it was. It was in the sweep that built the map, and in
+`acq-paths.sh`, where it is worse: a failed fetch returns `ERR 0`, `ERR 0`
+differs from every baseline, so a page over 256 KB would have been reported as
+a discovered path. That one never ran, so it never lied.
+
+All three are now without the cap; `-m 10` bounds the request.
+
+Fifth defect of the morning. The first four were mine in one-liners; this one
+was sitting in a committed script, with a control that caught it, and I fixed
+the symptom in one file and left the cause in two others.

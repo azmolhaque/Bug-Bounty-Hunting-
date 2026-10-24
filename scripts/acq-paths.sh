@@ -37,8 +37,11 @@ PATHS=(
 UA='Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)'
 
 fetch() {   # fetch <url> -> "status size"
+  # No --max-filesize: curl fails the transfer when a page exceeds it, this
+  # function then returns "ERR 0", and "ERR 0" differs from every baseline —
+  # so a large page was reported as a path that exists. -m bounds it instead.
   curl -sS -m 10 -o /dev/null -w '%{http_code} %{size_download}' \
-       -A "$UA" --max-filesize 262144 "$1" 2>/dev/null || printf 'ERR 0'
+       -A "$UA" "$1" 2>/dev/null || printf 'ERR 0'
 }
 
 {
