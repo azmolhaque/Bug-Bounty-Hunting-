@@ -3243,3 +3243,36 @@ What to carry:
 Mobile VRP standing: 2 submissions, 2 duplicates of the same generic marker,
 0 rewards. Per CLAUDE.md section 2, two closes means stop and rebuild rather
 than file a third in the same shape.
+
+### 2026-10-24 — defect 32: defect 22, repeated at the prompt, this time on 140 hosts
+
+Re-probed the 140 hosts `acq-live.sh` called DEAD, with `-k`, using a loop
+typed at the shell. It printed a line for every host and ended with
+"সত্যিই জীবিত: 140 / 140". Not one of those lines was a measurement.
+
+Three faults, all in the loop:
+
+- `set -- $r` does not word-split in zsh, so `$1` held the whole
+  `"301 162 20"` and `$2`/`$3` were empty. **This is defect 22, logged on
+  2026-10-21, in this file.** Same construct, same shell, same wrong answer.
+- A failed `curl` left the previous host's page in `/tmp/b`, so titles were
+  attributed to hosts that never answered — which is why "Tenor GIF Keyboard"
+  appears beside eight photomath hosts.
+- `|| r="ERR 0 -"` made failures print as rows, so the total counted lines,
+  not live hosts.
+
+Rewritten as `scripts/acq-recheck.sh`: bash, body file truncated before every
+request, failures skipped rather than printed, and the two controls this
+project's scripts always carry. Parsing verified against a stubbed curl for
+expired / mismatched / no-answer / connection-failure cases.
+
+**The reason the re-probe was worth doing at all stands, and is the real find
+of the morning.** `acq-live.sh` verifies TLS, so every host serving an
+expired, mismatched or unchained certificate was filed as DEAD and never
+looked at. `myhelp.fitbit.com` is one of them: HTTP 200, a live Fitbit
+Salesforce support portal, on a certificate that expired 2026-09-27. 140
+hosts went into that bucket unexamined.
+
+The pattern across 22, 30 and 32: every control I add goes into a script, and
+then the next question gets asked with a one-liner that has none of them. The
+scripts are not where the mistakes happen.
