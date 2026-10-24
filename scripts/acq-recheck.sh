@@ -54,8 +54,10 @@ probe() {   # probe <host> -> "code<TAB>size<TAB>tls<TAB>title"  (empty on failu
     w="$strict"
   else
     # Keep the verification verdict from the strict attempt before retrying.
+    # A verify code if curl produced one, otherwise curl's own exit code,
+    # labelled so the two cannot be read off the same scale.
     tls="${strict##*$'\t'}"
-    case "$tls" in ''|*[!0-9]*) tls="$rc" ;; esac
+    case "$tls" in ''|*[!0-9]*|0) tls="e$rc" ;; esac
     : > "$body"
     w=$(curl -sS -k -m 10 -A "$UA" \
           -o "$body" -w '%{http_code}\t%{size_download}\tx' \

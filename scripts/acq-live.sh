@@ -37,7 +37,11 @@ command -v curl >/dev/null || { echo "!! curl missing"; exit 1; }
 probe() {   # probe <host> -> "status<TAB>server<TAB>title"
   local h="$1" hdr body st srv ti
   hdr=$(mktemp); body=$(mktemp)
-  if ! curl -sS -m 10 -L --max-redirs 3 --max-filesize 262144 \
+  # No --max-filesize. curl treats exceeding it as a transfer failure, so a
+  # large home page is recorded as DEAD: www.waze.com (348 KB), wing.com
+  # (646 KB) and tenor.com (273 KB) were all filed as dead hosts by this line.
+  # -m 10 already bounds the request.
+  if ! curl -sS -m 10 -L --max-redirs 3 \
        -A 'Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)' \
        -D "$hdr" -o "$body" "https://$h/" 2>/dev/null; then
     rm -f "$hdr" "$body"; printf 'DEAD\t\t'; return
