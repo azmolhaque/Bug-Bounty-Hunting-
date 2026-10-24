@@ -3354,3 +3354,38 @@ line. A sweep in flight is no longer reachable by the name every consumer
 looks for.
 
 Asking the user to wait would not have been a fix. It was the second time.
+
+### 2026-10-24 — defect 36: the path prober counted a 404's own echo as a discovery
+
+`acq-paths.sh` reported hits on 21 of 82 hosts. Most were noise of one kind:
+a 404 page that includes the requested path is a few bytes longer for
+`/administrator` than for `/login`, and the comparison tested sizes for exact
+equality. `myaccount.nest.com` and `myaccount.ft.nest.com` came back with all
+twelve paths "differing", all of them 404s.
+
+Two changes. A size difference now has to exceed 64 bytes to count, which is
+more than any of these paths can add; a status difference still always counts.
+And a host where *every* path differs is suppressed with a note, because a
+host that answers identically to anything has a baseline that carries no
+information.
+
+Checked against the real rows: 404/165 vs 404/144 ignored, 404/18918 vs 401/27
+kept, 404/0 vs 200/28644 kept.
+
+What survives the filter, and is worth the next session:
+
+- `www.pring.jp/admin` -> **401**, 27 bytes, against a 404 baseline. The path
+  exists and wants credentials. pring is where this account's first Fixed
+  report came from.
+- `vpn.owlchemylabs.com/admin` -> **200** at `/admin/__session_start__`.
+  The OpenVPN Access Server admin interface answers from the internet.
+
+Both Tableau hosts are closed: `cs-tableau-bpo.corp.fitbit.com` and
+`customersupport-tableau.site-ops.fitbit.com` redirect to
+`fitbit.my.idaptive.app`, corporate SSO, properly guarded.
+
+And `myhelp.fitbit.com`'s expired certificate is not a report. An expired
+certificate is an outage, not a vulnerability: the attacker gains nothing and
+the users are the ones locked out. It stays in the notes as evidence that
+nobody is watching that host, which is a reason to look at it, not a finding
+to file.

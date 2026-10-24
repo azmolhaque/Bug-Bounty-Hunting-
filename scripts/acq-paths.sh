@@ -64,15 +64,33 @@ for h in "${HOSTS[@]}"; do
   bst="${base%% *}"; bsz="${base##* }"
   sleep "$DELAY"
 
-  found=""
+  # A 404 page that echoes the requested path is a few bytes longer for
+  # /administrator than for /login, and comparing sizes exactly called that a
+  # difference. Every path on myaccount.nest.com came back as a hit that way.
+  # So a size difference only counts when it is larger than the paths could
+  # explain; a status difference always counts.
+  TOL="${TOL:-64}"
+  found=""; ndiff=0
   for p in "${PATHS[@]}"; do
     r=$(fetch "https://$h$p")
     st="${r%% *}"; sz="${r##* }"
-    if [ "$st" != "$bst" ] || [ "$sz" != "$bsz" ]; then
+    d=$(( sz > bsz ? sz - bsz : bsz - sz ))
+    if [ "$st" != "$bst" ] || [ "$d" -gt "$TOL" ]; then
+      ndiff=$((ndiff+1))
       found="$found  $p -> $st (${sz}b, baseline $bst/${bsz}b)"$'\n'
     fi
     sleep "$DELAY"
   done
+
+  # If everything differs, nothing does: the host answers the same way to any
+  # path and the baseline carries no information about it.
+  if [ "$ndiff" -eq "${#PATHS[@]}" ]; then
+    echo "== $h   baseline $bst/${bsz}b"
+    echo "   every path differs — this host answers the same for anything,"
+    echo "   so the comparison says nothing. Suppressed."
+    echo
+    continue
+  fi
 
   if [ -n "$found" ]; then
     hits=$((hits+1))
