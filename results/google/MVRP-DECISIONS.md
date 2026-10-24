@@ -3337,3 +3337,20 @@ All three are now without the cap; `-m 10` bounds the request.
 Fifth defect of the morning. The first four were mine in one-liners; this one
 was sitting in a committed script, with a control that caught it, and I fixed
 the symptom in one file and left the cause in two others.
+
+### 2026-10-24 — defect 35: reading a table while it was still being written
+
+Twice in twenty minutes a recheck was built from
+
+    T=$(ls -1t ~/acq/live-*.tsv | head -1)
+
+while `acq-live.sh` was still running. It returned 52 hosts the first time and
+12 the second, and both times the output looked like a finished result — "22
+of 52 answered", "3 of 12 answered" — with controls passing, because the
+controls check the instrument, not whether the input is complete.
+
+`acq-live.sh` now writes `live-<stamp>.tsv.partial` and renames it on the last
+line. A sweep in flight is no longer reachable by the name every consumer
+looks for.
+
+Asking the user to wait would not have been a fix. It was the second time.

@@ -27,7 +27,13 @@ TIERS="${TIERS:-TIER0,TIER1}"
 DELAY="${DELAY:-0.4}"
 OUT="${ACQ_OUT:-$HOME/acq}"; mkdir -p "$OUT"
 STAMP="$(date +%Y%m%d-%H%M)"
-TSV="$OUT/live-$STAMP.tsv"
+# Written under .partial and renamed only when the sweep finishes. Twice now a
+# recheck was built from `ls -1t live-*.tsv | head -1` while this was still
+# running, giving 52 hosts once and 12 the next time and reading as a result
+# both times. A half-written table should not be reachable by the name
+# everything else looks for.
+TSV_FINAL="$OUT/live-$STAMP.tsv"
+TSV="$TSV_FINAL.partial"
 LOG="$OUT/live-$STAMP.log"
 
 [ -f "$PB" ]    || { echo "!! no acquisitions file at $PB"; exit 1; }
@@ -127,5 +133,6 @@ NOTE
 } 2>&1 | tee "$LOG"
 
 echo
-echo "table : $TSV"
+mv -f "$TSV" "$TSV_FINAL"
+echo "table : $TSV_FINAL"
 echo "log   : $LOG"
