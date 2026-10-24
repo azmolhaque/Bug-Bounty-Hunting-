@@ -3276,3 +3276,37 @@ hosts went into that bucket unexamined.
 The pattern across 22, 30 and 32: every control I add goes into a script, and
 then the next question gets asked with a one-liner that has none of them. The
 scripts are not where the mistakes happen.
+
+### 2026-10-24 — defect 33: I invented a column, then told the user to read it
+
+`acq-recheck.sh` printed `verify=20` for all 45 hosts that answered —
+including `www.waze.com`, `tenor.com` and `wing.com`. I read that as the Pi's
+CA store being broken and told the user their whole acquisition map was
+distorted.
+
+It was not. `ca-certificates` reinstalled with `0 added, 0 removed`, and
+`www.google.com` verified fine *before* the reinstall. The 20 came from my own
+`-k`: with verification disabled, `%{ssl_verify_result}` reports nothing
+meaningful, and I had built a column out of it and written a six-line guide
+explaining how to interpret its values.
+
+The real measurement was in the user's own one-liner, run without `-k`:
+
+    myhelp.fitbit.com  curl: (60) SSL certificate problem: certificate has expired
+    myhelp.fitbit.com  000 verify=10
+
+`probe()` now makes two attempts: verify first and keep that verdict, then
+retry with `-k` only when verification failed, so the TLS column comes from an
+attempt that actually verified and the body comes from one that could fetch
+it. Verified against a stub for ok / expired / hostname-mismatch / no-answer.
+
+**Correction to the record:** the DEAD classification in `acq-live.sh` is not
+an artifact of a broken trust store. Those hosts fail verification for real
+reasons — `myhelp.fitbit.com`'s certificate genuinely expired on 2026-09-27 —
+or do not answer at all. What the recheck legitimately adds is that 45 of 140
+serve something when verification is skipped, and now the script can say why
+each one failed.
+
+Fourth defect of the morning, and the same shape as the other three: the
+instrument reported something, it looked like data, and I did not ask what the
+flag I had passed did to the number.
