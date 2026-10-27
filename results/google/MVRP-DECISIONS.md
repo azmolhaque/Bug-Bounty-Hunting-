@@ -3587,3 +3587,34 @@ of leaving those to be rediscovered by hand each time.
 Still open for this class: the Android 15 set (34 apps refreshed, decompiling
 now, including tycho jumping V128 -> V170), and the 22 components whose
 classes are not in the sources at all.
+
+### 2026-10-27 — defect 38: the sweep read new manifests against old code
+
+`mvrp-update-diff.sh refresh` pulls the new APK, moves the old decoded
+manifest to `prev/` and deletes the cached APK. It never touched `src/`. And
+`mvrp-decompile-missing.sh` skips any package that already has a source tree.
+
+So for every **updated** app, the next sweep paired a current manifest with
+whatever jadx produced last time. `com.google.android.apps.tycho` went
+V128 -> V170 — forty-two releases — and was swept against V128's code. The 13
+updated apps on Android 16 and the 25 on Android 15 were all read this way,
+and nothing in the output indicated it.
+
+That is the worst kind of wrong this project keeps producing: not a failure,
+a confident answer about the wrong thing. The Android 15 run that looked like
+a clean repeat of Android 16's result was mostly stale code plus seven
+packages still decompiling.
+
+Two fixes:
+
+- `refresh` now deletes `$SRC/$pkg` as well, so `decompile-missing` re-does it.
+- `mvrp-intent-forward.sh` compares the manifest's mtime against the source
+  tree's and refuses to read a package whose sources are older, counting it
+  as `packages with STALE sources` instead of folding it into the result.
+
+Verified both directions on a fixture: stale tree reported and skipped, same
+tree after `touch` read normally.
+
+The Android 16 conclusion from earlier today survives this, because the five
+candidates examined by hand were in apps whose sources were decompiled after
+their refresh. The Android 15 pass has to be redone.

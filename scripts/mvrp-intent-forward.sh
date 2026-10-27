@@ -121,13 +121,24 @@ pkgs=("$@")
 [ ${#pkgs[@]} -eq 0 ] && mapfile -t pkgs < <(ls -1 "$DEC" 2>/dev/null | grep -v '\.log$')
 echo "== ${#pkgs[@]} package(s) =="
 
-NHIT=0; NREAD=0; NUNREAD=0; NNOSRC=0; NSTRONG=0; NWEAK=0; NINTENT=0
+NHIT=0; NREAD=0; NUNREAD=0; NNOSRC=0; NSTRONG=0; NWEAK=0; NINTENT=0; NSTALE=0
 for pkg in "${pkgs[@]}"; do
   case "$pkg" in com.cindrasec.*) continue ;; esac
   m="$DEC/$pkg/resources/AndroidManifest.xml"
   [ -f "$m" ] || continue
   tree="$SRC/$pkg/sources"
   if [ ! -d "$tree" ]; then NNOSRC=$((NNOSRC+1)); continue; fi
+
+  # The manifest comes from the APK on the device; the sources come from
+  # whenever jadx last ran. `refresh` used to replace one and not the other,
+  # so an updated app was read as a new manifest against months-old code —
+  # tycho was swept at V170 with V128's sources and nothing in the output
+  # said so. A tree older than its manifest is reported, not used.
+  if [ "$m" -nt "$tree" ]; then
+    NSTALE=$((NSTALE+1))
+    echo "  !! $pkg: sources are older than the manifest — decompile again before trusting this"
+    continue
+  fi
 
   printed=0
   while IFS=$'\t' read -r kind cls perm; do
@@ -192,6 +203,7 @@ echo "  of those, unclear source : $NWEAK   (onActivityResult in the file)"
 echo "  of those, taking an Intent: $NINTENT   <- only these can be redirected"
 echo "class not in the sources   : $NUNREAD   (obfuscated or split out — NOT clean)"
 echo "packages without sources   : $NNOSRC   (run mvrp-decompile-missing.sh)"
+echo "packages with STALE sources: $NSTALE   <- manifest newer than code; not read"
 
 cat <<'NOTE'
 

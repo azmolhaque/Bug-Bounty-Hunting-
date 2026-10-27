@@ -22,7 +22,7 @@
 set -uo pipefail
 
 OUT="${MVRP_OUT:-$HOME/mvrp}"
-DEC="$OUT/decoded"; PREV="$OUT/decoded.prev"; APK="$OUT/apk"
+DEC="$OUT/decoded"; PREV="$OUT/decoded.prev"; APK="$OUT/apk"; SRC="$OUT/src"
 REP="$OUT/updiff"; mkdir -p "$REP"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MODE="${1:-stale}"
@@ -137,6 +137,11 @@ if [ "$MODE" = "refresh" ]; then
     rm -rf "${PREV:?}/$p"; mkdir -p "$PREV"
     [ -d "$DEC/$p" ] && mv "$DEC/$p" "$PREV/$p"
     rm -rf "${APK:?}/$p"
+    # সোর<09cd>সও ফেলে দিতে হবে। নইলে decompile-missing "এর তো সোর্স আছে"
+    # বলে এড়িয়ে যায়, আর পরের সুইপ **নতুন manifest-এর সাথে পুরনো কোড**
+    # জোড়ে। tycho V128->V170 ঠিক এভাবেই বিয়াল্লিশ রিলিজ পুরনো কোড নিয়ে
+    # পড়া হয়েছিল, আর আউটপুটে সেটা বোঝার কোনো উপায় ছিল না।
+    rm -rf "${SRC:?}/$p"
   done
   echo "[pull] ${#S[@]} টা package"
   "$HERE/mvrp-pull.sh" "${S[@]}" 2>&1 | tail -5
