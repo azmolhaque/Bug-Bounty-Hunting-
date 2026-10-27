@@ -3438,3 +3438,38 @@ the target.
 
 Checked: wallpaper, gms, Fitbit and ai.edge.gallery match; whatsapp and the
 probe app do not.
+
+### 2026-10-27 — new class: intent forwarding, and the tool for it
+
+The orphaned-permission class is spent. Two findings — different apps,
+different components, different impact — both closed as duplicates of the
+same generic marker 1469, in seven and five minutes. The reports were not the
+variable.
+
+Picked intent forwarding next, for one reason: the wall that stopped six
+surfaces does not stand here. Every closure in this file ends the same way —
+open manifest, `Binder.getCallingUid()` or `GoogleCertificatesRslt`
+underneath. A component whose job is to take an Intent from a caller and
+start it cannot defend itself that way, because forwarding is the feature.
+The rules name the class: *Intent redirection -> launching non-exported
+components*.
+
+`mvrp-intent-forward.sh` pairs the decoded manifest with the decompiled
+sources: for every exported activity, alias, service and receiver, it looks in
+that class for a caller-supplied Intent (`getParcelableExtra`,
+`EXTRA_INTENT`, `Intent.parseUri`, `getIntentSender`, `getBundleExtra`) and
+for a dispatch (`startActivity*`, `startService`, `sendBroadcast`,
+`startIntentSender`, `PendingIntent.get*`, `setResult`).
+
+Two things it reports honestly rather than quietly:
+
+- a component whose class is not in the sources is counted as **not read**,
+  not as clean. jadx renames obfuscated classes, and most Google apps are
+  obfuscated, so that number will be large and it is the real blind spot.
+- a hit means one file mentions both a source and a sink. It does not mean
+  they are the same object. That read is by hand and most will not survive it.
+
+Self-test built in (`--selftest`): matches a forwarded `EXTRA_INTENT` and a
+`parseUri`, ignores a locally constructed Intent passed to the same sink.
+End-to-end on a crafted tree: hit on the trampoline, nothing on the clean
+class, the obfuscated one counted unread, the non-exported one skipped.
