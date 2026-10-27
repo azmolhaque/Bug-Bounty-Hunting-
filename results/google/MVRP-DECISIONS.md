@@ -3512,3 +3512,35 @@ second kind. The sweep now prints `from :` for each hit — `caller (getIntent)`
 ones instead of spending the first hour on activity results.
 
 Verified on fixtures covering all three shapes.
+
+### 2026-10-27 — Photos' PendingIntent: fired empty, so nothing crosses
+
+`AlbumActivity` is exported with no permission and takes a caller-supplied
+`PendingIntent` in `EXTRA_NATIVE_SHARESHEET_RELAUNCH_INTENT`. The rules name
+"Unsafe PendingIntent usage", so this was the last strong candidate of the
+pass. What it does with it:
+
+    421: public final void e(PendingIntent pendingIntent, cahx cahxVar) {
+    424:     pendingIntent.send();
+
+No fill-in Intent, no extras, no arguments at all. Photos fires a
+PendingIntent the attacker already owns, carrying nothing of Photos'. The
+attacker could have sent it themselves. `NativeSharesheetCreateAlbumActionChipActivity`
+does the same (`b2.send()`), and is `exported="false"` besides.
+
+Four strong candidates examined this pass, four closed, each in about two
+minutes. That is the tool working: 1,921 exported components down to roughly
+ten worth reading by hand.
+
+**Third refinement, from what the four had in common.** Most hits hand over a
+`Uri`, a `Bundle` or an app parcelable — none of which is intent redirection.
+Only an Intent can be dispatched at somebody else's component; an
+`IntentSender` or `PendingIntent` executes as whoever built it, so it matters
+only when the app attaches its own data on the way out — `send(ctx, code,
+fillIn)` rather than `send()`. The sweep now prints `takes:` per hit and
+counts how many involve an Intent at all, so the next pass reads those first.
+
+The remaining surface for this class: 24 packages still decompiling, among them
+the ones never examined at all — `debugdispatch`, `playconsole`, `giant`,
+`finance`, `looker`, `nest.android`, `waze` — plus the whole Android 15 set,
+whose refresh has not been run yet.

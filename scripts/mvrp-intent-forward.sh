@@ -121,7 +121,7 @@ pkgs=("$@")
 [ ${#pkgs[@]} -eq 0 ] && mapfile -t pkgs < <(ls -1 "$DEC" 2>/dev/null | grep -v '\.log$')
 echo "== ${#pkgs[@]} package(s) =="
 
-NHIT=0; NREAD=0; NUNREAD=0; NNOSRC=0; NSTRONG=0; NWEAK=0
+NHIT=0; NREAD=0; NUNREAD=0; NNOSRC=0; NSTRONG=0; NWEAK=0; NINTENT=0
 for pkg in "${pkgs[@]}"; do
   case "$pkg" in com.cindrasec.*) continue ;; esac
   m="$DEC/$pkg/resources/AndroidManifest.xml"
@@ -155,12 +155,29 @@ for pkg in "${pkgs[@]}"; do
           via="caller (getIntent)"
         fi ;;
     esac
+    # What the caller actually hands over. Most hits take a Uri, a Bundle or an
+    # app's own parcelable, and none of those is intent redirection — four of
+    # the first pass's candidates were read before this was obvious. Only an
+    # Intent can be dispatched at someone else's component; an IntentSender or
+    # PendingIntent runs as whoever built it, so it only matters when the app
+    # attaches its own data to it (`send(ctx, code, fillIn)` rather than
+    # `send()`), which Photos did not.
+    types=""
+    grep -E "$SOURCE_RE" "$f" | grep -qE 'Intent\.class|\(Intent\)|parseUri|android\.intent\.extra\.INTENT|EXTRA_INTENT' && types="$types Intent"
+    grep -E "$SOURCE_RE" "$f" | grep -q 'IntentSender'   && types="$types IntentSender"
+    grep -E "$SOURCE_RE" "$f" | grep -q 'PendingIntent'  && types="$types PendingIntent"
+    grep -E "$SOURCE_RE" "$f" | grep -q 'Uri'            && types="$types Uri"
+    grep -E "$SOURCE_RE" "$f" | grep -q 'getBundleExtra' && types="$types Bundle"
+    [ -n "$types" ] || types=" other"
+
     NHIT=$((NHIT+1))
     case "$via" in UNCLEAR*) NWEAK=$((NWEAK+1)) ;; *) NSTRONG=$((NSTRONG+1)) ;; esac
+    case "$types" in *Intent*) NINTENT=$((NINTENT+1)) ;; esac
     [ "$printed" -eq 0 ] && { echo; echo "== $pkg"; printed=1; }
     echo "  [$kind] $cls"
     echo "      guard: $perm"
     echo "      from : $via"
+    echo "      takes:$types"
     grep -nE "$SOURCE_RE" "$f" | head -3 | sed 's/^/        src  /'
     grep -nE "$SINK_RE"   "$f" | head -3 | sed 's/^/        sink /'
   done < <(exported "$m")
@@ -172,6 +189,7 @@ echo "components read            : $NREAD"
 echo "both a source and a sink   : $NHIT"
 echo "  of those, caller-supplied: $NSTRONG   <- read these"
 echo "  of those, unclear source : $NWEAK   (onActivityResult in the file)"
+echo "  of those, taking an Intent: $NINTENT   <- only these can be redirected"
 echo "class not in the sources   : $NUNREAD   (obfuscated or split out — NOT clean)"
 echo "packages without sources   : $NNOSRC   (run mvrp-decompile-missing.sh)"
 
