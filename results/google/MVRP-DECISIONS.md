@@ -3682,3 +3682,34 @@ out on its own.
 This does not mean there is a finding in there. It means the last two days'
 sweeps covered less of each app than their output implied, and the number
 that said so was sitting in every summary being read as something else.
+
+### 2026-10-27 — defect 39: `grep -q` into a pipe, for the third time
+
+The split-decompilation fix shipped with
+
+    if unzip -l "$f" | grep -q '\.dex$'; then apks+=("$f"); fi
+
+`grep -q` exits at the first match, `unzip` dies on SIGPIPE, `set -o pipefail`
+fails the pipeline, and the APK is dropped. The bigger the listing, the more
+reliably it happens — so the filter discarded exactly the large APKs it
+existed to find. GMS was decompiled from 4 of its 9 code-carrying APKs and
+produced 2,816 java files where base alone holds six figures, and the result
+was marked `.jadx-complete`.
+
+Reproduced:
+
+    big(){ printf 'classes.dex\n'; yes 'res/x.png' | head -200000; }
+    big | grep -q '\.dex$'            -> fails
+    [ "$(big | grep -c '\.dex$')" -gt 0 ] -> works
+
+**Third time in this repo.** `poc/mvrp-probe/build.sh` had
+`unzip -l | grep -q resources.arsc` making a good android.jar look like a
+classes-only stub, with a comment explaining the fix. `scripts/g-f004-evidence.sh`
+had `dumpsys | grep -q 'granted=true'` printing that the Wallpapers app does
+not hold `SET_WALLPAPER_COMPONENT` — the opposite of the measurement the
+report rested on. Both were fixed with `grep -c`. I then wrote it again, in a
+file whose neighbours carry the warning.
+
+Writing the lesson in a comment next to one occurrence does not stop the next
+one. The only thing that would is not reaching for `grep -q` in a pipeline at
+all.

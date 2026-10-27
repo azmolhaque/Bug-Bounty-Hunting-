@@ -55,7 +55,14 @@ while IFS= read -r d; do
   apks=()
   while IFS= read -r f; do
     [ -f "$f" ] || continue
-    if unzip -l "$f" 2>/dev/null | grep -q '\.dex$'; then apks+=("$f"); fi
+    # grep -c, never grep -q. -q exits at the first match, unzip dies on
+    # SIGPIPE and `set -o pipefail` fails the pipeline, so the biggest APKs —
+    # the ones whose listing takes longest — are the ones silently dropped.
+    # GMS came out with 4 of its 9 code-carrying APKs and 2,816 java files
+    # instead of six figures. This is the third time this exact pipeline has
+    # bitten in this repo: build.sh's `unzip -l | grep -q resources.arsc` and
+    # the evidence script's `dumpsys | grep -q granted=true` were the others.
+    if [ "$(unzip -l "$f" 2>/dev/null | grep -c '\.dex$')" -gt 0 ]; then apks+=("$f"); fi
   done < <(find "$APK/$pkg" -maxdepth 1 -name '*.apk' 2>/dev/null | sort)
   [ ${#apks[@]} -gt 0 ] || { echo "SKIP $pkg — no apk with code pulled"; continue; }
   # jadx takes several inputs and merges them into one tree.
