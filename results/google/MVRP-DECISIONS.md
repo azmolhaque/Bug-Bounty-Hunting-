@@ -3473,3 +3473,42 @@ Self-test built in (`--selftest`): matches a forwarded `EXTRA_INTENT` and a
 `parseUri`, ignores a locally constructed Intent passed to the same sink.
 End-to-end on a crafted tree: hit on the trampoline, nothing on the clean
 class, the obfuscated one counted unread, the non-exported one skipped.
+
+### 2026-10-27 — first intent-forwarding pass: 36 candidates, the three strongest all dead
+
+The sweep read 1,921 exported components across 76 packages and flagged 36.
+The three that looked best are closed, and all three died the same way.
+
+**Docs `ProjectorActivity:502`** — `startActivity((Intent) intent
+.getParcelableExtra("next_activity_result_key"))`, the purest shape in the
+whole output, sits inside `onActivityResult` (guarded by `i == 256 && i2 ==
+-1`, alongside `snackbar_result_key` and `print_result_key`). That `intent` is
+the result from a child this activity launched, not anything a caller can set.
+
+**Home `DeeplinkActivity:357`** — same: inside `L(sr srVar)` with
+`srVar.a == -1`, i.e. an activity result.
+
+**Gmail `EmailBroadcastReceiver` -> `EmailBroadcastProcessorService`** — this
+one was real up to the last step. The receiver is exported, takes any
+broadcast, wraps the whole incoming Intent in `EXTRA_INTENT` and starts the
+service with it. The service reads it back at line 59 — and then switches on
+`intent2.getAction()` against five fixed values, logging `ignoring
+onHandleBroadcastIntent intent with unhandled action %s` for everything else.
+The forwarded Intent is never dispatched. No redirection.
+
+One thing inside that whitelist is worth recording and not reporting:
+`com.android.mail.action.PERMIT_ADD_GMAIL_AS_IMAP` reaches
+`putBoolean("allowAddGmailAsImap", …)`, so any app can flip that preference.
+The attacker's gain is a settings toggle — not data, not an account, not
+execution — so §2.1 drops it.
+
+**The fix this taught, now in the tool.** The pattern could not tell
+`getIntent().getParcelableExtra(...)` (the launch Intent, attacker-controlled)
+from `intent.getParcelableExtra(...)` inside `onActivityResult` (a child's
+result, not controllable). Every one of the three best candidates was the
+second kind. The sweep now prints `from :` for each hit — `caller (getIntent)`,
+`caller (onReceive/onStartCommand)`, or `UNCLEAR — file has onActivityResult`
+— and counts them separately, so the next pass starts with the caller-supplied
+ones instead of spending the first hour on activity results.
+
+Verified on fixtures covering all three shapes.

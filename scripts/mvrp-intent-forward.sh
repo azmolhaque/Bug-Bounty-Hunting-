@@ -121,7 +121,7 @@ pkgs=("$@")
 [ ${#pkgs[@]} -eq 0 ] && mapfile -t pkgs < <(ls -1 "$DEC" 2>/dev/null | grep -v '\.log$')
 echo "== ${#pkgs[@]} package(s) =="
 
-NHIT=0; NREAD=0; NUNREAD=0; NNOSRC=0
+NHIT=0; NREAD=0; NUNREAD=0; NNOSRC=0; NSTRONG=0; NWEAK=0
 for pkg in "${pkgs[@]}"; do
   case "$pkg" in com.cindrasec.*) continue ;; esac
   m="$DEC/$pkg/resources/AndroidManifest.xml"
@@ -137,10 +137,30 @@ for pkg in "${pkgs[@]}"; do
     NREAD=$((NREAD+1))
     grep -qE "$SOURCE_RE" "$f" || continue
     grep -qE "$SINK_RE"  "$f" || continue
+    # Where the Intent comes from decides whether an attacker can set it.
+    # In an activity, `onActivityResult(int, int, Intent)`'s Intent is the
+    # *child's* result, not the caller's — three of the first three candidates
+    # died exactly there (Docs ProjectorActivity:502, Home DeeplinkActivity:357
+    # and Tasks' trampoline). In a receiver or a service, the Intent parameter
+    # is whoever sent it. And `getIntent()` in an activity is the launch Intent,
+    # which is the caller's.
+    case "$kind" in
+      receiver|service) via="caller (onReceive/onStartCommand)" ;;
+      *)
+        if grep -qE "getIntent\(\)[^;]*($SOURCE_RE)" "$f"; then
+          via="caller (getIntent)"
+        elif grep -qE 'onActivityResult' "$f"; then
+          via="UNCLEAR — file has onActivityResult; check which Intent"
+        else
+          via="caller (getIntent)"
+        fi ;;
+    esac
     NHIT=$((NHIT+1))
+    case "$via" in UNCLEAR*) NWEAK=$((NWEAK+1)) ;; *) NSTRONG=$((NSTRONG+1)) ;; esac
     [ "$printed" -eq 0 ] && { echo; echo "== $pkg"; printed=1; }
     echo "  [$kind] $cls"
     echo "      guard: $perm"
+    echo "      from : $via"
     grep -nE "$SOURCE_RE" "$f" | head -3 | sed 's/^/        src  /'
     grep -nE "$SINK_RE"   "$f" | head -3 | sed 's/^/        sink /'
   done < <(exported "$m")
@@ -150,6 +170,8 @@ echo
 echo "== summary =="
 echo "components read            : $NREAD"
 echo "both a source and a sink   : $NHIT"
+echo "  of those, caller-supplied: $NSTRONG   <- read these"
+echo "  of those, unclear source : $NWEAK   (onActivityResult in the file)"
 echo "class not in the sources   : $NUNREAD   (obfuscated or split out — NOT clean)"
 echo "packages without sources   : $NNOSRC   (run mvrp-decompile-missing.sh)"
 
