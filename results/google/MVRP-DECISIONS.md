@@ -3750,3 +3750,37 @@ asked.
 The number that mattered most was printed in every summary for two days —
 `class not in the sources` — and I explained it away as obfuscation instead of
 checking. It was our own pipeline skipping the splits.
+
+### 2026-10-28 — back to the method that actually worked here
+
+Two classes exhausted on Android and nothing to show, so: what has ever paid
+in this account?
+
+    support.pring.jp    host takeover
+    rip.photomath.net   Metabase with default credentials
+
+Both acquisitions, both ending in control of something. Fifteen closures came
+from describing a door. And the second one is the point — Metabase was found
+by identifying the software on the host and then going at that software. The
+twelve-path sweep run over 320 live hosts two days ago could never have found
+it: every site answers `/login`, and none of them says what it is.
+
+`acq-fingerprint.sh` asks the question that worked. Twelve probes per host,
+each matched on **content** rather than status: `"setup-token"` for Metabase,
+`ref: refs/heads/` for an exposed `.git`, `APP_KEY=` for a leaked `.env`,
+`"cluster_name"` for Elasticsearch, `"status":"UP"` for a Spring actuator, and
+so on. A catch-all 200, a 404 that echoes the path and a login wall all
+produce status codes; none of them produces those strings. That is why the
+earlier sweep drowned in false positives and this one can report a zero worth
+believing.
+
+Self-test checks each marker against its own software and against a generic
+404 page. End-to-end on fixtures: a host serving a Metabase properties blob
+and a `.env` is identified for both, a host that 404s everything yields
+nothing.
+
+The reading guide in the output is explicit about the only thing that matters
+next: identified software is a lead. `.git` and `.env` are findings the moment
+something is read out of them; Metabase, Jenkins, GitLab, Elasticsearch are
+findings when somebody else's data comes back. Apache's status page is
+Section 3 and gets dropped.
