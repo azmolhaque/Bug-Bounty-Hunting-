@@ -3618,3 +3618,32 @@ tree after `touch` read normally.
 The Android 16 conclusion from earlier today survives this, because the five
 candidates examined by hand were in apps whose sources were decompiled after
 their refresh. The Android 15 pass has to be redone.
+
+### 2026-10-27 — Android 16 re-swept on fresh code: same answer
+
+All 37 refreshed packages decompiled again after the staleness fix, then the
+sweep re-run:
+
+    components read            : 2212
+    both a source and a sink   : 42
+      caller-supplied          : 25
+      taking an Intent         : 11
+    class not in the sources   : 16
+    packages without sources   : 0
+    packages with STALE sources: 0
+
+Five caller-supplied, Intent-typed hits — the same five closed by hand
+earlier today. GMS at 26.41 and AGSA at 17.68, both read for the first time
+on their current code, produced nothing new.
+
+So the earlier conclusion stands, and now it stands on code that matches the
+devices. The stale-source defect did not change the answer here; it could
+have, and there was no way to know which until the sweep was repeated.
+
+`class not in the sources` fell from 22 to 16 with the fresh decompile, so
+that blind spot is partly a decompilation artifact rather than pure
+obfuscation.
+
+Android 15 is next: its 34 refreshed packages had their source trees deleted
+during the cleanup and have not been decompiled since, so that set is
+genuinely unexamined — including tycho at V170.
