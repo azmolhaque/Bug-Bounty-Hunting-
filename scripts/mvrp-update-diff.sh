@@ -71,6 +71,9 @@ PY
 mapfile -t PKGS < <(ls -1 "$DEC" 2>/dev/null | grep -v '\.log$')
 [ ${#PKGS[@]} -eq 0 ] && { echo "!! $DEC খালি — আগে mvrp-surface.sh চালাও"; exit 1; }
 
+# ইনস্কোপ package চেনার একমাত্র সংজ্ঞা, mvrp-pull.sh-এর সাথে ভাগ করা।
+. "$HERE/lib/inscope-pkgs.sh"
+
 # ================= stale =================
 if [ "$MODE" = "stale" ]; then
   LIST="$REP/stale.txt"; : > "$LIST"
@@ -90,9 +93,25 @@ if [ "$MODE" = "stale" ]; then
       echo "$p" >> "$LIST"; NSTALE=$((NSTALE+1))
     fi
   done
+  # ---------- কখনো decode হয়নি এমন ইনস্কোপ app ----------
+  # এই লুপটা কেবল $DEC-এ থাকা package ঘোরে, তাই **নতুন ইনস্টল করা** app
+  # এখানে কখনো আসে না — ওদের decoded ডিরেক্টরিই নেই। আগে স্ক্রিপ্ট
+  # "N টা আপডেট হয়েছে" বলে থেমে যেত আর নতুনগুলোর কথা বলত না, যেটা
+  # নীরব শূন্য: যা বিবেচনাই করা হয়নি তার অনুপস্থিতি আউটপুটে দেখা যায় না।
+  NNEW=0
+  while read -r p; do
+    [ -n "$p" ] || continue
+    [ -d "$DEC/$p" ] && continue
+    case "$p" in com.cindrasec.*) continue ;; esac
+    printf '%-52s নতুন — কখনো decode হয়নি   live=%s\n' "$p" "$(live_ver "$p")"
+    echo "$p" >> "$LIST"; NNEW=$((NNEW+1))
+  done < <(adb shell pm list packages 2>/dev/null </dev/null | tr -d '\r' \
+             | sed 's/^package://' | grep -E "$MVRP_PKG_RE" | sort -u)
+
   echo
   echo "== সারাংশ =="
-  echo "যাচাই করা: $NCHK   আপডেট হয়েছে: $NSTALE   ডিভাইসে নেই: $NGONE"
+  echo "যাচাই করা: $NCHK   আপডেট হয়েছে: $NSTALE   নতুন: $NNEW   ডিভাইসে নেই: $NGONE"
+  NSTALE=$((NSTALE + NNEW))
   if [ "$NCHK" -eq 0 ]; then
     echo "!! BROKEN: একটা app-এরও live version পড়া গেল না — dumpsys ভেঙেছে"
     exit 2

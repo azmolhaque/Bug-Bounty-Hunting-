@@ -22,7 +22,8 @@ mkdir -p "$APKDIR"
 # স্ক্রিপ্ট "৬৫ package টানা হলো" বলে সন্তুষ্ট রিপোর্ট দিত। যা বিবেচনাই
 # করা হয়নি তার অনুপস্থিতি আউটপুটে দেখা যায় না — সেজন্য নিচে বাদ-পড়ার
 # গণনাও ছাপা হয়।
-PATTERNS='com\.fitbit|com\.nest|com\.obsidian\.v4|com\.waze|com\.waymo|com\.google\.android\.apps\.|com\.google\.android\.gm$|com\.google\.android\.gms$|com\.google\.android\.googlequicksearchbox$|com\.google\.ar|com\.google\.samples|com\.google\.ai\.|com\.google\.fpl\.|com\.google\.looker$|com\.google\.play\.billing\.samples|com\.google\.audio\.hearing|com\.android\.developers\.|com\.redhotlabs\.'
+. "$(cd "$(dirname "$0")" && pwd)/lib/inscope-pkgs.sh"
+PATTERNS="$MVRP_PKG_RE"
 
 command -v adb >/dev/null || { echo "!! adb নেই — install করো"; exit 1; }
 

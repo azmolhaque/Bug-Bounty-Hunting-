@@ -3416,3 +3416,25 @@ of which were silently writing the map (`--max-filesize` in three scripts, a
 half-written table being read twice, and a 404's own echo counted as a
 discovery). Every "lead" examined before those fixes was an artifact. The map
 is true now, which it was not this morning.
+
+### 2026-10-27 — defect 37: the update sweep could not see a newly installed app
+
+`mvrp-update-diff.sh stale` compares the stored `versionName` in each decoded
+manifest against the device. It iterates over `ls $DEC` — the packages that
+have already been decoded — so an app installed since the last sweep has no
+decoded directory, is never checked, and never appears. The script would have
+printed "N updated" and looked complete while saying nothing about apps that
+had just arrived.
+
+Same family as every silent zero in this file: the absence of something never
+considered does not show up in the output.
+
+`stale` now also lists in-scope packages on the device that have no decoded
+directory at all, and adds them to the refresh list. The in-scope pattern
+moved to `scripts/lib/inscope-pkgs.sh` and is sourced by both this and
+`mvrp-pull.sh`, because the last time that list was wrong it was wrong in one
+copy and right in the other, and the sweep reported 65 packages while skipping
+the target.
+
+Checked: wallpaper, gms, Fitbit and ai.edge.gallery match; whatsapp and the
+probe app do not.
