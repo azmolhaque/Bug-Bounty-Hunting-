@@ -44,6 +44,22 @@ PROBES=(
   '/api/v4/projects|"path_with_namespace"|"ssh_url_to_repo"|GitLab API'
   '/debug/pprof/|Types of profiles|goroutine|Go pprof'
   '/solr/admin/cores|"responseHeader"|"initFailures"|Solr'
+  # Second batch. Same rule as above: each marker is a string the software
+  # emits and a login wall, a catch-all 200 and a path-echoing 404 do not.
+  # /health and /version are generic paths, so the marker carries all the
+  # weight there ("metadatabase" is Airflow's word, nobody else's).
+  '/api/health|"database": *"ok"|"commit": *"[0-9a-f]|Grafana'
+  '/api/status|"name": *"kibana"|"nickname"|Kibana'
+  '/health|"metadatabase"|"scheduler": *\{|Airflow'
+  '/phpmyadmin/|phpMyAdmin|pma_username|phpMyAdmin'
+  '/minio/|MinIO Console|minio-console|MinIO'
+  '/v1/agent/self|"Datacenter"|"NodeName"|Consul'
+  '/v3/settings|"baseType": *"setting"|cacerts|Rancher'
+  '/metrics|go_gc_duration_seconds|process_cpu_seconds_total|exposed Prometheus metrics'
+  '/v2/_catalog|"repositories": *\[|"errors": *\[|Docker registry'
+  '/version|"gitVersion"|"buildDate"|Kubernetes or Mongo version endpoint'
+  '/appsettings.json|ConnectionStrings|DefaultConnection|exposed appsettings.json'
+  '/phpinfo.php|phpinfo\(\)|PHP Extension Build|phpinfo'
 )
 
 body=$(mktemp); trap 'rm -f "$body"' EXIT
@@ -59,14 +75,26 @@ selftest() {
   grep -qE '"setup-token"' "$t" || { echo "!! selftest: Metabase marker"; fail=1; }
   printf 'ref: refs/heads/main\n' > "$t"
   grep -qE 'ref: refs/' "$t" || { echo "!! selftest: .git marker"; fail=1; }
-  # A generic 404 page must match nothing.
-  printf '<html><title>404 Not Found</title>The requested URL /.env was not found</html>\n' > "$t"
-  for p in "${PROBES[@]}"; do
-    IFS='|' read -r _ m1 m2 name <<<"$p"
-    if grep -qE "$m1|$m2" "$t"; then echo "!! selftest: a 404 page matched $name"; fail=1; fi
+  printf 'go_gc_duration_seconds{quantile="0"} 1.0\n' > "$t"
+  grep -qE 'go_gc_duration_seconds' "$t" || { echo "!! selftest: metrics marker"; fail=1; }
+  printf '{"metadatabase": {"status": "healthy"}}\n' > "$t"
+  grep -qE '"metadatabase"' "$t" || { echo "!! selftest: Airflow marker"; fail=1; }
+  # Nothing a site serves to *everybody* may match. Three shapes have produced
+  # false positives in this repo's earlier sweeps: the 404 that echoes the
+  # path, the catch-all SPA shell, and the login wall.
+  for neg in \
+    '<html><title>404 Not Found</title>The requested URL /.env was not found</html>' \
+    '{"error":"not found","status":404,"path":"/v1/agent/self","version":"1.0"}' \
+    '<html><head><title>Sign in</title></head><body><form action="/login" method="post"><input name="username"><input name="password" type="password"><button>Log in</button></form><div id="root"></div><script src="/static/app.js"></script></body></html>'
+  do
+    printf '%s\n' "$neg" > "$t"
+    for p in "${PROBES[@]}"; do
+      IFS='|' read -r _ m1 m2 name <<<"$p"
+      if grep -qE "$m1|$m2" "$t"; then echo "!! selftest: a generic page matched $name"; fail=1; fi
+    done
   done
   rm -f "$t"
-  [ "$fail" -eq 0 ] && echo "POSITIVE  markers match their software and ignore a 404 page"
+  [ "$fail" -eq 0 ] && echo "POSITIVE  ${#PROBES[@]} markers match their software and ignore a 404, an SPA shell and a login wall"
   return "$fail"
 }
 

@@ -3784,3 +3784,62 @@ next: identified software is a lead. `.git` and `.env` are findings the moment
 something is read out of them; Metabase, Jenkins, GitLab, Elasticsearch are
 findings when somebody else's data comes back. Apache's status page is
 Section 3 and gets dropped.
+
+### 2026-10-28 — the AI question, answered: there is a separate program
+
+Standing question from the Gemini-filter-bypass screenshot: are Google's AI
+models in scope, and is there anything there worth testing.
+
+Answer, from reporting around the program's launch (October 2025) — the rules
+page itself would not resolve from this container, so this needs one look from
+the Pi before any report is written:
+
+**AI issues moved out of the Abuse VRP into their own AI VRP.** And the class
+in that screenshot is named as excluded:
+
+- **OUT:** prompt injection, jailbreaks, filter bypasses, alignment and
+  content issues. Google's position is that a VRP "is not the right format for
+  addressing content-related issues" — they ask for these through the
+  in-product feedback button instead. Bypassing Gemini's filters earns
+  nothing, whatever the screenshot claims.
+- **IN:** security consequences. Unauthorized modification of an account or
+  its data, exfiltration of a user's sensitive data, exfiltration of model
+  parameters, persistent denial of service, unauthorized use of server-side
+  features, and persistent cross-user HTML injection on a Google-branded
+  origin without the user-generated-content warning.
+- **Pay:** flagship tier (Gemini apps, Search, core Workspace) tops out around
+  $20k for account/data modification; $30k with multipliers.
+
+So the distinction that decides everything: *making the model say something*
+is content and pays nothing. *Making the model do something* — act on one
+user's account using content planted by another, and show the result — is the
+in-scope class, and it is the same boundary-crossing standard as CLAUDE.md § 2
+criterion 6. The evidence has to be the action's effect, not the prompt that
+produced it.
+
+That is testable from the devices we have, and it does not need root: Gemini
+on Android with Gmail and Drive connected, where the untrusted input is an
+email or a shared document that somebody else controls. Hypothesis to test —
+not a lead until an effect is observed — is whether content inside a received
+message can cause an action on the account that received it.
+
+Not yet started. The acquisitions fingerprint sweep is still the open thread.
+
+### 2026-10-28 — fingerprint probes: 12 -> 24, and three negative controls
+
+The twelve were the obvious ones. These twelve more are the software that
+turns up on exactly this kind of acquisition estate: Grafana, Kibana, Airflow,
+phpMyAdmin, MinIO, Consul, Rancher, an exposed Prometheus `/metrics`, a Docker
+registry catalogue, a `/version` endpoint, an `appsettings.json` with
+`ConnectionStrings` in it, and `phpinfo`.
+
+Three of them probe generic paths — `/health`, `/version`, `/metrics` — so the
+marker carries all the weight: `"metadatabase"` is Airflow's word and nobody
+else's, `go_gc_duration_seconds` is the Go runtime's.
+
+And because the probe list doubled, the self-test's negative half had to grow
+with it. One generic 404 was no longer enough: every marker is now also
+checked against a JSON 404 that echoes the requested path and against an SPA
+login wall with a password field in it, which are the two shapes that
+generated the false positives in the path sweep. 24 markers, zero matches
+against all three.
