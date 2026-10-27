@@ -3647,3 +3647,38 @@ obfuscation.
 Android 15 is next: its 34 refreshed packages had their source trees deleted
 during the cleanup and have not been decompiled since, so that set is
 genuinely unexamined — including tycho at V170.
+
+### 2026-10-27 — "class not in the sources" was our pipeline, not obfuscation
+
+Both sweeps end with a count of exported components whose class is missing
+from the decompiled tree: 16 on Android 16, 25 on Android 15. I had been
+writing that off as obfuscation — jadx renames, so the manifest name does not
+resolve to a file.
+
+It is simpler than that. `mvrp-decompile-missing.sh` only ever ran jadx on
+`base.apk`, and the components are declared in base's manifest while their
+classes ship in the feature splits. GMS:
+
+    base.apk                                   dex=17
+    split_AdsDynamite_installtime.apk          dex=2
+    split_CronetDynamite_installtime.apk       dex=3
+    split_DynamiteLoader_installtime.apk       dex=3
+    split_DynamiteModulesA_installtime.apk     dex=3
+    split_DynamiteModulesC_installtime.apk     dex=3
+    split_GoogleCertificates_installtime.apk   dex=3
+    split_MapsDynamite_installtime.apk         dex=3
+    split_MeasurementDynamite_installtime.apk  dex=3
+    split_config.en.apk                        dex=0
+    split_config.hdpi.apk                      dex=0
+
+Eight splits carrying code in the Tier 1 app, never read. The Dynamite
+modules are where a large part of GMS actually lives.
+
+Fixed: the script now collects every APK of a package that contains a `.dex`
+and passes them all to jadx, which merges them into one tree. The filter is
+"does this zip contain a dex", not a name pattern, so `split_config.*` falls
+out on its own.
+
+This does not mean there is a finding in there. It means the last two days'
+sweeps covered less of each app than their output implied, and the number
+that said so was sitting in every summary being read as something else.

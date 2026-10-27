@@ -41,13 +41,25 @@ while IFS= read -r d; do
   if [ -f "$SRC/$pkg/.jadx-complete" ]; then continue; fi
   if [ -d "$tree" ] && [ ! -f "$SRC/$pkg/.jadx-started" ] \
      && [ "$(javacount "$tree")" -gt "$MIN_JAVA" ]; then continue; fi
-  # Prefer base.apk; some pulls land a single apk under another name.
-  apk="$APK/$pkg/base.apk"
-  if [ ! -f "$apk" ]; then
-    apk=$(find "$APK/$pkg" -maxdepth 1 -name '*.apk' 2>/dev/null | head -1)
-  fi
-  [ -n "${apk:-}" ] && [ -f "$apk" ] || { echo "SKIP $pkg — no apk pulled"; continue; }
-  TODO+=("$pkg|$apk")
+  # Every APK of the package that carries code, not just base.apk.
+  #
+  # base.apk was all this ever decompiled, and the manifest in base declares
+  # components whose classes live in the feature splits. That is where the
+  # sweep's "class not in the sources" count came from — 16 components on
+  # Android 16, 25 on Android 15, written off as obfuscation. GMS alone ships
+  # eight splits with dex in them: DynamiteModulesA and C, GoogleCertificates,
+  # Maps, Measurement, Cronet, Ads. None had ever been read.
+  #
+  # split_config.* (abi, density, language) carry no dex and are skipped, so
+  # the filter is "does this zip contain a .dex", not a name pattern.
+  apks=()
+  while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    if unzip -l "$f" 2>/dev/null | grep -q '\.dex$'; then apks+=("$f"); fi
+  done < <(find "$APK/$pkg" -maxdepth 1 -name '*.apk' 2>/dev/null | sort)
+  [ ${#apks[@]} -gt 0 ] || { echo "SKIP $pkg — no apk with code pulled"; continue; }
+  # jadx takes several inputs and merges them into one tree.
+  TODO+=("$pkg|$(printf '%s\n' "${apks[@]}" | paste -sd'|' -)")
 done < <(find "$DEC" -mindepth 1 -maxdepth 1 -type d | sort)
 
 echo "== ${#TODO[@]} package(s) to decompile, $(date -u +%H:%M:%SZ) =="
@@ -56,13 +68,14 @@ echo
 
 n=0
 for e in "${TODO[@]}"; do
-  pkg="${e%%|*}"; apk="${e#*|}"
+  pkg="${e%%|*}"
+  IFS='|' read -r -a apks <<<"${e#*|}"
   n=$((n+1))
-  echo "[$n/${#TODO[@]}] $pkg  ($(date -u +%H:%M:%SZ))"
+  echo "[$n/${#TODO[@]}] $pkg  (${#apks[@]} apk, $(date -u +%H:%M:%SZ))"
   # -r skips resources: the manifests are already decoded and resources are
   # most of the wall clock on big apps.
   mkdir -p "$SRC/$pkg"; : > "$SRC/$pkg/.jadx-started"
-  "$JADX" -r -d "$SRC/$pkg" "$apk" > "$SRC/$pkg.jadx.log" 2>&1
+  "$JADX" -r -d "$SRC/$pkg" "${apks[@]}" > "$SRC/$pkg.jadx.log" 2>&1
   rc=$?
   c=$(find "$SRC/$pkg/sources" -name '*.java' 2>/dev/null | grep -c . )
   if [ "$c" -gt "$MIN_JAVA" ]; then
