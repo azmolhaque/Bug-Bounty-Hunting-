@@ -23,9 +23,13 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCOPE="$HERE/scope-check.sh"
 OUT="${ACQ_OUT:-$HOME/acq}"; mkdir -p "$OUT"
-STAMP="$(date +%Y%m%d-%H%M)"
+# The pid is in the stamp because two runs started in the same minute shared
+# one $TSV and one $LOG, and each truncated the other's header on the way in.
+# Minute resolution was never unique enough for a backgrounded job.
+STAMP="$(date +%Y%m%d-%H%M)-$$"
 LOG="$OUT/fingerprint-$STAMP.txt"
 TSV="$OUT/fingerprint-$STAMP.tsv"
+PROG="$OUT/fingerprint-$STAMP.progress"
 DELAY="${DELAY:-0.4}"
 UA='Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)'
 
@@ -62,7 +66,10 @@ PROBES=(
   '/phpinfo.php|phpinfo\(\)|PHP Extension Build|phpinfo'
 )
 
-body=$(mktemp); trap 'rm -f "$body"' EXIT
+body=$(mktemp)
+LOCK="$OUT/.fingerprint.lock"
+cleanup() { rm -f "$body"; [ "${HELD_LOCK:-0}" = 1 ] && rm -rf "$LOCK"; }
+trap cleanup EXIT
 
 fetch() {   # fetch <url> -> prints status; body lands in $body
   : > "$body"
@@ -104,6 +111,18 @@ if [ "${1:-}" = "--selftest" ]; then selftest; exit $?; fi
 LIST="${1:-$(ls -1t "$OUT"/live-*.tsv 2>/dev/null | head -1)}"
 [ -n "${LIST:-}" ] && [ -f "$LIST" ] || { echo "!! no live table; run acq-live.sh first"; exit 1; }
 
+# One sweep at a time. mkdir is atomic, so this cannot be won by both.
+# Two concurrent sweeps is not just untidy: they hit the same hosts twice as
+# fast as the delay allows, which is a rate-limit question on someone else's
+# infrastructure, and CLAUDE.md § 7 answers it.
+if mkdir "$LOCK" 2>/dev/null; then
+  HELD_LOCK=1; echo "$$" > "$LOCK/pid"
+else
+  echo "!! a sweep is already running (pid $(cat "$LOCK/pid" 2>/dev/null || echo '?'))."
+  echo "   Wait for it, or if it is gone: rm -rf $LOCK"
+  exit 3
+fi
+
 {
 echo "# software fingerprint of the live acquisition hosts"
 echo "# when  : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -128,6 +147,11 @@ n=0; nid=0; nskip=0
 for h in "${HOSTS[@]}"; do
   "$SCOPE" "$h" >/dev/null 2>&1 || { nskip=$((nskip+1)); continue; }
   n=$((n+1))
+  # Written straight to a file, not through the pipe to tee. The last run
+  # ended with no summary line at all and nothing said where it stopped —
+  # the loop is silent by design, so silence covered both "no hits yet" and
+  # "died at host 178". This file separates those two.
+  printf '%s\t%s/%s\t%s\n' "$(date -u +%H:%M:%SZ)" "$n" "${#HOSTS[@]}" "$h" >> "$PROG"
   hits=""
   for p in "${PROBES[@]}"; do
     IFS='|' read -r path m1 m2 name <<<"$p"
@@ -148,7 +172,9 @@ for h in "${HOSTS[@]}"; do
 done
 
 echo "== $nid of $n host(s) identified, $nskip out of scope =="
-echo "table: $TSV"
+echo "table   : $TSV"
+echo "progress: $PROG   (last line = last host probed; if this count is short"
+echo "                   of $n the sweep did not finish and the zero is not real)"
 
 cat <<'NOTE'
 
