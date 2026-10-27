@@ -3713,3 +3713,40 @@ file whose neighbours carry the warning.
 Writing the lesson in a comment next to one occurrence does not stop the next
 one. The only thing that would is not reaching for `grep -q` in a pipeline at
 all.
+
+### 2026-10-28 — GMS with all nine APKs: 335 exported components, zero forwarders
+
+With the dex filter fixed, GMS decompiled from base plus its eight
+code-carrying splits: **176,453 java files**, against 2,816 from the broken
+run and base-only before that.
+
+    components read            : 335
+    both a source and a sink   : 0
+    class not in the sources   : 8
+    packages with STALE sources: 0
+
+Zero. Tier 1's largest app, every Dynamite module included, and not one
+exported component that takes a caller's Intent and dispatches it. That is
+consistent with what the rest of the sweep showed: Google forwards in plenty
+of places and keeps those components internal.
+
+The eight unresolved classes are almost certainly Chimera modules, which are
+not in the APK set at all — they download at runtime into `/data`, out of
+reach without root. That is a standing limit of this method on GMS, not
+something another decompile pass will fix.
+
+**The class is closed.** Across two device images: 4,400+ exported components
+read, five caller-supplied Intent-typed candidates, all five read by hand and
+closed, plus seven forwarding sites found by inverted grep, every one of them
+`exported="false"`.
+
+Session tally, honestly: no finding, and nine instrument defects repaired.
+Four of them were silently writing results — newly installed apps invisible to
+the update sweep, updated apps swept against months-old sources, feature
+splits never decompiled, and large APKs dropped by `grep -q` in a pipeline.
+Each one reported success while answering a different question than the one
+asked.
+
+The number that mattered most was printed in every summary for two days —
+`class not in the sources` — and I explained it away as obfuscation instead of
+checking. It was our own pipeline skipping the splits.
