@@ -3544,3 +3544,46 @@ The remaining surface for this class: 24 packages still decompiling, among them
 the ones never examined at all — `debugdispatch`, `playconsole`, `giant`,
 `finance`, `looker`, `nest.android`, `waze` — plus the whole Android 15 set,
 whose refresh has not been run yet.
+
+### 2026-10-27 — intent forwarding on Android 16: closed, and the reason is uniform
+
+Final state of the pass: 2,206 exported components read across 76 packages,
+42 with both a source and a sink, 25 caller-supplied, 11 taking an Intent,
+5 caller-supplied *and* Intent-typed. All five read by hand and closed.
+
+Then the search was inverted — grep the whole tree for the dangerous line
+rather than starting from exported components, which also covers forwarding
+that lives in a helper class. That found seven more places pulling
+`android.intent.extra.INTENT` out of an Intent, including names that could
+hardly be better: AGSA's `ProxyActivity` and `CustomTabsTrampolineActivity`,
+clouddpc's `StartForResultActivity` and `ForwarderActivity`.
+
+Every one of them is `android:exported="false"`:
+
+    AGSA      ProxyActivity                      exported=false
+    AGSA      CustomTabsTrampolineActivity       exported=false
+    Photos    SharouselContentProvider           exported=false
+    clouddpc  StartForResultActivity             exported=false
+    clouddpc  ForwarderActivity                  exported=false
+    Fitbit    FamilyAccountActivity              no exported, no intent-filter -> false
+    GMS       ManagingAppInstallBroadcastReceiver  not in any decoded manifest (Chimera)
+
+That is the finding of the pass, even though it is not a bug: **Google
+forwards Intents in plenty of places and keeps every one of those components
+internal.** The class is defended systematically rather than case by case,
+which is the opposite of the orphaned-permission class, where the guard was
+declared and then failed to exist.
+
+Worth carrying as a prior: in a mature Google app, a component that forwards
+is almost certainly not exported, so start from the manifest's exported set
+and not from the attractive-looking source line.
+
+Cost comparison worth recording. Orphaned permissions took two nights to
+exhaust and produced two bucketed duplicates. This class took one session to
+exhaust on an entire device image and produced a measured zero — because the
+tooling now answers "was it read, was it reachable, what did it take" instead
+of leaving those to be rediscovered by hand each time.
+
+Still open for this class: the Android 15 set (34 apps refreshed, decompiling
+now, including tycho jumping V128 -> V170), and the 22 components whose
+classes are not in the sources at all.
