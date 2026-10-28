@@ -4276,3 +4276,45 @@ came from the protobuf and these names come from CT. The list only decides what
 is considered; every host still passes through scope-check before it is
 touched, so an out-of-scope name in the file is skipped — verified with
 `a.b.cameyo.com` and a made-up nestlabs host, both refused.
+
+### 2026-10-28 — cameyo closed; six unlisted hosts left, two of them AEM
+
+**cameyo.com, measured and closed.** 44 CT names, 42 on one Google Cloud load
+balancer at 34.54.191.172, and 39 of them returning a byte-identical 300-byte
+page — title `default`, a meta refresh to `/login`. So jenkins., wazuh.,
+ncpanel., nwebmail. and the rest are stale DNS from Cameyo's old self-hosted
+estate, all now pointing at the Google-fronted app. There is no Jenkins there.
+The names were the exciting part and the names were wrong; the hash was the
+measurement.
+
+What is actually there: the app behind `/login` (online. and multisite. share
+a body), a Freshdesk helpcenter, kb. 301ing to it, and Google's marketing
+site.
+
+The one header worth chasing was `frame-ancestors 'self' *.cameyo.com
+https://cameyo.com:* https://*.ninjaexcel.com` — identical on every host
+including `/login`, and since CSP frame-ancestors overrides `X-Frame-Options:
+DENY` in modern browsers, the effective policy is the CSP. But ninjaexcel.com
+is registered through Amazon Registrar, its Route 53 zone is live on four
+nameservers, and www.ninjaexcel.com serves a real Elementor site. A live third
+party, not a claimable one. **Dropped.**
+
+And `/login` offers no signup or trial, so the cross-tenant route through the
+sixteen `partner-*` tenants is shut: § 7 requires proving access with our own
+test data, and there is no way to get a tenant.
+
+**The other propagating domains, however, gave six unlisted hosts:**
+
+    debugproject.com :  count.  data-docs.
+    debug.com        :  aem-dev.  aem-stage.  nwww.
+
+TIER3, so the ceiling is low, but these are the only in-scope hosts left that
+nothing has ever looked at. Two names say Adobe Experience Manager, and a
+forgotten AEM dev or stage instance is a real class: `/bin/querybuilder.json`
+on a misconfigured instance returns JCR nodes without a credential, which is
+content rather than a door. `data-docs` is the Great Expectations name for a
+generated site of data-quality reports, which tends to contain real column
+values.
+
+Live sweep first, probes second — the cameyo round is the argument for that
+order, where four promising names were one catch-all.
