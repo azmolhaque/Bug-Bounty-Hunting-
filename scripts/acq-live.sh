@@ -158,6 +158,21 @@ done
 
 echo
 echo "== $live answered, $((n-live-skipped)) dead, $skipped out of scope =="
+
+# A host list is usually built for a scope file other than the default one —
+# prop-subs.sh writes the direct subdomains of the propagating domains, and
+# those are only in config/scope-acquisitions.yaml. scope-check reads
+# SCOPE_FILE from the environment, so forgetting to pass it here makes every
+# host "out of scope" and the sweep reports a quiet zero. That is the failure
+# this repo keeps repeating, so it gets said out loud.
+if [ "$skipped" -gt 0 ] && [ "$skipped" -ge "$((n / 2))" ]; then
+  echo
+  echo "!! $skipped of $n host(s) were skipped as out of scope."
+  echo "!! SCOPE_FILE is '${SCOPE_FILE:-<unset, so scope-check used its default config/scope.yaml>}'."
+  echo "!! If these hosts come from a generated scope file, re-run with it:"
+  echo "!!   SCOPE_FILE=\$PWD/config/scope-acquisitions.yaml ${HOSTS_FILE:+HOSTS_FILE=$HOSTS_FILE }$0"
+  echo "!! Do not read the numbers above as a statement about the estate."
+fi
 echo
 echo "== control surfaces worth a second look =="
 awk -F'\t' 'NR>1 && $3 !~ /^(DEAD|40[134]|5)/ {
