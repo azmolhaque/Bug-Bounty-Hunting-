@@ -160,6 +160,13 @@ echo "dangling, unknown provider: $ndangle"
 echo "out of scope  : $nskip"
 echo "table: $TSV"
 
+# The claimable list is not complete, so the CNAMEs that resolve to a third
+# party are printed too rather than only counted. One of them being a service
+# nobody has written a fingerprint for is exactly how this list grows.
+echo
+echo "== every CNAME into someone else's zone, for a hand read =="
+awk -F'\t' 'NR>1 && $4!="-" {printf "  %-45s %-6s -> %s  [%s]\n", $1, $2, $4, $6}' "$TSV" | sort -u
+
 cat <<'NOTE'
 
 == reading it ==

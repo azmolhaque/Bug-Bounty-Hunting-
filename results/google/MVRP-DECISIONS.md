@@ -3944,3 +3944,56 @@ visits is informational even after a successful takeover.
 A resolver failure is its own verdict, NO-DNS, and the control refuses to run
 if `google.com` will not resolve. Without that, one broken resolver turns
 twenty hosts into twenty takeover candidates.
+
+### 2026-10-28 — IAP closed with a real zero; three TIER0 names point at a zone that answers nothing
+
+**IAP: zero, and this one is worth believing.** Four hosts, fourteen paths
+each, every single one `302 IAP`. The prediction written down before the run
+was zero, and the reason holds: IAP binds to the backend service, so there is
+no per-path seam to find. Class closed.
+
+The lock worked, incidentally — `pgrep` shows three lines per run because
+`{ ... } | tee` forks a subshell with the same argv. The PROBE_ONLY run started
+at 00:59:33Z and the previous one at 20:19Z, four and a half hours apart.
+
+**The DNS sweep found the thing worth working on.** 113 unreachable TIER0/TIER1
+hosts split as: 68 NXDOMAIN, 19 with an IP but no HTTP, 14 CNAME into a third
+party that resolves, 9 with no record, and three that matter:
+
+    api.pring.jp         TIER0  CNAME -> api.aws-zaipon.com.         resolves to nothing
+    dev-api.pring.jp     TIER0  CNAME -> dev-api.aws-zaipon.com.     resolves to nothing
+    future-api.pring.jp  TIER0  CNAME -> future-api.aws-zaipon.com.  resolves to nothing
+
+Three TIER0 API hostnames delegated to a zone that answers nothing, on the
+same estate as this account's one host-takeover payout — `support.pring.jp`.
+Zero CHECK verdicts, because `aws-zaipon.com` is not a provider on the
+claimable list; it is somebody's own-looking domain, which is why it is more
+interesting rather than less.
+
+Everything now turns on one question: **is `aws-zaipon.com` registered?**
+
+    not registered          register it and three TIER0 hostnames are yours.
+                            Domain takeover, strictly worse than the subdomain
+                            kind, and § 3's demand — prove the claim — is
+                            satisfiable for the price of a .com.
+    registered, delegated   the owner deleted the records. Theirs.
+    registered, no NS       still theirs.
+
+`acq-cname-apex.sh` answers it with RDAP rather than whois, because RDAP
+returns 404 for a name nobody holds and 200 with the registrar for one
+somebody does, as data instead of a paragraph that varies per registry. whois
+is kept as a second opinion and a disagreement is printed as a disagreement
+rather than resolved silently. Two controls: RDAP must answer 200 for
+google.com, and it must NOT answer 200 for a made-up name — without the second,
+a registry that answers 200 for everything would mark every target registered
+and the sweep would look clean. `.jp` has no public RDAP and is routed to
+whois by name.
+
+It registers nothing. The reading guide carries the six steps § 3 requires if
+the answer is "free", including the two that are easy to skip: serve only the
+canary, and fetch it over `api.pring.jp` rather than over the apex, because the
+fetch over the target name is the evidence and the apex fetch proves nothing.
+
+Also: `acq-dead-dns.sh` now prints every CNAME into someone else's zone instead
+of only counting them. The claimable-provider list is not complete, and a
+service nobody has fingerprinted is where the next one comes from.
