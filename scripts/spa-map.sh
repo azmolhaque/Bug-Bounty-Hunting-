@@ -253,21 +253,34 @@ echo
 echo "== ${#HOSTS[@]} host(s) =="
 echo
 
-for h in "${HOSTS[@]}"; do
-  [ -n "$h" ] || continue
+for entry in "${HOSTS[@]}"; do
+  [ -n "$entry" ] || continue
+  # An argument may be a full URL, because an app is not always at "/".
+  # connected.google.com answers 404 at the root and serves its console from
+  # /console/developers, so a host-only tool reported a TIER0 host as having
+  # no app at all. The host is still what scope-check is asked about: a path
+  # cannot widen an authorisation.
+  case "$entry" in
+    http://*|https://*) start="$entry"; h="${entry#*://}"; h="${h%%/*}"; h="${h%%:*}" ;;
+    *)                  start="https://$entry/"; h="$entry" ;;
+  esac
   if ! "$SCOPE" "$h" >/dev/null 2>&1; then
     printf '%-34s SKIP      not in scope\n' "$h"; continue
   fi
+  label="$entry"
 
-  hd="$WORK/$h"; mkdir -p "$hd"
+  # One directory per starting point, not per host, so two paths on the same
+  # host do not overwrite each other's bundles.
+  slug="$(printf '%s' "$entry" | tr -c 'A-Za-z0-9._-' '_')"
+  hd="$WORK/$slug"; mkdir -p "$hd"
   cw="$(curl -sS -m 25 -L --max-redirs 10 -A "$UA" \
         -D "$hd/shell.hdr" -o "$hd/shell.html" \
-        -w '%{http_code}\t%{url_effective}' "https://$h/" 2>/dev/null)"
+        -w '%{http_code}\t%{url_effective}' "$start" 2>/dev/null)"
   code="${cw%%$'\t'*}"; eff="${cw##*$'\t'}"
-  [ -n "$eff" ] || eff="https://$h/"
+  [ -n "$eff" ] || eff="$start"
   sz=$(wc -c < "$hd/shell.html" 2>/dev/null || echo 0)
   if [ "${code:0:1}" != "2" ]; then
-    printf '%-34s NO-SHELL  HTTP %s (%s bytes) — not "no javascript", the page did not load\n' "$h" "$code" "$sz"
+    printf '%-34s NO-SHELL  HTTP %s (%s bytes) — not "no javascript", the page did not load\n' "$label" "$code" "$sz"
     sleep "$DELAY"; continue
   fi
   mapfile -t A < <(assets_of "$hd/shell.html" "$eff")
@@ -316,7 +329,7 @@ for h in "${HOSTS[@]}"; do
   nm=$(grep -c . "$hd/maps.txt" || true)
 
   printf '%-34s HTTP %-3s  assets %d same / %d off, %d fetched, %d failed, %d not-js | %d host, %d path, %d secret, %d map\n' \
-         "$h" "$code" "$same" "$off" "$fetched" "$failed" "$notjs" "$nh" "$np" "$ns" "$nm"
+         "$label" "$code" "$same" "$off" "$fetched" "$failed" "$notjs" "$nh" "$np" "$ns" "$nm"
   # Printed here, under this host's own summary line, and not when the shell
   # was fetched. Emitted there it appeared above the host it belonged to and
   # below the previous one, which read as "flowstate.intrinsic.ai is served
@@ -324,7 +337,7 @@ for h in "${HOSTS[@]}"; do
   # from flowstate-dev" — a production host answering with a dev app, which is
   # a finding, and which is not what the run found. A line that belongs to the
   # wrong row is worse than a missing line.
-  [ "$eff" = "https://$h/" ] || echo "      redirects to $eff — that is where its relative assets came from"
+  [ "$eff" = "$start" ] || echo "      redirects to $eff — that is where its relative assets came from"
   [ "$failed" -gt 0 ] && echo "      note: $failed asset(s) could not be fetched — the counts above are a floor, not a total"
   if [ "$notjs" -gt 0 ]; then
     echo "      note: $notjs asset URL(s) returned HTML, not JavaScript — the bundle was NOT read:"
@@ -342,7 +355,12 @@ for h in "${HOSTS[@]}"; do
       case "$m" in
         http://*|https://*|//*) echo "      map off-origin, not fetched: $m"; continue ;;
       esac
-      mu="https://$h/$(printf '%s' "$m" | sed 's#^\./##; s#^/##')"
+      effdir="${eff%%\?*}"; effdir="${effdir%%#*}"
+      case "$effdir" in */) : ;; *) effdir="${effdir%/*}/" ;; esac
+      case "$m" in
+        /*) mu="https://$h$m" ;;
+        *)  mu="$effdir$(printf '%s' "$m" | sed 's#^\./##')" ;;
+      esac
       # Most bundlers emit the map beside the asset, so try the asset dir too.
       for cand in "$mu" "https://$h/assets/$(basename "$m")" "https://$h/static/js/$(basename "$m")"; do
         mc="$(curl -sS -m 25 -o "$hd/map-$(basename "$m")" -w '%{http_code}' -A "$UA" "$cand" 2>/dev/null)"
