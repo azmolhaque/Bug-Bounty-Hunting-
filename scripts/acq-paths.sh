@@ -34,6 +34,21 @@ PATHS=(
   /setup /install
 )
 
+# PATHS_FILE replaces the list above, one path per line, '#' for comments.
+#
+# The built-in list looks for places a person logs in. A gateway answers to a
+# different vocabulary entirely, and the question on the intrinsic.ai estate is
+# in that other vocabulary: edge.intrinsic.ai answers 401 while edge-dev and
+# edge-qa answer 404 from the same nginx, so what matters is whether a health,
+# metrics or RPC path on the dev and qa gateways answers without the token the
+# production one demands. Asking that with /admin and /dashboard would measure
+# nothing and report a zero.
+if [ -n "${PATHS_FILE:-}" ]; then
+  [ -f "$PATHS_FILE" ] || { echo "!! no path list at $PATHS_FILE"; exit 1; }
+  mapfile -t PATHS < <(grep -vE '^[[:space:]]*(#|$)' "$PATHS_FILE" | sed 's/[[:space:]]*$//')
+  [ "${#PATHS[@]}" -gt 0 ] || { echo "!! $PATHS_FILE contains no paths"; exit 1; }
+fi
+
 UA='Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)'
 
 fetch() {   # fetch <url> -> "status size"
