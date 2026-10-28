@@ -3885,3 +3885,62 @@ Self-test gained one negative that matters here — ArgoCD's own
 markers. Identifying ArgoCD is informational. The question is whether
 `/api/v1/applications` answers without a token, and that answer is somebody
 else's deployment inventory.
+
+### 2026-10-28 — the TIER0/1 live table, read properly for once
+
+The table had been used only as a list of hosts to probe. Read as evidence, it
+says two things the probes cannot.
+
+**The four live ArgoCD hosts are behind IAP.**
+
+    argocd-gke-app-eu-prod.photomath.net   TIER0  200  GSE  Sign in - Google Accounts
+    argocd-gke-app-eu-test.photomath.net   TIER0  200  GSE  Sign in - Google Accounts
+    argocd-gke-app-us-prod.photomath.net   TIER0  200  GSE  Sign in - Google Accounts
+    argocd-gke-app-us-test.photomath.net   TIER0  200  GSE  Sign in - Google Accounts
+
+The other seven argocd names are DEAD. So the six new probes would have come
+back zero on all four, and that zero would have meant "IAP answered", not "no
+ArgoCD". Third time: the path sweep, the `grep -q` APK filter, and now this.
+The instrument's own shape keeps getting recorded as a measured absence.
+
+`acq-iap-gap.sh` asks the question that is actually open. IAP binds to a
+backend service, not to a path, so a health endpoint on a second backend or a
+route added after the binding answers without it. Fourteen GETs per host, and
+`/` is the baseline: if `/` is not Google's login page the premise is wrong for
+that host and the script says so instead of reporting fourteen bypasses.
+Classification is by content — Google's login page or a redirect to it is IAP;
+ArgoCD's `{"error":"no session information"}` is the backend, which means the
+proxy was passed. Status 000 is dropped before classifying, because an empty
+body would otherwise read as a bypass and turn every timeout into one.
+
+Expectation stated before running: zero. IAP usually covers everything. The
+value is that zero will be a real zero.
+
+**And twenty-odd DEAD TIER0/TIER1 hosts have never been resolved.**
+
+    metabase.photomath.net   keybox.looker.com     pbvpn.looker.com
+    rampart.looker.com       corp.looker.com       gw2-pbvpn.looker.com
+    lookermail.com           lookerdata.com        lookercdn.com
+    lk.looker.com            instancemanagerui.looker.com   + 7 argocd
+
+DEAD is one label over three facts: the name does not exist, the name points
+somewhere else, or there is a machine not serving HTTP. Only the middle one
+matters, and it is the class that has actually paid in this account —
+support.pring.jp was a host takeover.
+
+`acq-dead-dns.sh` separates them. It matches the CNAME target against services
+where hostnames are claimed by whoever asks first, and deliberately does not
+match provider error bodies: matching `DEPLOYMENT_NOT_FOUND` is how the Wiz
+attempt ended up reporting a precondition. Alphabet's own infrastructure is
+excluded outright — a CNAME from Google to Google is not a candidate.
+
+Its verdict word is CHECK, never VULNERABLE, and the reading guide spells out
+the four steps § 3 demands: confirm the provider will even accept the hostname
+(modern Vercel and Netlify refuse a domain bound to another account), claim it,
+serve a canary, fetch the canary over the target name — and then still show
+shared cookies, OAuth allowlisting or real traffic, because a host nobody
+visits is informational even after a successful takeover.
+
+A resolver failure is its own verdict, NO-DNS, and the control refuses to run
+if `google.com` will not resolve. Without that, one broken resolver turns
+twenty hosts into twenty takeover candidates.
