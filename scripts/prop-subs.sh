@@ -210,6 +210,12 @@ for d in $DOMAINS; do
 
   direct="$(direct_only "$d" < "$all")"
   total="$(sort -u "$all" | grep -c . || true)"
+
+  # The apex is in scope under its own name, whether or not a certificate log
+  # has heard of it. intrinsic.dev returned no CT entries at all on the first
+  # run, so the apex fell out of the host list and was never probed — the one
+  # name we already know must not depend on a third party also knowing it.
+  direct="$(printf '%s\n%s\n' "$d" "$direct" | grep -v '^[[:space:]]*$' | sort -u)"
   rm -f "$all"
 
   if [ "$fails" -eq $(printf '%s\n' $SOURCES | grep -c .) ]; then
