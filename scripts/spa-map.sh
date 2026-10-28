@@ -45,21 +45,39 @@ UA='Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)'
 # Every extractor reads a file and writes one finding per line. They are
 # separate functions so the self-test can drive them without a network.
 
-assets_of() {   # assets_of <file> <host>  ->  "SAME|OFF<TAB>url"
-  local f="$1" host="$2"
-  # src= and href= on script/link, plus bare .js references in the HTML.
+assets_of() {   # assets_of <file> <base-url>  ->  "SAME|OFF<TAB>url"
+  # The base URL is the page's FINAL url after redirects, not the origin root,
+  # because a relative reference resolves against the directory it was served
+  # from. flowstate.intrinsic.ai ships `src="main.js"` and redirects "/" to a
+  # sign-in path; resolving that against the root asked for a file which does
+  # not exist, the fetch failed, and production was reported with no bundle at
+  # all. "https://host/" as the base reproduces the old behaviour for a page
+  # served at the root, which is every other host here.
+  local f="$1" base="$2"
+  local scheme rest host path dir
+  scheme="${base%%://*}"
+  rest="${base#*://}"
+  host="${rest%%/*}"
+  if [ "$rest" = "$host" ]; then path="/"; else path="/${rest#*/}"; fi
+  path="${path%%\?*}"; path="${path%%#*}"
+  case "$path" in
+    */) dir="$path" ;;
+    *)  dir="${path%/*}/" ;;
+  esac
+
   grep -oE '(src|href)="[^"]+\.(js|mjs|cjs)([?#][^"]*)?"' "$f" 2>/dev/null \
     | sed -E 's/^(src|href)="//; s/"$//' \
     | while IFS= read -r u; do
+        local full
         case "$u" in
-          //*)      printf 'OFF\thttps:%s\n' "$u" ;;
-          http://*|https://*)
-            local h="${u#*://}"; h="${h%%/*}"; h="${h%%:*}"
-            if [ "$h" = "$host" ]; then printf 'SAME\t%s\n' "$u"
-            else printf 'OFF\t%s\n' "$u"; fi ;;
-          /*)       printf 'SAME\thttps://%s%s\n' "$host" "$u" ;;
-          *)        printf 'SAME\thttps://%s/%s\n' "$host" "$u" ;;
+          //*)               full="$scheme:$u" ;;
+          http://*|https://*) full="$u" ;;
+          /*)                full="$scheme://$host$u" ;;
+          *)                 full="$scheme://$host$dir$u" ;;
         esac
+        local h="${full#*://}"; h="${h%%/*}"
+        if [ "$h" = "$host" ]; then printf 'SAME\t%s\n' "$full"
+        else printf 'OFF\t%s\n' "$full"; fi
       done | sort -u
 }
 
@@ -102,6 +120,10 @@ secrets_in() {  # things that should not be in a public bundle
   } | sort -u
 }
 
+looks_like_html() {   # looks_like_html <file>  -> true when it is a page, not a bundle
+  head -c 400 "$1" 2>/dev/null | tr -d ' \t\r\n' | grep -qiE '^(<!doctype|<html|<\?xml)'
+}
+
 maps_in() {     # sourceMappingURL references
   grep -ohE 'sourceMappingURL=[^ */"'"'"']+' "$@" 2>/dev/null \
     | sed 's/^sourceMappingURL=//' | sort -u
@@ -118,6 +140,7 @@ selftest() {
 <link rel="modulepreload" href="/assets/vendor-def456.js">
 <script src="https://cdn.example.net/analytics.js"></script>
 <script src="//fonts.example.org/loader.js"></script>
+<script src="main.js"></script>
 <script>window.__ENV={apiKey:"AIzaSyB1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p",
   shortLookalike:"AIzaTooShort",
   clientId:"123456789012-abcdefghijklmnopqrstuvwx.apps.googleusercontent.com",
@@ -130,12 +153,20 @@ selftest() {
 HTML
   printf '//# sourceMappingURL=main-abc123.js.map\n' > "$d/main.js"
 
-  # assets: two same-origin, two off-origin, and the off-origin ones must be
-  # labelled rather than fetched.
+  # assets: three same-origin, two off-origin, the off-origin ones labelled
+  # rather than fetched, and the RELATIVE reference resolved against the
+  # directory the page was served from — not the origin root, which is the
+  # defect that made production look like it shipped no JavaScript.
   local got want
-  got="$(assets_of "$d/shell.html" app.intrinsic.ai | sort | paste -sd';')"
-  want='OFF	https://cdn.example.net/analytics.js;OFF	https://fonts.example.org/loader.js;SAME	https://app.intrinsic.ai/assets/main-abc123.js;SAME	https://app.intrinsic.ai/assets/vendor-def456.js'
+  got="$(assets_of "$d/shell.html" 'https://app.intrinsic.ai/signin/' | sort | paste -sd';')"
+  want='OFF	https://cdn.example.net/analytics.js;OFF	https://fonts.example.org/loader.js;SAME	https://app.intrinsic.ai/assets/main-abc123.js;SAME	https://app.intrinsic.ai/assets/vendor-def456.js;SAME	https://app.intrinsic.ai/signin/main.js'
   [ "$got" = "$want" ] || { echo "!! assets_of: got [$got]"; fail=1; }
+
+  # And the same page served at the root resolves it at the root.
+  got="$(assets_of "$d/shell.html" 'https://app.intrinsic.ai/' | grep 'signin' | paste -sd';')"
+  [ -z "$got" ] || { echo "!! assets_of invented a directory: [$got]"; fail=1; }
+  got="$(assets_of "$d/shell.html" 'https://app.intrinsic.ai/' | grep -c 'app.intrinsic.ai/main.js')"
+  [ "$got" = "1" ] || { echo "!! assets_of did not resolve main.js at the root"; fail=1; }
 
   # secrets: the real key and client id, not the short lookalike.
   got="$(secrets_in "$d/shell.html" | paste -sd';')"
@@ -169,9 +200,19 @@ HTML
   got="$(maps_in "$d/main.js" | paste -sd';')"
   [ "$got" = "main-abc123.js.map" ] || { echo "!! maps_in: got [$got]"; fail=1; }
 
+  # An asset URL that redirects writes nginx's own page to disk, and that page
+  # then reads as a bundle with nothing in it. Both directions are checked,
+  # because a test that only rejects HTML would pass just as well if it
+  # rejected everything.
+  printf '<html>\n<head><title>301 Moved Permanently</title></head>\n' > "$d/notjs.js"
+  printf '/*! bundle */\nvar a=1,b="/api/v1/x";\n'                      > "$d/real.js"
+  looks_like_html "$d/notjs.js" || { echo "!! looks_like_html missed nginx's 301 page"; fail=1; }
+  looks_like_html "$d/real.js"  && { echo "!! looks_like_html rejected a real bundle"; fail=1; }
+
   rm -rf "$d"
   if [ "$fail" -eq 0 ]; then
-    echo "POSITIVE  assets split same-origin from off-origin, a short key lookalike is ignored, and a source map is seen"
+    echo "POSITIVE  relative assets resolve against the served directory, off-origin is split from same-origin,"
+    echo "          a redirect page is not mistaken for a bundle, a short key lookalike is ignored, and a map is seen"
     return 0
   fi
   echo "!! BROKEN: fix the extractors before running this against a target"
@@ -219,17 +260,21 @@ for h in "${HOSTS[@]}"; do
   fi
 
   hd="$WORK/$h"; mkdir -p "$hd"
-  code="$(curl -sS -m 25 -L --max-redirs 10 -A "$UA" \
-          -D "$hd/shell.hdr" -o "$hd/shell.html" -w '%{http_code}' "https://$h/" 2>/dev/null)"
+  cw="$(curl -sS -m 25 -L --max-redirs 10 -A "$UA" \
+        -D "$hd/shell.hdr" -o "$hd/shell.html" \
+        -w '%{http_code}\t%{url_effective}' "https://$h/" 2>/dev/null)"
+  code="${cw%%$'\t'*}"; eff="${cw##*$'\t'}"
+  [ -n "$eff" ] || eff="https://$h/"
   sz=$(wc -c < "$hd/shell.html" 2>/dev/null || echo 0)
   if [ "${code:0:1}" != "2" ]; then
     printf '%-34s NO-SHELL  HTTP %s (%s bytes) — not "no javascript", the page did not load\n' "$h" "$code" "$sz"
     sleep "$DELAY"; continue
   fi
+  [ "$eff" = "https://$h/" ] || echo "      served from $eff — relative assets resolve against that"
 
-  mapfile -t A < <(assets_of "$hd/shell.html" "$h")
-  same=0; off=0; fetched=0; failed=0
-  : > "$hd/offorigin.txt"
+  mapfile -t A < <(assets_of "$hd/shell.html" "$eff")
+  same=0; off=0; fetched=0; failed=0; notjs=0
+  : > "$hd/offorigin.txt"; : > "$hd/notjs.txt"
   for e in "${A[@]}"; do
     kind="${e%%$'\t'*}"; url="${e##*$'\t'}"
     if [ "$kind" = "OFF" ]; then
@@ -240,9 +285,19 @@ for h in "${HOSTS[@]}"; do
     ah="${url#*://}"; ah="${ah%%/*}"
     "$SCOPE" "$ah" >/dev/null 2>&1 || { echo "$url" >> "$hd/offorigin.txt"; continue; }
     n=$(printf '%s' "$url" | md5sum | cut -c1-8)
-    if curl -sS -m 30 -A "$UA" -o "$hd/asset-$n.js" "$url" 2>/dev/null \
+    # -L: without it the fetch stopped at a 301 and wrote nginx's 162-byte
+    # "Moved Permanently" page to disk. The HTML check is the other half of
+    # the same defect: that page was then read as JavaScript, found nothing,
+    # and portal-dev and portal-qa were both reported with zero hosts, zero
+    # paths and zero secrets. A failed fetch must never be able to pass itself
+    # off as an empty bundle.
+    if curl -sS -m 30 -L --max-redirs 5 -A "$UA" -o "$hd/asset-$n.js" "$url" 2>/dev/null \
        && [ -s "$hd/asset-$n.js" ]; then
-      fetched=$((fetched+1))
+      if looks_like_html "$hd/asset-$n.js"; then
+        notjs=$((notjs+1)); echo "$url" >> "$hd/notjs.txt"; rm -f "$hd/asset-$n.js"
+      else
+        fetched=$((fetched+1))
+      fi
     else
       failed=$((failed+1)); rm -f "$hd/asset-$n.js"
     fi
@@ -262,9 +317,16 @@ for h in "${HOSTS[@]}"; do
   ns=$(grep -c . "$hd/secrets.txt" || true)
   nm=$(grep -c . "$hd/maps.txt" || true)
 
-  printf '%-34s HTTP %-3s  assets %d same / %d off, %d fetched, %d failed | %d host, %d path, %d secret, %d map\n' \
-         "$h" "$code" "$same" "$off" "$fetched" "$failed" "$nh" "$np" "$ns" "$nm"
+  printf '%-34s HTTP %-3s  assets %d same / %d off, %d fetched, %d failed, %d not-js | %d host, %d path, %d secret, %d map\n' \
+         "$h" "$code" "$same" "$off" "$fetched" "$failed" "$notjs" "$nh" "$np" "$ns" "$nm"
   [ "$failed" -gt 0 ] && echo "      note: $failed asset(s) could not be fetched — the counts above are a floor, not a total"
+  if [ "$notjs" -gt 0 ]; then
+    echo "      note: $notjs asset URL(s) returned HTML, not JavaScript — the bundle was NOT read:"
+    sed 's/^/        /' "$hd/notjs.txt"
+  fi
+  if [ "$fetched" -eq 0 ] && [ "$same" -gt 0 ]; then
+    echo "      !! no bundle was read for this host. The zeros above are the instrument, not the app."
+  fi
 
   # A shipped source map is the whole frontend source. Probe only same-origin,
   # in-scope maps, and record the status either way.
