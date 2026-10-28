@@ -22,6 +22,16 @@
 #   ./scripts/spa-map.sh --selftest
 set -uo pipefail
 
+# Byte order for every sort in this file, and it is not cosmetic. The self-test
+# compares an extractor's output against a written-out expectation, and the
+# first run on the Pi failed where the same code passed in a container: a
+# UTF-8 collation ignores punctuation, so "/apiary-x" sorts before
+# "/api/v1/workcells", while a byte comparison puts "/api/v1/..." first ("/" is
+# 0x2f, below "a"). Without this, the same bundle produces differently ordered
+# output files on two machines, and tomorrow's diff against today's run shows
+# changes that are only the locale.
+export LC_ALL=C
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 SCOPE="$HERE/scope-check.sh"
