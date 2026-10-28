@@ -129,7 +129,7 @@ for h in "${HOSTS[@]}"; do
   first=""
   for p in "${PATHS[@]}"; do
     : > "$body"; : > "$hdr"
-    st="$(curl -sS -k -m 15 -A "$UA" -D "$hdr" -o "$body" -w '%{http_code}' "https://$h$p" 2>/dev/null || echo 000)"
+    st="$(curl -sS -k -m 15 -A "$UA" -D "$hdr" -o "$body" -w '%{http_code}' "https://$h$p" 2>/dev/null)"
     if [ "$st" = "000" ]; then
       printf '  %-46s  ---  no answer\n' "$p"; sleep "$DELAY"; continue
     fi

@@ -95,7 +95,7 @@ echo
 echo "== CONTROL =="
 selftest || exit 2
 # A registered domain must read as registered, or every answer below is noise.
-ctl="$(curl -sS -m 15 -o /dev/null -w '%{http_code}' "$(rdap_url google.com)" 2>/dev/null || echo 000)"
+ctl="$(curl -sS -m 15 -o /dev/null -w '%{http_code}' "$(rdap_url google.com)" 2>/dev/null)"
 if [ "$ctl" != "200" ]; then
   echo "!! BROKEN: RDAP returned $ctl for google.com — the endpoint or the network is the problem,"
   echo "   not the targets. Do not read a 404 below as 'unregistered' until this says 200."
@@ -105,7 +105,7 @@ echo "POSITIVE  RDAP answers 200 for a domain that is certainly registered"
 # And a name nobody has taken must read as free, so a registry that answers 200
 # for everything cannot quietly mark every target registered.
 neg="$(curl -sS -m 15 -o /dev/null -w '%{http_code}' \
-       "$(rdap_url zzz-this-name-is-not-registered-9f3a1c.com)" 2>/dev/null || echo 000)"
+       "$(rdap_url zzz-this-name-is-not-registered-9f3a1c.com)" 2>/dev/null)"
 if [ "$neg" = "200" ]; then
   echo "!! BROKEN: RDAP also returned 200 for a made-up name — it cannot tell free from taken"; exit 2
 fi
@@ -129,16 +129,66 @@ for t in "${TARGETS[@]}"; do
   ast="$(dig +time=3 +tries=2 +noall +comments "$ap" NS 2>/dev/null | sed -n 's/.*status: \([A-Z]*\).*/\1/p' | head -1)"
   echo "   apex   $ap : ${ast:-no answer}   NS=${ns:--}   SOA=${soa:--}"
 
+  # SERVFAIL is not "no nameservers", and reading it that way printed exactly
+  # the wrong sentence for aws-zaipon.com: "not delegated (no NS)" on a domain
+  # RDAP showed delegated to Route 53. An empty `dig NS` plus SERVFAIL means
+  # the resolver could not get an answer OUT of the delegated servers, which is
+  # a different and far more interesting state than having none.
+  #
+  # So ask the parent zone who the delegated servers are, and then ask those
+  # servers directly. The parent always answers; the delegated servers are the
+  # ones that may not.
+  pns=""; nsalive=0; nsrefused=0
+  tld="${ap##*.}"
+  parent="$(dig +time=3 +tries=2 +short "$tld." NS 2>/dev/null | head -1)"
+  if [ -n "$parent" ]; then
+    pns="$(dig +time=5 +tries=2 +norecurse "@$parent" "$ap" NS 2>/dev/null \
+           | awk '$4=="NS" {print $5}' | sed 's/\.$//' | sort -u | paste -sd',' -)"
+  fi
+  echo "   parent $tld says NS = ${pns:--}"
+  if [ -n "$pns" ]; then
+    for n in ${pns//,/ }; do
+      nst="$(dig +time=5 +tries=1 +noall +comments "@$n" "$ap" SOA 2>/dev/null \
+             | sed -n 's/.*status: \([A-Z]*\).*/\1/p' | head -1)"
+      nsoa="$(dig +time=5 +tries=1 +short "@$n" "$ap" SOA 2>/dev/null | head -1)"
+      if [ -n "$nsoa" ]; then
+        nsalive=$((nsalive+1)); echo "     $n : ${nst:-?}  SOA present"
+      else
+        nsrefused=$((nsrefused+1)); echo "     $n : ${nst:-no answer}  no SOA"
+      fi
+      printf '%s NS %s -> %s / %s\n' "$ap" "$n" "${nst:-?}" "${nsoa:--}" >> "$EVID"
+    done
+  fi
+
   url="$(rdap_url "$ap")"
   if [ -n "$url" ]; then
-    rst="$(curl -sS -m 20 -o "$OUT/.rdap.$$" -w '%{http_code}' "$url" 2>/dev/null || echo 000)"
+    rst="$(curl -sS -m 20 -o "$OUT/.rdap.$$" -w '%{http_code}' "$url" 2>/dev/null)"
     echo "   rdap   $rst  $url"
-    head -c 2000 "$OUT/.rdap.$$" >> "$EVID"; echo >> "$EVID"
-    reg="$(sed -n 's/.*"ldhName" *: *"\([^"]*\)".*/\1/p' "$OUT/.rdap.$$" | head -1)"
-    rar="$(tr ',' '\n' < "$OUT/.rdap.$$" | grep -i -m1 'registrar' | head -c 120)"
+    head -c 4000 "$OUT/.rdap.$$" >> "$EVID"; echo >> "$EVID"
+    # Parsed, not grepped. The sed version took the first "ldhName" in the
+    # document, which belonged to a nameserver, and printed a Route 53 hostname
+    # where the domain name should have been.
+    rdapsum="$(python3 -I - "$OUT/.rdap.$$" <<'PY'
+import json, sys
+try: d = json.load(open(sys.argv[1]))
+except Exception as e: print("unparseable: %s" % e); raise SystemExit
+name = d.get("ldhName", "?")
+status = ",".join(d.get("status", [])) or "-"
+ns = ",".join(n.get("ldhName", "?") for n in d.get("nameservers", []) or []) or "-"
+rar = "-"
+for e in d.get("entities", []) or []:
+    if "registrar" in (e.get("roles") or []):
+        for v in (e.get("vcardArray") or [None, []])[1]:
+            if v and v[0] == "fn": rar = v[3]
+print("domain=%s status=%s" % (name, status))
+print("nameservers=%s" % ns)
+print("registrar=%s" % rar)
+PY
+)"
+    printf '%s\n' "$rdapsum" | sed 's/^/          /'
     rm -f "$OUT/.rdap.$$"
   else
-    rst="n/a"; reg=""; rar=""
+    rst="n/a"
     echo "   rdap   no public RDAP for .${ap##*.} — whois only"
   fi
 
@@ -162,14 +212,20 @@ for t in "${TARGETS[@]}"; do
   elif [ "$rst" = "404" ] && [ "$wfree" = 0 ]; then
     echo "   !!! DISAGREEMENT — RDAP says free, whois has a record. Do not act."
   elif [ "$rst" = "200" ] || [ "$wfree" = 0 ]; then
-    if [ -n "$ns" ]; then
-      echo "   --- REGISTERED and delegated (NS present). The owner deleted the"
-      echo "       record; the name is theirs. Nothing to take."
+    if [ -z "$pns" ]; then
+      echo "   --- REGISTERED, and the parent zone publishes no delegation."
+      echo "       The name is theirs and points nowhere. Nothing to take."
+    elif [ "$nsalive" -gt 0 ]; then
+      echo "   --- REGISTERED and the zone is live ($nsalive of its servers hold"
+      echo "       an SOA). The owner simply has no record for $t. Theirs."
     else
-      echo "   --- REGISTERED but not delegated (no NS). Still theirs. Nothing to take."
+      echo "   >>> REGISTERED, DELEGATED, AND THE ZONE IS GONE."
+      echo "       The parent publishes $pns"
+      echo "       and not one of them holds an SOA for $ap. The delegation"
+      echo "       outlived the zone — this is the precondition for taking the"
+      echo "       zone at the DNS provider rather than at the registrar."
+      echo "       STILL A PRECONDITION. See the reading guide before anything."
     fi
-    [ -n "$reg" ] && echo "       rdap ldhName: $reg"
-    [ -n "$rar" ] && echo "       rdap: $rar"
   else
     echo "   ??? UNDECIDED — rdap=$rst whois=$wfree. Rerun; do not conclude."
   fi
@@ -179,9 +235,32 @@ done
 
 cat <<'NOTE'
 == reading it ==
-Only NOT REGISTERED is worth anything, and it is still a precondition, not a
-finding. § 3 rejects a takeover claimed on a precondition, and the Wiz attempt
+Two verdicts are worth anything, and both are preconditions rather than
+findings. § 3 rejects a takeover claimed on a precondition, and the Wiz attempt
 is this repo's proof of that.
+
+REGISTERED, DELEGATED, AND THE ZONE IS GONE means the parent zone still points
+at a set of provider nameservers that no longer serve the domain. Somebody
+holds the registration, so it cannot be bought; the question is whether the
+zone can be recreated at that provider and land on the same nameserver set.
+
+Be honest about that question before spending anything on it. On Route 53 the
+published technique is to create and delete hosted zones until the assigned
+nameserver set matches the delegated one, which takes a large and unbounded
+number of attempts, costs per zone, and leans on a provider that is not the
+party being tested. § 4 is the rule that applies: if the next link cannot be
+tested now, this is a HYPOTHESIS and not a lead, and it gets logged as one.
+Reporting the dangling delegation on its own is the Wiz mistake with different
+nameservers.
+
+What IS worth doing first, and costs nothing:
+  - Is the target hostname used by anything? A TIER0 API name that a live app
+    resolves is worth an hour; a legacy name nothing references is informational
+    even after a successful takeover, which § 3 says in as many words.
+  - Does the same apex sit behind other hostnames, in this program or others?
+  - Is the apex itself registered to the target or to a third party? A third
+    party holding the delegation target of a TIER0 name is worth saying out
+    loud even without a takeover, because the owner can serve that hostname.
 
 If a target comes back NOT REGISTERED, the order is:
   1. Decide whether to spend the registration fee. It is yours to decide, and

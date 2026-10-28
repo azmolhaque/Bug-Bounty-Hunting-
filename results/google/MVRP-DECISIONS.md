@@ -3997,3 +3997,68 @@ fetch over the target name is the evidence and the apex fetch proves nothing.
 Also: `acq-dead-dns.sh` now prints every CNAME into someone else's zone instead
 of only counting them. The claimable-provider list is not complete, and a
 service nobody has fingerprinted is where the next one comes from.
+
+### 2026-10-28 — fingerprint class closed at zero; and I printed the wrong verdict
+
+**Three completed sweeps, zero identified.**
+
+    238 hosts x 12 probes  ->  0 of 238
+     82 hosts x 24 probes  ->  0 of 82    (progress file: 82/82)
+     82 hosts x  6 probes  ->  0 of 82    (progress file: 82/82)
+
+All three finished — the progress file is what makes that checkable rather
+than assumed. The live acquisitions estate is Google's own frontends (GSE,
+sffe) plus S3 and CDN origins; there is no exposed self-hosted admin software
+on it. The class is closed with a zero worth believing, which is more than the
+path sweep ever produced.
+
+**And on aws-zaipon.com the script printed a wrong sentence.** It said
+"REGISTERED but not delegated (no NS)" about a domain whose own output two
+lines above read:
+
+    apex   aws-zaipon.com : SERVFAIL   NS=-   SOA=-
+    rdap ldhName: NS-577.AWSDNS-08.NET
+
+Two defects in one line. SERVFAIL was read as "no nameservers", when it means
+the resolver could not get an answer out of the delegated servers — a
+different and much more interesting state. And the `ldhName` was pulled with
+sed, which took the first one in the document; that belonged to a nameserver,
+so a Route 53 hostname was printed where the domain name goes.
+
+Fixed by asking the right servers. The parent TLD zone is queried directly for
+the delegation, then each delegated nameserver is queried for the zone's SOA.
+Parent answers always; the delegated servers are the ones that may not. RDAP
+is now parsed with python3 instead of sed, and prints domain, status,
+nameservers and registrar separately.
+
+New verdict for the state this actually is: **REGISTERED, DELEGATED, AND THE
+ZONE IS GONE** — the delegation outlived the zone.
+
+The chain, as far as it is measured:
+
+    api.pring.jp         TIER0, Google acquisition
+      -> CNAME -> api.aws-zaipon.com
+                    -> delegated to Route 53 nameservers
+                         -> which hold no SOA for the zone
+
+And § 4 applied honestly, before any enthusiasm: the next link is "can the
+zone be recreated at that provider on the same nameserver set", and on Route 53
+that means creating and deleting hosted zones until the assignment matches —
+unbounded attempts, a cost per zone, and leaning on a provider that is not the
+party being tested. That link cannot be tested cheaply, so this is a
+**HYPOTHESIS, not a lead**, and the reading guide says so where it will be
+read. Reporting the dangling delegation by itself is the Wiz mistake with
+different nameservers.
+
+What is worth doing first costs nothing: find out whether any live app
+resolves api.pring.jp, whether other hostnames point at the same apex, and
+whether the apex is registered to pring/Google or to a third party. A third
+party holding the delegation target of a TIER0 API name is worth saying out
+loud even with no takeover, because they can serve that hostname.
+
+**Also fixed, in three scripts: `curl ... || echo 000`.** curl's own
+`%{http_code}` is already 000 when the transfer never happened, so the
+fallback could only ever append a second value to a real one. The control line
+printed it plainly — `RDAP answers 404000 for a made-up name` — a 404 and a
+000 concatenated. In the fingerprint sweep that string matched no case in
+`000|40[13]` and would have been treated as a live status.

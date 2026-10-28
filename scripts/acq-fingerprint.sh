@@ -96,7 +96,11 @@ trap cleanup EXIT
 
 fetch() {   # fetch <url> -> prints status; body lands in $body
   : > "$body"
-  curl -sS -k -m 12 -A "$UA" -o "$body" -w '%{http_code}' "$1" 2>/dev/null || echo "000"
+  # No `|| echo 000` here. curl's own %{http_code} is already 000 when the
+  # transfer never happened, so the fallback could only ever append a second
+  # value to a real one: a 404 came out as "404000", matched no case, and was
+  # read as a live status.
+  curl -sS -k -m 12 -A "$UA" -o "$body" -w '%{http_code}' "$1" 2>/dev/null
 }
 
 selftest() {
