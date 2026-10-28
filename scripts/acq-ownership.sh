@@ -135,11 +135,22 @@ echo
 
 echo "== CONTROL =="
 selftest || exit 2
-st="$(curl -sS -m 20 -o "$tmp" -w '%{http_code}' "$(rdap_url google.com)" 2>/dev/null)"
+st="$(curl -sS -L --max-redirs 5 -m 25 -o "$tmp" -w '%{http_code}' "$(rdap_url google.com)" 2>/dev/null)"
 [ "$st" = "200" ] || { echo "!! BROKEN: RDAP returned $st for google.com"; exit 2; }
 IFS=$'\t' read -r r c <<<"$(parse "$tmp")"
 case "$(classify "$r" "$c")" in OK*) echo "POSITIVE  google.com reads as the owner's ($r, $c)" ;;
   *) echo "!! BROKEN: google.com did not read as owned — $(classify "$r" "$c")"; exit 2 ;; esac
+# A TLD that goes through rdap.org rather than a registry endpoint we name
+# directly. Without -L this returned the redirect instead of the answer, and
+# abc.xyz — Alphabet's own, registered since 2015 — would have read as
+# UNREGISTERED. The control exists because that happened.
+st="$(curl -sS -L --max-redirs 5 -m 25 -o "$tmp" -w '%{http_code}' "$(rdap_url abc.xyz)" 2>/dev/null)"
+if [ "$st" != "200" ]; then
+  echo "!! BROKEN: RDAP returned $st for abc.xyz, a registered name on a TLD routed via rdap.org."
+  echo "!!         Every non com/net/org verdict below would be about the redirect, not the domain."
+  exit 2
+fi
+echo "POSITIVE  a registered name on an rdap.org-routed TLD answers 200"
 echo
 
 mapfile -t APEXES < <(awk '/^in_scope:/{f=1;next} /^out_of_scope:/{f=0} f' "$SCOPE" \
@@ -154,10 +165,30 @@ for a in "${APEXES[@]}"; do
   if [ -z "$u" ]; then
     printf '%s\t%s\t\t\n' "$a" "NO-RDAP" >> "$TSV"; sleep "$DELAY"; continue
   fi
-  st="$(curl -sS -m 20 -o "$tmp" -w '%{http_code}' "$u" 2>/dev/null)"
+  # -L, because rdap.org works by redirecting to the registry's own RDAP
+  # server. Without it every TLD outside com/net/org was read from the
+  # redirect itself rather than the answer, and a name that is plainly
+  # registered could land in the UNREGISTERED column.
+  st="$(curl -sS -L --max-redirs 5 -m 25 -o "$tmp" -w '%{http_code}' "$u" 2>/dev/null)"
   if [ "$st" = "404" ]; then
-    printf '%s\t%s\t\t\n' "$a" "UNREGISTERED" >> "$TSV"
-    echo "  $a : UNREGISTERED — nobody holds this name"; nflag=$((nflag+1)); sleep "$DELAY"; continue
+    # UNREGISTERED is the most consequential verdict here — it is the one that
+    # would send us to buy a name — so it gets a second opinion from a
+    # different protocol before it is written down, and a disagreement is
+    # printed as a disagreement rather than resolved silently.
+    wfree=-1
+    if command -v whois >/dev/null; then
+      if whois "$a" 2>/dev/null | head -40 \
+         | grep -qiE 'no match|not found|no entries found|no data found|status: *free|available for registration'
+      then wfree=1; else wfree=0; fi
+    fi
+    if [ "$wfree" = 0 ]; then
+      printf '%s\t%s\t\t\n' "$a" "DISAGREE" >> "$TSV"
+      echo "  $a : DISAGREE — RDAP 404 but whois has a record. Do not act on this."
+    else
+      printf '%s\t%s\t\t\n' "$a" "UNREGISTERED" >> "$TSV"
+      echo "  $a : UNREGISTERED — RDAP 404$([ "$wfree" = 1 ] && echo ' and whois agrees')"
+    fi
+    nflag=$((nflag+1)); sleep "$DELAY"; continue
   fi
   if [ "$st" != "200" ]; then
     printf '%s\t%s\t\t\n' "$a" "RDAP-$st" >> "$TSV"; sleep "$DELAY"; continue
