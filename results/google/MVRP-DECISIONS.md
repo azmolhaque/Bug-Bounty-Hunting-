@@ -4615,3 +4615,59 @@ says the Trusted Folders feature is **disabled by default**. This phone has it
 enabled, which is why vector 2 showed a boundary at all. What a *default*
 install loads from a workspace is therefore still unmeasured, and that is the
 first thing to check next, not the last.
+
+### 2026-10-28 — Gemini CLI workspace trust: closed from four sides
+
+Interactive mode was the last untested path, and it is the one where an
+ordering bug would live: `SessionStart` fires at session start, the trust
+dialog is answered after. Measured with the dialog left open on screen and the
+canary checked from a second Termux session:
+
+    dialog open, unanswered     no canary   — nothing ran before the decision
+    "Don't trust" chosen, quit  no canary   — nothing ran after it either
+
+The dialog itself answers the design question:
+
+    Do you trust the files in this folder?
+    Trusting a folder allows Gemini CLI to load its local configurations,
+    including custom commands, hooks, MCP servers, agent skills, and settings.
+    These configurations could execute code on your behalf or change the
+    behavior of the CLI.
+
+Hooks are named in that list, and the session banner carried
+`Skipping project agents due to untrusted folder` throughout.
+
+**The class is closed from four sides, each with a control behind it:**
+
+    workspace extension        not a discovery path at all
+    workspace settings + MCP   disabled when untrusted, and the CLI says why
+    hooks, headless            the process refuses to start
+    hooks, interactive         nothing runs before or after "Don't trust"
+
+The control that makes these readable: in a *trusted* folder the same MCP
+command and the same hook both really did create their canary files. The zeros
+are about trust, not about a broken proof of concept.
+
+**One documentation inconsistency, not a vulnerability.**
+`docs/cli/trusted-folders.md` says the feature is "disabled by default" and
+must be switched on with `security.folderTrust.enabled: true`. That key has
+never been in this machine's settings — the backup of the original file
+contains only an auth block — yet the gate was enforced in every test. The
+bundle carries both defaults for the same setting:
+
+    settings.merged.security.folderTrust.enabled ?? true
+    folderTrust?.enabled ?? false
+    params.folderTrust ?? false
+
+The binary is safer than its documentation, so this is a docs/consistency
+issue for a GitHub issue rather than `g.co/vulnz`. Worth filing because the
+opposite drift — docs promising a gate the code does not apply — is the same
+bug with the sign flipped.
+
+**Still untested, and the honest list for next time:** everything downstream of
+the agent loop, because it never ran. The account's OAuth tier is cut off for
+this CLI and the AI Studio key's project is out of prepay credit, so
+`BeforeTool`/`AfterTool` hooks, the policy engine's tool decisions and
+auto-approval are all unmeasured. `policies/` holds eight TOML files and only
+`non-interactive.toml` was read. `--raw-output` carries the CLI's own ANSI
+warning. `gemini hooks migrate --from-claude` reads another tool's config.
