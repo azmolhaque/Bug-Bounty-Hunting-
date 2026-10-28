@@ -5141,3 +5141,83 @@ Also fixed in the same pass: `hosts_in` matched bare `.local`/`.internal`, so
 thirty of forty-four "hosts named" were minified property chains —
 `this.local`, `e.internal`, `window.local`. Left alone, somebody eventually
 reports those as an internal hostname leak.
+
+## 2026-10-28 — the whole propagating estate, and the ninjaexcel CSP entry
+
+`prop-subs.sh` across all 31 propagating domains: **352 hosts in scope**, of
+which our tooling had previously seen almost none, because the generator
+ignored the flag until this week and the names live only in certificate logs.
+217 answered. The estate is Verily's Debug Project — mosquito rearing and
+release — at eight sites (bvi, fat, haw, lex, mmr, pr, sin, ssf) across dev,
+preprod and production. The hostnames say what is behind them: `insectary`,
+`cages`, `pupae`, `sorter`, `trough`, `hvac`, `bms`, `surveillance`,
+`vehicle-1` through `vehicle-99`, `guacamole` (a remote-desktop gateway),
+`unifi`, `db-replica-of-onprem`.
+
+Measured to zero, with the control behind each:
+
+* **IAP gap: 36 hosts, one per distinct service name, 14 paths each, 504
+  requests. Paths past the proxy: 0.** Every one returns Google's login page
+  at 302/36 bytes, including `/healthz`, `/metrics`, `/_ah/health` and
+  `/.well-known/openid-configuration`. IAP is attached to the backend service
+  and it covers everything here.
+* **135 dead hosts: 85 HAS-IP, 36 NO-RECORD, 14 NXDOMAIN. Dangling: 0.**
+  Nothing to claim.
+* **`aem-dev.debug.com` / `aem-stage.debug.com`: 21 AEM paths, 0 differed**
+  from a 1561-byte Google 404. The name says AEM; nothing is behind it.
+* **`count.debugproject.com`** serves content without sign-in, which made it
+  the one anomaly among 166 IAP hosts. It is the project's public counter
+  page, canonical to debug.com. Public by design.
+* **The 38 cameyo hosts titled "default"** are one page: five fetched,
+  identical md5, 300 bytes. `jenkins.cameyo.com` is not Jenkins and
+  `wazuh.cameyo.com` is not Wazuh — `*.cameyo.com` is a wildcard onto Google's
+  own load balancer (34.54.191.172, `via: 1.1 google`), and a made-up name
+  gets the same address and the same bytes. Reporting either on the strength
+  of its hostname would have been an immediate N/A.
+
+### The one thing that looked like a finding
+
+Every Cameyo application host sends:
+
+    x-frame-options: DENY
+    content-security-policy: frame-ancestors 'self' *.cameyo.com
+                             https://cameyo.com:* https://*.ninjaexcel.com;
+
+Two true things about that. When both headers are present browsers follow
+`frame-ancestors` and ignore `X-Frame-Options`, so the effective policy is not
+DENY. And `ninjaexcel.com` is not Google's: it is an outside domain on the
+framing allowlist of a TIER0 product, and the entry appears only on the
+application hosts, not on the marketing site, whose CSP is Google's own CMS
+policy with a nonce and `X-Frame-Options: sameorigin`.
+
+So: who holds it? RDAP, which is a registry question and not a request to a
+host we have no authorisation for:
+
+    ninjaexcel.com   Amazon Registrar   created 2020-04-16   expires 2028-04-16
+    NS: ns-{410,990,1104,1951}.awsdns-*   A: 162.159.137.9 (Cloudflare)
+    status: client transfer prohibited
+
+Registered six years, paid through 2028, transfer-locked, active nameservers,
+and answering. Ninja Excel teaches Excel; Cameyo delivers Excel in a browser.
+This is a customer embedding the product, which is what the entry is for.
+
+**Dropped.** What we have is a precondition and nothing else: to show the
+boundary is crossed we would need control of a ninjaexcel.com subdomain, and
+that domain belongs to somebody who never agreed to be tested — § 0 calls
+touching it the one unrecoverable mistake. § 3 drops clickjacking with no
+sensitive authenticated action demonstrated, and § 2 criterion 6 asks what the
+attacker actually got. The answer here is "a header allows an origin we do not
+control", which is the Wiz mistake wearing a different hat.
+
+Worth noting for a future session, without acting on it: the entry is global,
+so one customer's domain is on the framing allowlist of every other customer's
+session. If Cameyo ever scoped it per tenant that would be a real improvement,
+but an improvement is not a vulnerability.
+
+### Where this leaves the unauthenticated surface
+
+Measured and empty, across both estates opened today. Everything that answers
+is behind Google sign-in, behind IAP, parked on a wildcard, or public on
+purpose. The remaining surface on all of them is behind a login, and the two
+reports this account has had Fixed both came from being inside something
+rather than describing its door.
