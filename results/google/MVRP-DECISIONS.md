@@ -4454,3 +4454,40 @@ looked up.
 
 Output is an exclusion list, not findings. 324 unique apexes across the two
 scope files have never been checked this way.
+
+### 2026-10-28 — all twelve UNREGISTERED were the instrument
+
+The first ownership run flagged 12 of 132 apexes as UNREGISTERED. Checked by
+hand against whois, **every one was wrong**:
+
+    com.ru  g.cn  g.co  gle  goog  goo.gl  google
+    googlecnapps.cn  openthread.io  wiz.io  youtu.be  youtube
+
+`whois-says-free=0` on all twelve, and most resolve — g.co, goo.gl, youtu.be,
+g.cn, wiz.io, openthread.io all answer DNS. Three separate defects, in one
+output:
+
+1. **rdap.org answers by redirecting** and the fetch had no `-L`, so every TLD
+   outside com/net/org was read from the redirect rather than the answer.
+2. **`gle`, `goog`, `google`, `youtube` are TLDs Google operates**, not
+   registrations. RDAP has nothing to say about a bare TLD label, so it 404s,
+   and a 404 was being read as "nobody holds this name".
+3. **`com.ru` is a public suffix** like `co.uk` and was not in the list, so the
+   apex came out as the suffix itself.
+
+Had this gone unchecked the next step was buying a domain, which makes it the
+most expensive defect of the session even though it found nothing. It is also
+the first one that erred towards *more* surface rather than less: the previous
+seven all said "nothing here".
+
+Fixed: `-L` with a control that fetches abc.xyz — Alphabet's own, registered
+since 2015, on a TLD routed through rdap.org — and refuses to run unless it
+answers 200. UNREGISTERED now takes a whois second opinion before it is
+written, and RDAP-404 against a whois record is recorded as DISAGREE rather
+than resolved silently. Names under a TLD the target operates are OK-BRAND-TLD
+without a lookup, bare TLD labels are skipped as BARE-TLD, and the public
+suffix list grew.
+
+Also worth recording: the run itself was cut short by the Pi's network
+dropping mid-sweep — 24 lookups returned RDAP-000 and the ssh session died —
+so it has to be repeated under `setsid` regardless of the parsing fixes.

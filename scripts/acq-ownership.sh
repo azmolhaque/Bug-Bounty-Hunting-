@@ -44,11 +44,18 @@ CORPORATE_RE='MarkMonitor|CSC Corporate|Corporation Service Company|COM LAUDE|No
 # it is the shape picasa-software.com had.
 CONSUMER_RE='Wix|GoDaddy|Namecheap|NameSilo|Dynadot|Porkbun|Tucows|Hostinger|Name\.com|Squarespace|Epik|Sav\.com|Spaceship|Gname|PDR Ltd|Realtime Register|Key-Systems|InterNetX|Hostgator|Bluehost|IONOS|OVH'
 
+# TLDs Google operates itself. Every name under one of these belongs to them
+# by definition, and there is no registrar to ask: the first run put `google`,
+# `goog`, `gle` and `youtube` in the UNREGISTERED column because RDAP has
+# nothing to say about a bare TLD label.
+BRAND_TLD_RE='^(google|goog|gle|youtube|android|chrome|gmail|nexus|play|dclk|fly|here|ing|meme|prod|rsvp|soy|zip|dev|app|page|new|how|channel|boo|day|eat|esq|foo|mov|phd|search)$'
+
 apex() {   # apex <fqdn>
   python3 -I -c '
 import sys
 h=sys.argv[1].rstrip(".").lstrip("+.")
-multi=("co.uk","co.jp","com.au","co.nz","com.br","co.in","com.cn","co.za","ne.jp","or.jp","ac.uk","gov.uk")
+multi=("co.uk","co.jp","com.au","co.nz","com.br","co.in","com.cn","co.za","ne.jp","or.jp",
+       "ac.uk","gov.uk","com.ru","net.ru","org.ru","com.mx","com.tr","co.kr","com.sg","com.hk")
 p=h.split(".")
 print(".".join(p[-3:]) if len(p)>=3 and ".".join(p[-2:]) in multi else ".".join(p[-2:]) if len(p)>=2 else h)
 ' "$1"
@@ -117,7 +124,10 @@ selftest() {
   # An old domain at a consumer registrar is fine; small acquisitions do this.
   v="$(classify 'GoDaddy.com, LLC' 2005-03-01)"
   case "$v" in OK*) ;; *) echo "!! selftest: old + consumer -> $v"; fail=1 ;; esac
-  [ "$fail" -eq 0 ] && echo "POSITIVE  an old corporate registration passes, and a fortnight-old Wix one does not"
+  v="$(apex sub.example.com.ru)";  [ "$v" = example.com.ru ] || { echo "!! selftest: com.ru suffix -> $v"; fail=1; }
+  printf '%s' "google" | grep -qE "$BRAND_TLD_RE" || { echo "!! selftest: google is a brand TLD"; fail=1; }
+  printf '%s' "com"    | grep -qE "$BRAND_TLD_RE" && { echo "!! selftest: com must not read as a brand TLD"; fail=1; }
+  [ "$fail" -eq 0 ] && echo "POSITIVE  an old corporate registration passes, a fortnight-old Wix one does not, and a brand TLD is not an unregistered domain"
   return "$fail"
 }
 
@@ -161,6 +171,16 @@ echo "== ${#APEXES[@]} apex(es) =="
 printf 'apex\tverdict\tregistrar\tcreated\n' > "$TSV"
 nflag=0
 for a in "${APEXES[@]}"; do
+  case "$a" in
+    *.*) ;;
+    *) printf '%s\t%s\t\t\n' "$a" "BARE-TLD" >> "$TSV"
+       echo "  $a : BARE-TLD — a top-level domain, not a registration; skipped"
+       continue ;;
+  esac
+  if printf '%s' "${a##*.}" | grep -qE "$BRAND_TLD_RE"; then
+    printf '%s\t%s\t\t\n' "$a" "OK-BRAND-TLD" >> "$TSV"
+    continue
+  fi
   u="$(rdap_url "$a")"
   if [ -z "$u" ]; then
     printf '%s\t%s\t\t\n' "$a" "NO-RDAP" >> "$TSV"; sleep "$DELAY"; continue
