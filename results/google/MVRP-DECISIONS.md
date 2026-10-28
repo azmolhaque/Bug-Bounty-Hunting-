@@ -3843,3 +3843,45 @@ checked against a JSON 404 that echoes the requested path and against an SPA
 login wall with a password field in it, which are the two shapes that
 generated the false positives in the path sweep. 24 markers, zero matches
 against all three.
+
+### 2026-10-28 — correction, and six probes chosen by reading the scope file
+
+Correction first. I read `tail -30 ~/fp.log` as a run that had died without a
+summary. It had not: `fingerprint-20261028-0110.txt` ends with the full
+reading guide, so the 238-host sweep completed and its zero is real. The tail
+was taken while the loop was still running — the loop prints only on a hit —
+and zsh reported the job `done` at the next prompt, after the tail. The
+stamp collision was real (both 02:10 jobs wrote one `-0210` pair); the early
+exit was not.
+
+The progress file stays anyway, because the thing that made the misreading
+possible is still true without it: a silent loop and a zero look identical.
+
+Then the part worth more than either fix. The first 24 probes were chosen from
+a list of software that is commonly exposed. The scope file was never read for
+the question "what do the host names say runs here":
+
+    argocd-dwh-eu-dev.photomath.net        argocd-gke-app-eu-prod.photomath.net
+    argocd-dwh-us-dev.photomath.net        argocd-gke-app-us-prod.photomath.net
+    argocd-gke-app-eu-dev.photomath.net    argocd-gke-app-eu-test.photomath.net
+    argocd-platform-eu-dev.photomath.net   argocd-gke-app-us-test.photomath.net
+    argocd-platform-eu-test.photomath.net  argocd-platform-prod-eu.photomath.net
+
+Eleven TIER0 hosts named after the software running on them, and ArgoCD was
+not among the probes. Nor was Looker, on a domain whose TIER0 entries include
+keybox, pbvpn, gw2-pbvpn and rampart. This is the same error as the path
+sweep in a different coat: asking a generic question of a specific estate.
+
+Added, named after what this scope contains: ArgoCD (`"KustomizeVersion"`),
+Looker's API (`looker_release_version`), PAN-OS GlobalProtect, Harbor,
+Vault (`"sealed"`), Keycloak. Thirty probes now.
+
+`PROBE_ONLY='ArgoCD|Looker'` runs only the named ones. That exists for § 7,
+not for speed: a longer list should not mean hitting every host again for
+answers already written down.
+
+Self-test gained one negative that matters here — ArgoCD's own
+`{"error":"no session information","code":16}` must not match the ArgoCD
+markers. Identifying ArgoCD is informational. The question is whether
+`/api/v1/applications` answers without a token, and that answer is somebody
+else's deployment inventory.

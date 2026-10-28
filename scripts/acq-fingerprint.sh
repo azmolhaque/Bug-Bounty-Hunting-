@@ -64,7 +64,30 @@ PROBES=(
   '/version|"gitVersion"|"buildDate"|Kubernetes or Mongo version endpoint'
   '/appsettings.json|ConnectionStrings|DefaultConnection|exposed appsettings.json'
   '/phpinfo.php|phpinfo\(\)|PHP Extension Build|phpinfo'
+  # Third batch, and the only one chosen by reading the scope file instead of
+  # a list of popular software. The host names say what runs on them and the
+  # first two batches were not listening: eleven TIER0 hosts are named
+  # argocd-*.photomath.net, and ArgoCD was not among the probes. Nor Looker,
+  # on a domain with keybox/pbvpn/rampart/gw2-pbvpn hosts in TIER0.
+  '/api/version|"KustomizeVersion"|"HelmVersion"|ArgoCD'
+  '/api/4.0/versions|looker_release_version|"supported_versions"|Looker API'
+  '/global-protect/login.esp|GlobalProtect Portal|globalprotect/portal|PAN-OS GlobalProtect'
+  '/api/v2.0/systeminfo|"harbor_version"|"registry_url"|Harbor registry'
+  '/v1/sys/health|"sealed"|"standby"|HashiCorp Vault'
+  '/realms/master/.well-known/openid-configuration|"token-service"|"account-service"|Keycloak'
 )
+
+# Run only some of them, by name. The point is politeness, not speed: when the
+# probe list grows, re-running the whole thing hits every host again for
+# answers already in a table. PROBE_ONLY='ArgoCD|Looker' asks only what is new.
+if [ -n "${PROBE_ONLY:-}" ]; then
+  keep=()
+  for p in "${PROBES[@]}"; do
+    printf '%s\n' "${p##*|}" | grep -qE "$PROBE_ONLY" && keep+=("$p")
+  done
+  [ ${#keep[@]} -gt 0 ] || { echo "!! PROBE_ONLY='$PROBE_ONLY' matched no probe name"; exit 1; }
+  PROBES=("${keep[@]}")
+fi
 
 body=$(mktemp)
 LOCK="$OUT/.fingerprint.lock"
@@ -86,6 +109,13 @@ selftest() {
   grep -qE 'go_gc_duration_seconds' "$t" || { echo "!! selftest: metrics marker"; fail=1; }
   printf '{"metadatabase": {"status": "healthy"}}\n' > "$t"
   grep -qE '"metadatabase"' "$t" || { echo "!! selftest: Airflow marker"; fail=1; }
+  printf '{"Version":"v2.9.3","KustomizeVersion":"v5.2.1","HelmVersion":"v3.13"}\n' > "$t"
+  grep -qE '"KustomizeVersion"' "$t" || { echo "!! selftest: ArgoCD marker"; fail=1; }
+  # ArgoCD's unauthenticated answer on the API paths. It identifies the
+  # software and nothing else — it is not a finding and must not read as one.
+  printf '{"error":"no session information","code":16,"message":"no session information"}\n' > "$t"
+  grep -qE '"KustomizeVersion"|"HelmVersion"' "$t" \
+    && { echo "!! selftest: ArgoCD marker matched its own auth error"; fail=1; }
   # Nothing a site serves to *everybody* may match. Three shapes have produced
   # false positives in this repo's earlier sweeps: the 404 that echoes the
   # path, the catch-all SPA shell, and the login wall.
