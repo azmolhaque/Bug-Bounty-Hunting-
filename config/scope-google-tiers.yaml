@@ -1,6 +1,6 @@
 # scope-acquisitions.yaml — GENERATED, do not hand-edit.
 # Source: google_domains_tiers.asciipb
-# Built : 2026-10-28T03:27:42Z by scripts/scope-from-tiers.sh
+# Built : 2026-10-28T17:29:18Z by scripts/scope-from-tiers.sh
 # In scope tiers: TIER0 TIER1 TIER2 TIER3.  TIER4 is listed under out_of_scope, since
 # Google's scheme marks it never in scope and out_of_scope is checked first.
 
@@ -19,6 +19,7 @@ in_scope:
   - "clients6.google.com"   # TIER0
   - "cloudsearch.google.com"   # TIER0
   - "cloudssh.developers.google.com"   # TIER0
+  - "connected.google.com"   # TIER0
   - "console-secure.cloud.google.com"   # TIER0
   - "console.actions.google.com"   # TIER0
   - "console.cloud.google"   # TIER0
@@ -26,6 +27,7 @@ in_scope:
   - "console.developers.google.com"   # TIER0
   - "console.firebase.google.com"   # TIER0
   - "ediscovery.google.com"   # TIER0
+  - "express.cloud.google.com"   # TIER0
   - "fi.google.com"   # TIER0
   - "flash.android.com"   # TIER0
   - "g-issues.chromium.org"   # TIER0
@@ -196,6 +198,7 @@ in_scope:
   - "doubleclick.google.com"   # TIER2
   - "earth.google.com"   # TIER2
   - "earthengine.google.com"   # TIER2
+  - "enterprise.gemini.google.com"   # TIER2
   - "explorer.earthengine.google.com"   # TIER2
   - "families.google.com"   # TIER2
   - "fiber.google.com"   # TIER2
@@ -466,7 +469,6 @@ in_scope:
   - "new.meme"   # TIER3
   - "nn0e.com"   # TIER3
   - "openthread.io"   # TIER3
-  - "picasa-software.com"   # TIER3
   - "picasa.com"   # TIER3
   - "pub.dev"   # TIER3
   - "qwiklabs.com"   # TIER3
@@ -500,6 +502,7 @@ out_of_scope:
   - "ad.doubleclick.net"   # TIER4 — never in scope
   - "adscape.com"   # TIER4 — never in scope
   - "adtrafficquality.google"   # TIER4 — never in scope
+  - "ai.studio"   # TIER4 — never in scope
   - "app.goo.gl"   # TIER4 — never in scope
   - "app.google"   # TIER4 — never in scope
   - "appspot.com"   # TIER4 — never in scope
@@ -512,6 +515,7 @@ out_of_scope:
   - "cloud-staging.goog"   # TIER4 — never in scope
   - "cloud-test.goog"   # TIER4 — never in scope
   - "cloud.goog"   # TIER4 — never in scope
+  - "cloud.run"   # TIER4 — never in scope
   - "cloudconnect.goog"   # TIER4 — never in scope
   - "cloudconnectcommunity.com"   # TIER4 — never in scope
   - "clouddataprep.com"   # TIER4 — never in scope

@@ -1,6 +1,6 @@
 # scope-acquisitions.yaml — GENERATED, do not hand-edit.
 # Source: acquisitions_domains_tiers.asciipb
-# Built : 2026-10-28T03:27:42Z by scripts/scope-from-tiers.sh
+# Built : 2026-10-28T17:29:18Z by scripts/scope-from-tiers.sh
 # In scope tiers: TIER0 TIER1 TIER2 TIER3.  TIER4 is listed under out_of_scope, since
 # Google's scheme marks it never in scope and out_of_scope is checked first.
 
@@ -14,28 +14,16 @@ in_scope:
   - "api.appsheet.com"   # TIER0
   - "api.pring.jp"   # TIER0
   - "app.validation.mandiant.com"   # TIER0
-  - "argocd-dwh-eu-dev.photomath.net"   # TIER0
-  - "argocd-dwh-us-dev.photomath.net"   # TIER0
-  - "argocd-gke-app-eu-dev.photomath.net"   # TIER0
   - "argocd-gke-app-eu-prod.photomath.net"   # TIER0
   - "argocd-gke-app-eu-test.photomath.net"   # TIER0
   - "argocd-gke-app-us-prod.photomath.net"   # TIER0
   - "argocd-gke-app-us-test.photomath.net"   # TIER0
-  - "argocd-platform-eu-dev.photomath.net"   # TIER0
-  - "argocd-platform-eu-test.photomath.net"   # TIER0
-  - "argocd-platform-prod-eu.photomath.net"   # TIER0
   - "azure.cloudsimple.com"   # TIER0
-  - "baja.photomath.net"   # TIER0
   - "callback.pring.app"   # TIER0
   - "cameyo.com"   # TIER0
   - "cameyo.net"   # TIER0
-  - "cuvar.photomath.net"   # TIER0
-  - "daportal.photomath.net"   # TIER0
   - "de.looker.com"   # TIER0
   - "dev-api.pring.jp"   # TIER0
-  - "dpcapi-admin.photomath.com"   # TIER0
-  - "dpcapi-admin.photomath.net"   # TIER0
-  - "dpcapi.photomath.net"   # TIER0
   - "dwealliance.com"   # TIER0
   - "eu.appsheet.com"   # TIER0
   - "future-api.pring.jp"   # TIER0
@@ -46,20 +34,16 @@ in_scope:
   - "keybox.looker.com"   # TIER0
   - "lapi.photomath.net"   # TIER0
   - "login.mandiant.com"   # TIER0
-  - "mankey.photomath.net"   # TIER0
   - "marketplace.cameyo.com"   # TIER0
-  - "metabase.photomath.net"   # TIER0
   - "myhelp.fitbit.com"   # TIER0
   - "online.cameyo.com"   # TIER0
   - "pbvpn.looker.com"   # TIER0
   - "rampart.looker.com"   # TIER0
   - "service.cloudvmwareengine.google"   # TIER0
   - "staging.callback.pring.app"   # TIER0
-  - "taportal.photomath.net"   # TIER0
   - "tlapi.photomath.net"   # TIER0
   - "virtual-app.com"   # TIER0
   - "www.appsheet.com"   # TIER0
-  - "zuja.photomath.net"   # TIER0
   - "accounts.fitbit.com"   # TIER1
   - "adhawkdev.com"   # TIER1
   - "admin.store.ft.nest.com"   # TIER1
@@ -82,7 +66,6 @@ in_scope:
   - "api.srt01.iad01.ft.nest.com"   # TIER1
   - "apigee.com"   # TIER1
   - "apigee.google.com"   # TIER1
-  - "aportal.photomath.net"   # TIER1
   - "app.dataform.co"   # TIER1
   - "autodiscover.c.fitbit.com"   # TIER1
   - "autodiscover.fitbit.com"   # TIER1
@@ -95,27 +78,17 @@ in_scope:
   - "chronicle.security"   # TIER1
   - "clips.camera.home.nest.com"   # TIER1
   - "cloud-file-service-gcp.elastifile.com"   # TIER1
-  - "cms.photomath.net"   # TIER1
   - "coaching-dashboard.fitbit.com"   # TIER1
   - "content.validation.mandiant.com"   # TIER1
-  - "core.photomath.net"   # TIER1
   - "corp.looker.com"   # TIER1
   - "cs-tableau-bpo.corp.fitbit.com"   # TIER1
   - "customersupport-tableau.site-ops.fitbit.com"   # TIER1
-  - "dacp.photomath.net"   # TIER1
-  - "dcms.photomath.net"   # TIER1
   - "developer-api-ft.nest.com"   # TIER1
   - "developer-api.nest.com"   # TIER1
   - "devops-survey.com"   # TIER1
-  - "dlapi.photomath.nettier"   # TIER1
   - "dropcam.com"   # TIER1
-  - "dsnom.photomath.com"   # TIER1
-  - "dsnom.photomath.net"   # TIER1
-  - "dtap.photomath.net"   # TIER1
-  - "dtranslator.photomath.net"   # TIER1
   - "enterprise.apigee.com"   # TIER1
   - "feed-moderation.fitbit.com"   # TIER1
-  - "feeder.photomath.net"   # TIER1
   - "fiori-dev.corp.fitbit.com"   # TIER1
   - "fiori.corp.fitbit.com"   # TIER1
   - "fleet.home.ft.nest.com"   # TIER1
@@ -127,10 +100,10 @@ in_scope:
   - "home.ft.nest.com"   # TIER1
   - "home.nest.com"   # TIER1
   - "iafwsjwcmh.com"   # TIER1
-  - "idp.photomath.net"   # TIER1
   - "instancemanagerui.looker.com"   # TIER1
   - "intelligence.fireeye.com"   # TIER1
-  - "iportal.photomath.net"   # TIER1
+  - "intrinsic.ai"   # TIER1
+  - "intrinsic.equipment"   # TIER1
   - "kb.cameyo.com"   # TIER1
   - "lk.looker.com"   # TIER1
   - "looker-opensource-components.looker.com"   # TIER1
@@ -153,42 +126,23 @@ in_scope:
   - "nssbridge.nest.com"   # TIER1
   - "opensky.wing.com"   # TIER1
   - "passbolt.siemplify.co"   # TIER1
-  - "pdb.photomath.net"   # TIER1
   - "phoenixapi-cam.production.nest.com"   # TIER1
   - "plextrac.mandiant.com"   # TIER1
-  - "pms-doc.photomath.net"   # TIER1
   - "pointy.com"   # TIER1
-  - "portal.photomath.net"   # TIER1
-  - "problem-lifecycle.photomath.net"   # TIER1
   - "prod.respond-software.com"   # TIER1
   - "qa1synclair.fitbit.com"   # TIER1
-  - "result.photomath.net"   # TIER1
-  - "rip.photomath.net"   # TIER1
   - "sense-ui.apigee.com"   # TIER1
   - "session.cameyo.com"   # TIER1
   - "setup.camera.home.nest.com"   # TIER1
   - "siemplifycloud.com"   # TIER1
   - "simulator-updates.fitbit.com"   # TIER1
   - "snom.photomath.net"   # TIER1
-  - "sr.photomath.net"   # TIER1
-  - "srs.photomath.net"   # TIER1
-  - "srv4.photomath.net"   # TIER1
   - "strava.fitbit.com"   # TIER1
   - "support.cameyo.com"   # TIER1
   - "support.pring.jp"   # TIER1
   - "supportadmin.nestlabs.com"   # TIER1
-  - "tacp.photomath.net"   # TIER1
-  - "tcms.photomath.net"   # TIER1
-  - "tcopper.photomath.net"   # TIER1
   - "tenor.com"   # TIER1
-  - "tfeeder.photomath.net"   # TIER1
-  - "tidp.photomath.net"   # TIER1
-  - "tportal.photomath.net"   # TIER1
-  - "tproblem-lifecycle.photomath.net"   # TIER1
-  - "translator.photomath.net"   # TIER1
-  - "trip.photomath.net"   # TIER1
   - "tsnom.photomath.net"   # TIER1
-  - "ttranslator.photomath.net"   # TIER1
   - "validation.mandiant.com"   # TIER1
   - "vapi.srt01.iad01.production.nest.com"   # TIER1
   - "vpn.owlchemylabs.com"   # TIER1
@@ -203,7 +157,6 @@ in_scope:
   - "www.pring.jp"   # TIER1
   - "www.virustotal.com"   # TIER1
   - "www.waze.com"   # TIER1
-  - "acp.photomath.net"   # TIER2
   - "adp.photomath.net"   # TIER2
   - "alexa.nest.com"   # TIER2
   - "alphagoteach.deepmind.com"   # TIER2
@@ -227,7 +180,6 @@ in_scope:
   - "certified-legacy.nest.com"   # TIER2
   - "certified.nest.com"   # TIER2
   - "cf-mysight.isightpartners.com"   # TIER2
-  - "chorussystems.net"   # TIER2
   - "chunkedswarm.com"   # TIER2
   - "coach.fitbit.com"   # TIER2
   - "console.developers.ft.nest.com"   # TIER2
@@ -236,8 +188,6 @@ in_scope:
   - "corporate.fitbit.com"   # TIER2
   - "corpusant.ai"   # TIER2
   - "coverity.nestlabs.com"   # TIER2
-  - "dadp.photomath.com"   # TIER2
-  - "dadp.photomath.net"   # TIER2
   - "data-export-api.store.ft.nest.com"   # TIER2
   - "data-export-api.store.nest.com"   # TIER2
   - "dataform.co"   # TIER2
@@ -246,15 +196,9 @@ in_scope:
   - "developers.breezometer.com"   # TIER2
   - "development.www.pring.jp"   # TIER2
   - "dfa.nestlabs.com"   # TIER2
-  - "dninjask.photomath.com"   # TIER2
-  - "dninjask.photomath.net"   # TIER2
   - "docs-staging.isightpartners.com"   # TIER2
   - "docs.isightpartners.com"   # TIER2
   - "downloads.nest.com"   # TIER2
-  - "dpcapi.photomath.com"   # TIER2
-  - "dpdimages.photomath.net"   # TIER2
-  - "dqapdimages.photomath.net"   # TIER2
-  - "drip.photomath.net"   # TIER2
   - "drop.isightpartners.com"   # TIER2
   - "dynamic-swarm175.rts-test01.iad02.build.nestlabs.com"   # TIER2
   - "email.subscriptions.fitbit.com"   # TIER2
@@ -270,6 +214,7 @@ in_scope:
   - "fieldtesting.fitbit.com"   # TIER2
   - "fileserv.siemplify.co"   # TIER2
   - "fiori-test.corp.fitbit.com"   # TIER2
+  - "flowmusic.app"   # TIER2
   - "forum.waze.com"   # TIER2
   - "freemap.co.il"   # TIER2
   - "frontdoor-aws.ft.nest.com"   # TIER2
@@ -286,7 +231,6 @@ in_scope:
   - "grpc-web.ft.nest.com"   # TIER2
   - "grpc-web.production.nest.com"   # TIER2
   - "home-assistant.nest.com"   # TIER2
-  - "horsea.photomath.net"   # TIER2
   - "hub.fitbit.com"   # TIER2
   - "hvac-diag.nest.com"   # TIER2
   - "ifttt.fitbit.com"   # TIER2
@@ -298,6 +242,7 @@ in_scope:
   - "integration.store.ft.nest.com"   # TIER2
   - "integration.store.nest.com"   # TIER2
   - "integrations.mandiant.com"   # TIER2
+  - "intrinsic.dev"   # TIER2
   - "inv.semihalf.com"   # TIER2
   - "investor.fitbit.com"   # TIER2
   - "investors.fitbit.com"   # TIER2
@@ -306,7 +251,6 @@ in_scope:
   - "jetbridge.net"   # TIER2
   - "jira.fitbit.com"   # TIER2
   - "jira.nestlabs.com"   # TIER2
-  - "json.photomath.net"   # TIER2
   - "lab.mandiant.com"   # TIER2
   - "labs.deepmind.com"   # TIER2
   - "letstalkselfdriving.com"   # TIER2
@@ -346,7 +290,6 @@ in_scope:
   - "prod-candidate.isightpartners.com"   # TIER2
   - "producer.ai"   # TIER2
   - "pulse.fitbit.com"   # TIER2
-  - "pws.photomath.net"   # TIER2
   - "riff.ing"   # TIER2
   - "riffusion.com"   # TIER2
   - "rpasplatform.net"   # TIER2
@@ -391,8 +334,6 @@ in_scope:
   - "threatscape.isightpartners.com"   # TIER2
   - "tninjask.photomath.net"   # TIER2
   - "tpdimages.photomath.net"   # TIER2
-  - "tpws.photomath.net"   # TIER2
-  - "tqapdimages.photomath.net"   # TIER2
   - "transport.home.ft.nest.com"   # TIER2
   - "transport.home.nest.com"   # TIER2
   - "tsapi-stg.isightpartners.com"   # TIER2
@@ -491,23 +432,14 @@ in_scope:
   - "developerblog.myo.com"   # TIER3
   - "device.fitbit.com"   # TIER3
   - "device101.fitbit.com"   # TIER3
-  - "dggb-frame.photomath.net"   # TIER3
   - "directsearch.fitbit.com"   # TIER3
   - "docs.actifio.com"   # TIER3
   - "docs.breezometer.com"   # TIER3
   - "docs.mandiant.com"   # TIER3
   - "doki.com"   # TIER3
   - "download.actifio.com"   # TIER3
-  - "dpws.photomath.com"   # TIER3
-  - "dpws.photomath.net"   # TIER3
-  - "drapi.photomath.com"   # TIER3
-  - "drapi.photomath.net"   # TIER3
-  - "drestrict.photomath.net"   # TIER3
   - "drive.fitbit.com"   # TIER3
-  - "dsfc.photomath.net"   # TIER3
   - "dtpr.sidewalklabs.com"   # TIER3
-  - "dttsp.photomath.com"   # TIER3
-  - "dttsp.photomath.net"   # TIER3
   - "e.fitbit.com"   # TIER3
   - "e2e.apigee.net"   # TIER3
   - "em1323.fitbit.com"   # TIER3
@@ -641,7 +573,6 @@ in_scope:
   - "partners.elastifile.com"   # TIER3
   - "partners.fitbit.com"   # TIER3
   - "payables.co"   # TIER3
-  - "pdttsp.photomath.net"   # TIER3
   - "peanut.sproute.net"   # TIER3
   - "pebble-sockets.com"   # TIER3
   - "pebble.com"   # TIER3
@@ -672,8 +603,6 @@ in_scope:
   - "pr.preprod.debugproject.com"   # TIER3
   - "pre-prod-advantage.mandiant.com"   # TIER3
   - "press.fitbit.com"   # TIER3
-  - "pttsp.photomath.net"   # TIER3
-  - "ptttsp.photomath.net"   # TIER3
   - "pulsedam.fitbit.com"   # TIER3
   - "qa-advantage.mandiant.com"   # TIER3
   - "qa.fitbit.com"   # TIER3
@@ -717,13 +646,10 @@ in_scope:
   - "rogerchallenger.fitbit.com"   # TIER3
   - "rpasplatform.dev"   # TIER3
   - "rubyfe-grpc-global-lb.ft.nest.com"   # TIER3
-  - "s.photomath.net"   # TIER3
   - "seismancer.com"   # TIER3
   - "semihalf.com"   # TIER3
   - "server-logs.nestlabs.com"   # TIER3
   - "ses.fitbit.com"   # TIER3
-  - "sfc.photomath.net"   # TIER3
-  - "share.photomath.net"   # TIER3
   - "sherlockholmesboarding.fitbit.com"   # TIER3
   - "silver-eagle.gcp.elastifile.com"   # TIER3
   - "sin.debugproject.com"   # TIER3
@@ -769,9 +695,6 @@ in_scope:
   - "transit.sidewalklabs.com"   # TIER3
   - "trapi.photomath.net"   # TIER3
   - "trestrict.photomath.net"   # TIER3
-  - "tsfc.photomath.net"   # TIER3
-  - "ttsp.photomath.net"   # TIER3
-  - "tttsp.photomath.net"   # TIER3
   - "twinehealth.com"   # TIER3
   - "twinehealthapp.com"   # TIER3
   - "updates.nest.com"   # TIER3
@@ -815,6 +738,9 @@ in_scope:
   - "y.fitbit.com"   # TIER3
   - "+.cameyo.com"   # TIER0 propagate_tier_to_direct_subdomains
   - "+.googleacquisitionmigration.com"   # TIER0 propagate_tier_to_direct_subdomains
+  - "+.intrinsic.ai"   # TIER1 propagate_tier_to_direct_subdomains
+  - "+.intrinsic.equipment"   # TIER1 propagate_tier_to_direct_subdomains
+  - "+.intrinsic.dev"   # TIER2 propagate_tier_to_direct_subdomains
   - "+.bvi.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
   - "+.bvi.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
   - "+.bvi.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains

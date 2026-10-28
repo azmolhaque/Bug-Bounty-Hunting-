@@ -48,6 +48,20 @@ check definitely-not-real-9f3a.fitbit.com     OUT "fitbit.com has no flag"
 check definitely-not-real-9f3a.photomath.net  OUT "photomath.net has no flag"
 check nestlabs.com                            OUT "apex not listed and no flag"
 
+# Added 2026-10-28, the day Google put the intrinsic estate in scope: three
+# domains arrived at once, all carrying the flag. A generated scope file is
+# only as good as the day it was generated, so the newest grant gets a test of
+# its own — if a later regeneration drops the flag again, this fails instead of
+# the surface quietly disappearing.
+check intrinsic.ai                            IN  "TIER1 apex, added 2026-10-28"
+check flowstate-9f3a.intrinsic.ai             IN  "UNLISTED direct subdomain, flag set"
+check a.b.intrinsic.ai                        OUT "two labels is not direct"
+check intrinsic.equipment                     IN  "TIER1 apex, added 2026-10-28"
+check anything-9f3a.intrinsic.equipment       IN  "UNLISTED direct subdomain, flag set"
+check anything-9f3a.flowmusic.app             OUT "flowmusic.app was added WITHOUT the flag"
+check intrinsic.ai.attacker-9f3a.com          OUT "suffix match must not be a prefix match"
+check evil-intrinsic.ai                       OUT "a label ending in the apex is not the apex"
+
 # And the ordinary cases still hold.
 check repos.nestlabs.com   IN  "explicitly listed"
 check api.appsheet.com     IN  "explicitly listed TIER0"

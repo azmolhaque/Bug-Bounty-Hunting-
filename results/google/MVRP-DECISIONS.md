@@ -4909,3 +4909,155 @@ zeros with controls behind each.
 
 Cleanup owed: the four test DNS records on cindrasec.com can be deleted. The
 apex MX was never modified.
+
+---
+
+## 2026-10-28 — OSS VRP, source review: google/site-kit-wp (OT1)
+
+Six surfaces had been measured to zero and all six were the same class:
+unauthenticated external probing. The OSS repository tier list had been seen
+and never read, so it was the one genuinely uncovered asset. 26 OT0 + 47 OT1
+repositories; the fuzzing-saturated ones (tensorflow, xla, jax, re2, brotli,
+flatbuffers, …) are OSS-Fuzz territory and were dropped. site-kit-wp was
+chosen for being a WordPress plugin with millions of installs, PHP, REST and
+OAuth — logic-bug ground rather than memory-safety ground.
+
+Four classes, each with a control that the instrument reads the right code
+before any zero was recorded:
+
+1. **REST routes without a permission callback.** `REST_Route.php`'s
+   `$endpoint_defaults` supplies no `permission_callback`, so an omission
+   would register a publicly accessible route (WP 5.5+ only warns). A
+   balanced-paren scan of every `new REST_Route(` construction: **62 total,
+   62 with a callback, 0 without.** Control: the parser found all 62, and the
+   7 inline closures were read by hand — every one checks a real capability,
+   none is `__return_true`, none is nonce-only. Class closed.
+
+2. **Capability downgrade through `Permission_Aware_Datapoint`** (new in
+   1.185.0). `resolve_datapoint_permission()` lets a datapoint replace the
+   route's default permission with its own, and it is applied to the EDITABLE
+   route too, whose default is `MANAGE_OPTIONS`. Four datapoints carry their
+   own callback and all four return `current_user_can( VIEW_DASHBOARD )`,
+   which a Contributor obtains through Dashboard Sharing. Three are writes:
+   RRM `save-user-settings` and `save-site-goals-settings` are per-user
+   (`User_Setting`), but **`POST:remove-site-goals-widget` writes the
+   site-wide option `googlesitekit_analytics-4_site_goals_site_settings`** —
+   so a view-only shared user can remove a Site Goals widget from every
+   user's dashboard, where before 1.185.0 that needed an administrator.
+
+   Real, and the fix is a real code change. **Not submitted:** § 2's first
+   criterion asks what the attacker GETS, and the answer is "a dashboard
+   widget is hidden from other users". No data, no credential, no access.
+   CVSS ~4.3 at the most generous reading. Logged as the ceiling of the class,
+   because the class itself is now enumerated: those four are all of it.
+
+3. **Missing nonce on a state-changing GET.** `Golinks::handle_go()` is on
+   `admin_action_googlesitekit_go` with no nonce and no capability check, and
+   `Email_Notice_Golink_Handler::handle()` has side effects: it dismisses a
+   notice for the current user, and when `notice_id` is the Analytics setup
+   notice AND the current user has `MANAGE_OPTIONS`, it **activates the
+   analytics-4 module**. So a page an administrator visits can activate a
+   module on their site. CSRF, one-click, GET.
+
+   **Not submitted** on the same test: activating a module is a configuration
+   change, not account access, data, or execution. Kept as a lead — if a
+   module activation turns out to re-inject a measurement tag on the public
+   site, the impact argument changes and this becomes reportable.
+
+4. **The ordinary sinks**, swept with controls: no `wp_ajax_nopriv_*`, no
+   `admin_post_nopriv_*`; the one AJAX plugin installer (`wp-consent-api`)
+   checks `check_ajax_referer` AND `activate_plugin`; every `$wpdb` call is
+   `prepare()`d with no interpolated input; no `wp_redirect()` at all (only
+   `wp_safe_redirect`); no `echo` of request input; `Email_Template_Renderer`
+   validates template part paths with `realpath()` + a prefix check before
+   `include`; Sign in with Google verifies the ID token through
+   `verifyIdToken` and **requires `email_verified`**, matches on the Google
+   `sub` first, rejects an email shared by two users, refuses to auto-link an
+   account with two-factor enabled, checks the `Origin` header, and compares a
+   `nonce` claim against a cookie. That module is hardened past the usual
+   standard; nothing there.
+
+## 2026-10-28 — OSS VRP, differential: adk-python vs adk-js vs adk-kotlin (all OT1)
+
+Hypothesis worth the name: a port loses a check the original has. adk-python
+carries `_validate_agent_name()` — an explicit `^[a-zA-Z0-9_]+$` plus an
+on-disk existence test, commented "prevent arbitrary module imports" — in
+front of `importlib.import_module(app_name)` where `app_name` comes straight
+out of the URL. If a port fed its URL parameter to a module loader without
+that guard, the result is arbitrary local module execution on an `adk
+api_server`, which `adk deploy` puts on Cloud Run.
+
+Measured, three ports, two subsystems:
+
+* **Agent loading.** adk-js does not build a path from the request at all; it
+  preloads a dictionary at startup and looks the name up. Nothing to traverse.
+* **File artifact service.** All three reject absolute and drive-qualified
+  filenames, reject parent references, and re-check containment after
+  resolving; `userId` and `sessionId` are each validated as a single path
+  segment (`validate_path_segment` / `assertSafeSegment` /
+  `validatePathSegment`). The Kotlin port even redacts java.io messages from
+  logs because they embed the path, and therefore the userId.
+
+**Closed.** The differential was already done by whoever wrote those comments.
+Recording it so the idea is not re-tried a third time: these ports are kept
+deliberately consistent, including in their defences.
+
+## 2026-10-28 — the tier files moved today, and that is the lead
+
+`config/*.asciipb` were from 2026-10-27. Upstream changed the same day. The
+diff, by fqdn and tier:
+
+**Google file — added**
+    connected.google.com          TIER0   <- new
+    express.cloud.google.com      TIER0   <- new
+    enterprise.gemini.google.com  TIER2
+    ai.studio                     TIER4   (never in scope)
+    cloud.run                     TIER4   (never in scope)
+
+**Google file — removed**
+    picasa-software.com           TIER3
+
+**Acquisitions — added**
+    intrinsic.ai                  TIER1   propagate_tier_to_direct_subdomains
+    intrinsic.equipment           TIER1   propagate_tier_to_direct_subdomains
+    intrinsic.dev                 TIER2   propagate_tier_to_direct_subdomains
+    flowmusic.app                 TIER2   (no flag)
+
+**Acquisitions — removed**: the entire photomath estate (79 hosts) and
+chorussystems.net. One of this account's two Fixed reports was
+rip.photomath.net; that surface no longer exists.
+
+Two things follow.
+
+First, **`picasa-software.com` is gone from Google's own file on the same day
+`acq-ownership.sh` concluded the domain had left Google's hands** (Wix
+nameservers, registration created 2026-10-10). The instrument was right, and
+it was right before the authoritative file agreed. That is the first
+independent corroboration any instrument in this repo has had.
+
+Second, **three propagating domains arrived at once.** Every direct subdomain
+of intrinsic.ai (TIER1), intrinsic.equipment (TIER1) and intrinsic.dev (TIER2)
+is in scope as of today, and none of those names are in the protobuf — they
+only exist in certificate logs. Intrinsic is Alphabet's robotics software
+company. This is a whole estate that no cached tooling knows about, which is
+the first time this account has had a timing advantage on anything.
+
+Done in response:
+* refreshed both `config/*.asciipb` from upstream and regenerated both scope
+  files — 728 in scope / 220 TIER4 for acquisitions (31 propagating domains,
+  was 28), 487 / 99 for Google.
+* `scripts/prop-subs.sh`, new: enumerates direct subdomains of every
+  propagating domain from certificate transparency (crt.sh + certspotter, two
+  sources so one being down is not silently "nothing here"), keeps exactly one
+  label below the apex, and passes every name through scope-check before it
+  reaches the host list. Three controls: a known-populated domain must yield
+  names, a domain that does not exist must yield none, and the one-label
+  filter is tested against hand-written fixtures including `a.b.apex`,
+  `evil-apex`, and `apex.attacker.com`.
+* eight more assertions in `scope-check-tests.sh` pinning the new grant —
+  19/19 pass. `anything.flowmusic.app` must be OUT, because flowmusic.app
+  arrived without the flag, and a generated file is only as good as the day it
+  was generated.
+
+The container cannot reach any of it (the agent proxy refuses CONNECT to
+crt.sh and to the targets alike), so the probing runs on the Pi.
