@@ -4721,3 +4721,75 @@ as a string in the JS bundle, so whether that list applies outside `-s` is
 unknown — assuming it does would be the same mistake as the extension PoC.
 And a denylist naming one credentials file is an admission that the path
 exists, while `~/.gemini/oauth_creds.json` is not on it.
+
+### 2026-10-28 — toolbox.googleapps.com, the one application left on the web side
+
+TIER1, `server: apps-toolbox`, and the only host from the Google sweep with
+its own application logic rather than a static page. Django, confirmed by the
+`csrfmiddlewaretoken` in its forms.
+
+Tools exposed: `/apps/{main,dig,checkmx,messageheader,browserinfo,useragent,
+encode_decode,har_analyzer,loganalyzer,loggershark,screen_recorder,other_tools}`.
+
+**The endpoint took three wrong guesses to find, and each wrong guess was
+caught by a control rather than by reasoning.** The form `<form id="dig-form">`
+posts nowhere; posting to `/apps/dig/` returned exactly 18712 bytes, the same
+as the GET, which is what said the guess was wrong. `toolbox.js` is 1971 bytes
+of cookie-notice code. The real client is `/apps/dig/js/dig_prod.js`, and in it:
+
+    fetch("lookup", {method:"POST", body: new FormData(dig-form)})
+
+so the endpoint is `POST /apps/dig/lookup`, multipart, fields
+`csrfmiddlewaretoken`, `domain`, `typ`, answering JSON.
+
+**Measured, with the control passing first** (example.com/A returns a real
+answer section):
+
+    typ=NOTAREALTYPE   accepted, silently treated as ANY — a default, not an error
+    typ=ANY            same
+    domain=            clean empty response, 55 bytes
+    no csrf token      403, Django's own CSRF failure page
+    server=127.0.0.1   ignored
+    nameserver=        ignored
+    ns=                ignored
+    resolver=          ignored
+    dns=               ignored
+    at=                ignored
+    target=            ignored
+
+Seven hidden-parameter names, all ignored, and every one of those requests
+returned a normal successful lookup — which is what makes the zero readable
+rather than a silent failure. There is no way to point the resolver at a host
+of our choosing. **The dig endpoint is closed.**
+
+Two leftovers, both honest and both unfinished:
+
+- `/apps/loganalyzer/` redirects to itself forever — `Location:
+  /apps/loganalyzer/`, not parameter-controlled, so not an open redirect. A
+  broken page, not a security issue. § 3 does not take it.
+- `/apps/checkmx/check` is a **GET** form (`<form action="check">` with no
+  method), fields `domain` and `dkim_selector`. Both supplied still answers
+  "Check was not possible", so a required field is still missing — probably the
+  submit button's own name/value. **The harness is incomplete and the endpoint
+  is unmeasured.** Not "safe"; unmeasured.
+
+Checkmx is the one worth finishing: verifying MX means the server resolves and
+usually connects outward, which is a wider surface than dig's resolver.
+
+### 2026-10-28 — the Pi's SD card is failing
+
+Mid-session the root filesystem went read-only and a `curl -o` started failing:
+
+    Buffer I/O error on device mmcblk0p2
+    EXT4-fs error (device mmcblk0p2): Detected aborted journal
+    EXT4-fs (mmcblk0p2): Remounting filesystem read-only
+    /dev/mmcblk0p2 on / type ext4 (rw,noatime,emergency_ro)
+
+That is hardware, after the power cut. It also produced one false signal worth
+recording: a 403 from the toolbox endpoint that was really curl being unable to
+write its cookie jar, so the session cookie never existed and Django rejected
+the POST. Reading that 403 as the server's answer would have been the
+thirteenth instrument error of the day. Work continued from `/dev/shm`.
+
+Everything is pushed, so nothing is lost, but the card needs replacing before
+the Pi is used for anything that writes.
