@@ -120,58 +120,69 @@ out_scope_list="$(extract_list out_of_scope || true)"
 
 [ -n "$in_scope_list" ] || die_ambiguous "in_scope is empty in $SCOPE_FILE — refuse to hunt without an authorized scope"
 
-# --- PASS 1: exact in-scope always wins ---------------------------------------
-# An explicit non-wildcard in_scope entry beats any out_of_scope entry.
-# Supports "test ONLY listed assets" programs (e.g. Marriott) where *.domain.com
-# is in out_of_scope as a catch-all and specific subdomains are explicitly listed
-# in in_scope. Google VRP Tier4 exact out_of_scope entries are unaffected because
-# they are exact strings that win in PASS 2 before any wildcard matching.
+# --- the decision: the most specific pattern wins, and a tie is a refusal -----
+#
+# This replaced four ordered passes. The passes encoded "exact in beats
+# anything out, then exact out, then wildcard in, then wildcard out", which is
+# right for a programme that lists the few assets you may touch (Marriott:
+# a catch-all *.marriott.com exclusion with specific hosts allowed) and wrong
+# for Google's.
+#
+# Google's tier README says sensitivity is INHERITED from the parent domain:
+# an unlisted foo.google.com is in scope at google.com's tier. Encoding that
+# means putting "*.google.com" in in_scope — and then community.nest.com,
+# which is TIER4, needs "*.community.nest.com" in out_of_scope to keep its own
+# subdomains out. Under the old order the wildcard in_scope pass ran first and
+# those hosts came back IN SCOPE. That is the one mistake § 0 calls
+# unrecoverable, so the order was replaced by a rule that cannot depend on
+# which list a pattern happens to sit in: whichever pattern is more specific
+# decides, and if they are equally specific the host is out.
+#
+# Specificity is the length of the literal part, doubled, plus one for an
+# exact host and plus one for "+." (one label) over "*." (any depth). So:
+#   community.nest.com      exact   -> 2*18+2 = 38
+#   *.community.nest.com    wildcard-> 2*18   = 36
+#   *.nest.com              wildcard-> 2*9    = 18
+# and x.community.nest.com is out of scope under either exclusion, while
+# anything.nest.com is in.
+specificity() {   # specificity <pattern>
+  local pat="$1" lit
+  case "$pat" in
+    +.*)   lit="${pat#+.}"; echo $(( ${#lit} * 2 + 1 )) ;;
+    \*.*)  lit="${pat#\*.}"; echo $(( ${#lit} * 2 )) ;;
+    \**)   lit="${pat#\*}";  echo $(( ${#lit} * 2 )) ;;
+    *\**)  lit="${pat//\*/}"; echo $(( ${#lit} * 2 )) ;;
+    *)     echo $(( ${#pat} * 2 + 2 )) ;;
+  esac
+}
+
+best_in=-1; best_in_pat=""
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in \**|+.*) continue ;; esac   # skip wildcards ("+." is one) in this pass
-  if [ "$target" = "$pat" ]; then
-    echo "IN-SCOPE: $target matches explicit entry '$pat' (overrides wildcard exclusions)"
-    exit 0
+  if matches "$pat" "$target"; then
+    s="$(specificity "$pat")"
+    if [ "$s" -gt "$best_in" ]; then best_in="$s"; best_in_pat="$pat"; fi
   fi
 done <<< "$in_scope_list"
 
-# --- PASS 2: exact out-of-scope (non-wildcard) wins over wildcard in-scope ----
-# This ensures Google VRP Tier4 exact exclusions still block even if a wildcard
-# in_scope pattern would otherwise match.
+best_out=-1; best_out_pat=""
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in \**|+.*) continue ;; esac   # only exact entries in this pass
   if matches "$pat" "$target"; then
-    echo "OUT-OF-SCOPE: $target matches explicit exclusion '$pat'"
-    exit 1
+    s="$(specificity "$pat")"
+    if [ "$s" -gt "$best_out" ]; then best_out="$s"; best_out_pat="$pat"; fi
   fi
 done <<< "$out_scope_list"
 
-# --- PASS 3: wildcard in-scope beats wildcard out-of-scope --------------------
-# A specific wildcard in_scope entry (e.g. *gateway-apc.marriott.com,
-# *uat.marriott.com, *.apigwc.marriott.com, gateway*.marriott.com) wins over a
-# catch-all wildcard out_of_scope exclusion (e.g. *.marriott.com). This is
-# "longest match wins" for wildcard patterns: the more-specific in_scope wildcard
-# takes precedence. *\** matches any pattern containing a literal * (leading,
-# middle, or trailing), which covers all three wildcard forms.
-while IFS= read -r pat; do
-  [ -n "$pat" ] || continue
-  case "$pat" in *\**|+.*) ;; *) continue ;; esac   # only wildcard patterns ("+." included)
-  if matches "$pat" "$target"; then
-    echo "IN-SCOPE: $target matches '$pat' (overrides wildcard exclusions)"
-    exit 0
-  fi
-done <<< "$in_scope_list"
+if [ "$best_in" -lt 0 ]; then
+  echo "OUT-OF-SCOPE: $target matches no in_scope entry (default-deny)"
+  exit 1
+fi
 
-# --- PASS 4: wildcard out-of-scope (default-deny) -----------------------------
-while IFS= read -r pat; do
-  [ -n "$pat" ] || continue
-  case "$pat" in *\**|+.*) ;; *) continue ;; esac   # only wildcard patterns ("+." included)
-  if matches "$pat" "$target"; then
-    echo "OUT-OF-SCOPE: $target matches exclusion '$pat'"
-    exit 1
-  fi
-done <<< "$out_scope_list"
+if [ "$best_out" -ge "$best_in" ]; then
+  echo "OUT-OF-SCOPE: $target matches exclusion '$best_out_pat' (more specific than, or as specific as, in_scope '$best_in_pat')"
+  exit 1
+fi
 
-echo "OUT-OF-SCOPE: $target matches no in_scope entry (default-deny)"
-exit 1
+echo "IN-SCOPE: $target matches '$best_in_pat' (no more specific exclusion)"
+exit 0

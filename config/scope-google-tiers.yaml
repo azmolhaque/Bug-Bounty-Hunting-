@@ -1,6 +1,6 @@
 # scope-acquisitions.yaml — GENERATED, do not hand-edit.
 # Source: google_domains_tiers.asciipb
-# Built : 2026-10-28T17:29:18Z by scripts/scope-from-tiers.sh
+# Built : 2026-10-28T20:23:49Z by scripts/scope-from-tiers.sh
 # In scope tiers: TIER0 TIER1 TIER2 TIER3.  TIER4 is listed under out_of_scope, since
 # Google's scheme marks it never in scope and out_of_scope is checked first.
 
@@ -495,6 +495,493 @@ in_scope:
   - "youtubeeducation.com"   # TIER3
   - "youtubego.com"   # TIER3
   - "ytimg.com"   # TIER3
+  - "*.accounts.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.accounts.google.com"   # TIER0 inherited by subdomains
+  - "*.admin.google.com"   # TIER0 inherited by subdomains
+  - "*.bard.google.com"   # TIER0 inherited by subdomains
+  - "*.bughunters.google.com"   # TIER0 inherited by subdomains
+  - "*.bugs.chromium.org"   # TIER0 inherited by subdomains
+  - "*.chrome.google.com"   # TIER0 inherited by subdomains
+  - "*.chromewebstore.google.com"   # TIER0 inherited by subdomains
+  - "*.clients6.google.com"   # TIER0 inherited by subdomains
+  - "*.cloudsearch.google.com"   # TIER0 inherited by subdomains
+  - "*.cloudssh.developers.google.com"   # TIER0 inherited by subdomains
+  - "*.connected.google.com"   # TIER0 inherited by subdomains
+  - "*.console-secure.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.console.actions.google.com"   # TIER0 inherited by subdomains
+  - "*.console.cloud.google"   # TIER0 inherited by subdomains
+  - "*.console.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.console.developers.google.com"   # TIER0 inherited by subdomains
+  - "*.console.firebase.google.com"   # TIER0 inherited by subdomains
+  - "*.ediscovery.google.com"   # TIER0 inherited by subdomains
+  - "*.express.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.fi.google.com"   # TIER0 inherited by subdomains
+  - "*.flash.android.com"   # TIER0 inherited by subdomains
+  - "*.g-issues.chromium.org"   # TIER0 inherited by subdomains
+  - "*.gemini.google.com"   # TIER0 inherited by subdomains
+  - "*.googlecloudcheatsheet.withgoogle.com"   # TIER0 inherited by subdomains
+  - "*.ide.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.inbox.google.com"   # TIER0 inherited by subdomains
+  - "*.issues.chromium.org"   # TIER0 inherited by subdomains
+  - "*.issuetracker.google.com"   # TIER0 inherited by subdomains
+  - "*.mail-settings.google.com"   # TIER0 inherited by subdomains
+  - "*.mail.google.com"   # TIER0 inherited by subdomains
+  - "*.meet.google.com"   # TIER0 inherited by subdomains
+  - "*.myaccount.google.com"   # TIER0 inherited by subdomains
+  - "*.passwords.google.com"   # TIER0 inherited by subdomains
+  - "*.play.google.com"   # TIER0 inherited by subdomains
+  - "*.remotedesktop.google.com"   # TIER0 inherited by subdomains
+  - "*.shell.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.ssh-secure.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.ssh.cloud.google.com"   # TIER0 inherited by subdomains
+  - "*.takeout.google.com"   # TIER0 inherited by subdomains
+  - "*.vault.google.com"   # TIER0 inherited by subdomains
+  - "*.admin-baseline.sandbox.google.com"   # TIER1 inherited by subdomains
+  - "*.admin.baseline.google.com"   # TIER1 inherited by subdomains
+  - "*.ads.google.com"   # TIER1 inherited by subdomains
+  - "*.adsense.google.com"   # TIER1 inherited by subdomains
+  - "*.adwords.google.com"   # TIER1 inherited by subdomains
+  - "*.android.google.com"   # TIER1 inherited by subdomains
+  - "*.baseline.google.com"   # TIER1 inherited by subdomains
+  - "*.baseline.sandbox.google.com"   # TIER1 inherited by subdomains
+  - "*.bigquery.cloud.google.com"   # TIER1 inherited by subdomains
+  - "*.businessmessages.google.com"   # TIER1 inherited by subdomains
+  - "*.calendar.google.com"   # TIER1 inherited by subdomains
+  - "*.channelservices.cloud.google.com"   # TIER1 inherited by subdomains
+  - "*.chat.google.com"   # TIER1 inherited by subdomains
+  - "*.checkout.youtube.com"   # TIER1 inherited by subdomains
+  - "*.ci.android.com"   # TIER1 inherited by subdomains
+  - "*.clients.google.com"   # TIER1 inherited by subdomains
+  - "*.clients1.google.com"   # TIER1 inherited by subdomains
+  - "*.clients2.google.com"   # TIER1 inherited by subdomains
+  - "*.clients3.google.com"   # TIER1 inherited by subdomains
+  - "*.clients4.google.com"   # TIER1 inherited by subdomains
+  - "*.clients5.google.com"   # TIER1 inherited by subdomains
+  - "*.docs.google.com"   # TIER1 inherited by subdomains
+  - "*.domains.google.com"   # TIER1 inherited by subdomains
+  - "*.drive.google.com"   # TIER1 inherited by subdomains
+  - "*.encrypted.google.com"   # TIER1 inherited by subdomains
+  - "*.enexpress.app"   # TIER1 inherited by subdomains
+  - "*.express.google.com"   # TIER1 inherited by subdomains
+  - "*.get.google.com"   # TIER1 inherited by subdomains
+  - "*.googlesource.com"   # TIER1 inherited by subdomains
+  - "*.groups.google.com"   # TIER1 inherited by subdomains
+  - "*.hangouts.google.com"   # TIER1 inherited by subdomains
+  - "*.home.google.com"   # TIER1 inherited by subdomains
+  - "*.hume.google.com"   # TIER1 inherited by subdomains
+  - "*.ipv6.google.com"   # TIER1 inherited by subdomains
+  - "*.legalretrievals.google"   # TIER1 inherited by subdomains
+  - "*.lens.google.com"   # TIER1 inherited by subdomains
+  - "*.lers.google.com"   # TIER1 inherited by subdomains
+  - "*.m.youtube.com"   # TIER1 inherited by subdomains
+  - "*.messages.google.com"   # TIER1 inherited by subdomains
+  - "*.myactivity.google.com"   # TIER1 inherited by subdomains
+  - "*.notifications.google.com"   # TIER1 inherited by subdomains
+  - "*.orion.google"   # TIER1 inherited by subdomains
+  - "*.orionwifi.area120.com"   # TIER1 inherited by subdomains
+  - "*.partners.cloud.google.com"   # TIER1 inherited by subdomains
+  - "*.pay.google.com"   # TIER1 inherited by subdomains
+  - "*.payments.google.com"   # TIER1 inherited by subdomains
+  - "*.payments.youtube.com"   # TIER1 inherited by subdomains
+  - "*.photos.google.com"   # TIER1 inherited by subdomains
+  - "*.script.google.com"   # TIER1 inherited by subdomains
+  - "*.shop.google.com"   # TIER1 inherited by subdomains
+  - "*.shopping.google.com"   # TIER1 inherited by subdomains
+  - "*.signals.area120.com"   # TIER1 inherited by subdomains
+  - "*.source.cloud.google.com"   # TIER1 inherited by subdomains
+  - "*.storage.cloud.google.com"   # TIER1 inherited by subdomains
+  - "*.store.google.com"   # TIER1 inherited by subdomains
+  - "*.studio.youtube.com"   # TIER1 inherited by subdomains
+  - "*.talkgadget.google.com"   # TIER1 inherited by subdomains
+  - "*.threadit.app"   # TIER1 inherited by subdomains
+  - "*.threadit.area120.com"   # TIER1 inherited by subdomains
+  - "*.timeline-autopush.google.com"   # TIER1 inherited by subdomains
+  - "*.timeline-staging.google.com"   # TIER1 inherited by subdomains
+  - "*.timeline.google.com"   # TIER1 inherited by subdomains
+  - "*.toolbox.googleapps.com"   # TIER1 inherited by subdomains
+  - "*.voice.google.com"   # TIER1 inherited by subdomains
+  - "*.wallet.google.com"   # TIER1 inherited by subdomains
+  - "*.wiz.io"   # TIER1 inherited by subdomains
+  - "*.www.google.com"   # TIER1 inherited by subdomains
+  - "*.www.youtube.com"   # TIER1 inherited by subdomains
+  - "*.360suite.google.com"   # TIER2 inherited by subdomains
+  - "*.aboutme.google.com"   # TIER2 inherited by subdomains
+  - "*.accelerator.google.com"   # TIER2 inherited by subdomains
+  - "*.actions.google.com"   # TIER2 inherited by subdomains
+  - "*.admob.com"   # TIER2 inherited by subdomains
+  - "*.adsdatahub.google.com"   # TIER2 inherited by subdomains
+  - "*.adservice.google.com"   # TIER2 inherited by subdomains
+  - "*.adssettings.google.com"   # TIER2 inherited by subdomains
+  - "*.adviser.google.com"   # TIER2 inherited by subdomains
+  - "*.adx.google.com"   # TIER2 inherited by subdomains
+  - "*.aloud.area120.google.com"   # TIER2 inherited by subdomains
+  - "*.analytics.google.com"   # TIER2 inherited by subdomains
+  - "*.androidpay.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.apis.google.com"   # TIER2 inherited by subdomains
+  - "*.appengine.google.com"   # TIER2 inherited by subdomains
+  - "*.appmaker.google.com"   # TIER2 inherited by subdomains
+  - "*.apps.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.apps.google.com"   # TIER2 inherited by subdomains
+  - "*.area120-olive-tt.appspot.com"   # TIER2 inherited by subdomains
+  - "*.area120.google.com"   # TIER2 inherited by subdomains
+  - "*.area120tables.googleapis.com"   # TIER2 inherited by subdomains
+  - "*.artsandculture.google.com"   # TIER2 inherited by subdomains
+  - "*.assistant.google.com"   # TIER2 inherited by subdomains
+  - "*.atap.google.com"   # TIER2 inherited by subdomains
+  - "*.attribution.google.com"   # TIER2 inherited by subdomains
+  - "*.audiencecenter.google.com"   # TIER2 inherited by subdomains
+  - "*.automotiveservices.google.com"   # TIER2 inherited by subdomains
+  - "*.avera.area120.com"   # TIER2 inherited by subdomains
+  - "*.baraza.google.com"   # TIER2 inherited by subdomains
+  - "*.blogger.com"   # TIER2 inherited by subdomains
+  - "*.books.google.com"   # TIER2 inherited by subdomains
+  - "*.bss.fiber.google.com"   # TIER2 inherited by subdomains
+  - "*.business.google.com"   # TIER2 inherited by subdomains
+  - "*.campaignmanager.google.com"   # TIER2 inherited by subdomains
+  - "*.carbonindex.area120.google.com"   # TIER2 inherited by subdomains
+  - "*.cardboard.google.com"   # TIER2 inherited by subdomains
+  - "*.careers.google.com"   # TIER2 inherited by subdomains
+  - "*.cast.google.com"   # TIER2 inherited by subdomains
+  - "*.cbf.vdi.ext.google.com"   # TIER2 inherited by subdomains
+  - "*.cbf1.vdi.ext.google.com"   # TIER2 inherited by subdomains
+  - "*.checks.area120.google.com"   # TIER2 inherited by subdomains
+  - "*.chromium.org"   # TIER2 inherited by subdomains
+  - "*.cla.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.classroom.google.com"   # TIER2 inherited by subdomains
+  - "*.cloud.google.com"   # TIER2 inherited by subdomains
+  - "*.code.earthengine.google.com"   # TIER2 inherited by subdomains
+  - "*.codelabs.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.codetheroad.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.colab.research.google.com"   # TIER2 inherited by subdomains
+  - "*.console.developer.google.com"   # TIER2 inherited by subdomains
+  - "*.console.fiber.google.com"   # TIER2 inherited by subdomains
+  - "*.console1.actions.google.com"   # TIER2 inherited by subdomains
+  - "*.console1.cloud.google.com"   # TIER2 inherited by subdomains
+  - "*.console1.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.console1.firebase.google.com"   # TIER2 inherited by subdomains
+  - "*.content.googleapis.com"   # TIER2 inherited by subdomains
+  - "*.contributor.google.com"   # TIER2 inherited by subdomains
+  - "*.coordinate.google.com"   # TIER2 inherited by subdomains
+  - "*.crome.google.com"   # TIER2 inherited by subdomains
+  - "*.crowdsource.google.com"   # TIER2 inherited by subdomains
+  - "*.cse.google.com"   # TIER2 inherited by subdomains
+  - "*.culturalinstitute.google.com"   # TIER2 inherited by subdomains
+  - "*.datalab.cloud.google.com"   # TIER2 inherited by subdomains
+  - "*.datally.google.com"   # TIER2 inherited by subdomains
+  - "*.dataly.google.com"   # TIER2 inherited by subdomains
+  - "*.datastudio.google.com"   # TIER2 inherited by subdomains
+  - "*.ddm.google.com"   # TIER2 inherited by subdomains
+  - "*.design.google.com"   # TIER2 inherited by subdomains
+  - "*.developer.google.com"   # TIER2 inherited by subdomains
+  - "*.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.devicecertification.youtube"   # TIER2 inherited by subdomains
+  - "*.devicemanagement.google.com"   # TIER2 inherited by subdomains
+  - "*.diversity.google.com"   # TIER2 inherited by subdomains
+  - "*.dns.google.com"   # TIER2 inherited by subdomains
+  - "*.doc.google.com"   # TIER2 inherited by subdomains
+  - "*.docs0.google.com"   # TIER2 inherited by subdomains
+  - "*.docs7.google.com"   # TIER2 inherited by subdomains
+  - "*.donate.google.com"   # TIER2 inherited by subdomains
+  - "*.doubleclick.google.com"   # TIER2 inherited by subdomains
+  - "*.earth.google.com"   # TIER2 inherited by subdomains
+  - "*.earthengine.google.com"   # TIER2 inherited by subdomains
+  - "*.enterprise.gemini.google.com"   # TIER2 inherited by subdomains
+  - "*.explorer.earthengine.google.com"   # TIER2 inherited by subdomains
+  - "*.families.google.com"   # TIER2 inherited by subdomains
+  - "*.fiber.google.com"   # TIER2 inherited by subdomains
+  - "*.firebase.google.com"   # TIER2 inherited by subdomains
+  - "*.fit.google.com"   # TIER2 inherited by subdomains
+  - "*.flights.google.com"   # TIER2 inherited by subdomains
+  - "*.fonts.google.com"   # TIER2 inherited by subdomains
+  - "*.fusiontables.google.com"   # TIER2 inherited by subdomains
+  - "*.gamesnacks.com"   # TIER2 inherited by subdomains
+  - "*.gcr-staging.sandbox.google.com"   # TIER2 inherited by subdomains
+  - "*.gfiber.com"   # TIER2 inherited by subdomains
+  - "*.goggles.google.com"   # TIER2 inherited by subdomains
+  - "*.google.com"   # TIER2 inherited by subdomains
+  - "*.goosbee.com"   # TIER2 inherited by subdomains
+  - "*.goto.ext.google.com"   # TIER2 inherited by subdomains
+  - "*.goto.google.com"   # TIER2 inherited by subdomains
+  - "*.gradient.google.com"   # TIER2 inherited by subdomains
+  - "*.grasshopper.app"   # TIER2 inherited by subdomains
+  - "*.grow.google.com"   # TIER2 inherited by subdomains
+  - "*.gsuite.google.com"   # TIER2 inherited by subdomains
+  - "*.guesttalkgadget.google.com"   # TIER2 inherited by subdomains
+  - "*.hangout.google.com"   # TIER2 inherited by subdomains
+  - "*.health.google.com"   # TIER2 inherited by subdomains
+  - "*.help.google.com"   # TIER2 inherited by subdomains
+  - "*.helpouts.google.com"   # TIER2 inherited by subdomains
+  - "*.hire.google.com"   # TIER2 inherited by subdomains
+  - "*.history.google.com"   # TIER2 inherited by subdomains
+  - "*.hostedtalkgadget.google.com"   # TIER2 inherited by subdomains
+  - "*.hotelfinder.google.com"   # TIER2 inherited by subdomains
+  - "*.hotels.google.com"   # TIER2 inherited by subdomains
+  - "*.hotpot.google.com"   # TIER2 inherited by subdomains
+  - "*.images.google.com"   # TIER2 inherited by subdomains
+  - "*.inputtools.google.com"   # TIER2 inherited by subdomains
+  - "*.instant.google.com"   # TIER2 inherited by subdomains
+  - "*.iot.google.com"   # TIER2 inherited by subdomains
+  - "*.ipv6test.google.com"   # TIER2 inherited by subdomains
+  - "*.isolated.mail.google.com"   # TIER2 inherited by subdomains
+  - "*.isp.google.com"   # TIER2 inherited by subdomains
+  - "*.jamboard.google.com"   # TIER2 inherited by subdomains
+  - "*.jibe.google.com"   # TIER2 inherited by subdomains
+  - "*.jigsaw.google.com"   # TIER2 inherited by subdomains
+  - "*.jmt17.google.com"   # TIER2 inherited by subdomains
+  - "*.keep.google.com"   # TIER2 inherited by subdomains
+  - "*.kormo.app"   # TIER2 inherited by subdomains
+  - "*.krome.google.com"   # TIER2 inherited by subdomains
+  - "*.local.google.com"   # TIER2 inherited by subdomains
+  - "*.lti.drive.google.com"   # TIER2 inherited by subdomains
+  - "*.lti.gemini.google.com"   # TIER2 inherited by subdomains
+  - "*.lti.meet.google.com"   # TIER2 inherited by subdomains
+  - "*.lti.workspace.google.com"   # TIER2 inherited by subdomains
+  - "*.m.plus.google.com"   # TIER2 inherited by subdomains
+  - "*.madeby.google.com"   # TIER2 inherited by subdomains
+  - "*.manufacturers.google.com"   # TIER2 inherited by subdomains
+  - "*.map.google.com"   # TIER2 inherited by subdomains
+  - "*.mapmaker.google.com"   # TIER2 inherited by subdomains
+  - "*.maps.google.com"   # TIER2 inherited by subdomains
+  - "*.maps.l.google.com"   # TIER2 inherited by subdomains
+  - "*.mapsengine.google.com"   # TIER2 inherited by subdomains
+  - "*.material.google.com"   # TIER2 inherited by subdomains
+  - "*.maven.google.com"   # TIER2 inherited by subdomains
+  - "*.merchants.google.com"   # TIER2 inherited by subdomains
+  - "*.microhost.google.com"   # TIER2 inherited by subdomains
+  - "*.music.google.com"   # TIER2 inherited by subdomains
+  - "*.mybusiness.google.com"   # TIER2 inherited by subdomains
+  - "*.mymaps.google.com"   # TIER2 inherited by subdomains
+  - "*.news.google.com"   # TIER2 inherited by subdomains
+  - "*.newsstand.google.com"   # TIER2 inherited by subdomains
+  - "*.nexus.google.com"   # TIER2 inherited by subdomains
+  - "*.offers.google.com"   # TIER2 inherited by subdomains
+  - "*.on.google.com"   # TIER2 inherited by subdomains
+  - "*.ondemandplatform.google.com"   # TIER2 inherited by subdomains
+  - "*.onetoday.google.com"   # TIER2 inherited by subdomains
+  - "*.opensource.google.com"   # TIER2 inherited by subdomains
+  - "*.optimize.google.com"   # TIER2 inherited by subdomains
+  - "*.panelresearch.google.com"   # TIER2 inherited by subdomains
+  - "*.partner.android.com"   # TIER2 inherited by subdomains
+  - "*.partnerdash.google.com"   # TIER2 inherited by subdomains
+  - "*.partnerportal.fiber.google.com"   # TIER2 inherited by subdomains
+  - "*.partners.google.com"   # TIER2 inherited by subdomains
+  - "*.patents.google.com"   # TIER2 inherited by subdomains
+  - "*.payments.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.peering.google.com"   # TIER2 inherited by subdomains
+  - "*.photo.google.com"   # TIER2 inherited by subdomains
+  - "*.pixel.google.com"   # TIER2 inherited by subdomains
+  - "*.pki.google.com"   # TIER2 inherited by subdomains
+  - "*.places.google.com"   # TIER2 inherited by subdomains
+  - "*.plus.google.com"   # TIER2 inherited by subdomains
+  - "*.plusone.google.com"   # TIER2 inherited by subdomains
+  - "*.poly.google.com"   # TIER2 inherited by subdomains
+  - "*.postmaster.google.com"   # TIER2 inherited by subdomains
+  - "*.posts.google.com"   # TIER2 inherited by subdomains
+  - "*.pride.google.com"   # TIER2 inherited by subdomains
+  - "*.privacy.google.com"   # TIER2 inherited by subdomains
+  - "*.producer.google.com"   # TIER2 inherited by subdomains
+  - "*.productforums.google.com"   # TIER2 inherited by subdomains
+  - "*.profiles.google.com"   # TIER2 inherited by subdomains
+  - "*.projectshield.google"   # TIER2 inherited by subdomains
+  - "*.projectshield.withgoogle.com"   # TIER2 inherited by subdomains
+  - "*.pss.support.google.com"   # TIER2 inherited by subdomains
+  - "*.publisherplugin.google.com"   # TIER2 inherited by subdomains
+  - "*.qaya.area120.google.com"   # TIER2 inherited by subdomains
+  - "*.realtime.google.com"   # TIER2 inherited by subdomains
+  - "*.recaptcha.net"   # TIER2 inherited by subdomains
+  - "*.recorder.google.com"   # TIER2 inherited by subdomains
+  - "*.registry.google.com"   # TIER2 inherited by subdomains
+  - "*.research.google.com"   # TIER2 inherited by subdomains
+  - "*.safebrowsing.google.com"   # TIER2 inherited by subdomains
+  - "*.sandbox.google.com"   # TIER2 inherited by subdomains
+  - "*.santatracker.google.com"   # TIER2 inherited by subdomains
+  - "*.sb.google.com"   # TIER2 inherited by subdomains
+  - "*.scholar.google.com"   # TIER2 inherited by subdomains
+  - "*.script.usercontent.google.com"   # TIER2 inherited by subdomains
+  - "*.sdk.cloud.google.com"   # TIER2 inherited by subdomains
+  - "*.security.google.com"   # TIER2 inherited by subdomains
+  - "*.selfdrivingcar.google.com"   # TIER2 inherited by subdomains
+  - "*.selfdrivingcars.google.com"   # TIER2 inherited by subdomains
+  - "*.sheets.google.com"   # TIER2 inherited by subdomains
+  - "*.shoppinglist.google.com"   # TIER2 inherited by subdomains
+  - "*.sidewiki.google.com"   # TIER2 inherited by subdomains
+  - "*.signup.earthengine.google.com"   # TIER2 inherited by subdomains
+  - "*.sitecontent.google.com"   # TIER2 inherited by subdomains
+  - "*.sitescontent.google.com"   # TIER2 inherited by subdomains
+  - "*.slides.google.com"   # TIER2 inherited by subdomains
+  - "*.source.developers.google.com"   # TIER2 inherited by subdomains
+  - "*.spaces.google.com"   # TIER2 inherited by subdomains
+  - "*.speech.google.com"   # TIER2 inherited by subdomains
+  - "*.spreadsheet.google.com"   # TIER2 inherited by subdomains
+  - "*.spreadsheets.google.com"   # TIER2 inherited by subdomains
+  - "*.spreadsheets5.google.com"   # TIER2 inherited by subdomains
+  - "*.springboard.google.com"   # TIER2 inherited by subdomains
+  - "*.stack.area120.com"   # TIER2 inherited by subdomains
+  - "*.staging.docs.google.com"   # TIER2 inherited by subdomains
+  - "*.standards.google.com"   # TIER2 inherited by subdomains
+  - "*.startup.google.com"   # TIER2 inherited by subdomains
+  - "*.station.google.com"   # TIER2 inherited by subdomains
+  - "*.status.cloud.google.com"   # TIER2 inherited by subdomains
+  - "*.status.firebase.google.com"   # TIER2 inherited by subdomains
+  - "*.studykit.google.com"   # TIER2 inherited by subdomains
+  - "*.supplierhub.google.com"   # TIER2 inherited by subdomains
+  - "*.supplychain.google.com"   # TIER2 inherited by subdomains
+  - "*.support.google.com"   # TIER2 inherited by subdomains
+  - "*.survey.google.com"   # TIER2 inherited by subdomains
+  - "*.surveys.google.com"   # TIER2 inherited by subdomains
+  - "*.tables.area120.google.com"   # TIER2 inherited by subdomains
+  - "*.tagmanager.google.com"   # TIER2 inherited by subdomains
+  - "*.talk.google.com"   # TIER2 inherited by subdomains
+  - "*.talk.l.google.com"   # TIER2 inherited by subdomains
+  - "*.talk6.l.google.com"   # TIER2 inherited by subdomains
+  - "*.talkx.l.google.com"   # TIER2 inherited by subdomains
+  - "*.terrabella.google.com"   # TIER2 inherited by subdomains
+  - "*.test.docs.google.com"   # TIER2 inherited by subdomains
+  - "*.tez.google.com"   # TIER2 inherited by subdomains
+  - "*.time.google.com"   # TIER2 inherited by subdomains
+  - "*.time1.google.com"   # TIER2 inherited by subdomains
+  - "*.time2.google.com"   # TIER2 inherited by subdomains
+  - "*.time3.google.com"   # TIER2 inherited by subdomains
+  - "*.time4.google.com"   # TIER2 inherited by subdomains
+  - "*.toolbar.google.com"   # TIER2 inherited by subdomains
+  - "*.toolbox.fiber.google.com"   # TIER2 inherited by subdomains
+  - "*.tools.google.com"   # TIER2 inherited by subdomains
+  - "*.transit.google.com"   # TIER2 inherited by subdomains
+  - "*.translate.google.com"   # TIER2 inherited by subdomains
+  - "*.transparencyreport.google.com"   # TIER2 inherited by subdomains
+  - "*.trends.google.com"   # TIER2 inherited by subdomains
+  - "*.trustedtester.google.com"   # TIER2 inherited by subdomains
+  - "*.uberproxy.l.google.com"   # TIER2 inherited by subdomains
+  - "*.uberproxy4.l.google.com"   # TIER2 inherited by subdomains
+  - "*.uberproxy6.l.google.com"   # TIER2 inherited by subdomains
+  - "*.us-gcr-staging.sandbox.google.com"   # TIER2 inherited by subdomains
+  - "*.usercontent.corp.google.com"   # TIER2 inherited by subdomains
+  - "*.usercontent.google.com"   # TIER2 inherited by subdomains
+  - "*.userresearch.google.com"   # TIER2 inherited by subdomains
+  - "*.video.google.com"   # TIER2 inherited by subdomains
+  - "*.visualsearch.google.com"   # TIER2 inherited by subdomains
+  - "*.vr.google.com"   # TIER2 inherited by subdomains
+  - "*.wave.ext.google.com"   # TIER2 inherited by subdomains
+  - "*.weave.google.com"   # TIER2 inherited by subdomains
+  - "*.webapp.google.com"   # TIER2 inherited by subdomains
+  - "*.webapps.google.com"   # TIER2 inherited by subdomains
+  - "*.webrtc.org"   # TIER2 inherited by subdomains
+  - "*.work.google.com"   # TIER2 inherited by subdomains
+  - "*.workswithnest.google.com"   # TIER2 inherited by subdomains
+  - "*.writely.google.com"   # TIER2 inherited by subdomains
+  - "*.xmpp.google.com"   # TIER2 inherited by subdomains
+  - "*.xmpp.l.google.com"   # TIER2 inherited by subdomains
+  - "*.xmppx.l.google.com"   # TIER2 inherited by subdomains
+  - "*.youtube.com"   # TIER2 inherited by subdomains
+  - "*.youtubekids.com"   # TIER2 inherited by subdomains
+  - "*.1emn.com"   # TIER3 inherited by subdomains
+  - "*.1enm.com"   # TIER3 inherited by subdomains
+  - "*.265.com"   # TIER3 inherited by subdomains
+  - "*.2enm.com"   # TIER3 inherited by subdomains
+  - "*.3enm.com"   # TIER3 inherited by subdomains
+  - "*.8d1f.com"   # TIER3 inherited by subdomains
+  - "*.abc.xyz"   # TIER3 inherited by subdomains
+  - "*.addin.meet"   # TIER3 inherited by subdomains
+  - "*.admeld.com"   # TIER3 inherited by subdomains
+  - "*.adsense.com"   # TIER3 inherited by subdomains
+  - "*.advertisercommunity.com"   # TIER3 inherited by subdomains
+  - "*.adwords.com"   # TIER3 inherited by subdomains
+  - "*.alphafold.com"   # TIER3 inherited by subdomains
+  - "*.ampproject.net"   # TIER3 inherited by subdomains
+  - "*.ampproject.org"   # TIER3 inherited by subdomains
+  - "*.android.com"   # TIER3 inherited by subdomains
+  - "*.app-measurement.com"   # TIER3 inherited by subdomains
+  - "*.appdefensealliance.dev"   # TIER3 inherited by subdomains
+  - "*.area120.com"   # TIER3 inherited by subdomains
+  - "*.asp-cc.com"   # TIER3 inherited by subdomains
+  - "*.bazel.build"   # TIER3 inherited by subdomains
+  - "*.brotli.org"   # TIER3 inherited by subdomains
+  - "*.business.page"   # TIER3 inherited by subdomains
+  - "*.business.site"   # TIER3 inherited by subdomains
+  - "*.chrome.com"   # TIER3 inherited by subdomains
+  - "*.chromecast.com"   # TIER3 inherited by subdomains
+  - "*.cloudyoryx.dev"   # TIER3 inherited by subdomains
+  - "*.crbug.com"   # TIER3 inherited by subdomains
+  - "*.create.meme"   # TIER3 inherited by subdomains
+  - "*.crossmediapanel.com"   # TIER3 inherited by subdomains
+  - "*.crosvm.dev"   # TIER3 inherited by subdomains
+  - "*.d.meet"   # TIER3 inherited by subdomains
+  - "*.datacommons.org"   # TIER3 inherited by subdomains
+  - "*.deps.dev"   # TIER3 inherited by subdomains
+  - "*.dial.meet"   # TIER3 inherited by subdomains
+  - "*.e0mn.com"   # TIER3 inherited by subdomains
+  - "*.earthengine.app"   # TIER3 inherited by subdomains
+  - "*.em0n.com"   # TIER3 inherited by subdomains
+  - "*.emn0.com"   # TIER3 inherited by subdomains
+  - "*.feedburner.com"   # TIER3 inherited by subdomains
+  - "*.find.meme"   # TIER3 inherited by subdomains
+  - "*.flutter.dev"   # TIER3 inherited by subdomains
+  - "*.froogle.com"   # TIER3 inherited by subdomains
+  - "*.fuchsia.dev"   # TIER3 inherited by subdomains
+  - "*.g.cn"   # TIER3 inherited by subdomains
+  - "*.g.co"   # TIER3 inherited by subdomains
+  - "*.g.page"   # TIER3 inherited by subdomains
+  - "*.gandalfservice.com"   # TIER3 inherited by subdomains
+  - "*.get.app"   # TIER3 inherited by subdomains
+  - "*.get.dev"   # TIER3 inherited by subdomains
+  - "*.gle"   # TIER3 inherited by subdomains
+  - "*.gmail.com"   # TIER3 inherited by subdomains
+  - "*.godoc.org"   # TIER3 inherited by subdomains
+  - "*.golang.com"   # TIER3 inherited by subdomains
+  - "*.golang.org"   # TIER3 inherited by subdomains
+  - "*.goo.gl"   # TIER3 inherited by subdomains
+  - "*.goog"   # TIER3 inherited by subdomains
+  - "*.google"   # TIER3 inherited by subdomains
+  - "*.google-analytics.com"   # TIER3 inherited by subdomains
+  - "*.google.com.ru"   # TIER3 inherited by subdomains
+  - "*.google.org"   # TIER3 inherited by subdomains
+  - "*.googleads.com"   # TIER3 inherited by subdomains
+  - "*.googleapps.com"   # TIER3 inherited by subdomains
+  - "*.googleblog.com"   # TIER3 inherited by subdomains
+  - "*.googlecnapps.cn"   # TIER3 inherited by subdomains
+  - "*.googlecommerce.com"   # TIER3 inherited by subdomains
+  - "*.googleoptimize.com"   # TIER3 inherited by subdomains
+  - "*.googletagmanager.com"   # TIER3 inherited by subdomains
+  - "*.googletagservices.com"   # TIER3 inherited by subdomains
+  - "*.googlevideo.com"   # TIER3 inherited by subdomains
+  - "*.hwgo.com"   # TIER3 inherited by subdomains
+  - "*.k8s.io"   # TIER3 inherited by subdomains
+  - "*.lanternalauth.com"   # TIER3 inherited by subdomains
+  - "*.louhi.dev"   # TIER3 inherited by subdomains
+  - "*.make.meme"   # TIER3 inherited by subdomains
+  - "*.malachiteauth.com"   # TIER3 inherited by subdomains
+  - "*.meme.meme"   # TIER3 inherited by subdomains
+  - "*.mn0e.com"   # TIER3 inherited by subdomains
+  - "*.near.by"   # TIER3 inherited by subdomains
+  - "*.new.meme"   # TIER3 inherited by subdomains
+  - "*.nn0e.com"   # TIER3 inherited by subdomains
+  - "*.openthread.io"   # TIER3 inherited by subdomains
+  - "*.picasa.com"   # TIER3 inherited by subdomains
+  - "*.pub.dev"   # TIER3 inherited by subdomains
+  - "*.qwiklabs.com"   # TIER3 inherited by subdomains
+  - "*.schema.org"   # TIER3 inherited by subdomains
+  - "*.search.meme"   # TIER3 inherited by subdomains
+  - "*.skia.org"   # TIER3 inherited by subdomains
+  - "*.stadia.com"   # TIER3 inherited by subdomains
+  - "*.t.meet"   # TIER3 inherited by subdomains
+  - "*.tel.meet"   # TIER3 inherited by subdomains
+  - "*.tenor.meme"   # TIER3 inherited by subdomains
+  - "*.tensorboard.dev"   # TIER3 inherited by subdomains
+  - "*.test.webrtc.org"   # TIER3 inherited by subdomains
+  - "*.tfhub.dev"   # TIER3 inherited by subdomains
+  - "*.thinkwithgoogle.com"   # TIER3 inherited by subdomains
+  - "*.upload.meme"   # TIER3 inherited by subdomains
+  - "*.urchin.com"   # TIER3 inherited by subdomains
+  - "*.web.dev"   # TIER3 inherited by subdomains
+  - "*.withgoogle.com"   # TIER3 inherited by subdomains
+  - "*.withyoutube.com"   # TIER3 inherited by subdomains
+  - "*.yourprimer.com"   # TIER3 inherited by subdomains
+  - "*.youtu.be"   # TIER3 inherited by subdomains
+  - "*.youtube"   # TIER3 inherited by subdomains
+  - "*.youtube.co.nl"   # TIER3 inherited by subdomains
+  - "*.youtubeeducation.com"   # TIER3 inherited by subdomains
+  - "*.youtubego.com"   # TIER3 inherited by subdomains
+  - "*.ytimg.com"   # TIER3 inherited by subdomains
 
 out_of_scope:
   - "2mdn-cn.net"   # TIER4 — never in scope
@@ -596,3 +1083,102 @@ out_of_scope:
   - "youtube-education.com"   # TIER4 — never in scope
   - "youtube-nocookie.com"   # TIER4 — never in scope
   - "zagat.com"   # TIER4 — never in scope
+  - "*.2mdn-cn.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.2mdn.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.ad.doubleclick.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.adscape.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.adtrafficquality.google"   # TIER4 — never in scope, nor its subdomains
+  - "*.ai.studio"   # TIER4 — never in scope, nor its subdomains
+  - "*.app.goo.gl"   # TIER4 — never in scope, nor its subdomains
+  - "*.app.google"   # TIER4 — never in scope, nor its subdomains
+  - "*.appspot.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.blogblog.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.blogspot.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.bp.blogspot.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.ccaiplatform.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.cdn-dev.ampproject.org"   # TIER4 — never in scope, nor its subdomains
+  - "*.cdn.ampproject.org"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloud-staging.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloud-test.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloud.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloud.run"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloudconnect.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloudconnectcommunity.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.clouddataprep.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloudfunctions.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.cloudshell.dev"   # TIER4 — never in scope, nor its subdomains
+  - "*.community.nest.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.connect.googleforwork.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.contributorscommunity.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.corp.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.corp.googleusercontent.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.dailydeal.de"   # TIER4 — never in scope, nor its subdomains
+  - "*.dartsearch.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.doubleclick-cn.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.doubleclick.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.en.advertisercommunity.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.feedproxy.feedburner.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.feeds.feedburner.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.feeds.podcasts.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.feeds2.feedburner.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.fls.doubleclick.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.freebaseapps.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.gateway.dev"   # TIER4 — never in scope, nor its subdomains
+  - "*.gcr.io"   # TIER4 — never in scope, nor its subdomains
+  - "*.gcs-p2.sc-cdn.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.gcs.sc-cdn.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.ggpht.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.gmodules.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.go.google"   # TIER4 — never in scope, nor its subdomains
+  - "*.googleads.g.doubleclick.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.googleadservices.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googleapis-cn.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googlecode.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googledrive.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googlegroups.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googlemerchandisestore.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googlesyndication-cn.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googlesyndication.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googletraveladservices.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googleusercontent.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googleweblight.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.googlezip.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.gstatic-cn.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.gstatic.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.gvt1.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.gvt2.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.gvt3.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.hybrid.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.joonix.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.lanternal.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.localguidesconnect.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.m.doubleclick.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.motifcdn2.doubleclick.net"   # TIER4 — never in scope, nor its subdomains
+  - "*.mtls.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.nianticlabs.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.page.link"   # TIER4 — never in scope, nor its subdomains
+  - "*.pkg.dev"   # TIER4 — never in scope, nor its subdomains
+  - "*.podcasts.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.polar.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.run.app"   # TIER4 — never in scope, nor its subdomains
+  - "*.sandbox.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.sandbox.usercontent.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.scf.usercontent.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.sketchup.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.skybox.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.skyboximaging.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.storage-p2.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.storage.googleapis.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.tdcommons.org"   # TIER4 — never in scope, nor its subdomains
+  - "*.terrabella.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.terrabellatech.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.training.nest.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.translate.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.usercontent.goog"   # TIER4 — never in scope, nor its subdomains
+  - "*.www.googlenestcommunity.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.youtube-3rd-party.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.youtube-creatorcommunity.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.youtube-education.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.youtube-nocookie.com"   # TIER4 — never in scope, nor its subdomains
+  - "*.zagat.com"   # TIER4 — never in scope, nor its subdomains

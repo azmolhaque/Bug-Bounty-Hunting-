@@ -30,6 +30,28 @@ PB="${PB:-$ROOT/config/acquisitions_domains_tiers.asciipb}"
 OUT="${OUT:-$ROOT/config/scope-acquisitions.yaml}"
 IN_TIERS="${IN_TIERS:-TIER0 TIER1 TIER2 TIER3}"
 
+# INHERIT decides whether an UNLISTED subdomain is in scope, and the two tier
+# files answer that differently. From domain-tiers/README.md:
+#
+#   "Domain sensitivity is inherited from the parent domain by default. If you
+#    don't see a particular subdomain (e.g. "foo.google.com"), check if its
+#    parent (e.g. "google.com") is listed; the implicit sensitivity of the
+#    subdomain will be the same as the parent's. Acquisition domains, however,
+#    do not follow this approach. If the domain is not explicitly tiered,
+#    TIER4 is assumed."
+#
+# So the Google file needs "*.domain" beside every entry and the acquisitions
+# file must not have it. There is no safe default: guessing low hides a surface
+# we are allowed to test, guessing high puts hosts in scope that Google never
+# granted. It has to be stated.
+case "${INHERIT:-}" in
+  0|1) ;;
+  *) echo "!! set INHERIT=1 for the Google tier file (subdomains inherit the parent's tier)"
+     echo "!! set INHERIT=0 for the acquisitions file (unlisted subdomains are TIER4)"
+     echo "!! see domain-tiers/README.md; there is no safe default to assume here"
+     exit 1 ;;
+esac
+
 [ -f "$PB" ] || { echo "!! no tier file at $PB"; exit 1; }
 
 pairs() {   # fqdn<TAB>tier, one per line
@@ -79,6 +101,12 @@ tmp=$(mktemp)
   for t in $IN_TIERS; do
     pairs | awk -F'\t' -v t="$t" '$2==t {print "  - \"" $1 "\"   # " t}' | sort -u
   done
+  if [ "$INHERIT" = "1" ]; then
+    for t in $IN_TIERS; do
+      pairs | awk -F'\t' -v t="$t" \
+        '$2==t {print "  - \"*." $1 "\"   # " t " inherited by subdomains"}' | sort -u
+    done
+  fi
   for t in $IN_TIERS; do
     propagating | awk -F'\t' -v t="$t" \
       '$2==t {print "  - \"+." $1 "\"   # " t " propagate_tier_to_direct_subdomains"}' | sort -u
@@ -86,6 +114,14 @@ tmp=$(mktemp)
   echo
   echo "out_of_scope:"
   pairs | awk -F'\t' '$2=="TIER4" {print "  - \"" $1 "\"   # TIER4 — never in scope"}' | sort -u
+  if [ "$INHERIT" = "1" ]; then
+    # TIER4 inherits downwards too. Without this, "*.nest.com" in in_scope
+    # would put x.community.nest.com in scope even though community.nest.com
+    # is TIER4 — scope-check decides on the most specific pattern, and the
+    # exclusion has to exist before it can be the more specific one.
+    pairs | awk -F'\t' \
+      '$2=="TIER4" {print "  - \"*." $1 "\"   # TIER4 — never in scope, nor its subdomains"}' | sort -u
+  fi
 } > "$tmp"
 
 # ---- controls: the generated file has to say what the source says ----
@@ -94,7 +130,7 @@ want_in=0
 for t in $IN_TIERS; do
   want_in=$(( want_in + $(pairs | awk -F'\t' -v t="$t" '$2==t {print $1}' | sort -u | grep -c .) ))
 done
-got_out=$(awk '/^out_of_scope:/,0' "$tmp" | grep -c '^  - ' || true)
+got_out=$(grep -cE '^  - "[^*][^"]*"   # TIER4 — never in scope$' "$tmp" || true)
 want_out=$(pairs | awk -F'\t' '$2=="TIER4" {print $1}' | sort -u | grep -c .)
 
 # the in_scope block count includes the "out_of_scope:" line boundary, so compare
@@ -110,7 +146,23 @@ for t in $IN_TIERS; do
   want_prop=$(( want_prop + $(propagating | awk -F'\t' -v t="$t" '$2==t {print $1}' | sort -u | grep -c .) ))
 done
 
+# Inheritance is the whole point of INHERIT=1, so it gets counted rather than
+# trusted: one "*.domain" for every in-scope domain, and one for every TIER4
+# domain. A generator that emits the exclusions and forgets the inclusions
+# (or the reverse) would otherwise produce a file where every other number
+# still agrees.
+got_wild=$(grep -cE '^  - "\*\..*inherited by subdomains$' "$tmp" || true)
+got_wild4=$(grep -cE '^  - "\*\..*nor its subdomains$' "$tmp" || true)
+
 fail=0
+if [ "$INHERIT" = "1" ]; then
+  [ "$got_wild" -eq "$want_in" ] || { echo "!! inherited in_scope wildcards $got_wild != $want_in"; fail=1; }
+  [ "$got_wild4" -eq "$want_out" ] || { echo "!! inherited TIER4 wildcards $got_wild4 != $want_out"; fail=1; }
+  echo "   subdomains inherit: $got_wild in-scope wildcard(s), $got_wild4 TIER4 wildcard(s)"
+else
+  [ "$got_wild" -eq 0 ] && [ "$got_wild4" -eq 0 ] || { echo "!! INHERIT=0 but the file carries inherited wildcards"; fail=1; }
+  echo "   subdomains do NOT inherit (acquisitions rule: unlisted means TIER4)"
+fi
 [ "$got_prop" -eq "$want_prop" ] || { echo "!! propagating entries $got_prop != $want_prop from source"; fail=1; }
 echo "   $got_prop domain(s) propagate their tier to direct subdomains"
 [ "$got_in" -eq "$want_in" ]  || { echo "!! in_scope $got_in != $want_in from source"; fail=1; }
@@ -125,6 +177,29 @@ SENTINEL="${SENTINEL:-$(pairs | awk -F'\t' '$2=="TIER0"{print $1; exit}')}"
 if [ -n "${SENTINEL:-}" ] && ! grep -q "\"$SENTINEL\"" "$tmp"; then
   echo "!! the first TIER0 host from the source ($SENTINEL) is missing from the output"; fail=1
 fi
+# With INHERIT=1 the two rules that matter are not countable, so they are
+# asked directly: an unlisted child of an in-scope domain must be IN, and a
+# child of a TIER4 domain must be OUT. These are the two sentences the README
+# actually makes, checked against the file just written.
+if [ "$INHERIT" = "1" ] && [ -x "$HERE/scope-check.sh" ]; then
+  s_in="$(pairs | awk -F'\t' '$2=="TIER0"{print $1; exit}')"
+  s_out="$(pairs | awk -F'\t' '$2=="TIER4"{print $1; exit}')"
+  if [ -n "$s_in" ]; then
+    if SCOPE_FILE="$tmp" "$HERE/scope-check.sh" "zz-unlisted-9f3a.$s_in" >/dev/null 2>&1; then
+      echo "   POSITIVE  an unlisted subdomain of $s_in reads as in scope"
+    else
+      echo "!! an unlisted subdomain of the TIER0 host $s_in is NOT in scope — inheritance did not take"; fail=1
+    fi
+  fi
+  if [ -n "$s_out" ]; then
+    if SCOPE_FILE="$tmp" "$HERE/scope-check.sh" "zz-unlisted-9f3a.$s_out" >/dev/null 2>&1; then
+      echo "!! a subdomain of the TIER4 host $s_out reads as IN SCOPE — the exclusion does not inherit"; fail=1
+    else
+      echo "   NEGATIVE  a subdomain of the TIER4 host $s_out stays out of scope"
+    fi
+  fi
+fi
+
 t4=$(pairs | awk -F'\t' '$2=="TIER4"{print $1; exit}')
 if [ -n "${t4:-}" ] && grep -qE "^  - \"$t4\"   # TIER[0-3]$" "$tmp"; then
   echo "!! TIER4 host $t4 landed in in_scope"; fail=1
