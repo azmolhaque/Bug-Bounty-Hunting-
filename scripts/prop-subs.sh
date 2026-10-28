@@ -215,7 +215,17 @@ for d in $DOMAINS; do
   # has heard of it. intrinsic.dev returned no CT entries at all on the first
   # run, so the apex fell out of the host list and was never probed — the one
   # name we already know must not depend on a third party also knowing it.
+  # Counted here rather than before the apex is added. Counting first printed
+  # "8 name(s) seen, 9 direct" for bvi.dev.debugproject.com — more names kept
+  # than were ever read, which cannot be true. The cause was harmless and the
+  # effect is not: a table that does not agree with itself stops being read.
+  apex_added=0
+  case $'\n'"$direct"$'\n' in
+    *$'\n'"$d"$'\n'*) : ;;
+    *) apex_added=1 ;;
+  esac
   direct="$(printf '%s\n%s\n' "$d" "$direct" | grep -v '^[[:space:]]*$' | sort -u)"
+  total=$(( total + apex_added ))
   rm -f "$all"
 
   if [ "$fails" -eq $(printf '%s\n' $SOURCES | grep -c .) ]; then
@@ -234,8 +244,9 @@ for d in $DOMAINS; do
     fi
   done <<< "$direct"
 
-  printf '%-26s %4d name(s) seen, %3d direct, %3d in scope, %3d rejected by scope-check\n' \
-         "$d" "${total:-0}" "${n_direct:-0}" "$in" "$out"
+  printf '%-30s %4d name(s) known, %3d direct, %3d in scope, %3d rejected by scope-check%s\n' \
+         "$d" "${total:-0}" "${n_direct:-0}" "$in" "$out" \
+         "$([ "$apex_added" -eq 1 ] && printf '  (apex added; no certificate names it)')"
 done
 
 sort -u -o "$HOSTS" "$HOSTS"
