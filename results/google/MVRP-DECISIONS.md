@@ -4856,3 +4856,56 @@ at 14:51:51 — Gemini fetching the page it was asked to summarise, one minute
 before the Pro and Flash runs. The second collector, the one named in the
 page's injected instruction, is still empty. Run 4's zero is now measured from
 both ends.
+
+### 2026-10-28 — checkmx SSRF, tested properly with a domain we control, and closed
+
+The researcher owns cindrasec.com, which unlocked the rung that was out of
+reach: pointing an MX record wherever we like and seeing whether the Tier 1
+host follows it.
+
+Set up so the live mailbox was never touched — the apex keeps its Cloudflare
+Email Routing MX, and the test lives entirely on subdomains:
+
+    test.cindrasec.com    MX 10 mxlo.cindrasec.com
+    mxlo.cindrasec.com    A  127.0.0.1          (DNS only, not proxied)
+    test2.cindrasec.com   MX 10 mxdead.cindrasec.com
+    mxdead.cindrasec.com  A  198.51.100.1       (TEST-NET-2, unroutable)
+
+`test2` is the control: it is what "did not reach anything" looks like, which
+is the only way "reached something" could be recognised. Cloudflare accepted a
+loopback A record without complaint.
+
+**Result: no difference of any kind.**
+
+The rendered pages are byte-identical apart from the domain name and one
+MTA-STS line, both ending in the same constant sentence:
+
+    Mail servers are either not specified or not reachable or refuse to accept
+    mail for this domain.
+
+So nothing about where the server went, what answered, or what it said ever
+reaches the output. The response is a fixed string.
+
+The first pair of timings looked like a signal — 22.7s for loopback against
+7.9s for the unroutable address — and in the wrong direction, since a refused
+connection to 127.0.0.1 should be fast. Three repetitions each settled it:
+
+    lo 22.19   dead 25.96
+    lo  7.30   dead  7.32
+    lo  6.92   dead 22.25
+
+Both bounce between ~7s and ~22-26s regardless of address. The difference was
+load, not behaviour. **Had the first pair been taken as the answer, this would
+have become hours spent on a timing oracle that does not exist.**
+
+**Closed, and it would not have been reportable even if the timing had held.**
+§ 3 names this exact ceiling — SSRF that reaches internal hosts but reads
+nothing sensitive, the VirusTotal IMDS case — and here the output is a constant
+sentence, so there is no path for data to come back at all.
+
+Toolbox is now closed end to end: dig, checkmx, and loganalyzer's broken
+redirect. A Tier 1 Django application, two server-side endpoints, measured
+zeros with controls behind each.
+
+Cleanup owed: the four test DNS records on cindrasec.com can be deleted. The
+apex MX was never modified.
