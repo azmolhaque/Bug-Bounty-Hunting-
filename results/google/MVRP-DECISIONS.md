@@ -4062,3 +4062,67 @@ fallback could only ever append a second value to a real one. The control line
 printed it plainly — `RDAP answers 404000 for a made-up name` — a 404 and a
 000 concatenated. In the fingerprint sweep that string matched no case in
 `000|40[13]` and would have been treated as a live status.
+
+### 2026-10-28 — aws-zaipon dropped; three S3 CNAMEs are the real lead
+
+**aws-zaipon.com answered and it is Google's.** Registrar MarkMonitor,
+registrant CA/US, all three `client*Prohibited` locks, created 2017, renewed to
+2027. That is Alphabet's standard registrar posture. All four Route 53
+nameservers return REFUSED, so the hosted zone is deleted and the delegation
+outlived it — but the registration is theirs and cannot be bought, and the only
+route left is grinding hosted-zone creations at Route 53 until the nameserver
+assignment matches. § 4 says that is a hypothesis. **Dropped**, and logged as
+dropped so it is not rediscovered as exciting in a month.
+
+**The TIER2/3 DNS sweep is where the lead is.** Three TIER3 names CNAME the
+bare S3 endpoint:
+
+    repos.nestlabs.com           TIER3  -> s3.amazonaws.com.
+    server-logs.nestlabs.com     TIER3  -> s3.amazonaws.com.
+    thirdparty.ops.nestlabs.com  TIER3  -> s3.amazonaws.com.
+
+A CNAME to the bare endpoint means S3 routes on the Host header, so the bucket
+name is the hostname. Bucket names are global and first-come. If those buckets
+were deleted, the names are free.
+
+This is the one takeover class in this estate where § 3 is cheap to satisfy:
+creating a bucket is free and instant, so "claim it and serve a canary" is
+minutes of work instead of the unbounded grind that killed aws-zaipon.com. The
+difference between a hypothesis and a lead here is purely the cost of the next
+link, which is what § 4 actually asks.
+
+Triaged out of the same output, with reasons, so none of it gets re-walked:
+
+    em*.fitbit.com, email/gsemail/gslink -> sendgrid.net
+        claiming a SendGrid link-branding host needs their account, and the
+        impact is email link tracking. § 3.
+    partners/support.fitbit.com -> *.live.siteforce.com
+        the Salesforce org id in the target is Fitbit's. Not claimable.
+    frontdoor-*.elb.amazonaws.com, video/pro.* -> ELB names
+        the random suffix means the name cannot be recreated.
+    future-www.pring.jp -> future-www.aws-zaipon.com
+        same dead zone, same hypothesis.
+    m.fitbit.com -> mkto-sj220117.com   [DANGLING]
+        Marketo. Worth one apex lookup — Marketo normally holds these, but it
+        is ten seconds and m.fitbit.com is a hostname worth having.
+
+`acq-s3-claim.sh` asks the only question that matters: does S3 itself say no
+bucket holds that name. It reads the `<Code>` element, never loose words, and
+the self-test's first negative is an HTML 404 with the string `NoSuchBucket`
+sitting in its prose — which must not read as GONE. That exact confusion is
+how a sweep turns every 404 on the internet into a takeover, and this repo has
+already made the equivalent mistake three times.
+
+Two live controls before any host: a made-up bucket name must return
+NoSuchBucket, and a bucket that exists must not. Without the second, an S3
+endpoint answering NoSuchBucket for everything would mark all three free.
+
+Each host is asked three ways — the target hostname, path style, and
+virtual-host style — because they can disagree, and the reading guide says to
+trust the path-style answer since a virtual-host 404 is usually a region
+redirect.
+
+The reading guide also puts § 3's harder half where it will be read: after the
+canary proves the claim, the report still has to answer who reaches the
+hostname. `repos` and `server-logs` sound like a package source and a log
+sink, which would mean real traffic, but sounding like one is not evidence.
