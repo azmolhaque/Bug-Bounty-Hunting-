@@ -4240,3 +4240,39 @@ acquisitions.
 Also: the AAAA fix found 3 V6-ONLY hosts in the TIER2/3 table, down from 115
 NO-RECORD to 112. Three in-scope hosts that no sweep has ever reached, because
 every tool asked for A and the Pi has no v6 route.
+
+### 2026-10-28 — 41 TIER0 hosts nobody has ever looked at
+
+Certificate transparency on the two propagating TIER0 domains:
+
+    cameyo.com                      53 names, 44 direct, 41 not in Google's list
+    googleacquisitionmigration.com   0 names  (wildcard cert or none public)
+
+Forty-one direct subdomains of cameyo.com that are TIER0 in scope by Google's
+own flag and appear nowhere in the published host list. Every sweep this repo
+has run was against that list.
+
+The names say a great deal on their own:
+
+    jenkins.cameyo.com        wazuh.cameyo.com         server.cameyo.com
+    ncpanel  nmail  nwebmail  nwebdisk  nkb  nsupport  ncpcalendars  ncpcontacts
+    partnerportal + 16 partner-*       prima-jsmedley-uat     devonline
+    multisite  ssio  ssl1  status  training  helpcenter  info  blog  autodiscover
+
+Jenkins and Wazuh both have unauthenticated surface. The `nc*` cluster looks
+like a self-hosted suite. Sixteen `partner-*` hosts plus a partner portal is a
+multi-tenant shape, and cross-tenant isolation is named in § 2 as the kind of
+impact that counts.
+
+**Not writing probes for any of that yet.** The ArgoCD episode taught the
+opposite lesson: read the table as evidence first. `acq-live.sh` captures each
+host's title and server header, which is how "Sign in - Google Accounts"
+identified IAP, and forty-one titles beat guessed markers. A wrong marker
+produces a false negative that looks exactly like a measured zero, and this
+repo has four of those on record already.
+
+`acq-live.sh` gained `HOSTS_FILE`, one hostname per line, because its host list
+came from the protobuf and these names come from CT. The list only decides what
+is considered; every host still passes through scope-check before it is
+touched, so an out-of-scope name in the file is skipped — verified with
+`a.b.cameyo.com` and a made-up nestlabs host, both refused.

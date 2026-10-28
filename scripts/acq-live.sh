@@ -86,13 +86,28 @@ case "$CTL_BAD" in
 esac
 echo
 
-# fqdn + tier out of the protobuf text, filtered to the tiers asked for
+# fqdn + tier out of the protobuf text, filtered to the tiers asked for.
+#
+# HOSTS_FILE overrides it with one hostname per line. That exists because the
+# protobuf is Google's inventory, not the boundary: domains carrying
+# propagate_tier_to_direct_subdomains put unlisted direct subdomains in scope,
+# and those names come from certificate transparency rather than from this
+# file. They still go through scope-check below like everything else — the
+# list only says what to consider, never what is allowed.
+if [ -n "${HOSTS_FILE:-}" ]; then
+  [ -f "$HOSTS_FILE" ] || { echo "!! no host list at $HOSTS_FILE"; exit 1; }
+  mapfile -t HOSTS < <(grep -vE '^\s*(#|$)' "$HOSTS_FILE" \
+                       | tr 'A-Z' 'a-z' | sed 's/[[:space:]]*$//' \
+                       | awk -v t="${TIER_LABEL:-CT}" 'NF {print $1 "\t" t}' | sort -u)
+  echo "== ${#HOSTS[@]} host(s) from $(basename "$HOSTS_FILE") =="
+else
 mapfile -t HOSTS < <(awk -v want="$TIERS" '
   /fqdn:/ { f=$2; gsub(/"/,"",f) }
   /tier:/ { t=$2; if (f!="" && index(want,t)) print f "\t" t; f="" }
 ' "$PB" | sort -u)
 
 echo "== ${#HOSTS[@]} host(s) in $TIERS =="
+fi
 printf 'host\ttier\tstatus\tserver\ttitle\n' > "$TSV"
 
 n=0; live=0; skipped=0
