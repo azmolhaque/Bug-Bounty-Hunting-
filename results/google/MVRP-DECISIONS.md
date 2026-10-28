@@ -4187,3 +4187,56 @@ and subdomain enumeration over nestlabs.com, fitbit.com, photomath.net,
 cameyo.com, siemplify.co, owlchemylabs.com, elastifile.com and neverware.com is
 untouched surface. If not, this estate is finished and the Android AI VRP
 rogue-action track is next.
+
+### 2026-10-28 — the scope file was removing surface Google had granted
+
+The question was whether an unlisted subdomain of a listed domain is in scope.
+bughunters.google.com renders its rules in JavaScript and the curl came back
+empty, so the authoritative answer came from the file that generated our scope
+in the first place — Google's own tier protobuf, already in this repo:
+
+    domain: {
+      fqdn: "cameyo.com"
+      tier: TIER0
+      propagate_tier_to_direct_subdomains: true
+    }
+
+The flag has been there all along. `scope-from-tiers.sh` read `fqdn` and
+`tier` and nothing else, so it wrote only the named hosts, and every unlisted
+direct subdomain of a propagating domain was out of scope **by our own
+encoding**. 28 domains carry it, two at TIER0: **cameyo.com** and
+**googleacquisitionmigration.com**. The other 26 are debugproject.com variants
+at TIER3.
+
+This is the sixth defect that silently wrote a result, and the second of them
+to narrow scope while every number in the output agreed with itself. The
+previous one was the hand-maintained scope.yaml missing 84 of 195 TIER0/TIER1
+hosts — which is the reason this generator exists.
+
+Encoded as `+.cameyo.com`, a new pattern meaning exactly one label.
+`*.cameyo.com` was the obvious choice and is wrong: bash globs match dots, so
+it would have put `a.b.cameyo.com` in scope, which Google did not grant, and
+§ 0 says the doubtful case is out. `+.` is treated as a wildcard in every pass
+of scope-check, so it cannot beat an explicit TIER4 exclusion.
+
+`scope-check-tests.sh` now holds the rules as tests, because scope has been
+wrong twice in the quiet direction and self-agreeing output is exactly what
+both failures produced:
+
+    ok   online.cameyo.com                     IN   listed direct subdomain
+    ok   anything-new-9f3a.cameyo.com          IN   UNLISTED direct subdomain
+    ok   a.b.cameyo.com                        OUT  two labels is not direct
+    ok   deep.nested.x.cameyo.com              OUT  three labels is not direct
+    ok   definitely-not-real-9f3a.nestlabs.com OUT  nestlabs.com has no flag
+    ...  11 checks, 0 failures
+
+**What this opens.** Direct subdomains of cameyo.com and
+googleacquisitionmigration.com are TIER0 and have never been enumerated —
+every sweep so far ran against Google's published host list, which is their
+inventory and not the boundary. Cameyo is a small acquisition, which is where
+forgotten hosts live, and this account's two paid findings both came from
+acquisitions.
+
+Also: the AAAA fix found 3 V6-ONLY hosts in the TIER2/3 table, down from 115
+NO-RECORD to 112. Three in-scope hosts that no sweep has ever reached, because
+every tool asked for A and the Pi has no v6 route.

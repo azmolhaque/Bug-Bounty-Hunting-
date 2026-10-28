@@ -39,6 +39,28 @@ pairs() {   # fqdn<TAB>tier, one per line
   ' "$PB"
 }
 
+# Domains whose tier Google says also covers their direct subdomains.
+#
+# This flag was in the protobuf from the start and the generator ignored it,
+# so the scope file listed only the named hosts. 28 domains carry it, two of
+# them TIER0 — cameyo.com and googleacquisitionmigration.com — and every
+# unlisted direct subdomain of those was being treated as out of scope by our
+# own encoding. A filter that silently excludes is the worst kind, and this is
+# the second time that sentence has had to be written in this repo.
+#
+# Emitted as "+.domain", which scope-check matches at exactly one label.
+# "*.domain" would also match a.b.domain, which is more than Google granted,
+# and § 0 says the doubtful case is out of scope.
+propagating() {   # fqdn<TAB>tier for records with the flag
+  awk '
+    /^domain: *\{/        { f=""; t=""; p=0 }
+    /fqdn:/               { f=$2; gsub(/"/,"",f) }
+    /tier:/               { t=$2 }
+    /propagate_tier_to_direct_subdomains: *true/ { p=1 }
+    /^\}/                 { if (f!="" && t!="" && p) print f "\t" t }
+  ' "$PB"
+}
+
 TOTAL=$(pairs | grep -c .)
 [ "$TOTAL" -gt 100 ] || { echo "!! only $TOTAL entries parsed from $PB — the format changed"; exit 2; }
 
@@ -56,6 +78,10 @@ tmp=$(mktemp)
   echo "in_scope:"
   for t in $IN_TIERS; do
     pairs | awk -F'\t' -v t="$t" '$2==t {print "  - \"" $1 "\"   # " t}' | sort -u
+  done
+  for t in $IN_TIERS; do
+    propagating | awk -F'\t' -v t="$t" \
+      '$2==t {print "  - \"+." $1 "\"   # " t " propagate_tier_to_direct_subdomains"}' | sort -u
   done
   echo
   echo "out_of_scope:"
@@ -75,7 +101,18 @@ want_out=$(pairs | awk -F'\t' '$2=="TIER4" {print $1}' | sort -u | grep -c .)
 # on the exact tier lines instead
 got_in=$(grep -cE '^  - .*# TIER[0-3]$' "$tmp" || true)
 
+# And count the propagating entries separately, because the control above only
+# matches lines ending in the bare tier. Without this the flag could be dropped
+# again and every number in the output would still agree.
+got_prop=$(grep -cE '^  - "\+\..*propagate_tier_to_direct_subdomains$' "$tmp" || true)
+want_prop=0
+for t in $IN_TIERS; do
+  want_prop=$(( want_prop + $(propagating | awk -F'\t' -v t="$t" '$2==t {print $1}' | sort -u | grep -c .) ))
+done
+
 fail=0
+[ "$got_prop" -eq "$want_prop" ] || { echo "!! propagating entries $got_prop != $want_prop from source"; fail=1; }
+echo "   $got_prop domain(s) propagate their tier to direct subdomains"
 [ "$got_in" -eq "$want_in" ]  || { echo "!! in_scope $got_in != $want_in from source"; fail=1; }
 [ "$got_out" -eq "$want_out" ]|| { echo "!! out_of_scope $got_out != $want_out from source"; fail=1; }
 grep -q '"api.appsheet.com"' "$tmp" || { echo "!! a known TIER0 host is missing"; fail=1; }

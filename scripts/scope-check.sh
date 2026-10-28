@@ -71,6 +71,22 @@ matches() {
   local pat="$1" host="$2"
   pat="${pat%.}"
   case "$pat" in
+    +.*)
+      # Exactly one label: "+.cameyo.com" covers online.cameyo.com and does NOT
+      # cover a.b.cameyo.com. This exists because Google's tier protobuf has a
+      # per-domain flag, propagate_tier_to_direct_subdomains, and "direct"
+      # means one label. Writing those as "*.cameyo.com" would put hosts in
+      # scope that Google did not, and § 0 says the doubtful case is out.
+      local base="${pat#+.}"
+      case "$host" in
+        *".$base")
+          local head="${host%".$base"}"
+          case "$head" in *.*) return 1 ;; esac          # more than one label
+          [ -n "$head" ] && return 0
+          ;;
+      esac
+      return 1
+      ;;
     \*.*)
       local base="${pat#\*.}"
       [ "$host" = "$base" ] && return 0                 # wildcard also covers apex
@@ -112,7 +128,7 @@ out_scope_list="$(extract_list out_of_scope || true)"
 # they are exact strings that win in PASS 2 before any wildcard matching.
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in \**) continue ;; esac   # skip wildcards in this pass
+  case "$pat" in \**|+.*) continue ;; esac   # skip wildcards ("+." is one) in this pass
   if [ "$target" = "$pat" ]; then
     echo "IN-SCOPE: $target matches explicit entry '$pat' (overrides wildcard exclusions)"
     exit 0
@@ -124,7 +140,7 @@ done <<< "$in_scope_list"
 # in_scope pattern would otherwise match.
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in \**) continue ;; esac   # only exact entries in this pass
+  case "$pat" in \**|+.*) continue ;; esac   # only exact entries in this pass
   if matches "$pat" "$target"; then
     echo "OUT-OF-SCOPE: $target matches explicit exclusion '$pat'"
     exit 1
@@ -140,7 +156,7 @@ done <<< "$out_scope_list"
 # middle, or trailing), which covers all three wildcard forms.
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in *\**) ;; *) continue ;; esac   # only wildcard patterns (any position)
+  case "$pat" in *\**|+.*) ;; *) continue ;; esac   # only wildcard patterns ("+." included)
   if matches "$pat" "$target"; then
     echo "IN-SCOPE: $target matches '$pat' (overrides wildcard exclusions)"
     exit 0
@@ -150,7 +166,7 @@ done <<< "$in_scope_list"
 # --- PASS 4: wildcard out-of-scope (default-deny) -----------------------------
 while IFS= read -r pat; do
   [ -n "$pat" ] || continue
-  case "$pat" in *\**) ;; *) continue ;; esac   # only wildcard patterns (any position)
+  case "$pat" in *\**|+.*) ;; *) continue ;; esac   # only wildcard patterns ("+." included)
   if matches "$pat" "$target"; then
     echo "OUT-OF-SCOPE: $target matches exclusion '$pat'"
     exit 1

@@ -1,6 +1,6 @@
 # scope-acquisitions.yaml — GENERATED, do not hand-edit.
 # Source: acquisitions_domains_tiers.asciipb
-# Built : 2026-10-22T12:44:02Z by scripts/scope-from-tiers.sh
+# Built : 2026-10-28T01:47:30Z by scripts/scope-from-tiers.sh
 # In scope tiers: TIER0 TIER1 TIER2 TIER3.  TIER4 is listed under out_of_scope, since
 # Google's scheme marks it never in scope and out_of_scope is checked first.
 
@@ -813,6 +813,34 @@ in_scope:
   - "wwwinternal.fitbit.com"   # TIER3
   - "xd-hub.isolabs.ai"   # TIER3
   - "y.fitbit.com"   # TIER3
+  - "+.cameyo.com"   # TIER0 propagate_tier_to_direct_subdomains
+  - "+.googleacquisitionmigration.com"   # TIER0 propagate_tier_to_direct_subdomains
+  - "+.bvi.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.bvi.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.bvi.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.debug.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.fat.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.fat.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.fat.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.haw.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.haw.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.haw.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.lex.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.lex.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.lex.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.mmr.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.mmr.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.mmr.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.pr.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.pr.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.pr.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.sin.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.sin.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.sin.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.ssf.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.ssf.dev.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
+  - "+.ssf.preprod.debugproject.com"   # TIER3 propagate_tier_to_direct_subdomains
 
 out_of_scope:
   - "_5b420f87491a751dbf21630ec444e691.settings.firebase.crashlytics.com"   # TIER4 — never in scope
