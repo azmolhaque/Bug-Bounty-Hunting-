@@ -4491,3 +4491,66 @@ suffix list grew.
 Also worth recording: the run itself was cut short by the Pi's network
 dropping mid-sweep — 24 lookups returned RDAP-000 and the ssh session died —
 so it has to be repeated under `setsid` regardless of the parsing fixes.
+
+### 2026-10-28 — Google changed the scope files today, and confirmed our picasa measurement
+
+A `git pull` of google/bughunters on the phone showed commit 41b589f landing
+while we were working:
+
+    external_domains_acquisitions.asciipb | 320 ----------------------
+    external_domains_google.asciipb       |  16 +-
+
+**The whole photomath estate was removed from acquisitions scope** — including
+`metabase.photomath.net`, which is where this account's second Fixed finding
+came from. Every argocd host we spent the morning on is in that deletion too.
+Our sweeps were valid when run; the scope files here are now stale and need
+regenerating from the new protobufs.
+
+The Google file gained `express.cloud.google.com` at TIER0 and promoted
+`connected.google.com` from TIER1 to TIER0.
+
+**And `picasa-software.com` is gone from it.** Count: 0. We measured this
+morning that the domain was re-registered through Wix on 2026-10-10 by someone
+selling it, and concluded it was no longer Google's. Google removing it the
+same day is independent confirmation of that measurement — the first time this
+session an instrument's verdict has been corroborated from outside.
+
+### 2026-10-28 — Gemini CLI: in scope at OT1, and a trust boundary worth testing
+
+`oss-repository-tier/README.md` line 51 lists
+`https://github.com/google-gemini/gemini-cli` at **OT1**, the top tier of the
+OSS VRP. § 0 clears.
+
+What makes it worth the time, in the product's own words:
+
+    --skip-trust      Trust the current workspace for this session
+    --approval-mode   default | auto_edit | yolo | plan
+    --policy          Additional policy files or directories to load
+    --raw-output      WARNING: This can be a security risk if the model output
+                      is untrusted
+
+So the vendor declares a trust boundary around the workspace and an approval
+layer above it. The question is the one that pays: **can a repository's own
+files lower that, so that cloning it and running `gemini` executes something
+the user never approved?** The prize is on disk already — `~/.gemini/`
+contains `oauth_creds.json` (1.8 KB) and `google_accounts.json`.
+
+The shape that counts, fixed before testing:
+
+    -y / --yolo / --skip-trust used        NOT a finding — consent was given
+    a prompt asked for a command            NOT a finding — that is the product
+    default mode, folder not trusted,
+    workspace file takes effect             THIS
+
+**Measurement hazard, found before it ruined the run.** The phone's
+`trustedFolders.json` reads:
+
+    { "/data/data/com.termux/files/home": "TRUST_FOLDER" }
+
+The entire home directory is trusted, so anything cloned under `~` inherits it
+and any "untrusted workspace" test there is answering a different question.
+The test has to live outside `$HOME`. That is the tenth time this session an
+instrument's own configuration would have produced a result about itself.
+
+Also upgraded 0.65.0 -> 0.66.0 first: a finding on a version behind the latest
+is on Google's kill list.
