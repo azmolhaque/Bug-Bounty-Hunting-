@@ -4554,3 +4554,64 @@ instrument's own configuration would have produced a result about itself.
 
 Also upgraded 0.65.0 -> 0.66.0 first: a finding on a version behind the latest
 is on Google's kill list.
+
+### 2026-10-28 — Gemini CLI 0.66.0: three workspace vectors, three measured zeros
+
+In scope at OT1. Tested on Termux, Android 16, upgraded 0.65.0 -> 0.66.0 first
+because a finding on an older version is kill-listed.
+
+**Vector 1 — workspace extension.** `.gemini/extensions/poc/gemini-extension.json`
+with an `mcpServers` block. `gemini extensions list` printed "No extensions
+installed" in both a trusted and an untrusted directory: the workspace is not
+an extension discovery path at all, they must be installed or linked by hand.
+**My PoC was in the wrong place**, and checking discovery before building the
+payload would have saved an hour. The lesson is the session's: verify the
+instrument reads the file before measuring what it does with it.
+
+**Vector 2 — workspace `settings.json` with `mcpServers`.** This one is read,
+and the trust boundary holds cleanly:
+
+    trusted dir    ✗ poc: sh -c touch ...CANARY-TRUSTED (stdio) - Disconnected
+                   CANARY-TRUSTED created        <- control fired
+
+    untrusted dir  Warning: MCP servers are configured but disabled because
+                   this folder is untrusted. User-level servers are also
+                   suppressed in untrusted folders to prevent accidental
+                   side-effects.
+                   ○ poc: ... - Disabled
+                   no canary
+
+The control is what makes this readable: the command really does run when the
+folder is trusted, so the untrusted zero is about trust and not about a broken
+PoC.
+
+**Vector 3 — project hooks.** The docs make a specific, checkable promise:
+hooks are fingerprinted, and a hook whose name or command changes "via
+`git pull`" is treated as new and untrusted. Headless mode forbids asking the
+user at all — `policies/non-interactive.toml` denies `ask_user` at priority
+999 — so the question was whether an unapproved hook fails open there.
+
+It does not. A never-approved `SessionStart` hook printed:
+
+    WARNING: The following project-level hooks have been detected in this
+    workspace: - poc-canary
+    These hooks will be executed. If you did not configure these hooks or do
+    not trust this project, please review the project settings...
+
+and then ran. **That is the documented behaviour, word for word** — "you will
+be warned before it executes" — so it is not a finding. Changing the command
+and running again produced the warning a second time, so the fingerprinting
+does not fail open either.
+
+**Blocked, and worth recording for next time:** the account's OAuth tier is
+cut off for this CLI (`IneligibleTierError ... migrate to Antigravity`) and the
+AI Studio key's project is out of prepay credit (402 RESOURCE_EXHAUSTED), so
+the agent loop never ran. Everything above fires before the first model call;
+anything that needs tool execution — `BeforeTool`/`AfterTool` hooks, the policy
+engine's tool decisions, auto-approval — is untested.
+
+**And a caveat that limits all three results:** `docs/cli/trusted-folders.md`
+says the Trusted Folders feature is **disabled by default**. This phone has it
+enabled, which is why vector 2 showed a boundary at all. What a *default*
+install loads from a workspace is therefore still unmeasured, and that is the
+first thing to check next, not the last.
