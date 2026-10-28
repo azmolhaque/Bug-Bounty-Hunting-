@@ -4318,3 +4318,37 @@ values.
 
 Live sweep first, probes second — the cameyo round is the argument for that
 order, where four promising names were one catch-all.
+
+### 2026-10-28 — acquisitions closed; AI VRP protocol written before the first test
+
+`data-docs.debugproject.com` answers `x-pages-private: 1` and 302s to GitHub
+Pages auth — a private Pages site with its ACL working, not a takeover.
+`count.debugproject.com` is Verily's public page for the mosquito programme.
+`aem-dev`, `aem-stage` and `nwww.debug.com` all CNAME `www3.l.google.com` and
+return the same Google 404 with one identical hash: stale names, no AEM. The
+acquisitions estate is finished.
+
+Tally for the estate, since it took two days: 402 live hosts fingerprinted
+with 12 to 30 content-matched probes, zero software identified. 4 IAP hosts x
+14 paths, zero past the proxy. 471 unreachable hosts resolved, 14 takeover
+candidates, all closed — three S3 buckets that exist, nine SendGrid hosts
+needing their account, and three domains whose provider owns the registration.
+41 unlisted TIER0 cameyo hosts, which turned out to be 39 aliases of one
+catch-all. 6 unlisted hosts on the other propagating domains, all closed.
+
+No finding. Six instrument defects repaired, two of which were narrowing scope.
+
+**Next: AI VRP rogue actions on Gemini for Android**, and the protocol is
+written down first — `results/google/AI-VRP-PROTOCOL.md` — because the failure
+mode here is not missing the bug, it is watching a model say something odd and
+calling it one.
+
+The line, fixed before looking: the model SAID something is content and is
+excluded by name; the model DID something is the in-scope class. Evidence is
+never the prompt and never the reply, always the effect seen from the other
+account — a file A can now open, a message in A's inbox, a setting in B that
+survives clearing the conversation.
+
+Three rungs, each observable without any outside infrastructure, stopping at
+the first that fails. Expected outcome is refusal: this is the most-attacked
+surface Google has. The point is that the zero will be a real one.
