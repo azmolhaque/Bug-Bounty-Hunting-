@@ -1,0 +1,46 @@
+# google-frontend.txt — what a Google-operated web host answers to.
+# For acq-paths.sh via PATHS_FILE.
+#
+# Written for connected.google.com and express.cloud.google.com, two TIER0
+# hosts added to the tier file on 2026-10-28, both answering 404 with Google's
+# standard 1561-byte page at "/". A clean 404 baseline is the best case for a
+# differential: anything that is not that page exists in some form.
+#
+# The signal to watch for is not 200. On these hosts a path that really exists
+# and sits behind sign-in answers 302 to accounts.google.com, and a path behind
+# Cloud IAP answers 302 with a GSE server header and the "Sign in - Google
+# Accounts" page. Either tells you the route is real, which a 404 does not.
+
+# the files a host serves whether or not it has an app
+/robots.txt
+/favicon.ico
+/sitemap.xml
+/manifest.json
+/.well-known/security.txt
+
+# App Engine and GCP health conventions
+/_ah/health
+/healthz
+
+# where a Google app actually lives
+/u/0/
+/u/0
+/home
+/app
+/console
+/dashboard
+/setup
+/onboarding
+/welcome
+
+# sign-in entry points, which is where a 302 proves the route is real
+/signin
+/login
+/accounts
+
+# API roots
+/api
+/api/v1
+/v1
+/v1beta
+/_/
