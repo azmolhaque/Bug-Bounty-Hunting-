@@ -115,7 +115,16 @@ fail=0
 echo "   $got_prop domain(s) propagate their tier to direct subdomains"
 [ "$got_in" -eq "$want_in" ]  || { echo "!! in_scope $got_in != $want_in from source"; fail=1; }
 [ "$got_out" -eq "$want_out" ]|| { echo "!! out_of_scope $got_out != $want_out from source"; fail=1; }
-grep -q '"api.appsheet.com"' "$tmp" || { echo "!! a known TIER0 host is missing"; fail=1; }
+# The sentinel comes from the source being processed, not from a name typed
+# here. It was `api.appsheet.com`, which exists only in the acquisitions file,
+# so pointing this script at google_domains_tiers.asciipb failed a control that
+# was really asking "is this the acquisitions protobuf". A control bound to one
+# input is a control that stops working the first time the input changes.
+SENTINEL="${SENTINEL:-$(pairs | awk -F'\t' '$2=="TIER0"{print $1; exit}')}"
+[ -n "${SENTINEL:-}" ] || { echo "!! no TIER0 host in $PB to use as a sentinel"; fail=1; }
+if [ -n "${SENTINEL:-}" ] && ! grep -q "\"$SENTINEL\"" "$tmp"; then
+  echo "!! the first TIER0 host from the source ($SENTINEL) is missing from the output"; fail=1
+fi
 t4=$(pairs | awk -F'\t' '$2=="TIER4"{print $1; exit}')
 if [ -n "${t4:-}" ] && grep -qE "^  - \"$t4\"   # TIER[0-3]$" "$tmp"; then
   echo "!! TIER4 host $t4 landed in in_scope"; fail=1

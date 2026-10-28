@@ -1,0 +1,594 @@
+# scope-acquisitions.yaml — GENERATED, do not hand-edit.
+# Source: google_domains_tiers.asciipb
+# Built : 2026-10-28T03:27:42Z by scripts/scope-from-tiers.sh
+# In scope tiers: TIER0 TIER1 TIER2 TIER3.  TIER4 is listed under out_of_scope, since
+# Google's scheme marks it never in scope and out_of_scope is checked first.
+
+program: "Google & Alphabet VRP — acquisitions (derived from tier protobuf)"
+platform: "bughunters.google.com"
+
+in_scope:
+  - "accounts.cloud.google.com"   # TIER0
+  - "accounts.google.com"   # TIER0
+  - "admin.google.com"   # TIER0
+  - "bard.google.com"   # TIER0
+  - "bughunters.google.com"   # TIER0
+  - "bugs.chromium.org"   # TIER0
+  - "chrome.google.com"   # TIER0
+  - "chromewebstore.google.com"   # TIER0
+  - "clients6.google.com"   # TIER0
+  - "cloudsearch.google.com"   # TIER0
+  - "cloudssh.developers.google.com"   # TIER0
+  - "console-secure.cloud.google.com"   # TIER0
+  - "console.actions.google.com"   # TIER0
+  - "console.cloud.google"   # TIER0
+  - "console.cloud.google.com"   # TIER0
+  - "console.developers.google.com"   # TIER0
+  - "console.firebase.google.com"   # TIER0
+  - "ediscovery.google.com"   # TIER0
+  - "fi.google.com"   # TIER0
+  - "flash.android.com"   # TIER0
+  - "g-issues.chromium.org"   # TIER0
+  - "gemini.google.com"   # TIER0
+  - "googlecloudcheatsheet.withgoogle.com"   # TIER0
+  - "ide.cloud.google.com"   # TIER0
+  - "inbox.google.com"   # TIER0
+  - "issues.chromium.org"   # TIER0
+  - "issuetracker.google.com"   # TIER0
+  - "mail-settings.google.com"   # TIER0
+  - "mail.google.com"   # TIER0
+  - "meet.google.com"   # TIER0
+  - "myaccount.google.com"   # TIER0
+  - "passwords.google.com"   # TIER0
+  - "play.google.com"   # TIER0
+  - "remotedesktop.google.com"   # TIER0
+  - "shell.cloud.google.com"   # TIER0
+  - "ssh-secure.cloud.google.com"   # TIER0
+  - "ssh.cloud.google.com"   # TIER0
+  - "takeout.google.com"   # TIER0
+  - "vault.google.com"   # TIER0
+  - "admin-baseline.sandbox.google.com"   # TIER1
+  - "admin.baseline.google.com"   # TIER1
+  - "ads.google.com"   # TIER1
+  - "adsense.google.com"   # TIER1
+  - "adwords.google.com"   # TIER1
+  - "android.google.com"   # TIER1
+  - "baseline.google.com"   # TIER1
+  - "baseline.sandbox.google.com"   # TIER1
+  - "bigquery.cloud.google.com"   # TIER1
+  - "businessmessages.google.com"   # TIER1
+  - "calendar.google.com"   # TIER1
+  - "channelservices.cloud.google.com"   # TIER1
+  - "chat.google.com"   # TIER1
+  - "checkout.youtube.com"   # TIER1
+  - "ci.android.com"   # TIER1
+  - "clients.google.com"   # TIER1
+  - "clients1.google.com"   # TIER1
+  - "clients2.google.com"   # TIER1
+  - "clients3.google.com"   # TIER1
+  - "clients4.google.com"   # TIER1
+  - "clients5.google.com"   # TIER1
+  - "docs.google.com"   # TIER1
+  - "domains.google.com"   # TIER1
+  - "drive.google.com"   # TIER1
+  - "encrypted.google.com"   # TIER1
+  - "enexpress.app"   # TIER1
+  - "express.google.com"   # TIER1
+  - "get.google.com"   # TIER1
+  - "googlesource.com"   # TIER1
+  - "groups.google.com"   # TIER1
+  - "hangouts.google.com"   # TIER1
+  - "home.google.com"   # TIER1
+  - "hume.google.com"   # TIER1
+  - "ipv6.google.com"   # TIER1
+  - "legalretrievals.google"   # TIER1
+  - "lens.google.com"   # TIER1
+  - "lers.google.com"   # TIER1
+  - "m.youtube.com"   # TIER1
+  - "messages.google.com"   # TIER1
+  - "myactivity.google.com"   # TIER1
+  - "notifications.google.com"   # TIER1
+  - "orion.google"   # TIER1
+  - "orionwifi.area120.com"   # TIER1
+  - "partners.cloud.google.com"   # TIER1
+  - "pay.google.com"   # TIER1
+  - "payments.google.com"   # TIER1
+  - "payments.youtube.com"   # TIER1
+  - "photos.google.com"   # TIER1
+  - "script.google.com"   # TIER1
+  - "shop.google.com"   # TIER1
+  - "shopping.google.com"   # TIER1
+  - "signals.area120.com"   # TIER1
+  - "source.cloud.google.com"   # TIER1
+  - "storage.cloud.google.com"   # TIER1
+  - "store.google.com"   # TIER1
+  - "studio.youtube.com"   # TIER1
+  - "talkgadget.google.com"   # TIER1
+  - "threadit.app"   # TIER1
+  - "threadit.area120.com"   # TIER1
+  - "timeline-autopush.google.com"   # TIER1
+  - "timeline-staging.google.com"   # TIER1
+  - "timeline.google.com"   # TIER1
+  - "toolbox.googleapps.com"   # TIER1
+  - "voice.google.com"   # TIER1
+  - "wallet.google.com"   # TIER1
+  - "wiz.io"   # TIER1
+  - "www.google.com"   # TIER1
+  - "www.youtube.com"   # TIER1
+  - "360suite.google.com"   # TIER2
+  - "aboutme.google.com"   # TIER2
+  - "accelerator.google.com"   # TIER2
+  - "actions.google.com"   # TIER2
+  - "admob.com"   # TIER2
+  - "adsdatahub.google.com"   # TIER2
+  - "adservice.google.com"   # TIER2
+  - "adssettings.google.com"   # TIER2
+  - "adviser.google.com"   # TIER2
+  - "adx.google.com"   # TIER2
+  - "aloud.area120.google.com"   # TIER2
+  - "analytics.google.com"   # TIER2
+  - "androidpay.developers.google.com"   # TIER2
+  - "apis.google.com"   # TIER2
+  - "appengine.google.com"   # TIER2
+  - "appmaker.google.com"   # TIER2
+  - "apps.developers.google.com"   # TIER2
+  - "apps.google.com"   # TIER2
+  - "area120-olive-tt.appspot.com"   # TIER2
+  - "area120.google.com"   # TIER2
+  - "area120tables.googleapis.com"   # TIER2
+  - "artsandculture.google.com"   # TIER2
+  - "assistant.google.com"   # TIER2
+  - "atap.google.com"   # TIER2
+  - "attribution.google.com"   # TIER2
+  - "audiencecenter.google.com"   # TIER2
+  - "automotiveservices.google.com"   # TIER2
+  - "avera.area120.com"   # TIER2
+  - "baraza.google.com"   # TIER2
+  - "blogger.com"   # TIER2
+  - "books.google.com"   # TIER2
+  - "bss.fiber.google.com"   # TIER2
+  - "business.google.com"   # TIER2
+  - "campaignmanager.google.com"   # TIER2
+  - "carbonindex.area120.google.com"   # TIER2
+  - "cardboard.google.com"   # TIER2
+  - "careers.google.com"   # TIER2
+  - "cast.google.com"   # TIER2
+  - "cbf.vdi.ext.google.com"   # TIER2
+  - "cbf1.vdi.ext.google.com"   # TIER2
+  - "checks.area120.google.com"   # TIER2
+  - "chromium.org"   # TIER2
+  - "cla.developers.google.com"   # TIER2
+  - "classroom.google.com"   # TIER2
+  - "cloud.google.com"   # TIER2
+  - "code.earthengine.google.com"   # TIER2
+  - "codelabs.developers.google.com"   # TIER2
+  - "codetheroad.developers.google.com"   # TIER2
+  - "colab.research.google.com"   # TIER2
+  - "console.developer.google.com"   # TIER2
+  - "console.fiber.google.com"   # TIER2
+  - "console1.actions.google.com"   # TIER2
+  - "console1.cloud.google.com"   # TIER2
+  - "console1.developers.google.com"   # TIER2
+  - "console1.firebase.google.com"   # TIER2
+  - "content.googleapis.com"   # TIER2
+  - "contributor.google.com"   # TIER2
+  - "coordinate.google.com"   # TIER2
+  - "crome.google.com"   # TIER2
+  - "crowdsource.google.com"   # TIER2
+  - "cse.google.com"   # TIER2
+  - "culturalinstitute.google.com"   # TIER2
+  - "datalab.cloud.google.com"   # TIER2
+  - "datally.google.com"   # TIER2
+  - "dataly.google.com"   # TIER2
+  - "datastudio.google.com"   # TIER2
+  - "ddm.google.com"   # TIER2
+  - "design.google.com"   # TIER2
+  - "developer.google.com"   # TIER2
+  - "developers.google.com"   # TIER2
+  - "devicecertification.youtube"   # TIER2
+  - "devicemanagement.google.com"   # TIER2
+  - "diversity.google.com"   # TIER2
+  - "dns.google.com"   # TIER2
+  - "doc.google.com"   # TIER2
+  - "docs0.google.com"   # TIER2
+  - "docs7.google.com"   # TIER2
+  - "donate.google.com"   # TIER2
+  - "doubleclick.google.com"   # TIER2
+  - "earth.google.com"   # TIER2
+  - "earthengine.google.com"   # TIER2
+  - "explorer.earthengine.google.com"   # TIER2
+  - "families.google.com"   # TIER2
+  - "fiber.google.com"   # TIER2
+  - "firebase.google.com"   # TIER2
+  - "fit.google.com"   # TIER2
+  - "flights.google.com"   # TIER2
+  - "fonts.google.com"   # TIER2
+  - "fusiontables.google.com"   # TIER2
+  - "gamesnacks.com"   # TIER2
+  - "gcr-staging.sandbox.google.com"   # TIER2
+  - "gfiber.com"   # TIER2
+  - "goggles.google.com"   # TIER2
+  - "google.com"   # TIER2
+  - "goosbee.com"   # TIER2
+  - "goto.ext.google.com"   # TIER2
+  - "goto.google.com"   # TIER2
+  - "gradient.google.com"   # TIER2
+  - "grasshopper.app"   # TIER2
+  - "grow.google.com"   # TIER2
+  - "gsuite.google.com"   # TIER2
+  - "guesttalkgadget.google.com"   # TIER2
+  - "hangout.google.com"   # TIER2
+  - "health.google.com"   # TIER2
+  - "help.google.com"   # TIER2
+  - "helpouts.google.com"   # TIER2
+  - "hire.google.com"   # TIER2
+  - "history.google.com"   # TIER2
+  - "hostedtalkgadget.google.com"   # TIER2
+  - "hotelfinder.google.com"   # TIER2
+  - "hotels.google.com"   # TIER2
+  - "hotpot.google.com"   # TIER2
+  - "images.google.com"   # TIER2
+  - "inputtools.google.com"   # TIER2
+  - "instant.google.com"   # TIER2
+  - "iot.google.com"   # TIER2
+  - "ipv6test.google.com"   # TIER2
+  - "isolated.mail.google.com"   # TIER2
+  - "isp.google.com"   # TIER2
+  - "jamboard.google.com"   # TIER2
+  - "jibe.google.com"   # TIER2
+  - "jigsaw.google.com"   # TIER2
+  - "jmt17.google.com"   # TIER2
+  - "keep.google.com"   # TIER2
+  - "kormo.app"   # TIER2
+  - "krome.google.com"   # TIER2
+  - "local.google.com"   # TIER2
+  - "lti.drive.google.com"   # TIER2
+  - "lti.gemini.google.com"   # TIER2
+  - "lti.meet.google.com"   # TIER2
+  - "lti.workspace.google.com"   # TIER2
+  - "m.plus.google.com"   # TIER2
+  - "madeby.google.com"   # TIER2
+  - "manufacturers.google.com"   # TIER2
+  - "map.google.com"   # TIER2
+  - "mapmaker.google.com"   # TIER2
+  - "maps.google.com"   # TIER2
+  - "maps.l.google.com"   # TIER2
+  - "mapsengine.google.com"   # TIER2
+  - "material.google.com"   # TIER2
+  - "maven.google.com"   # TIER2
+  - "merchants.google.com"   # TIER2
+  - "microhost.google.com"   # TIER2
+  - "music.google.com"   # TIER2
+  - "mybusiness.google.com"   # TIER2
+  - "mymaps.google.com"   # TIER2
+  - "news.google.com"   # TIER2
+  - "newsstand.google.com"   # TIER2
+  - "nexus.google.com"   # TIER2
+  - "offers.google.com"   # TIER2
+  - "on.google.com"   # TIER2
+  - "ondemandplatform.google.com"   # TIER2
+  - "onetoday.google.com"   # TIER2
+  - "opensource.google.com"   # TIER2
+  - "optimize.google.com"   # TIER2
+  - "panelresearch.google.com"   # TIER2
+  - "partner.android.com"   # TIER2
+  - "partnerdash.google.com"   # TIER2
+  - "partnerportal.fiber.google.com"   # TIER2
+  - "partners.google.com"   # TIER2
+  - "patents.google.com"   # TIER2
+  - "payments.developers.google.com"   # TIER2
+  - "peering.google.com"   # TIER2
+  - "photo.google.com"   # TIER2
+  - "pixel.google.com"   # TIER2
+  - "pki.google.com"   # TIER2
+  - "places.google.com"   # TIER2
+  - "plus.google.com"   # TIER2
+  - "plusone.google.com"   # TIER2
+  - "poly.google.com"   # TIER2
+  - "postmaster.google.com"   # TIER2
+  - "posts.google.com"   # TIER2
+  - "pride.google.com"   # TIER2
+  - "privacy.google.com"   # TIER2
+  - "producer.google.com"   # TIER2
+  - "productforums.google.com"   # TIER2
+  - "profiles.google.com"   # TIER2
+  - "projectshield.google"   # TIER2
+  - "projectshield.withgoogle.com"   # TIER2
+  - "pss.support.google.com"   # TIER2
+  - "publisherplugin.google.com"   # TIER2
+  - "qaya.area120.google.com"   # TIER2
+  - "realtime.google.com"   # TIER2
+  - "recaptcha.net"   # TIER2
+  - "recorder.google.com"   # TIER2
+  - "registry.google.com"   # TIER2
+  - "research.google.com"   # TIER2
+  - "safebrowsing.google.com"   # TIER2
+  - "sandbox.google.com"   # TIER2
+  - "santatracker.google.com"   # TIER2
+  - "sb.google.com"   # TIER2
+  - "scholar.google.com"   # TIER2
+  - "script.usercontent.google.com"   # TIER2
+  - "sdk.cloud.google.com"   # TIER2
+  - "security.google.com"   # TIER2
+  - "selfdrivingcar.google.com"   # TIER2
+  - "selfdrivingcars.google.com"   # TIER2
+  - "sheets.google.com"   # TIER2
+  - "shoppinglist.google.com"   # TIER2
+  - "sidewiki.google.com"   # TIER2
+  - "signup.earthengine.google.com"   # TIER2
+  - "sitecontent.google.com"   # TIER2
+  - "sitescontent.google.com"   # TIER2
+  - "slides.google.com"   # TIER2
+  - "source.developers.google.com"   # TIER2
+  - "spaces.google.com"   # TIER2
+  - "speech.google.com"   # TIER2
+  - "spreadsheet.google.com"   # TIER2
+  - "spreadsheets.google.com"   # TIER2
+  - "spreadsheets5.google.com"   # TIER2
+  - "springboard.google.com"   # TIER2
+  - "stack.area120.com"   # TIER2
+  - "staging.docs.google.com"   # TIER2
+  - "standards.google.com"   # TIER2
+  - "startup.google.com"   # TIER2
+  - "station.google.com"   # TIER2
+  - "status.cloud.google.com"   # TIER2
+  - "status.firebase.google.com"   # TIER2
+  - "studykit.google.com"   # TIER2
+  - "supplierhub.google.com"   # TIER2
+  - "supplychain.google.com"   # TIER2
+  - "support.google.com"   # TIER2
+  - "survey.google.com"   # TIER2
+  - "surveys.google.com"   # TIER2
+  - "tables.area120.google.com"   # TIER2
+  - "tagmanager.google.com"   # TIER2
+  - "talk.google.com"   # TIER2
+  - "talk.l.google.com"   # TIER2
+  - "talk6.l.google.com"   # TIER2
+  - "talkx.l.google.com"   # TIER2
+  - "terrabella.google.com"   # TIER2
+  - "test.docs.google.com"   # TIER2
+  - "tez.google.com"   # TIER2
+  - "time.google.com"   # TIER2
+  - "time1.google.com"   # TIER2
+  - "time2.google.com"   # TIER2
+  - "time3.google.com"   # TIER2
+  - "time4.google.com"   # TIER2
+  - "toolbar.google.com"   # TIER2
+  - "toolbox.fiber.google.com"   # TIER2
+  - "tools.google.com"   # TIER2
+  - "transit.google.com"   # TIER2
+  - "translate.google.com"   # TIER2
+  - "transparencyreport.google.com"   # TIER2
+  - "trends.google.com"   # TIER2
+  - "trustedtester.google.com"   # TIER2
+  - "uberproxy.l.google.com"   # TIER2
+  - "uberproxy4.l.google.com"   # TIER2
+  - "uberproxy6.l.google.com"   # TIER2
+  - "us-gcr-staging.sandbox.google.com"   # TIER2
+  - "usercontent.corp.google.com"   # TIER2
+  - "usercontent.google.com"   # TIER2
+  - "userresearch.google.com"   # TIER2
+  - "video.google.com"   # TIER2
+  - "visualsearch.google.com"   # TIER2
+  - "vr.google.com"   # TIER2
+  - "wave.ext.google.com"   # TIER2
+  - "weave.google.com"   # TIER2
+  - "webapp.google.com"   # TIER2
+  - "webapps.google.com"   # TIER2
+  - "webrtc.org"   # TIER2
+  - "work.google.com"   # TIER2
+  - "workswithnest.google.com"   # TIER2
+  - "writely.google.com"   # TIER2
+  - "xmpp.google.com"   # TIER2
+  - "xmpp.l.google.com"   # TIER2
+  - "xmppx.l.google.com"   # TIER2
+  - "youtube.com"   # TIER2
+  - "youtubekids.com"   # TIER2
+  - "1emn.com"   # TIER3
+  - "1enm.com"   # TIER3
+  - "265.com"   # TIER3
+  - "2enm.com"   # TIER3
+  - "3enm.com"   # TIER3
+  - "8d1f.com"   # TIER3
+  - "abc.xyz"   # TIER3
+  - "addin.meet"   # TIER3
+  - "admeld.com"   # TIER3
+  - "adsense.com"   # TIER3
+  - "advertisercommunity.com"   # TIER3
+  - "adwords.com"   # TIER3
+  - "alphafold.com"   # TIER3
+  - "ampproject.net"   # TIER3
+  - "ampproject.org"   # TIER3
+  - "android.com"   # TIER3
+  - "app-measurement.com"   # TIER3
+  - "appdefensealliance.dev"   # TIER3
+  - "area120.com"   # TIER3
+  - "asp-cc.com"   # TIER3
+  - "bazel.build"   # TIER3
+  - "brotli.org"   # TIER3
+  - "business.page"   # TIER3
+  - "business.site"   # TIER3
+  - "chrome.com"   # TIER3
+  - "chromecast.com"   # TIER3
+  - "cloudyoryx.dev"   # TIER3
+  - "crbug.com"   # TIER3
+  - "create.meme"   # TIER3
+  - "crossmediapanel.com"   # TIER3
+  - "crosvm.dev"   # TIER3
+  - "d.meet"   # TIER3
+  - "datacommons.org"   # TIER3
+  - "deps.dev"   # TIER3
+  - "dial.meet"   # TIER3
+  - "e0mn.com"   # TIER3
+  - "earthengine.app"   # TIER3
+  - "em0n.com"   # TIER3
+  - "emn0.com"   # TIER3
+  - "feedburner.com"   # TIER3
+  - "find.meme"   # TIER3
+  - "flutter.dev"   # TIER3
+  - "froogle.com"   # TIER3
+  - "fuchsia.dev"   # TIER3
+  - "g.cn"   # TIER3
+  - "g.co"   # TIER3
+  - "g.page"   # TIER3
+  - "gandalfservice.com"   # TIER3
+  - "get.app"   # TIER3
+  - "get.dev"   # TIER3
+  - "gle"   # TIER3
+  - "gmail.com"   # TIER3
+  - "godoc.org"   # TIER3
+  - "golang.com"   # TIER3
+  - "golang.org"   # TIER3
+  - "goo.gl"   # TIER3
+  - "goog"   # TIER3
+  - "google"   # TIER3
+  - "google-analytics.com"   # TIER3
+  - "google.com.ru"   # TIER3
+  - "google.org"   # TIER3
+  - "googleads.com"   # TIER3
+  - "googleapps.com"   # TIER3
+  - "googleblog.com"   # TIER3
+  - "googlecnapps.cn"   # TIER3
+  - "googlecommerce.com"   # TIER3
+  - "googleoptimize.com"   # TIER3
+  - "googletagmanager.com"   # TIER3
+  - "googletagservices.com"   # TIER3
+  - "googlevideo.com"   # TIER3
+  - "hwgo.com"   # TIER3
+  - "k8s.io"   # TIER3
+  - "lanternalauth.com"   # TIER3
+  - "louhi.dev"   # TIER3
+  - "make.meme"   # TIER3
+  - "malachiteauth.com"   # TIER3
+  - "meme.meme"   # TIER3
+  - "mn0e.com"   # TIER3
+  - "near.by"   # TIER3
+  - "new.meme"   # TIER3
+  - "nn0e.com"   # TIER3
+  - "openthread.io"   # TIER3
+  - "picasa-software.com"   # TIER3
+  - "picasa.com"   # TIER3
+  - "pub.dev"   # TIER3
+  - "qwiklabs.com"   # TIER3
+  - "schema.org"   # TIER3
+  - "search.meme"   # TIER3
+  - "skia.org"   # TIER3
+  - "stadia.com"   # TIER3
+  - "t.meet"   # TIER3
+  - "tel.meet"   # TIER3
+  - "tenor.meme"   # TIER3
+  - "tensorboard.dev"   # TIER3
+  - "test.webrtc.org"   # TIER3
+  - "tfhub.dev"   # TIER3
+  - "thinkwithgoogle.com"   # TIER3
+  - "upload.meme"   # TIER3
+  - "urchin.com"   # TIER3
+  - "web.dev"   # TIER3
+  - "withgoogle.com"   # TIER3
+  - "withyoutube.com"   # TIER3
+  - "yourprimer.com"   # TIER3
+  - "youtu.be"   # TIER3
+  - "youtube"   # TIER3
+  - "youtube.co.nl"   # TIER3
+  - "youtubeeducation.com"   # TIER3
+  - "youtubego.com"   # TIER3
+  - "ytimg.com"   # TIER3
+
+out_of_scope:
+  - "2mdn-cn.net"   # TIER4 — never in scope
+  - "2mdn.net"   # TIER4 — never in scope
+  - "ad.doubleclick.net"   # TIER4 — never in scope
+  - "adscape.com"   # TIER4 — never in scope
+  - "adtrafficquality.google"   # TIER4 — never in scope
+  - "app.goo.gl"   # TIER4 — never in scope
+  - "app.google"   # TIER4 — never in scope
+  - "appspot.com"   # TIER4 — never in scope
+  - "blogblog.com"   # TIER4 — never in scope
+  - "blogspot.com"   # TIER4 — never in scope
+  - "bp.blogspot.com"   # TIER4 — never in scope
+  - "ccaiplatform.com"   # TIER4 — never in scope
+  - "cdn-dev.ampproject.org"   # TIER4 — never in scope
+  - "cdn.ampproject.org"   # TIER4 — never in scope
+  - "cloud-staging.goog"   # TIER4 — never in scope
+  - "cloud-test.goog"   # TIER4 — never in scope
+  - "cloud.goog"   # TIER4 — never in scope
+  - "cloudconnect.goog"   # TIER4 — never in scope
+  - "cloudconnectcommunity.com"   # TIER4 — never in scope
+  - "clouddataprep.com"   # TIER4 — never in scope
+  - "cloudfunctions.net"   # TIER4 — never in scope
+  - "cloudshell.dev"   # TIER4 — never in scope
+  - "community.nest.com"   # TIER4 — never in scope
+  - "connect.googleforwork.com"   # TIER4 — never in scope
+  - "contributorscommunity.com"   # TIER4 — never in scope
+  - "corp.googleapis.com"   # TIER4 — never in scope
+  - "corp.googleusercontent.com"   # TIER4 — never in scope
+  - "dailydeal.de"   # TIER4 — never in scope
+  - "dartsearch.net"   # TIER4 — never in scope
+  - "doubleclick-cn.net"   # TIER4 — never in scope
+  - "doubleclick.net"   # TIER4 — never in scope
+  - "en.advertisercommunity.com"   # TIER4 — never in scope
+  - "feedproxy.feedburner.com"   # TIER4 — never in scope
+  - "feeds.feedburner.com"   # TIER4 — never in scope
+  - "feeds.podcasts.goog"   # TIER4 — never in scope
+  - "feeds2.feedburner.com"   # TIER4 — never in scope
+  - "fls.doubleclick.net"   # TIER4 — never in scope
+  - "freebaseapps.com"   # TIER4 — never in scope
+  - "gateway.dev"   # TIER4 — never in scope
+  - "gcr.io"   # TIER4 — never in scope
+  - "gcs-p2.sc-cdn.net"   # TIER4 — never in scope
+  - "gcs.sc-cdn.net"   # TIER4 — never in scope
+  - "ggpht.com"   # TIER4 — never in scope
+  - "gmodules.com"   # TIER4 — never in scope
+  - "go.google"   # TIER4 — never in scope
+  - "googleads.g.doubleclick.net"   # TIER4 — never in scope
+  - "googleadservices.com"   # TIER4 — never in scope
+  - "googleapis-cn.com"   # TIER4 — never in scope
+  - "googleapis.com"   # TIER4 — never in scope
+  - "googlecode.com"   # TIER4 — never in scope
+  - "googledrive.com"   # TIER4 — never in scope
+  - "googlegroups.com"   # TIER4 — never in scope
+  - "googlemerchandisestore.com"   # TIER4 — never in scope
+  - "googlesyndication-cn.com"   # TIER4 — never in scope
+  - "googlesyndication.com"   # TIER4 — never in scope
+  - "googletraveladservices.com"   # TIER4 — never in scope
+  - "googleusercontent.com"   # TIER4 — never in scope
+  - "googleweblight.com"   # TIER4 — never in scope
+  - "googlezip.net"   # TIER4 — never in scope
+  - "gstatic-cn.com"   # TIER4 — never in scope
+  - "gstatic.com"   # TIER4 — never in scope
+  - "gvt1.com"   # TIER4 — never in scope
+  - "gvt2.com"   # TIER4 — never in scope
+  - "gvt3.com"   # TIER4 — never in scope
+  - "hybrid.googleapis.com"   # TIER4 — never in scope
+  - "joonix.net"   # TIER4 — never in scope
+  - "lanternal.com"   # TIER4 — never in scope
+  - "localguidesconnect.com"   # TIER4 — never in scope
+  - "m.doubleclick.net"   # TIER4 — never in scope
+  - "motifcdn2.doubleclick.net"   # TIER4 — never in scope
+  - "mtls.googleapis.com"   # TIER4 — never in scope
+  - "nianticlabs.com"   # TIER4 — never in scope
+  - "page.link"   # TIER4 — never in scope
+  - "pkg.dev"   # TIER4 — never in scope
+  - "podcasts.goog"   # TIER4 — never in scope
+  - "polar.com"   # TIER4 — never in scope
+  - "run.app"   # TIER4 — never in scope
+  - "sandbox.googleapis.com"   # TIER4 — never in scope
+  - "sandbox.usercontent.goog"   # TIER4 — never in scope
+  - "scf.usercontent.goog"   # TIER4 — never in scope
+  - "sketchup.com"   # TIER4 — never in scope
+  - "skybox.com"   # TIER4 — never in scope
+  - "skyboximaging.com"   # TIER4 — never in scope
+  - "storage-p2.googleapis.com"   # TIER4 — never in scope
+  - "storage.googleapis.com"   # TIER4 — never in scope
+  - "tdcommons.org"   # TIER4 — never in scope
+  - "terrabella.com"   # TIER4 — never in scope
+  - "terrabellatech.com"   # TIER4 — never in scope
+  - "training.nest.com"   # TIER4 — never in scope
+  - "translate.goog"   # TIER4 — never in scope
+  - "usercontent.goog"   # TIER4 — never in scope
+  - "www.googlenestcommunity.com"   # TIER4 — never in scope
+  - "youtube-3rd-party.com"   # TIER4 — never in scope
+  - "youtube-creatorcommunity.com"   # TIER4 — never in scope
+  - "youtube-education.com"   # TIER4 — never in scope
+  - "youtube-nocookie.com"   # TIER4 — never in scope
+  - "zagat.com"   # TIER4 — never in scope

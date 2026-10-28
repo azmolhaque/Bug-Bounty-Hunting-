@@ -4352,3 +4352,55 @@ survives clearing the conversation.
 Three rungs, each observable without any outside infrastructure, stopping at
 the first that fails. Expected outcome is refusal: this is the most-attacked
 surface Google has. The point is that the zero will be a real one.
+
+### 2026-10-28 — the update round found nothing, and a third scope file was excluding
+
+**Three updated packages, nothing new.** ai.edge.gallery 1.0.20→1.0.21,
+cloudconsole 26.10.191400→191401, docs 2.26.427.3→.4, all refreshed with APK,
+manifest and sources together, 60,820 java files decompiled.
+
+intentfwd: 81 components read, `class not in the sources: 0`, five hits — and
+every one already closed in this log. ProjectorActivity is S41, GetMetadataActivity
+is S43, SendTextToClipboardActivity takes a Uri, DocumentOpenerActivity is behind
+GLOBAL_SEARCH and takes a Bundle, UploadMenuActivity takes a ScanMetadata.
+**cloudconsole, the Tier 1 app, produced zero hits and zero open providers.**
+
+manifest-gaps: two open providers in docs, both already closed — S28
+(`storage.legacy`, reachable and empty) and S29 (`statesyncer`, no rows).
+
+That is dedup working. The expensive failure would have been re-reading S28 as
+new, and it was close: the 2026-10-22 note records `LegacyStorageBackendContentProvider`
+as having "no grantUriPermissions", while the current manifest reads
+
+    exported=true  authorities=...storage.legacy
+    grantUriPermissions=true  forceUriPermissions=true
+
+I said in chat that grantUriPermissions does not remove a guard, which was not
+enough. **`forceUriPermissions` adds one**: it makes the framework require a URI
+grant on every access regardless of the provider's own checks, which is exactly
+the check the old note found sitting behind a disabled feature flag. Whether it
+changed in .4 or the old reading was incomplete, today's state is more closed
+than it was, not less.
+
+**And the third hand-maintained scope file caught excluding.** Generated
+`config/scope-google-tiers.yaml` from `google_domains_tiers.asciipb`: 485 in
+scope, 97 TIER4 excluded, 0 domains with the propagate flag — so the Google
+program is hostname-exact, unlike acquisitions.
+
+Then compared its 39 TIER0 hosts against the hand-maintained
+`config/scope-google.yaml`:
+
+    missing: 38 of 39
+
+mail.google.com, accounts.google.com, play.google.com, gemini.google.com,
+console.cloud.google.com, myaccount.google.com, passwords.google.com,
+takeout.google.com, vault.google.com, issuetracker.google.com — none of them
+in the file that scope-check reads by default. The same failure as the
+acquisitions file's missing 84 of 195, for the third time.
+
+`scope-from-tiers.sh` also had a control bound to one input: it asserted
+`api.appsheet.com` survived the pipeline, which exists only in the acquisitions
+protobuf, so pointing the script at the Google one failed a control that was
+really asking "is this the acquisitions file". The sentinel is now the first
+TIER0 host of whatever source is being processed. Verified by regenerating the
+acquisitions file and diffing: identical apart from the timestamp.
