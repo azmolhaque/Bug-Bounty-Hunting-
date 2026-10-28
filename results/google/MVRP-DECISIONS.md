@@ -4793,3 +4793,66 @@ thirteenth instrument error of the day. Work continued from `/dev/shm`.
 
 Everything is pushed, so nothing is lost, but the card needs replacing before
 the Pi is used for anything that writes.
+
+### 2026-10-28 — checkmx finished: the tool works, and that is the answer
+
+Picking up where the harness was left unmeasured. The submit input has no
+`name`, so it is never submitted: the only parameters are `domain` and the
+optional `dkim_selector`. Our requests had been complete all along.
+
+"Check was not possible" was not a broken tool and not a malformed request. The
+reason is further down the page, in a div the earlier greps never reached:
+
+    google.com
+    Check was not possible.
+    <div id="blacklist">
+    This domain is not allowed.
+    This domain is configured just fine. No need to check it.
+
+**Every domain I had chosen was Google-owned** — google.com, gmail.com,
+cameyo.com — picked deliberately under § 7 to avoid making Google's server
+touch a third party's mail infrastructure, and that caution is exactly what
+produced three identical dead ends.
+
+Control, taken before believing any of it: the same domain fetched twice gives
+a byte-identical page (md5 `3ebb069f2506`), so the differing hashes across
+domains really were the server responding to input and not a per-request nonce.
+That check is why the "the server ignores the domain" reading was dropped.
+
+Three distinct, valid behaviours once the right domains were used:
+
+    Google-owned domain      blacklist: "This domain is not allowed"
+    example.com (no MX)      "Request timed out" — so there is a network step
+                             that waits, not just a record read
+    our own dnshook name     4.5s, "critical problems detected with this domain"
+
+So checkmx resolves user-supplied names and reports on them. That is the
+product. **Closed.**
+
+The next rung would be pointing an MX record at a host we control and watching
+for the connection, and it is not reachable: DNSHook does not serve MX, and no
+domain here has controllable DNS. Even with one, § 3 is explicit that SSRF
+which only reaches attacker-owned infrastructure is not a finding — the value
+would need the server to reach something internal and return data, and a
+DNS/SMTP checker has no path to that.
+
+**Toolbox, the whole application:**
+
+    /apps/dig/lookup     CSRF enforced, empty input handled, unknown typ falls
+                         back to ANY, seven hidden nameserver parameter names
+                         all ignored                                    closed
+    /apps/checkmx/check  GET, Google's own domains blocklisted, user domains
+                         resolved — as designed                         closed
+    /apps/loganalyzer/   redirects to itself forever                broken, not
+                                                                     a finding
+
+A Tier 1 Django application with two server-side endpoints and input validation
+in the right places. A measured zero, with the controls to read it by.
+
+**One side-confirmation, from the morning's collector.** The webhook.site log
+for page A holds exactly two hits: our own `curl/8.21.0` from Dhaka at
+14:50:35, and one from 108.177.77.133 (Mountain View) with user-agent `Google`
+at 14:51:51 — Gemini fetching the page it was asked to summarise, one minute
+before the Pro and Flash runs. The second collector, the one named in the
+page's injected instruction, is still empty. Run 4's zero is now measured from
+both ends.
