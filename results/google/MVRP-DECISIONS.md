@@ -5061,3 +5061,83 @@ Done in response:
 
 The container cannot reach any of it (the agent proxy refuses CONNECT to
 crt.sh and to the targets alike), so the probing runs on the Pi.
+
+## 2026-10-28 — intrinsic.ai estate: the unauthenticated surface, measured
+
+30 hosts (29 from certificate transparency plus the apex of intrinsic.dev,
+which no log has heard of). 22 answered. What is there:
+
+| cluster | what it is |
+|---|---|
+| flowstate / -dev / -qa | the product, an Angular SPA, three environments |
+| portal / -dev / -qa | redirects to the flowstate host of its OWN environment |
+| developer / -dev / -qa | "Developer Community", a separate Angular app |
+| edge | 401 on every path probed |
+| edge-dev / edge-qa, assets*, accounts-qa | nginx with no app at `/` |
+| www / intrinsic.ai / suppliers | the marketing site, assets all off-origin |
+| trust | a trust-centre page on Cloudflare |
+| accounts | 502 |
+
+Closed, each with the control that closed it:
+
+* **Software fingerprint: 0 of 22.** 30 content-matched markers, 660 requests,
+  progress file at 22/22 so the zero is the estate and not a half-finished
+  sweep. No Metabase, no Jenkins, no exposed `.git` or `.env`.
+* **`/healthz` answers 200 with 7 bytes** on accounts-qa, assets, assets-qa
+  and edge-dev, against a 404/74-byte baseline. § 3 drops diagnostic and
+  health endpoints by name, and 7 bytes cannot carry anything else. Not a
+  finding. Production edge differs the other way: its 401 covers every path
+  probed, which is the gateway doing its job.
+* **`kubernetes-dashboard.intrinsic.ai` and `ipc.intrinsic.ai`** are named by
+  the production bundle and are **NXDOMAIN**. Internal names left in a public
+  bundle, no data reachable; § 3 informational. A subdomain of someone else's
+  zone cannot be registered, so there is nothing to claim either.
+* **`support.intrinsic.ai`** is a Freshdesk CNAME with an account-specific hex
+  label. Precondition only. The Wiz attempt is in this log already; not
+  repeating it.
+* **No own-origin API in the bundles.** 4.9 MB of production bundle contains
+  no gRPC service names (only `google.protobuf.*` runtime descriptors from
+  protobufjs) and no `/api` route of its own. Every network path in it belongs
+  to the Firebase SDK. The `/vm-not-found` route says each user gets a VM, so
+  the real backend is reached after sign-in.
+
+**The Firebase angle is closed by scope, permanently.** The clean read-only
+test for whether sign-up is open is `GET identitytoolkit.googleapis.com/v1/projects?key=…`,
+and that was about to be run. Google's own tier file:
+
+    googleapis.com          TIER4   — NEVER IN SCOPE
+    appspot.com             TIER4   — NEVER IN SCOPE
+    sandbox.googleapis.com  TIER4
+
+scope-check refuses `identitytoolkit.googleapis.com`,
+`securetoken.googleapis.com` and `intrinsic-accounts-prod.appspot.com`. So the
+three projects named by the bundles — `intrinsic-accounts-prod`, `-dev`,
+`-staging`, each with its own browser key — cannot be probed at all. Nothing
+about that is a judgement call; it is an explicit exclusion. **Do not re-try
+this in a later session.**
+
+What remains on this estate is behind sign-in, and sign-in is Firebase. Using
+the product as a user through its own origin is ordinary use rather than a
+test of a TIER4 host, so an account created at `flowstate.intrinsic.ai` is the
+one way in — a decision for the researcher, not for the agent, since it ties
+their own identity to the target.
+
+Three instrument defects were found and fixed while doing this, and every one
+of them had produced a wrong line in a report before being caught:
+
+1. `prop-subs.sh` dropped the apex of a domain with no certificates, so
+   intrinsic.dev was never probed.
+2. `spa-map.sh` resolved relative asset references against the origin root
+   rather than the served directory, and fetched assets without following
+   redirects. Production was recorded with no bundle, and portal-dev and
+   portal-qa were recorded with zero hosts, zero paths and zero secrets while
+   holding nginx's 162-byte redirect page on disk as `asset-*.js`.
+3. `spa-map.sh` printed the "served from" line above its own host's row, which
+   read as **portal.intrinsic.ai being served the development app** — a
+   finding, and false. Each portal host goes to the flowstate host of its own
+   environment, which the keys and project ids confirm.
+
+Also fixed in the same pass: `hosts_in` matched bare `.local`/`.internal`, so
+thirty of forty-four "hosts named" were minified property chains —
+`this.local`, `e.internal`, `window.local`. Left alone, somebody eventually
+reports those as an internal hostname leak.
