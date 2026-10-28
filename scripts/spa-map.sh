@@ -67,8 +67,21 @@ hosts_in() {    # hostnames worth knowing about
   # apps.googleusercontent.com is dropped here on purpose: an OAuth client id
   # ends in it, so leaving it in reports every client id a second time as if
   # it were a host. secrets_in already has it.
-  grep -ohE '[a-zA-Z0-9][a-zA-Z0-9.-]*\.(intrinsic\.(ai|dev|equipment)|googleapis\.com|appspot\.com|run\.app|cloudfunctions\.net|firebaseio\.com|firebaseapp\.com|googleusercontent\.com|internal|corp|local)' "$@" 2>/dev/null \
-    | tr 'A-Z' 'a-z' | grep -v 'apps\.googleusercontent\.com$' | sort -u
+  #
+  # Internal-looking suffixes are NOT matched bare. The first live run put
+  # `a.local`, `e.internal`, `this.local` and `window.local` in the report —
+  # about thirty of forty-four lines — because minified JavaScript is full of
+  # property chains that read exactly like a hostname. An internal name that
+  # the app really talks to appears inside a URL, so that is where it is read
+  # from, and only names that are internal-looking or an address survive. A
+  # list that mixes thirty inventions with ten facts is worse than no list:
+  # somebody eventually reports the inventions as an internal hostname leak.
+  {
+    grep -ohE '[a-zA-Z0-9][a-zA-Z0-9.-]*\.(intrinsic\.(ai|dev|equipment)|googleapis\.com|appspot\.com|run\.app|cloudfunctions\.net|firebaseio\.com|firebaseapp\.com|googleusercontent\.com)' "$@" 2>/dev/null
+    grep -ohE 'https?://[a-zA-Z0-9][a-zA-Z0-9.-]{2,}' "$@" 2>/dev/null \
+      | sed -E 's#^https?://##' \
+      | grep -E '\.(internal|local|corp|lan|intranet)$|^[0-9]{1,3}(\.[0-9]{1,3}){3}$'
+  } | tr 'A-Z' 'a-z' | grep -v 'apps\.googleusercontent\.com$' | sort -u
 }
 
 paths_in() {    # quoted absolute paths, which is the route inventory
@@ -109,6 +122,8 @@ selftest() {
   shortLookalike:"AIzaTooShort",
   clientId:"123456789012-abcdefghijklmnopqrstuvwx.apps.googleusercontent.com",
   api:"https://flowstate-api-dev.intrinsic.ai",
+  controller:"http://robot-controller.internal:8080/status",
+  minified:function(e){return this.local&&e.internal&&window.local},
   routes:["/api/v1/workcells","/graphql","/apiary-not-a-route-x","/healthz"]};
 </script>
 </head><body></body></html>
@@ -136,9 +151,13 @@ HTML
     *) echo "!! secrets_in missed the OAuth client id"; fail=1 ;;
   esac
 
-  # hosts: the API host, and nothing from example.net.
+  # hosts: the API host and the internal name that appears inside a URL, and
+  # NOT this.local / e.internal / window.local, which are minified property
+  # chains. Nothing from example.net either: a CDN in someone's HTML is not an
+  # asset of the target.
   got="$(hosts_in "$d/shell.html" | paste -sd';')"
-  [ "$got" = "flowstate-api-dev.intrinsic.ai" ] || { echo "!! hosts_in: got [$got]"; fail=1; }
+  want='flowstate-api-dev.intrinsic.ai;robot-controller.internal'
+  [ "$got" = "$want" ] || { echo "!! hosts_in: got [$got], wanted [$want]"; fail=1; }
 
   # paths: the three real ones; /apiary-not-a-route-x is a path too and is
   # expected to appear — the point of the check is that nothing is invented
