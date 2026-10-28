@@ -47,10 +47,23 @@ probe() {   # probe <host> -> "status<TAB>server<TAB>title"
   # large home page is recorded as DEAD: www.waze.com (348 KB), wing.com
   # (646 KB) and tenor.com (273 KB) were all filed as dead hosts by this line.
   # -m 10 already bounds the request.
-  if ! curl -sS -m 10 -L --max-redirs 3 \
+  # Same trap as --max-filesize above, in a different flag. --max-redirs 3 made
+  # curl exit 47 on any longer chain, and exit 47 was being read as DEAD:
+  # mail.google.com, myaccount.google.com, passwords.google.com,
+  # admin.google.com and ediscovery.google.com — five TIER0 hosts of the main
+  # Google program — were all filed as dead while answering normally. A host
+  # that answers anything is not dead; only a connection that never completes
+  # is. So the limit is raised, and if the chain still fails we record the
+  # FIRST response instead of throwing the host away.
+  if ! curl -sS -m 10 -L --max-redirs 10 \
        -A 'Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)' \
        -D "$hdr" -o "$body" "https://$h/" 2>/dev/null; then
-    rm -f "$hdr" "$body"; printf 'DEAD\t\t'; return
+    : > "$hdr"; : > "$body"
+    if ! curl -sS -m 10 \
+         -A 'Mozilla/5.0 (bug-bounty research; azmolhaque95@gmail.com)' \
+         -D "$hdr" -o "$body" "https://$h/" 2>/dev/null; then
+      rm -f "$hdr" "$body"; printf 'DEAD\t\t'; return
+    fi
   fi
   st=$(awk 'tolower($1) ~ /^http/ {s=$2} END{print s}' "$hdr")
   srv=$(awk 'BEGIN{IGNORECASE=1} /^server:/{sub(/^[Ss]erver:[ \t]*/,""); gsub(/\r/,""); print; exit}' "$hdr")
@@ -83,6 +96,24 @@ case "$CTL_BAD" in
   DEAD) echo "NEGATIVE  nonexistent host -> DEAD" ;;
   *) echo "!! BROKEN: a host that does not exist answered with '$CTL_BAD'."
      echo "!!         Something is answering for every name; results are noise."; exit 2 ;;
+esac
+
+# ---- control 3: a long redirect chain is not death ----
+# The defect this guards against wrote DEAD against mail.google.com. There is
+# no portable host guaranteed to redirect more than ten times, so instead of
+# hunting one, this forces the failure: --max-redirs 0 against a host that is
+# known to redirect makes the first curl fail exactly as a deep chain does,
+# and the fallback has to record a status anyway.
+CTL_REDIR=$(curl -sS -m 10 -L --max-redirs 0 -o /dev/null -w '%{http_code}' \
+            "http://google.com/" 2>/dev/null; echo " rc=$?")
+case "$CTL_REDIR" in
+  *"rc=0"*) echo "   note: --max-redirs 0 did not fail here; control 3 is not exercising the path" ;;
+  *) CTL_FB=$(probe mail.google.com | cut -f1)
+     case "$CTL_FB" in
+       DEAD) echo "!! BROKEN: a host behind a long redirect chain still reads as DEAD."
+             echo "!!         That is the defect this control exists for; fix probe() first."; exit 2 ;;
+       *) echo "POSITIVE  a host behind a long redirect chain reads as HTTP $CTL_FB, not DEAD" ;;
+     esac ;;
 esac
 echo
 
