@@ -4126,3 +4126,64 @@ The reading guide also puts § 3's harder half where it will be read: after the
 canary proves the claim, the report still has to answer who reaches the
 hostname. `repos` and `server-logs` sound like a package source and a log
 sink, which would mean real traffic, but sounding like one is not evidence.
+
+### 2026-10-28 — the published acquisitions estate is closed, and a fourth blind spot
+
+Every candidate the DNS sweep produced is now resolved, and none of them is a
+finding.
+
+**11 CHECK:**
+
+    repos / server-logs / thirdparty.ops .nestlabs.com -> s3.amazonaws.com
+        All three buckets answer AccessDenied on all three URL forms — target
+        hostname, path style and virtual-host style, nine answers out of nine.
+        AccessDenied means the bucket exists. The names cannot be claimed.
+        Confirmed a second time from a phone on a different network, so this is
+        not the Pi's view of AWS.
+    em*.fitbit.com, email/gsemail/gslink -> sendgrid.net
+        sendgrid.net's zone is live on six nameservers. Claiming one of these
+        needs a SendGrid account that will accept the hostname, and what it
+        buys is email link tracking. § 3.
+
+**3 DANGLING:**
+
+    dev-www / future-www .pring.jp -> *.aws-zaipon.com
+        Same Google-owned domain as api.pring.jp, same deleted Route 53 zone.
+    m.fitbit.com -> mkto-sj220117.com
+        Registered through COM LAUDE — Marketo's own corporate registrar —
+        delegated to ns1.marketo.com and ns2.mktdns.com, both REFUSED. The
+        identical shape to aws-zaipon.com: the provider owns the domain and
+        deleted the zone. Taking it would mean controlling Marketo's
+        nameservers.
+
+So: fingerprint zero on 238 + 82 + 82, IAP zero on 4 x 14, and every takeover
+candidate across 471 unreachable hosts closed. The acquisitions estate **as
+published** is done.
+
+**And the fourth instrument blind spot, found while reading the counts.**
+`NO-RECORD` came back 115 times, and `dnsinfo` only ever asked for `A`. A host
+with only an AAAA record answers NOERROR with no address, which this script
+called NO-RECORD — "nothing here" — and which `acq-live.sh` would have called
+DEAD if the Pi has no IPv6 route. The same host counted as absent twice, by
+two tools, for the same reason.
+
+Now asks AAAA as well, with a V6-ONLY verdict that says the live sweep
+probably could not reach it. The self-test has a dual-stack fixture
+specifically because the first version matched on a colon appearing anywhere
+and would have called every dual-stack host v6-only.
+
+The running list of defects that silently wrote results is now five: new apps
+invisible to the update sweep, updated apps swept against stale sources,
+feature splits never decompiled, large APKs dropped by `grep -q`, and now
+v6-only hosts recorded as having no address.
+
+**Open question that decides what happens next.** The scope file is
+hostname-exact and default-deny, so an unlisted name under a listed domain is
+OUT-OF-SCOPE by our own encoding. Whether that matches Google's actual rule for
+acquisitions is unverified — bughunters.google.com does not resolve from the
+container, so it has to be read from the Pi. If unlisted subdomains are in
+scope, the published tier list is Google's inventory rather than the boundary,
+and subdomain enumeration over nestlabs.com, fitbit.com, photomath.net,
+cameyo.com, siemplify.co, owlchemylabs.com, elastifile.com and neverware.com is
+untouched surface. If not, this estate is finished and the Android AI VRP
+rogue-action track is next.

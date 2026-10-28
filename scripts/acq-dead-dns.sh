@@ -48,13 +48,23 @@ CLAIMABLE='s3[.-].*amazonaws\.com|s3\.amazonaws\.com|cloudfront\.net|github\.io|
 INHOUSE='\.google\.com\.$|\.googleusercontent\.com\.$|\.googleapis\.com\.$|ghs\.google\.com|ghs-vip|googlehosted\.com|\.gstatic\.com\.$|\.appspot\.com\.$|\.withgoogle\.com\.$|\.google\.$'
 
 dnsinfo() {   # dnsinfo <host> -> "status<TAB>chain<TAB>cname<TAB>addrs"
-  local h="$1" st chain cn addrs
+  local h="$1" st chain cn addrs v6
   st="$(dig +time=3 +tries=2 +noall +comments "$h" A 2>/dev/null \
         | sed -n 's/.*status: \([A-Z]*\).*/\1/p' | head -1)"
   [ -n "$st" ] || st="NORESOLVER"
   chain="$(dig +time=3 +tries=2 +short "$h" A 2>/dev/null | paste -sd',' -)"
   cn="$(dig +time=3 +tries=2 +short "$h" CNAME 2>/dev/null | paste -sd',' -)"
   addrs="$(printf '%s\n' "${chain//,/$'\n'}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | paste -sd',' -)"
+  # AAAA too, and this was missing. Asking only for A makes an IPv6-only host
+  # answer NOERROR with no address, which this script then called NO-RECORD —
+  # "nothing here" — for 115 hosts in the TIER2/3 table. The live sweep would
+  # have called the same hosts DEAD if the Pi has no IPv6 route. A host that
+  # answers on v6 and nowhere else is still a host, and it has been counted as
+  # absent twice over.
+  v6="$(dig +time=3 +tries=2 +short "$h" AAAA 2>/dev/null | grep -E '^[0-9a-fA-F:]+$' | paste -sd',' -)"
+  if [ -n "$v6" ]; then
+    [ "$addrs" = "" ] && addrs="$v6" || addrs="$addrs,$v6"
+  fi
   printf '%s\t%s\t%s\t%s' "$st" "${chain:--}" "${cn:--}" "${addrs:--}"
 }
 
@@ -85,6 +95,12 @@ verdict() {   # verdict <status> <chain> <cname> <addrs> -> one word + why
     return
   fi
   if [ "$addrs" != "-" ]; then
+    # v6-only means no v4 at all, not merely "a colon appears" — a dual-stack
+    # host lists both and is reachable the ordinary way.
+    if printf '%s' "$addrs" | grep -q ':' \
+       && ! printf '%s' "$addrs" | grep -qE '(^|,)[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(,|$)'; then
+      echo "V6-ONLY   $addrs — v6 only, and the live sweep probably could not reach it"; return
+    fi
     echo "HAS-IP    $addrs answers DNS but not HTTP — a closed port, not a bug"; return
   fi
   echo "NO-RECORD the name resolves to no address and has no CNAME"
@@ -103,9 +119,11 @@ selftest() {
   v="$(verdict NOERROR x.example.net. x.example.net. -)"
                                                         case "$v" in DANGLING*) ;; *) echo "!! selftest: dangling unknown provider -> $v"; fail=1 ;; esac
   v="$(verdict NORESOLVER - - -)";                      case "$v" in NO-DNS*) ;; *) echo "!! selftest: no resolver -> $v"; fail=1 ;; esac
+  v="$(verdict NOERROR - - 2606:4700::1111)";           case "$v" in V6-ONLY*) ;; *) echo "!! selftest: v6-only -> $v"; fail=1 ;; esac
+  v="$(verdict NOERROR - - 1.2.3.4,2606:4700::1111)";   case "$v" in HAS-IP*) ;; *) echo "!! selftest: dual stack should read as HAS-IP -> $v"; fail=1 ;; esac
   # A resolver failure must never read as NXDOMAIN. That mistake turns "the Pi
   # lost DNS" into "twenty takeover candidates".
-  [ "$fail" -eq 0 ] && echo "POSITIVE  the seven verdicts are distinguished, and a resolver failure is not NXDOMAIN"
+  [ "$fail" -eq 0 ] && echo "POSITIVE  the eight verdicts are distinguished, a dual-stack host is not v6-only, and a resolver failure is not NXDOMAIN"
   return "$fail"
 }
 
