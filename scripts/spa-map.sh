@@ -270,8 +270,6 @@ for h in "${HOSTS[@]}"; do
     printf '%-34s NO-SHELL  HTTP %s (%s bytes) — not "no javascript", the page did not load\n' "$h" "$code" "$sz"
     sleep "$DELAY"; continue
   fi
-  [ "$eff" = "https://$h/" ] || echo "      served from $eff — relative assets resolve against that"
-
   mapfile -t A < <(assets_of "$hd/shell.html" "$eff")
   same=0; off=0; fetched=0; failed=0; notjs=0
   : > "$hd/offorigin.txt"; : > "$hd/notjs.txt"
@@ -319,6 +317,14 @@ for h in "${HOSTS[@]}"; do
 
   printf '%-34s HTTP %-3s  assets %d same / %d off, %d fetched, %d failed, %d not-js | %d host, %d path, %d secret, %d map\n' \
          "$h" "$code" "$same" "$off" "$fetched" "$failed" "$notjs" "$nh" "$np" "$ns" "$nm"
+  # Printed here, under this host's own summary line, and not when the shell
+  # was fetched. Emitted there it appeared above the host it belonged to and
+  # below the previous one, which read as "flowstate.intrinsic.ai is served
+  # from flowstate.intrinsic.ai" followed by "portal.intrinsic.ai is served
+  # from flowstate-dev" — a production host answering with a dev app, which is
+  # a finding, and which is not what the run found. A line that belongs to the
+  # wrong row is worse than a missing line.
+  [ "$eff" = "https://$h/" ] || echo "      redirects to $eff — that is where its relative assets came from"
   [ "$failed" -gt 0 ] && echo "      note: $failed asset(s) could not be fetched — the counts above are a floor, not a total"
   if [ "$notjs" -gt 0 ]; then
     echo "      note: $notjs asset URL(s) returned HTML, not JavaScript — the bundle was NOT read:"
