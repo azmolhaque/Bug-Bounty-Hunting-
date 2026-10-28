@@ -4404,3 +4404,53 @@ protobuf, so pointing the script at the Google one failed a control that was
 really asking "is this the acquisitions file". The sentinel is now the first
 TIER0 host of whatever source is being processed. Verified by regenerating the
 acquisitions file and diffing: identical apart from the timestamp.
+
+### 2026-10-28 — Google's scope file lists a domain a stranger bought three weeks ago
+
+The Google VRP liveness sweep, re-run after the redirect fix, listed fourteen
+in-scope hosts whose server header is not one of Google's own frontends. One
+of them:
+
+    picasa-software.com   TIER3   200   GitHub.com   (no title)
+
+It serves 133 bytes reading "This domain is for sale; to purchase it, please
+contact me at <an individual's gmail address>", `www` CNAMEs to a personal
+GitHub Pages account, and it is line 1706 of Google's own
+`external_domains_google.asciipb` at TIER3.
+
+The ownership lookup decided it in one line:
+
+    Creation Date: 2026-10-10T23:02:23Z
+    Registrar:     Wix.com Ltd.
+    Name Server:   NS0/NS1.WIXDNS.NET
+
+Eighteen days old. Picasa was discontinued in 2016, Google let the name go,
+somebody registered it fresh and put a for-sale page on it. **Not a takeover of
+a Google asset and not reportable** — the domain is not theirs to lose any more.
+
+**The real result is what it says about our own safety.** That host is in our
+generated scope file, `scope-check.sh` calls it IN-SCOPE, and the fingerprint
+sweep would have put thirty probes into a private individual's website while
+every control in this repo printed POSITIVE. § 0 calls testing outside scope
+the one unrecoverable mistake, and nothing here was looking for this: every
+check so far asked "is this name on the list", never "does the list still
+describe reality". Being on the target's own published list is not proof the
+target still owns it.
+
+`acq-ownership.sh` asks the second question. The signal is the registration's
+**creation** date, not its updated date — a renewal moves Updated, only a drop
+and re-register moves Created, so a twenty-year-old brand reading as created
+last month has changed hands whatever the scope file says. Registrar is a
+secondary signal: corporate defensive registrars on one side, card-and-go
+registrars on the other, neither decisive alone.
+
+Its controls are today's two real cases as fixtures, which is the first time
+this repo has had ground truth to test a classifier against: an old MarkMonitor
+registration must pass, a fortnight-old Wix one must not, a new domain at a
+corporate registrar must read as RECENT rather than NOT-THEIRS, and an old
+domain at a consumer registrar must pass because small acquisitions use them
+legitimately. Live control: google.com must read as owned before any target is
+looked up.
+
+Output is an exclusion list, not findings. 324 unique apexes across the two
+scope files have never been checked this way.
