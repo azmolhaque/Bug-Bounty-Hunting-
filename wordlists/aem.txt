@@ -1,0 +1,57 @@
+# aem.txt — Adobe Experience Manager paths, read-only.
+# For acq-paths.sh via PATHS_FILE.
+#
+# Written for aem-dev.debug.com and aem-stage.debug.com, two hosts on the
+# debug.com estate that answer Google's own 404 at "/" while 166 of their
+# neighbours sit behind Cloud IAP. AEM mounts its consoles on fixed paths, so
+# "nothing at the root" says nothing about whether a console is reachable.
+#
+# Every entry is a GET that reads. Nothing here creates, modifies or deletes a
+# node, and the two paths that would (the Groovy console's execute endpoint
+# and the package manager's upload) are deliberately absent: CLAUDE.md § 7
+# allows a benign canary and nothing else on someone else's infrastructure.
+#
+# What each one would mean if it answers:
+#   /system/console*        the OSGi console. Reachable without auth is
+#                           configuration change and bundle install, which is
+#                           code execution.
+#   /crx/de, /crx/packmgr   the repository browser and package manager. Read
+#                           access to the repository is read access to content
+#                           and often to credentials in config nodes.
+#   /bin/querybuilder.json  queries the repository over HTTP. The classic form
+#                           returns user nodes, which is other people's data.
+#   *.json on a content root  Sling's default JSON renderer. A 200 here is the
+#                           repository answering an anonymous request.
+#   the login pages         not findings. They tell you AEM is there and which
+#                           version family, nothing more.
+
+# consoles
+/system/console
+/system/console/bundles
+/system/console/status-Bundlelist
+/system/console/configMgr
+/crx/de/index.jsp
+/crx/packmgr/index.jsp
+/crx/explorer/browser/index.jsp
+
+# the query endpoint
+/bin/querybuilder.json
+/bin/querybuilder.json?path=/home/users&p.limit=1
+
+# Sling's JSON renderer on the standard roots
+/.json
+/content.json
+/apps.json
+/libs.json
+/etc.json
+/home.json
+/content/dam.json
+
+# login and welcome pages: presence only
+/libs/granite/core/content/login.html
+/system/sling/cqform/defaultlogin.html
+/libs/cq/core/content/welcome.html
+
+# the dispatcher's usual leftovers
+/etc.clientlibs/
+/bin/wcm/contentfinder/connector/suggestions.json
