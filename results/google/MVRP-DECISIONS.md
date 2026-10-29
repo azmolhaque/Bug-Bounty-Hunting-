@@ -5293,3 +5293,58 @@ neither can be mis-sent in a later session.
 Google VRP / Cloud VRP do not apply: Site Kit runs on third-party WordPress
 installations, not on a Google property, so there is no Google-owned asset to
 demonstrate impact against.
+
+## 2026-10-30 (later) — Wordfence is closed too, on three independent grounds
+
+Read the programme's terms and programme pages directly. Submitting either Site
+Kit finding there is not a long shot, it is barred:
+
+1. **Asset.** The Out-Of-Scope Asset List names *All Google Products*, software
+   `profiles.wordpress.org/google/`, because *"developers that maintain a
+   publicly published bug bounty or responsible disclosure program, managed
+   directly by the developer, are considered out-of-scope."*
+2. **Class.** "Explicitly Out of Scope Vulnerabilities" lists **Cross-Site
+   Request Forgery** and **Missing Authorization** by name — finding 02 and
+   finding 01 respectively.
+3. **Privilege.** Also excluded: *"Any Vulnerability requiring mid-level
+   authentication … includes Contributor and Author roles"* and
+   *"Vulnerabilities that can only be exploited by an administrator explicitly
+   granting access to a lower-privileged user"* — Dashboard Sharing exactly.
+
+And no CVE as a consolation: *"We no longer assign CVE IDs to any
+vulnerabilities found in the out of scope list above."* The submission form is
+separately gated to approved researchers.
+
+Cost of ignoring this: out-of-scope reports count against a New Researcher —
+five in seven days restricts, ten blocks, thirty can ban. Two reports, no
+reward, no CVE, spent on the throttle ladder.
+
+**My Wordfence recommendation earlier today was wrong.** I made it without the
+terms, because `wordfence.com` is outside this session's allowed domains, and
+reasoned instead from search snippets plus the fact that Wordfence had scored
+CVE-2026-10753. That inference does not hold — they score every WordPress
+vulnerability that reaches their database regardless of source, which says
+nothing about what they accept. The rule to carry forward: read a platform's
+out-of-scope asset list and out-of-scope class list before writing the report.
+
+### Where this leaves the two plugin findings
+
+Upstream, unpaid. Google's own closing comment invited it: *"You can report this
+directly by opening a public GitHub issue on the Site Kit repository."* The
+`SECURITY.md` channel is the better first door since both are unfixed, and
+Google is its own CNA if it chooses to assign. The write-ups in
+`results/oss-vrp/wordfence/` are source-verified against `8cf47de` and serve
+directly.
+
+Patchstack is unchecked and expectations should be low: it is the other major
+WordPress programme, and these same two classes — CSRF, missing authorisation
+above Subscriber — are the ones such programmes systematically exclude. Get
+their rules before writing anything for them.
+
+### Where the paying work is
+
+Only one channel is currently open for anything in this repository: **OSS VRP
+supply chain**, OT1, $1,337–$13,337. That makes
+`results/oss-vrp/LEAD-sitekit-ci-gemini-injection.md` not one option among
+several but the only live one, and finishing its unproven link — the replica
+test — the priority.

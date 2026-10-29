@@ -1,110 +1,94 @@
-# Wordfence Bug Bounty — the two Site Kit findings, re-aimed
+# Wordfence — closed. Do not submit either report here.
 
-Both findings were built for Google's OSS VRP. That channel closed under us:
-Google paused OSS VRP product-vulnerability intake on 2026-10-01, and report 01
-came back `Won't fix (Infeasible)` on 2026-10-30 for that reason and no other —
-the technical question was never reached. Report 02 was held rather than filed
-into the same wall. See `results/google/MVRP-DECISIONS.md`, 2026-10-30.
+Read the programme's own terms on 2026-10-30, from the pages themselves rather
+than from search results. **Both findings are out of scope, and Wordfence will
+not even assign a CVE.** Three independent disqualifications, any one of which
+is enough:
 
-Wordfence is the re-aim. Site Kit has 3M+ active installations, and Wordfence
-already triages this plugin — they scored CVE-2026-10753 at 2.7.
+### 1. The asset is excluded
 
-    02-csrf-module-activation.md    send FIRST
-    01-missing-authorization.md     send second, with the declaration intact
+The Out-Of-Scope Asset List names, verbatim:
 
-**The order changed, and the reason is Wordfence's own terms:** *"the
-Vulnerability must not be previously disclosed elsewhere to qualify for a
-reward."*
+> **All Google Products**
+> Bug Bounty Program: `https://bughunters.google.com/`
+> Software: `https://profiles.wordpress.org/google/`
 
-* **02 has never been submitted anywhere.** It was written for Google's OSS VRP
-  and deliberately not filed. It is unambiguously clean, so it goes first.
-* **01 was filed to Google's OSS VRP** (issue 579506120, closed without the
-  technical question being reached). Google is the vendor *and* runs a reward
-  programme, so whether that counts as "disclosed elsewhere" is genuinely
-  ambiguous — it is not public, and no assessment was made. That is Wordfence's
-  call to make, not ours to quietly decide, which is why the disclosure-status
-  section in 01 states it plainly. Expect it may be credit-only rather than
-  rewarded.
+Site Kit is published from that profile. The rule behind it is stated plainly:
+*"Software, services, and developers that maintain a publicly published bug
+bounty or responsible disclosure program, managed directly by the developer,
+are considered out-of-scope."* Google runs its own, so its plugins are theirs to
+receive.
 
-On technical merit 01 is the stronger of the two — the vendor fixed the same
-pattern under CVE-2026-10753 and the Site Goals datapoints reintroduce it — but
-merit is not what decides the order here.
+### 2. Both vulnerability classes are excluded by name
 
-## Check these on the phone before submitting
+From "Explicitly Out of Scope Vulnerabilities":
 
-I could not reach `wordfence.com` or `patchstack.com` from the session —
-outbound DNS for both is outside the allowed domains — so the current intake
-rules are unverified by me. Three things to confirm on their site:
+* **Cross-Site Request Forgery** — finding 02 is exactly this.
+* **Missing Authorization** — finding 01 is exactly this.
 
-1. **The exclusivity clause, read in full**, on
-   `/threat-intel/bug-bounty-program/terms-and-conditions/` — specifically
-   whether a submission to the vendor's own reward programme, closed without
-   assessment and never made public, counts as "previously disclosed
-   elsewhere". This decides whether 01 can be rewarded or is credit-only. If
-   the terms are unclear, ask them before submitting 01; 02 is unaffected
-   either way.
-2. **Eligibility for a 3M-install plugin.** Wordfence gates which software a
-   researcher may submit for by researcher tier. If Site Kit is above your
-   current tier, the submission will bounce; check before writing it up.
-3. **That 1.190.0 is still the current release.** Both reports state the
-   affected range as ending at 1.190.0 "current at submission". If Site Kit has
-   shipped since, re-check whether either issue is still present and update the
-   range — a report that claims an affected range including a version that
-   already fixed it is a fast rejection. `api.wordpress.org` is outside this
-   session's allowed domains, so I could not confirm it from here.
-4. **Both at once, or one at a time.** Some programmes queue per researcher.
-5. **Their own vulnerability database for Site Kit**, as a last dedup pass.
-   What we already know is in the reports: CVE-2026-62139 is a CSRF in a
-   *different* function, and CVE-2026-10753 is the authz pattern 01
-   reintroduces. Neither is ours.
+### 3. Finding 01's privilege level is excluded twice over
 
-## Exclusivity — this matters
+* *"Any Vulnerability requiring mid-level authentication to exploit. This
+  includes **Contributor** and Author roles, along with any other role that
+  needs to be granted by an administrator (i.e. not a common default
+  registration role)."*
+* *"Vulnerabilities that can only be exploited by an administrator explicitly
+  granting access to a lower-privileged user where the likelihood of an
+  administrator granting access is minimal or the administrator is granting
+  access to functionality and features that can be abused."* — Dashboard
+  Sharing is precisely that.
 
-Once either report is in the Wordfence queue:
+### And there is no CVE-only consolation
 
-* do **not** also submit it to Patchstack,
-* do **not** open a public GitHub issue on `google/site-kit-wp` about it, even
-  though Google's close invited exactly that,
-* do **not** post the PoC anywhere public.
+> *"We no longer assign CVE IDs to any vulnerabilities found in the out of scope
+> list above and they will not be eligible for a bounty through our bug bounty
+> program."*
 
-Wordfence coordinates with the vendor and assigns the CVE themselves, and
-public disclosure or a parallel submission voids eligibility. If Wordfence
-rejects a report, the public-issue route is still there afterwards.
+The Terms do open a separate door for independent researchers — *"Independent
+Researchers do not need to participate in the Program in order to report
+Vulnerabilities to Company or request a CVE ID"* — and the submission form is
+in any case gated ("Vulnerability submissions are currently limited to approved
+researchers"). But the sentence above closes that door for anything on the
+out-of-scope list, which both of these are.
 
-## What to expect, honestly
+### What submitting anyway would cost
 
-Wordfence pays per validated submission rather than from a shared pool, which
-suits two reports better than Patchstack's contribution-share model. The
-amounts for this class are modest: their January 2026 monthly report shows 18
-missing-authorization submissions totalling $1,240, about $69 each, and an
-overall average of roughly $210 per submission. The ceiling they advertise
-($31,200) is for RCE-class findings in popular plugins, not for these.
+Out-of-scope submissions count against the researcher, and this account is a
+New Researcher: five out-of-scope reports in seven days restricts submissions,
+ten blocks them, and thirty can mean a permanent ban. Two reports with no
+possible reward and no possible CVE, spent on the throttle ladder, for nothing.
 
-The real returns here are the CVE and the credit on two findings in a Google
-plugin with 3M installs. Treat the money as incidental.
+---
 
-## What is in each file
+## How this recommendation was wrong
 
-Field-by-field for their intake form: software/slug/affected versions, title in
-their advisory style, CWE, required privileges, CVSS 3.1 vector, description
-with the code paths quoted, step-by-step PoC, the recorded terminal output, the
-controls, suggested remediation, an explicit scope-of-claim section, the test
-environment, and the disclosure status.
+I proposed Wordfence on 2026-10-30 without having read these terms —
+`wordfence.com` is outside this session's allowed domains, so I reasoned from
+search snippets plus the fact that Wordfence had scored CVE-2026-10753. That
+inference does not hold: Wordfence scores every WordPress vulnerability that
+reaches its database whatever the source, which says nothing about whether it
+accepts submissions for that software. The terms were the authority and I
+should have treated the gap as a blocker rather than reasoning around it.
 
-The disclosure-status section in each one states plainly that the finding went
-to Google's OSS VRP, what came back, and why that is not a technical verdict.
-Do not remove it — a programme that later finds an issue-tracker reference to a
-report you did not mention has every reason to distrust the rest.
+Worth keeping as a rule: for any new platform, read its out-of-scope asset list
+and its out-of-scope vulnerability class list **before** writing the report, not
+after.
 
-## Evidence that goes with them
+## What the two files here are still good for
 
-    ../poc/evidence.txt          the 01 transcript
-    ../poc/evidence-csrf.txt     the 02 transcript
-    ../poc/poc.php               sets the lab site up
-    ../poc/poc3.php              the 01 controlled comparison
-    ../attachments/01-site-goals-authz/   bundle, if they want attachments
-    ../attachments/02-golinks-csrf/       bundle, if they want attachments
+`01-missing-authorization.md` and `02-csrf-module-activation.md` are accurate,
+source-verified write-ups — every specific in them was checked against
+`8cf47de` on 2026-10-30, and five errors from the earlier drafts were corrected
+in the process. They remain the basis for upstream disclosure, which is the
+remaining route for these two findings and which Google's own closing comment
+invited:
 
-The terminal screenshot already on the phone (`evidence-terminal.png`) is
-labelled as a transcript rather than a live run, which is what
-`scripts/show-sitekit-evidence.sh` prints on screen. Keep that label.
+> *"You can report this directly by opening a public GitHub issue on the Site
+> Kit repository."*
+
+The better first door is the channel `SECURITY.md` names, since both issues are
+unfixed. No money either way; a fix and a credit, and Google is its own CNA if
+it chooses to assign.
+
+See `results/google/MVRP-DECISIONS.md`, 2026-10-30, for where the paying work
+actually is.
