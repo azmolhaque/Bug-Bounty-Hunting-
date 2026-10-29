@@ -1,4 +1,90 @@
-# RESUME HERE — the one test left, and exactly how to finish it
+# RESUME HERE
+
+**State at 2026-10-30.** Read this block first; everything below it is an older
+thread, still open but not where today ended.
+
+---
+
+## What happened on 2026-10-29/30
+
+Two confirmed findings in `google/site-kit-wp` 1.190.0 (`8cf47de`), both
+unrefuted, both currently unpayable:
+
+| | finding | class | status |
+|---|---|---|---|
+| 01 | Site Goals: a view-only Dashboard Sharing user writes a site-wide option | CWE-862 | filed to OSS VRP, closed `Won't fix (Infeasible)` |
+| 02 | `admin_action_googlesitekit_go` has no nonce; one link re-enables the Analytics tag | CWE-352 | never filed |
+
+Report 01 is `issuetracker.google.com/issues/579506120`. It was **not** closed on
+merit — Google paused OSS VRP product-vulnerability intake on 2026-10-01 and
+takes supply-chain reports only, until at least Q1 2027. The technical question
+was never reached. Report 02 was held rather than filed into the same wall.
+
+**Every channel for these two is closed:**
+
+* OSS VRP — product vulnerabilities not accepted until Q1 2027 at the earliest.
+* Wordfence — barred three times over: *All Google Products* is on the
+  out-of-scope asset list, *Cross-Site Request Forgery* and *Missing
+  Authorization* are both named in the out-of-scope class list, and finding 01's
+  Contributor requirement is excluded again as mid-level authentication. No CVE
+  either. Submitting would spend the New Researcher throttle budget for nothing.
+* Patchstack — unchecked. Get their out-of-scope lists **before** writing
+  anything; the same two classes are what such programmes exclude.
+
+**The CI supply-chain lead is closed, measured and empty.**
+`results/oss-vrp/LEAD-sitekit-ci-gemini-injection.md` has the full reasoning.
+Short version: `gemini.yml` runs an agent with `--approval-mode=yolo`, but
+`security.folderTrust.enabled` defaults to `true` in gemini-cli 0.42.0 and
+nothing in that workflow disables it, so the checkout is untrusted, yolo is
+overridden, and the step cannot run at all. Confirmed by running it on a host
+with no `~/.gemini/settings.json`, outside `$HOME` — matching a clean runner on
+both counts. The rest of the CI surface is measured too: no
+`pull_request_target`, no `issue_comment`, every action SHA-pinned with
+`ratchet` enforcing it, fork guards throughout, and
+`publish-docker-images.yml` never logs in to the registry on a pull request.
+
+## The two things left to do
+
+1. **Upstream disclosure, unpaid — drafts not yet written.** Send findings 01
+   and 02 through the channel `SECURITY.md` names (Google's own close also
+   invited a public GitHub issue). Source-verified write-ups to build from:
+   `results/oss-vrp/wordfence/01-missing-authorization.md` and
+   `02-csrf-module-activation.md` — every specific in them was re-checked
+   against `8cf47de` on 2026-10-30 and five errors from earlier drafts were
+   corrected. Include, separately and as a hardening note rather than a claim,
+   that `gemini.yml` cannot work as written and that both obvious fixes
+   (`--skip-trust`, `GEMINI_CLI_TRUST_WORKSPACE=true`) would hand an agent with
+   yolo, shell access and `GEMINI_API_KEY` a task built from attacker-authored
+   issue text.
+
+2. **A new target for supply-chain work.** It is the only open paying channel.
+   Work down `oss-repository-tier/README.md` for OT0/OT1 repositories that have
+   a real release pipeline, and look where site-kit-wp was strong — SHA
+   pinning, fork guards, folder trust — because that is what most repositories
+   get wrong.
+
+## Carry-overs, still not done
+
+* `intrinsic.dev` was never enumerated (crt.sh 502, certspotter 429 twice).
+  That is **not** "no subdomains".
+* The Gemini CLI `GEMINI.md` test on the phone: PoC at `~/gcli-md-poc/GEMINI.md`.
+  Note the hazard recorded on 2026-10-28 — the phone's
+  `~/.gemini/trustedFolders.json` trusts all of `$HOME`, so any trust test
+  under `~` answers a different question. Run it outside `$HOME`.
+* `scripts/gemini-injection-test.sh` phase B never reached the model (API
+  returned `402`, no credits). Moot for the closed lead, but if that half is
+  ever wanted, it needs billing on the key.
+
+## One habit worth keeping
+
+My harness twice reported "the agent did not run the injected command" when the
+model had never been reached — once folder trust, once the 402. Both times the
+bug was reading absence of positive evidence as a negative result. A test must
+prove its subject was actually exercised before it is allowed a verdict.
+
+---
+
+# (earlier thread) RESUME HERE — the one test left, and exactly how to finish it
 
 **State at 2026-10-08 05:07 +06.** Everything below is set up; only one step is missing.
 
