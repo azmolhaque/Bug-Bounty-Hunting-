@@ -1,31 +1,31 @@
-> # ⛔ WITHDRAWN — DO NOT SUBMIT
+> # ♻ WITHDRAWAL REVERSED — 2026-10-29, second look
 >
-> **2026-10-29.** The vendor's own test asserts this behaviour is correct, in
-> words that describe the exact thing this report calls a bug:
+> This was withdrawn earlier today because the vendor's own test asserts the
+> behaviour (quoted below, and still true). The duplicate check then turned up
+> **CVE-2026-10753**: *"users with dashboard sharing permissions (such as
+> Editors) could modify email reporting settings restricted to
+> administrators"*, fixed in Site Kit 1.176.0.
 >
-> `tests/phpunit/integration/Modules/Analytics_4/Datapoints/Remove_Site_Goals_WidgetTest.php`
+> That CVE's fix is commit `2bb4fb2878` (2026-03-24, "Update editable route"),
+> and it changes exactly one thing on the **write** half of
+> `core/site/data/email-reporting`:
 >
-> ```php
-> public function test_is_shareable__returns_true() {
->     $this->assertTrue(
->         $this->datapoint->is_shareable(),
->         'The removal datapoint should be shareable, so a view-only user on a
->          shared dashboard can remove a widget for every user of the site.'
->     );
-> }
->
-> public function test_permission_callback__allows_a_view_only_user() { … }
-> public function test_permission_callback__refuses_a_subscriber()   { … }
+> ```diff
+> -   'permission_callback' => $can_access,    // VIEW_SPLASH || VIEW_DASHBOARD
+> +   'permission_callback' => $can_manage,    // MANAGE_OPTIONS
 > ```
 >
-> They name the site-wide effect ("for every user of the site"), assert a
-> view-only user is allowed, and assert a subscriber is not — which is exactly
-> the boundary this report measured. It is a designed feature, not an
-> oversight.
+> So Site Kit's own, CVE-assigned position is that **a write must not be gated
+> on the dashboard-sharing capability**. The Site Goals datapoints reintroduce
+> that pattern two months later — `Site_Goals_Settings_Datapoint` (1.181.0)
+> gates on `current_user_can( VIEW_DASHBOARD )`, and `Remove_Site_Goals_Widget`
+> (1.190.0) writes a **site-wide** option through it.
 >
-> Submitting it would have been a Working As Intended close. The reproduction
-> below is accurate; the conclusion drawn from it was wrong. Kept as the record
-> of how it was found and why it was dropped.
+> The test is still there and still says what it says. The report below now
+> raises both: the pattern the project fixed under a CVE, and the test that
+> asserts the same pattern is correct here. One of the two has to give, and
+> that is a question for the maintainers rather than something to be decided
+> by withdrawing the report.
 
 # Site Kit: a view-only Dashboard Sharing user can change a site-wide setting
 

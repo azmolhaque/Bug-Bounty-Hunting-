@@ -4,9 +4,20 @@ Submit through <https://www.google.com/about/appsecurity/> (the channel
 `SECURITY.md` names) or the OSS VRP form at bughunters.google.com, project
 `google/site-kit-wp`.
 
-**Send only after the duplicate check comes back empty.** Patchstack,
-Wordfence Threat Intel, WPScan, and a web search for `"site-kit-wp" golinks
-csrf` / `google-site-kit CVE 2026`.
+**Duplicate check: done, 2026-10-29. Not a duplicate.**
+
+Patchstack, Wordfence and a web search return one CSRF for this plugin:
+**CVE-2026-62139**, *Site Kit <= 1.186.0, Cross-Site Request Forgery*, CVSS
+4.3, disclosed 2026-09-10, reported by Ananda Dhakal, fixed in 1.187.0. It is
+a different function. In that release window the project added
+`wp_verify_nonce` to the **Analytics provisioning callback** — commit
+`51603f4dba`, 2026-08-21, "Harden analytics provisioning callback" — and that
+commit does not touch `Core/Golinks/` at all.
+
+`Golinks::handle_go()` still has zero nonce checks at `8cf47de` (1.190.0),
+three releases after that fix, and the behaviour below reproduces there. So
+the project has already accepted this class as a vulnerability and patched one
+instance of it; this is a second instance the fix did not cover.
 
 Everything below is written to be pasted as-is. It claims only what the
 evidence shows, and it answers the objection the maintainers are most likely
