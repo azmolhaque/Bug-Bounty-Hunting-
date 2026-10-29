@@ -1,0 +1,22 @@
+environment
+  date (UTC)    : 2026-10-29T17:01:52Z
+  WordPress     : 6.9.11    Site Kit: 1.190.0 (commit 8cf47de)    PHP: 8.3.6
+  site          : local, http://127.0.0.1:8099
+
+starting state: analytics-4 configured (measurement ID G-REPRO) but DEACTIVATED
+  googlesitekit_active_modules = ["search-console"]
+  analytics-4 measurementID    = G-REPRO
+
+what a visitor is served BEFORE (no cookies):
+  gtag script tags: 0
+
+the request — one GET, no nonce, as a logged-in administrator:
+  GET /wp-admin/index.php?action=googlesitekit_go&to=email-report-notice&notice_id=analytics-setup
+  HTTP/1.1 302 Found
+  Location: http://127.0.0.1:8099/wp-admin/index.php?action=googlesitekit_go&to=connect-analytics-4
+
+  googlesitekit_active_modules = ["search-console","analytics-4"]
+
+what a visitor is served AFTER (no cookies):
+  <script src="https://www.googletagmanager.com/gtag/js?id=G-REPRO" id="google_gtagjs-js" async>
+  gtag("config", "G-REPRO")
