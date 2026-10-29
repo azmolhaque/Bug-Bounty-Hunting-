@@ -9,11 +9,26 @@ into the same wall. See `results/google/MVRP-DECISIONS.md`, 2026-10-30.
 Wordfence is the re-aim. Site Kit has 3M+ active installations, and Wordfence
 already triages this plugin — they scored CVE-2026-10753 at 2.7.
 
-    01-missing-authorization.md     send first
-    02-csrf-module-activation.md    send second
+    02-csrf-module-activation.md    send FIRST
+    01-missing-authorization.md     send second, with the declaration intact
 
-01 first: it carries the stronger precedent, because the vendor fixed the same
-pattern under CVE-2026-10753 and the Site Goals datapoints reintroduce it.
+**The order changed, and the reason is Wordfence's own terms:** *"the
+Vulnerability must not be previously disclosed elsewhere to qualify for a
+reward."*
+
+* **02 has never been submitted anywhere.** It was written for Google's OSS VRP
+  and deliberately not filed. It is unambiguously clean, so it goes first.
+* **01 was filed to Google's OSS VRP** (issue 579506120, closed without the
+  technical question being reached). Google is the vendor *and* runs a reward
+  programme, so whether that counts as "disclosed elsewhere" is genuinely
+  ambiguous — it is not public, and no assessment was made. That is Wordfence's
+  call to make, not ours to quietly decide, which is why the disclosure-status
+  section in 01 states it plainly. Expect it may be credit-only rather than
+  rewarded.
+
+On technical merit 01 is the stronger of the two — the vendor fixed the same
+pattern under CVE-2026-10753 and the Site Goals datapoints reintroduce it — but
+merit is not what decides the order here.
 
 ## Check these on the phone before submitting
 
@@ -21,13 +36,26 @@ I could not reach `wordfence.com` or `patchstack.com` from the session —
 outbound DNS for both is outside the allowed domains — so the current intake
 rules are unverified by me. Three things to confirm on their site:
 
-1. **Eligibility for a 3M-install plugin.** Wordfence gates which software a
+1. **The exclusivity clause, read in full**, on
+   `/threat-intel/bug-bounty-program/terms-and-conditions/` — specifically
+   whether a submission to the vendor's own reward programme, closed without
+   assessment and never made public, counts as "previously disclosed
+   elsewhere". This decides whether 01 can be rewarded or is credit-only. If
+   the terms are unclear, ask them before submitting 01; 02 is unaffected
+   either way.
+2. **Eligibility for a 3M-install plugin.** Wordfence gates which software a
    researcher may submit for by researcher tier. If Site Kit is above your
    current tier, the submission will bounce; check before writing it up.
-2. **Both at once, or one at a time.** Some programmes queue per researcher.
-3. **Their own vulnerability database for Site Kit**, as a last dedup pass.
+3. **That 1.190.0 is still the current release.** Both reports state the
+   affected range as ending at 1.190.0 "current at submission". If Site Kit has
+   shipped since, re-check whether either issue is still present and update the
+   range — a report that claims an affected range including a version that
+   already fixed it is a fast rejection. `api.wordpress.org` is outside this
+   session's allowed domains, so I could not confirm it from here.
+4. **Both at once, or one at a time.** Some programmes queue per researcher.
+5. **Their own vulnerability database for Site Kit**, as a last dedup pass.
    What we already know is in the reports: CVE-2026-62139 is a CSRF in a
-   *different* function, and CVE-2026-10753 is the authz pattern this one
+   *different* function, and CVE-2026-10753 is the authz pattern 01
    reintroduces. Neither is ours.
 
 ## Exclusivity — this matters

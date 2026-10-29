@@ -10,8 +10,13 @@ the matching field.
     Type              Plugin
     Name              Google Site Kit
     Slug              google-site-kit
-    Affected versions 1.185.0 – 1.190.0 (1.185.0 introduced Permission_Aware_Datapoint;
-                      1.190.0 is current at submission)
+    Affected versions 1.190.0 (current at submission). The mechanism —
+                      Permission_Aware_Datapoint — arrived in 1.181.0, but the
+                      datapoint that writes site-wide state through it,
+                      Remove_Site_Goals_Widget, is @since 1.190.0, so that is
+                      the first affected release.
+    Reachability      Registered unconditionally in Analytics_4's datapoint
+                      array (Analytics_4.php:1074) — no feature flag.
     Tested on         1.190.0, commit 8cf47de
     Patched version   none — unfixed in the current release
 
@@ -42,7 +47,7 @@ Contributor-level access and above, on sites where Dashboard Sharing has been
 enabled for their role, to modify a site-wide plugin option.
 
 Every write through the `modules/<slug>/data/<datapoint>` REST route required
-`googlesitekit_manage_options` until version 1.185.0. That release added
+`googlesitekit_manage_options` until version 1.181.0. That release added
 `Permission_Aware_Datapoint`, which lets an individual datapoint supply its own
 permission callback, and `REST_Modules_Controller::resolve_datapoint_permission()`
 substitutes that callback for the route's own rather than requiring both:
@@ -74,10 +79,13 @@ authenticated Site Kit user, and that fallback asks only whether the user's
 role appears in any module's `sharedRoles` and whether the shared-dashboard
 splash has been dismissed.
 
-Four datapoints implement `Permission_Aware_Datapoint` and all four return
-`current_user_can( VIEW_DASHBOARD )`. Three of them write per-user values
-(`User_Setting`). `Remove_Site_Goals_Widget` (added in 1.190.0) is the one that
-writes a site-wide value:
+Seven concrete datapoints reach that callback — the three Site Goals ones, the
+two Reader Revenue Manager `User_Settings_Datapoint` subclasses, plus
+`Get_Benchmarking_Data` and `Get_Form_Metadata` — and every one of them gates on
+`current_user_can( VIEW_DASHBOARD )`. Four are reads. Two are writes to
+`User_Setting` values, which is per-user and consistent with a view-only grant.
+`Remove_Site_Goals_Widget` (@since 1.190.0) is the only one that writes
+site-wide state:
 
 ```php
 // includes/Modules/Analytics_4/Datapoints/Remove_Site_Goals_Widget.php
@@ -90,6 +98,27 @@ return function () use ( $widget ) {
 `OPTION = 'googlesitekit_analytics-4_site_goals_site_settings'` — a single
 value for the whole site. The widget a view-only user removes disappears from
 the Site Goals section for every user of the site, not just for themselves.
+
+The class it inherits from states the invariant it breaks. The base class's own
+docblock, in the plugin's source:
+
+```php
+// includes/Modules/Analytics_4/Datapoints/Site_Goals_Settings_Datapoint.php:21
+/**
+ * Base class for the per-user Site Goals settings datapoints.
+ *
+ * @since 1.181.0
+ */
+abstract class Site_Goals_Settings_Datapoint extends Shareable_Datapoint implements Executable_Datapoint, Permission_Aware_Datapoint {
+```
+
+Its two siblings keep to that: `Get_Site_Goals_Settings` reads, and
+`Save_Site_Goals_Settings` writes `$this->site_goals_settings`, which is
+`Site_Goals_Settings( $this->user_options )` — per-user.
+`Remove_Site_Goals_Widget` writes `$this->site_goals_site_settings`, which is
+`Site_Goals_Site_Settings( $this->options )` — site-wide. So a
+`VIEW_DASHBOARD` gate that is correct for a family documented as per-user is
+inherited by the one subclass that is not per-user.
 
 Note for triage: the plugin fixed the same pattern under **CVE-2026-10753**
 (*"users with dashboard sharing permissions (such as Editors) could modify

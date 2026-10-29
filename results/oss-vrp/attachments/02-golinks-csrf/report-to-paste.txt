@@ -16,7 +16,7 @@ source, at the files and lines quoted below.
 
 ## Why this is not intended behaviour
 
-Site Kit protects seven of its eight `admin_action_` handlers with a nonce and
+Site Kit protects eight of its nine `admin_action_` handlers with a nonce and
 leaves `Golinks::handle_go` unprotected, and that handler performs a state
 change that alters what the site serves to every visitor. The project has also
 accepted this class recently: **CVE-2026-62139** is a CSRF in Site Kit
@@ -170,6 +170,7 @@ alters what the site serves to every visitor. Every other state-changing
 | `Setup::handle_action_exchange_site_code` | yes |
 | `Authentication::handle_connect` | yes |
 | `Authentication::handle_disconnect` | yes |
+| `Authentication::handle_proxy_permissions` | yes |
 | `Sign_In_With_Google::handle_disconnect_user` | yes |
 | `Reset::handle_reset_action` | yes |
 | **`Golinks::handle_go`** | **no** |

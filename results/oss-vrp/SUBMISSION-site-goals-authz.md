@@ -12,6 +12,26 @@
 > intake is paused until at least Q1 2027. Supply-chain intake is still open.
 > The finding itself is unrefuted — see `results/google/MVRP-DECISIONS.md`,
 > 2026-10-30, for where it can still go.
+>
+> ## Two inaccuracies in the text below, found while re-checking for Wordfence
+>
+> The text is left as sent, because it was sent. Both are corrected in
+> `wordfence/01-missing-authorization.md`, which is what goes out next:
+>
+> * **"Since 1.185.0 a datapoint can replace the route's permission check"** —
+>   `Permission_Aware_Datapoint` is `@since 1.181.0`, not 1.185.0.
+> * **"Four datapoints implement `Permission_Aware_Datapoint` … Two/Three of
+>   the writes behind them are per-user"** — there are **seven** concrete
+>   datapoints behind that callback (three Site Goals, two Reader Revenue
+>   Manager `User_Settings_Datapoint` subclasses, `Get_Benchmarking_Data`,
+>   `Get_Form_Metadata`). Four are reads, two write `User_Setting` values, and
+>   `Remove_Site_Goals_Widget` is the only site-wide write. The two documents
+>   also disagreed with each other ("Two" vs "Three"), which is how it was
+>   caught.
+>
+> Neither changes the finding: the site-wide write at `VIEW_DASHBOARD` is
+> unaffected. The affected range does change — `Remove_Site_Goals_Widget` is
+> `@since 1.190.0`, so **1.190.0 is the first affected release**, not 1.185.0.
 
 # Ready-to-send text — Site Goals write reachable at VIEW_DASHBOARD
 

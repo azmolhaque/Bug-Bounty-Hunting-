@@ -10,8 +10,10 @@ the matching field.
     Type              Plugin
     Name              Google Site Kit
     Slug              google-site-kit
-    Affected versions 1.174.0 – 1.190.0 (1.174.0 introduced Golinks; 1.190.0 is
-                      current at submission)
+    Affected versions 1.175.0 – 1.190.0 (Golinks arrived in 1.174.0, but the
+                      state-changing handler — Email_Notice_Golink_Handler — is
+                      @since 1.175.0, so that is where this impact begins;
+                      1.190.0 is current at submission)
     Tested on         1.190.0, commit 8cf47de
     Patched version   none — unfixed in the current release
 
@@ -64,8 +66,9 @@ There is no `check_admin_referer()`, and `Golinks::get_url()` puts no nonce in
 the URL it builds. `admin_action_*` fires from `wp-admin/admin.php`, which
 every admin page includes.
 
-Three of the four registered handlers are pure redirects. The fourth performs a
-state change:
+Five golink handlers are registered (`Core/Email_Reporting/Email_Reporting.php`
+lines 287–289 and `Plugin.php` lines 197–198). Four of them only build a
+redirect URL. The fifth performs a state change:
 
 ```php
 // includes/Core/Email_Reporting/Email_Notice_Golink_Handler.php
@@ -178,19 +181,20 @@ an emailed link is not the fix. Two that keep the email flow working:
 `Golinks::get_url()` is the single place these URLs are built, so either covers
 every golink at once.
 
-For reference, seven of the plugin's eight `admin_action_` handlers already
-verify a nonce:
+For reference, eight of the plugin's nine `admin_action_` handlers already
+verify a nonce. `Golinks::handle_go` is the only one that does not:
 
-| `admin_action_` handler | verifies a nonce |
-|---|---|
-| `Setup::handle_action_setup_start` | yes |
-| `Setup::handle_action_verify` | yes |
-| `Setup::handle_action_exchange_site_code` | yes |
-| `Authentication::handle_connect` | yes |
-| `Authentication::handle_disconnect` | yes |
-| `Sign_In_With_Google::handle_disconnect_user` | yes |
-| `Reset::handle_reset_action` | yes |
-| **`Golinks::handle_go`** | **no** |
+| `admin_action_` handler | verifies a nonce | where |
+|---|---|---|
+| `Setup::handle_action_setup_start` | yes | `Setup.php:153` |
+| `Setup::handle_action_verify` | yes | `Setup.php:240` |
+| `Setup::handle_action_exchange_site_code` | yes | `Setup.php:297` |
+| `Authentication::handle_connect` | yes | `Authentication.php:755` |
+| `Authentication::handle_disconnect` | yes | `Authentication.php:789` |
+| `Authentication::handle_proxy_permissions` | yes | `Authentication.php:1317` |
+| `Sign_In_With_Google::handle_disconnect_user` | yes | `Sign_In_With_Google.php:1099` |
+| `Reset::handle_reset_action` | yes | `Reset.php:365` |
+| **`Golinks::handle_go`** | **no** | `Golinks.php:67` registers it |
 
 ## Scope of the claim
 
@@ -198,11 +202,13 @@ The attacker does not choose which measurement ID is injected — it is the
 site's own, and the settings route that would change it requires
 `manage_options` and a nonce. They gain no access and read nothing. On a site
 where Analytics-4 was never configured, activating it changes nothing a visitor
-sees and the request only dismisses a notice. I checked the other three golink
-handlers (`Connect_Module_Golink_Handler`, `Settings_Golink_Handler`,
-`Dashboard_Golink_Handler`) and all three only build a redirect URL — no state
-change — and `email-report-notice` is the only registered notice, so this is
-the whole of the reachable impact.
+sees and the request only dismisses a notice. I checked the other four golink
+handlers — `Email_Reporting_Golink_Handler` (`manage-subscription-email-reporting`),
+`Settings_Golink_Handler` (`settings`), `Dashboard_Golink_Handler` (`dashboard`)
+and `Connect_Module_Golink_Handler` (`connect-analytics-4`) — and all four only
+build a redirect URL, with no state change. `email-report-notice` is also the
+only registered notice, so the module activation above is the whole of the
+reachable impact through this handler.
 
 ## Test environment
 

@@ -9,7 +9,11 @@
 # lands on the phone is the same bytes that are committed, and a later question
 # about what was sent has an answer.
 #
-# Usage: ./scripts/push-vrp-attachments.sh
+# Usage:
+#   ./scripts/push-vrp-attachments.sh                  # the OSS VRP attachment bundles
+#   ./scripts/push-vrp-attachments.sh --zip            # ...one zip per bundle
+#   ./scripts/push-vrp-attachments.sh --src results/oss-vrp/wordfence
+#                                                      # the Wordfence submissions
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,7 +21,18 @@ SRC="$HERE/../results/oss-vrp/attachments"
 DEST="/sdcard/Download/sitekit-vrp"
 
 ZIP=0
-[ "${1:-}" = "--zip" ] && ZIP=1
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --zip) ZIP=1; shift ;;
+    --src) [ -n "${2:-}" ] || { echo "!! --src needs a directory"; exit 1; }
+           case "$2" in /*) SRC="$2" ;; *) SRC="$HERE/../$2" ;; esac
+           # A flat directory of files has no bundle subdirectories to walk, so
+           # it is pushed as one folder named after itself.
+           DEST="/sdcard/Download/$(basename "$2")"
+           shift 2 ;;
+    *)     echo "!! unknown argument '$1'"; exit 1 ;;
+  esac
+done
 
 command -v adb >/dev/null || { echo "!! adb not found"; exit 1; }
 [ -d "$SRC" ]             || { echo "!! no attachments at $SRC"; exit 1; }
@@ -50,17 +65,29 @@ if [ "$ZIP" -eq 1 ]; then
   done
   rm -rf "$tmp"
 else
-for d in "$SRC"/*/; do
-  name="$(basename "$d")"
-  adb shell mkdir -p "$DEST/$name" >/dev/null 2>&1
-  for f in "$d"*; do
-    if adb push "$f" "$DEST/$name/$(basename "$f")" >/dev/null 2>&1; then
-      printf '  ok   %s/%s\n' "$name" "$(basename "$f")"
+  # The attachments directory holds one subdirectory per report; a --src
+  # directory may instead be flat, in which case its files go straight into
+  # DEST rather than into a bundle folder that does not exist.
+  dirs=()
+  for d in "$SRC"/*/; do [ -d "$d" ] && dirs+=("$d"); done
+  [ "${#dirs[@]}" -gt 0 ] || dirs=("$SRC/")
+
+  for d in "${dirs[@]}"; do
+    if [ "$d" = "$SRC/" ]; then
+      sub=""; target="$DEST"
     else
-      printf '  FAIL %s/%s\n' "$name" "$(basename "$f")"; fail=1
+      sub="$(basename "$d")/"; target="$DEST/$(basename "$d")"
     fi
+    adb shell mkdir -p "$target" >/dev/null 2>&1
+    for f in "$d"*; do
+      [ -f "$f" ] || continue
+      if adb push "$f" "$target/$(basename "$f")" >/dev/null 2>&1; then
+        printf '  ok   %s%s\n' "$sub" "$(basename "$f")"
+      else
+        printf '  FAIL %s%s\n' "$sub" "$(basename "$f")"; fail=1
+      fi
+    done
   done
-done
 fi
 
 # adb push writes the bytes and tells nobody. Android's file pickers read
@@ -86,8 +113,9 @@ adb shell ls -R "$DEST" 2>/dev/null | sed 's/^/  /'
 # The check that matters is not "a scan ran" but "the picker can see them".
 echo
 echo "== what MediaStore can see (this is what the file picker lists) =="
-seen=$(adb shell "content query --uri content://media/external/file --projection _data --where \"_data LIKE '%sitekit-vrp%'\"" 2>/dev/null | grep -c "sitekit-vrp" || true)
-echo "  $seen row(s) under sitekit-vrp"
+leaf="$(basename "$DEST")"
+seen=$(adb shell "content query --uri content://media/external/file --projection _data --where \"_data LIKE '%${leaf}%'\"" 2>/dev/null | grep -c "$leaf" || true)
+echo "  $seen row(s) under $leaf"
 [ "${seen:-0}" -gt 0 ] || echo "  !! MediaStore still shows nothing — see the note at the end"
 
 # A push that reports success and leaves nothing behind is the failure mode
@@ -112,12 +140,22 @@ intake on 2026-10-01 and is taking supply-chain reports only, until at least
 Q1 2027. Report 02 was held for the same reason.
 
 So do not paste these into the OSS VRP form. The bundles are kept because the
-findings are unrefuted and still reproduce; where they can go instead is in
-results/google/MVRP-DECISIONS.md under 2026-10-30.
+findings are unrefuted and still reproduce; where they go instead is Wordfence.
 
-  report body : report-to-paste.txt in $DEST/<folder>/
-  attachments : the rest of that folder, plus the terminal screenshot already
-                in your gallery
+  what is on the phone now : $DEST
+
+  OSS VRP bundles (default run)
+    report body : report-to-paste.txt in $DEST/<folder>/
+    attachments : the rest of that folder, plus the terminal screenshot already
+                  in your gallery
+    — kept for the record only; do not file these anywhere as they stand.
+
+  Wordfence submissions (--src results/oss-vrp/wordfence)
+    02-csrf-module-activation.md   file this one FIRST — never disclosed anywhere
+    01-missing-authorization.md    second, with its disclosure-status section intact
+    README.md                      the three checks to run on wordfence.com first
+    Each file's "## " headings are the form's fields, in order. Attach the
+    matching bundle from the OSS VRP folder if they ask for files.
 
 If the file picker still shows "No items" inside those folders, the picker is
 filtering by type rather than missing the files. Two ways round it, in order:
