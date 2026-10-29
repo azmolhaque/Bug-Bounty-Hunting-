@@ -5426,8 +5426,15 @@ Nothing open. OSS VRP supply chain was the one live paying channel and this was
 the candidate for it; the CI surface is otherwise measured — no
 `pull_request_target`, no `issue_comment`, every action SHA-pinned with ratchet
 enforcing it, fork guards throughout, script injection limited to inputs that
-need write access anyway. `publish-docker-images.yml`'s `if:` gating is the one
-thing left unread.
+need write access anyway. `publish-docker-images.yml` is now read too, and
+closed: `push: ${{ github.event_name != 'pull_request' }}` on every call, and
+the local action gates the registry login itself on `if: inputs.push == 'true'`,
+so a pull request never logs in and never publishes. The `skip-if-exists-tag`
+interpolation that looked like shell injection cannot be reached from a PR for
+the same reason, and on push events its value comes from the `wp_version` step
+output, not from anything a user supplies.
+
+So the CI surface of this repository is measured and empty in full.
 
 The two plugin findings stay unrefuted and unpayable: Google's own VRP is the
 only programme that takes Google products and it is not taking product
