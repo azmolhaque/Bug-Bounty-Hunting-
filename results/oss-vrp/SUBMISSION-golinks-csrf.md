@@ -8,16 +8,17 @@ Submit through <https://www.google.com/about/appsecurity/> (the channel
 
 Patchstack, Wordfence and a web search return one CSRF for this plugin:
 **CVE-2026-62139**, *Site Kit <= 1.186.0, Cross-Site Request Forgery*, CVSS
-4.3, disclosed 2026-09-10, reported by Ananda Dhakal, fixed in 1.187.0. It is
-a different function. In that release window the project added
-`wp_verify_nonce` to the **Analytics provisioning callback** — commit
-`51603f4dba`, 2026-08-21, "Harden analytics provisioning callback" — and that
-commit does not touch `Core/Golinks/` at all.
+4.3, disclosed 2026-09-10, reported by Ananda Dhakal, reported fixed in
+1.187.0. It is not this function: `Golinks::handle_go()` has no nonce check in
+the current code (`8cf47de`, 1.190.0) and the behaviour below reproduces
+there.
 
-`Golinks::handle_go()` still has zero nonce checks at `8cf47de` (1.190.0),
-three releases after that fix, and the behaviour below reproduces there. So
-the project has already accepted this class as a vulnerability and patched one
-instance of it; this is a second instance the fix did not cover.
+I did not try to identify which function that CVE covers, and I am not
+claiming this is it. What I can say from the repository is that the project
+has recently hardened another externally-reachable callback the same way —
+commit `51603f4dba`, 2026-08-21, "Harden analytics provisioning callback",
+which adds `wp_verify_nonce` to the Analytics provisioning callback and first
+ships in 1.188.0 — and that commit does not touch `Core/Golinks/` at all.
 
 Everything below is written to be pasted as-is. It claims only what the
 evidence shows, and it answers the objection the maintainers are most likely
@@ -214,10 +215,12 @@ work.
 
 ## Before sending — the evidence checklist
 
-* [ ] duplicate check run (Patchstack, Wordfence, WPScan, web search) and empty
-* [ ] your researcher handle and the date added at the top
-* [ ] one screenshot of the terminal showing the before/after, per § 9 — re-run
-      `results/oss-vrp/poc/` on the Pi if you want it in your own environment
+* [x] duplicate check run 2026-10-29 — CVE-2026-62139 is a different function
+* [x] researcher handle and date at the top
+* [ ] one screenshot of the terminal showing the before/after, per § 9 —
+      `./scripts/show-sitekit-evidence.sh csrf`
 * [ ] attach or inline `poc/evidence-csrf.txt`
-* [ ] send this one on its own. The Site Goals finding is withdrawn as
-      Working As Intended; a weak report sent alongside drags the other down
+* [ ] send as its **own report**, separate from the Site Goals one. That
+      finding is not withdrawn any more — CVE-2026-10753 reversed it — but it
+      is a different root cause and a different fix, and filing them together
+      invites one verdict for both
