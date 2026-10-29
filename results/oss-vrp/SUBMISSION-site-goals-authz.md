@@ -19,6 +19,28 @@ A view-only Dashboard Sharing user can write a site-wide Site Kit setting —
 the pattern fixed under CVE-2026-10753, reintroduced by the Site Goals
 datapoints
 
+## Scope
+
+`google/site-kit-wp` is listed at tier **OT1** in Google's own OSS VRP
+repository tier list — `oss-repository-tier/README.md`, line 70, in
+`github.com/google/bughunters`. The finding is in that repository's PHP
+source, at the files and lines quoted below.
+
+## Why this is not intended behaviour
+
+Site Kit already treats this exact pattern as a vulnerability.
+**CVE-2026-10753** is *"users with dashboard sharing permissions (such as
+Editors) could modify email reporting settings restricted to administrators"*,
+and its fix — commit `2bb4fb2878`, "Update editable route" — does one thing: it
+changes a write route's `permission_callback` from the dashboard-sharing
+capability to `manage_options`. The Site Goals datapoints gate a **site-wide**
+write on that same dashboard-sharing capability, two months after that fix
+shipped.
+
+There is a unit test asserting the current behaviour. I quote it in full below
+rather than leave it to be found. The CVE fix and that test cannot both be
+right, and which of them gives is the question I am asking.
+
 ## Summary
 
 In March 2026 Site Kit fixed CVE-2026-10753 — *"users with dashboard sharing
@@ -173,8 +195,9 @@ the site sees. It is bounded: the daily cron restores a removed widget when
 its provider plugin is active and Site Kit finds its events, and the values
 are limited to `ecommerce` and `lead`.
 
-CVSS 3.1 `AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N` = 4.3 (Medium), which is
-alongside CVE-2026-10753's own score for the same class.
+CVSS 3.1 `AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N` = 4.3 (Medium).
+CVE-2026-10753 was scored 2.7 by Wordfence and 3.8 by Patchstack; this is the
+same class, with a site-wide value in place of a settings object.
 
 No other user's data is readable through it and nothing executes. I checked
 whether it goes further and it does not: a grant on one module does not reach

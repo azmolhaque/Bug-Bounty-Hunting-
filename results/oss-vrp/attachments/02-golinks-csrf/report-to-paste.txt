@@ -7,6 +7,27 @@
 Missing CSRF protection on `admin_action_googlesitekit_go` lets one link
 re-enable Analytics tracking for every visitor
 
+## Scope
+
+`google/site-kit-wp` is listed at tier **OT1** in Google's own OSS VRP
+repository tier list — `oss-repository-tier/README.md`, line 70, in
+`github.com/google/bughunters`. The finding is in that repository's PHP
+source, at the files and lines quoted below.
+
+## Why this is not intended behaviour
+
+Site Kit protects seven of its eight `admin_action_` handlers with a nonce and
+leaves `Golinks::handle_go` unprotected, and that handler performs a state
+change that alters what the site serves to every visitor. The project has also
+accepted this class recently: **CVE-2026-62139** is a CSRF in Site Kit
+<= 1.186.0, and in the same period the project added `wp_verify_nonce` to the
+Analytics provisioning callback (commit `51603f4dba`, "Harden analytics
+provisioning callback"), a commit that does not touch `Core/Golinks/`.
+
+I address the obvious objection — that golinks are email links and a WordPress
+nonce cannot survive email delivery — in its own section below, with two fixes
+that keep the email flow working.
+
 ## Summary
 
 `Golinks::handle_go()` runs on `admin_action_googlesitekit_go` with no nonce
