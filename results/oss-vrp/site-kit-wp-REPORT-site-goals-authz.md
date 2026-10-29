@@ -1,3 +1,32 @@
+> # ⛔ WITHDRAWN — DO NOT SUBMIT
+>
+> **2026-10-29.** The vendor's own test asserts this behaviour is correct, in
+> words that describe the exact thing this report calls a bug:
+>
+> `tests/phpunit/integration/Modules/Analytics_4/Datapoints/Remove_Site_Goals_WidgetTest.php`
+>
+> ```php
+> public function test_is_shareable__returns_true() {
+>     $this->assertTrue(
+>         $this->datapoint->is_shareable(),
+>         'The removal datapoint should be shareable, so a view-only user on a
+>          shared dashboard can remove a widget for every user of the site.'
+>     );
+> }
+>
+> public function test_permission_callback__allows_a_view_only_user() { … }
+> public function test_permission_callback__refuses_a_subscriber()   { … }
+> ```
+>
+> They name the site-wide effect ("for every user of the site"), assert a
+> view-only user is allowed, and assert a subscriber is not — which is exactly
+> the boundary this report measured. It is a designed feature, not an
+> oversight.
+>
+> Submitting it would have been a Working As Intended close. The reproduction
+> below is accurate; the conclusion drawn from it was wrong. Kept as the record
+> of how it was found and why it was dropped.
+
 # Site Kit: a view-only Dashboard Sharing user can change a site-wide setting
 
 **Project:** `google/site-kit-wp` (OT1 in the OSS VRP repository tier list)

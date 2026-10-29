@@ -1,3 +1,16 @@
+> # ⏸ ON HOLD — not submitted yet, see the pre-submission review
+>
+> **2026-10-29.** Reproduced and accurate, but the Working As Intended risk is
+> real and was measured before submitting rather than after. The evidence on
+> both sides is in `PRE-SUBMISSION-REVIEW.md`. Short version: golinks are
+> **email CTA links by design**, and the module activation was added
+> deliberately during code review with a `MANAGE_OPTIONS` guard — so "there is
+> no nonce" alone is answerable by "a WordPress nonce cannot survive an email".
+>
+> If this is submitted, it has to be framed around the fix that preserves the
+> email flow (a signed single-use token in the golink, or a confirmation step
+> before activation), not around the missing nonce.
+
 # Site Kit: one link activates a module on an administrator's site, and the site's Analytics tag goes back onto every page
 
 **Project:** `google/site-kit-wp` (OT1 in the OSS VRP repository tier list)
