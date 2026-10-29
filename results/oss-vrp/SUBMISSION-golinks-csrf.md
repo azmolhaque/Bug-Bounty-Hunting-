@@ -26,6 +26,10 @@ rather than waiting for them to raise it.
 
 ---
 
+**Researcher:** Md. Azmol Haque Rony (`cindrasec`)
+**Date:** 2026-10-29
+**Project:** `google/site-kit-wp` — Google OSS VRP
+
 ## Title
 
 Missing CSRF protection on `admin_action_googlesitekit_go` lets one link

@@ -9,6 +9,10 @@ Submit through <https://www.google.com/about/appsecurity/>, project
 
 ---
 
+**Researcher:** Md. Azmol Haque Rony (`cindrasec`)
+**Date:** 2026-10-29
+**Project:** `google/site-kit-wp` — Google OSS VRP
+
 ## Title
 
 A view-only Dashboard Sharing user can write a site-wide Site Kit setting —
