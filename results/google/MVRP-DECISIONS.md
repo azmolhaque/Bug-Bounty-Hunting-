@@ -5348,3 +5348,87 @@ supply chain**, OT1, $1,337–$13,337. That makes
 `results/oss-vrp/LEAD-sitekit-ci-gemini-injection.md` not one option among
 several but the only live one, and finishing its unproven link — the replica
 test — the priority.
+
+## 2026-10-30 (later still) — the CI lead is closed: the premise was false
+
+`results/oss-vrp/LEAD-sitekit-ci-gemini-injection.md`. Every mechanical link in
+it was verified from gemini-cli 0.42.0's source. The step in front of all of
+them was not, and it is shut.
+
+`security.folderTrust.enabled` defaults to **true** in 0.42.0 — the docs table
+says so, and `trustedFolders.ts` reads `?? true`. site-kit-wp's
+`.gemini/settings.json` does not disable it, `gemini.yml` passes neither
+`--skip-trust` nor `GEMINI_CLI_TRUST_WORKSPACE=true`, and a clean runner has no
+`~/.gemini/trustedFolders.json`. So the checkout is untrusted,
+`--approval-mode=yolo` is overridden to `default`, and the CLI refuses to run
+headless:
+
+    YOLO mode is enabled. All tool calls will be automatically approved.
+    Approval mode overridden to "default" because the current folder is not trusted.
+    Gemini CLI is not running in a trusted directory.
+
+Run on a host with **no `~/.gemini/settings.json`**, so the default applied
+exactly as on a runner. There is no agent in that workflow to inject into, so
+no boundary can be crossed. **Measured and empty.**
+
+The injection itself remains untested: phase B granted trust to reach the
+behaviour underneath and the API answered `402 — prepayment credits are
+depleted`. Unresolved rather than negative, and moot.
+
+What survives is an upstream hardening note, not a finding: `gemini.yml` cannot
+work as written, and both obvious fixes (`--skip-trust`, or
+`GEMINI_CLI_TRUST_WORKSPACE=true`) would hand an agent with
+yolo, shell access and `GEMINI_API_KEY` a task assembled from attacker-authored
+issue text. Say it plainly to them; claim nothing. § 2 and § 3 reject a
+precondition as a finding and they are right to.
+
+### A second, independent reason, already in this log
+
+The 2026-10-28 entry above fixed the shape for gemini-cli before testing it:
+
+    -y / --yolo / --skip-trust used        NOT a finding — consent was given
+
+site-kit-wp's workflow passes `--approval-mode=yolo` itself, in Google's own
+CI. By that rule the approval layer was lowered deliberately by the owner, and
+lowering your own guard rail is not a vulnerability someone else can report.
+
+There is a real distinction I would have argued: consenting to let an agent run
+tools is not consenting to let an anonymous issue author choose what it runs,
+and that is what the `/implement` skill's "anything GitHub lists as linked"
+instruction makes possible. But the distinction never gets to matter, because
+folder trust closes the door before the agent starts. Two independent reasons,
+same answer.
+
+Also worth recording from that earlier entry, because it nearly tripped this
+run too: the phone's `~/.gemini/trustedFolders.json` trusts the whole of
+`$HOME`, so any trust test under `~` answers a different question. This script
+works in `mktemp -d`, outside `$HOME`, which is why the workspace was untrusted
+— and which is also what a runner's `/home/runner/work/...` checkout is: in no
+trust list at all. The match to a clean runner is on both counts, the absent
+`settings.json` and the untrusted path.
+
+### Two false verdicts from my own harness, both caught
+
+The script reported "LINK FAILS — the agent did not run the injected command"
+twice, and both times the model had never been reached: first because folder
+trust stopped the CLI, then because the API had no credits. The bug was reading
+*absence of positive evidence* as *the model declining*. It now detects the
+trust refusal and API/billing/auth failures as their own outcomes and reports
+inconclusive, with a self-test over all three cases.
+
+Worth carrying: a harness that can only distinguish "worked" from "everything
+else" will eventually call a live finding dead, or a dead one live. Make it
+prove the subject was actually exercised before it is allowed a verdict.
+
+### Where that leaves this repository
+
+Nothing open. OSS VRP supply chain was the one live paying channel and this was
+the candidate for it; the CI surface is otherwise measured — no
+`pull_request_target`, no `issue_comment`, every action SHA-pinned with ratchet
+enforcing it, fork guards throughout, script injection limited to inputs that
+need write access anyway. `publish-docker-images.yml`'s `if:` gating is the one
+thing left unread.
+
+The two plugin findings stay unrefuted and unpayable: Google's own VRP is the
+only programme that takes Google products and it is not taking product
+vulnerabilities until at least Q1 2027. Upstream disclosure is their route.

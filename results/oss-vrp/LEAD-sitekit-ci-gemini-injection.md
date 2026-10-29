@@ -1,9 +1,54 @@
 # LEAD — site-kit-wp CI: prompt injection into an agent running with `--approval-mode=yolo`
 
-**Status: lead, not a finding.** Every mechanical link below is verified. The
-one link that is *not* verified is the model's susceptibility, and until that is
-demonstrated this does not go anywhere near a report (CLAUDE.md § 4: a chain
-with no working PoC at the critical step is an invalid chain).
+> # ✗ CLOSED — 2026-10-30, measured and empty
+>
+> **The premise is false. `--approval-mode=yolo` is not in effect in their
+> workflow, so there is no agent to inject into.**
+>
+> `security.folderTrust.enabled` defaults to `true` in gemini-cli 0.42.0 — the
+> docs table says so and `trustedFolders.ts` reads
+> `settings.security?.folderTrust?.enabled ?? true`. site-kit-wp's
+> `.gemini/settings.json` does not disable it, `gemini.yml` passes neither
+> `--skip-trust` nor `GEMINI_CLI_TRUST_WORKSPACE=true`, and a clean runner has
+> no `~/.gemini/trustedFolders.json`. So the checkout is untrusted, yolo is
+> overridden, and the CLI refuses to run headless.
+>
+> Confirmed by running it (`scripts/gemini-injection-test.sh`, phase A) on a
+> host with **no `~/.gemini/settings.json` at all**, so the default applied
+> exactly as it would on a runner:
+>
+> ```
+> YOLO mode is enabled. All tool calls will be automatically approved.
+> Approval mode overridden to "default" because the current folder is not trusted.
+> Gemini CLI is not running in a trusted directory. To proceed, either use
+> `--skip-trust`, set the `GEMINI_CLI_TRUST_WORKSPACE=true` environment
+> variable, or trust this directory in interactive mode.
+> ```
+>
+> Their own "Run /implement command" step gets this, not an agent. Nothing to
+> report: no boundary is crossed because the door does not open.
+>
+> **The injection itself was never tested.** Phase B granted trust to reach the
+> behaviour underneath and the Gemini API returned `402 — prepayment credits are
+> depleted`, so the model was never asked. That is unresolved, not negative, and
+> it no longer changes the outcome: with phase A settled, the chain has no first
+> step regardless of how the model would behave.
+>
+> **What is left is an upstream note, not a finding.** `gemini.yml` cannot work
+> as written, and the two obvious ways to fix it — `--skip-trust` or
+> `GEMINI_CLI_TRUST_WORKSPACE=true` — are exactly what would hand an agent with
+> yolo, shell access, and `GEMINI_API_KEY` a task built from attacker-authored
+> issue text. Worth saying to them plainly as a hardening observation. Not worth
+> claiming as a vulnerability, and § 2/§ 3 would reject it if we tried: a
+> precondition is not a finding.
+>
+> The analysis below stands as written and is kept for the record. Read it as
+> the reasoning that got here, not as a live lead.
+
+**Status: closed. Originally filed as a lead, not a finding.** Every mechanical
+link below is verified. The link that was *not* verified was the model's
+susceptibility — and before that could be tested, the step in front of it
+turned out to be shut.
 
 **Why this channel:** OSS VRP stopped accepting product vulnerabilities on
 2026-10-01 but still accepts **supply chain** issues, and `google/site-kit-wp`
