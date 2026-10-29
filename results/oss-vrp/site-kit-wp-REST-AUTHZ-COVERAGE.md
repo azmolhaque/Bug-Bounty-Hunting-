@@ -114,3 +114,39 @@ things close it:
 * **What an anonymous visitor receives.** Fetched the front page logged out:
   no plugin inline data, no identifiers, nothing beyond the gtag snippet when
   Analytics is active.
+
+---
+
+## Two corrections, both found by running the thing again
+
+**The survey reset the lab.** The route matrix called every endpoint as every
+role, including the administrator, and the administrator's pass executed
+`POST core/site/data/reset` and `core/site/data/reset-persistent`. Site Kit's
+credentials, active modules and module settings were wiped, and the next
+tests ran against a half-configured site without saying so. Care had gone into
+not mutating state as a low-privileged user and none into the administrator's
+own pass, where the destructive endpoints actually answer. A survey that calls
+every endpoint has to exclude the ones whose names say what they do, or run
+against a site it is willing to lose.
+
+**A sentence in the report was wrong.** It read "the notice dismissal takes
+whatever `notice_id` is passed, for any logged-in user, with no check at all".
+That came from reading the handler and not the function it calls.
+`Email_Notices::dismiss_notice_for_user()` resolves the id through
+`get_notice()` and returns early when that is null, so an unregistered id does
+nothing. Measured on a clean site:
+
+```
+contributor dismissed_prompts BEFORE: (none)
+  …&notice_id=zz-not-a-real-notice   -> (none)
+  …&notice_id=analytics-setup        -> a:1:{s:35:"email-report-notice-analytics-setup";…}
+  active modules: ["search-console"] (unchanged)
+```
+
+So the true statement is narrower and still worth making: a **registered**
+notice is dismissed for any logged-in user, including one with no Site Kit
+access. The submission text now says that instead.
+
+The nonce comparison was also per file, which counts occurrences rather than
+handlers. It is now per handler, and reads: seven of the eight `admin_action_`
+handlers verify a nonce, and `Golinks::handle_go` does not.

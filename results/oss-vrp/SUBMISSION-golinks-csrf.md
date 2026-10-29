@@ -129,8 +129,19 @@ $this->email_notices->dismiss_notice_for_user( $notice_id, $user );
 `Email_Notices::GOLINK_NOTICE` is `'email-report-notice'`;
 `Analytics_Setup_Email_Notice::ID` is `'analytics-setup'`.
 
-The notice dismissal below it takes whatever `notice_id` is passed, for any
-logged-in user, with no check at all.
+The dismissal below it runs for **any logged-in user**, including one with no
+Site Kit access at all. A Contributor following the same link ends up with
+`email-report-notice-analytics-setup` written to their dismissed prompts:
+
+```
+contributor dismissed_prompts BEFORE: (none)
+  GET …&to=email-report-notice&notice_id=analytics-setup   as a Contributor
+contributor dismissed_prompts AFTER : a:1:{s:35:"email-report-notice-analytics-setup";…}
+  active modules: ["search-console"]   (unchanged — the MANAGE_OPTIONS check holds)
+```
+
+An unregistered `notice_id` does nothing: `dismiss_notice_for_user()` resolves
+it through `get_notice()` and returns early when that is null.
 
 ## On the email constraint
 
@@ -144,13 +155,16 @@ URL any third party can host, and this one performs a state change that
 alters what the site serves to every visitor. Every other state-changing
 `admin_action_` in the plugin is protected:
 
-| handler | nonce checks |
+| `admin_action_` handler | verifies a nonce |
 |---|---|
-| `Core/Authentication/Setup.php` | 5 |
-| `Core/Authentication/Authentication.php` | 3 |
-| `Modules/Sign_In_With_Google.php` | 1 |
-| `Core/Util/Reset.php` | 1 |
-| `Core/Golinks/Golinks.php` | 0 |
+| `Setup::handle_action_setup_start` | yes |
+| `Setup::handle_action_verify` | yes |
+| `Setup::handle_action_exchange_site_code` | yes |
+| `Authentication::handle_connect` | yes |
+| `Authentication::handle_disconnect` | yes |
+| `Sign_In_With_Google::handle_disconnect_user` | yes |
+| `Reset::handle_reset_action` | yes |
+| **`Golinks::handle_go`** | **no** |
 
 Two fixes keep the email flow working:
 
