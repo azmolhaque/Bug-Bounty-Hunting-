@@ -175,3 +175,49 @@ datapoint, which makes it worth re-checking after a few releases.
 **The fix, if reported.** A datapoint's own callback should narrow the route's
 permission, never widen it: take the stricter of the two rather than replacing
 one with the other.
+
+---
+
+## 2026-10-29 — both leads reproduced, and what would not escalate
+
+Both are written up: `site-kit-wp-REPORT-site-goals-authz.md` and
+`site-kit-wp-REPORT-golinks-csrf.md`, with evidence and PoCs in `poc/`.
+
+The escalation attempts, all run in the lab and all negative. Recording them
+because a report that has been pushed on and did not move is worth more than
+one that was never pushed:
+
+* **Cross-module.** `VIEW_DASHBOARD` is module-agnostic while
+  `READ_SHARED_MODULE_DATA` is per module, so a grant on Search Console looks
+  like it should reach Analytics-4's datapoints. It does not:
+  `Module::get_oauth_client_for_datapoint()` only hands over the owner's
+  credentials when the user holds `READ_SHARED_MODULE_DATA` for *that* module,
+  and without them every call dies at `missing_required_scopes`. The per-module
+  boundary holds at the credentials layer even though the permission callback
+  does not check it. (`poc/chain1.php`)
+* **Self-escalation.** `POST core/modules/data/sharing-settings` as the shared
+  viewer: **403**. The route requires `MANAGE_OPTIONS` and then filters each
+  key by its own capability — `sharedRoles` by
+  `MANAGE_MODULE_SHARING_OPTIONS`, `management` by
+  `DELEGATE_MODULE_SHARING_MANAGEMENT`. No way to widen your own grant.
+* **Arbitrary per-user write.** `save-site-goals-settings` accepted a stray
+  `evil` key and stored nothing: the sanitizer walks a fixed `SETTING_KEYS`
+  allowlist. (`poc/chain2.php`)
+* **Reading other people's content.** `form-metadata` resolves titles only for
+  four form post types at status `publish`; the slug path allows `draft` but
+  only for the `omapi` post type. No private or unowned content comes back.
+* **`benchmarking-data`** is not registered by default — the call returns
+  `invalid_datapoint` — so the datapoint that would have read real Analytics
+  figures is behind a flag and not reachable.
+* **Chaining the two findings together.** They do not compose: the CSRF needs
+  an administrator, and the authorization bug gives a contributor one
+  site-wide option. Neither helps the other.
+* **Choosing the injected measurement ID.** Analytics-4 settings are written
+  through a REST route that requires `MANAGE_OPTIONS` and a nonce, so the CSRF
+  cannot point the tag at an attacker's property. The tag that goes back on
+  the page is the site's own.
+
+So the impact of each is what its report claims and no more. Both are real,
+both need a code change, and neither is a high-severity finding. Inflating
+either one is the fastest way to a Spam close, which is what FO-10 and FO-12
+exist to prevent.
