@@ -177,8 +177,8 @@ for s in $SOURCES; do
   # message.
   n="$("$s" cameyo.com 2>/dev/null | grep -v '^!!' | keep_subs cameyo.com | grep -c . || true)"
   case "$n" in
-    ''|0|*[!0-9]*) echo "   note: $s returned $n direct names for the control domain" ;;
-    *) echo "POSITIVE  $s -> $n direct subdomain(s) of cameyo.com"; ctl_ok=$((ctl_ok+1)) ;;
+    ''|0|*[!0-9]*) echo "   note: $s returned $n name(s) for the control domain under SUBS=$SUBS" ;;
+    *) echo "POSITIVE  $s -> $n subdomain(s) of cameyo.com kept under SUBS=$SUBS"; ctl_ok=$((ctl_ok+1)) ;;
   esac
   sleep "$DELAY"
 done
