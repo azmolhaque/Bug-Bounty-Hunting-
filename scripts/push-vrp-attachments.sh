@@ -105,15 +105,19 @@ fi
 
 cat <<NOTE
 
-== filing ==
-On the phone: bughunters.google.com -> Report a vulnerability -> Open Source
-(OSS VRP) -> google/site-kit-wp.
+== filing: NOT to OSS VRP any more ==
+Report 01 went to OSS VRP on 2026-10-29 and came back Won't fix (Infeasible),
+P4/S4, on 2026-10-30 — not on merit: Google paused OSS VRP product-vulnerability
+intake on 2026-10-01 and is taking supply-chain reports only, until at least
+Q1 2027. Report 02 was held for the same reason.
 
-  report body : open report-to-paste.txt from $DEST/<folder>/ and paste it
+So do not paste these into the OSS VRP form. The bundles are kept because the
+findings are unrefuted and still reproduce; where they can go instead is in
+results/google/MVRP-DECISIONS.md under 2026-10-30.
+
+  report body : report-to-paste.txt in $DEST/<folder>/
   attachments : the rest of that folder, plus the terminal screenshot already
                 in your gallery
-
-Two separate reports. 01 first.
 
 If the file picker still shows "No items" inside those folders, the picker is
 filtering by type rather than missing the files. Two ways round it, in order:

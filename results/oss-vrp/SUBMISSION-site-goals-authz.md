@@ -1,3 +1,18 @@
+> # 🚫 SENT, AND CLOSED — the channel shut, not the finding
+>
+> Filed 2026-10-29 → `issuetracker.google.com/issues/579506120`.
+> Closed 2026-10-30 02:33 AM: **P4 / S4 / Won't fix (Infeasible)**.
+>
+> Not Intended Behaviour, not Duplicate — the technical question was never
+> reached. Google's reason, verbatim: *"As of October 1, 2026 … we are no longer
+> accepting product vulnerabilities … Currently, we are focusing only on supply
+> chain related issues for the OSS VRP."*
+>
+> **Do not re-file this, or anything like it, to OSS VRP.** Product-vulnerability
+> intake is paused until at least Q1 2027. Supply-chain intake is still open.
+> The finding itself is unrefuted — see `results/google/MVRP-DECISIONS.md`,
+> 2026-10-30, for where it can still go.
+
 # Ready-to-send text — Site Goals write reachable at VIEW_DASHBOARD
 
 Send this one **first**. It has the stronger precedent: the project fixed the

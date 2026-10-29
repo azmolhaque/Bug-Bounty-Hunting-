@@ -1,3 +1,21 @@
+> # ⏸ HELD BEFORE SENDING — do not file this to OSS VRP
+>
+> This was built, reviewed, and staged on the phone ready to file as report 02.
+> It was **not sent**, and the reason is the twin report's outcome rather than
+> anything wrong here.
+>
+> `issuetracker.google.com/issues/579506120` (the Site Goals finding) came back
+> **Won't fix (Infeasible)**, P4/S4, on 2026-10-30. Not on merit: *"As of
+> October 1, 2026 … we are no longer accepting product vulnerabilities …
+> focusing only on supply chain related issues for the OSS VRP."*
+>
+> This is the same class in the same repository, so OSS VRP gives it the same
+> close without reading it, and § 2 says spending reputation signal for nothing
+> is a cost, not a neutral act. **Held, not withdrawn** — the missing nonce is
+> still there in `8cf47de` and the evidence still reproduces.
+>
+> Where it can still go: `results/google/MVRP-DECISIONS.md`, 2026-10-30.
+
 # Ready-to-send text — Golinks CSRF
 
 Submit through <https://www.google.com/about/appsecurity/> (the channel

@@ -5221,3 +5221,75 @@ is behind Google sign-in, behind IAP, parked on a wildcard, or public on
 purpose. The remaining surface on all of them is behind a login, and the two
 reports this account has had Fixed both came from being inside something
 rather than describing its door.
+
+---
+
+## 2026-10-30 — OSS VRP closed the Site Goals report, and the reason closes the channel
+
+`issuetracker.google.com/issues/579506120` — *"A view-only Dashboard Sharing
+user can write a site-wide Site Kit setting"* — filed 2026-10-29, closed
+2026-10-30 02:33 AM.
+
+    Priority  P4
+    Severity  S4
+    Status    Won't fix (Infeasible)
+
+The comment that closed it (sp...@google.com, #3):
+
+> Status: Won't Fix (Infeasible).
+> Hi! We've reviewed your report concerning an authorization bypass in Google
+> Site Kit (https://github.com/google/site-kit-wp). Your submission was
+> assessed as an OSS VRP product vulnerability.
+> As of October 1, 2026, we updated our rules for the Google Open Source
+> Software Vulnerability Reward Program. Unfortunately, this means we are no
+> longer accepting product vulnerabilities. Since your report was submitted on
+> October 29, 2026, it falls under this change. Currently, we are focusing
+> **only** on supply chain related issues for the OSS VRP.
+
+### What this is and is not
+
+It is **not** a verdict on the finding. Not Intended Behaviour, not Duplicate,
+not N/A — the technical question was never reached. The two "Report Analysis"
+flags on the issue page (Intended Behavior / Out of Scope) are the form's
+automated pre-submission analysis and the page says so in its own note: *"NOT
+part of the report that was submitted by the user."*
+
+It **is** the channel closing. Verified independently: Google paused OSS VRP
+product-vulnerability intake on 2026-10-01, kept supply-chain intake open, and
+says an update on the paused category comes in Q1 2027. Reported cause is a
+surge of automated/AI submissions, most of them invalid.
+
+### Consequence, acted on immediately
+
+**Report 02 (Golinks CSRF) was NOT filed.** It was built, reviewed and staged
+on the phone, and it is the same class — a product vulnerability in the same
+repository. Filing it buys an identical `Won't fix` with no technical reading,
+and under § 2 that is a pure cost: it spends reputation signal for nothing.
+Held, not withdrawn. The finding stands; only this channel is shut.
+
+`results/oss-vrp/SUBMISSION-*.md` both carry this outcome at the top now, so
+neither can be mis-sent in a later session.
+
+### What is still open, in order of value
+
+1. **OSS VRP supply chain — still accepting, OT1 pays $1,337–$13,337.** This is
+   the channel that did not close, and `google/site-kit-wp` is OT1. The surface
+   is the release pipeline rather than the plugin: Actions workflow injection,
+   mutable action refs, `GITHUB_TOKEN` write scope, publish credentials, release
+   signing, `wp.org` deploy path. An earlier sweep measured OT0 workflows at
+   zero; that was OT0 and narrow, and it is not this repository.
+2. **WordPress plugin platforms.** Site Kit has 3M+ installs, and both Wordfence
+   and Patchstack already triage it — they scored CVE-2026-10753 at 2.7 and 3.8.
+   Our two findings are CWE-862 and CWE-352 in a 3M-install plugin. These pay,
+   and they assign CVEs.
+3. **Upstream, unpaid but credited.** Google's own close invited a public GitHub
+   issue. Site Kit's `SECURITY.md` channel is the better door for an unfixed
+   authz bug. Possible Honorable Mention; no bounty.
+4. **Patch Rewards — checked, likely ineligible.** Google's close offered it, but
+   the programme's own rule excludes *"reactive patches that address a single,
+   previously discovered vulnerability"*, which is exactly what a fix for either
+   finding is. Not worth building a PR for on bounty grounds alone.
+
+Google VRP / Cloud VRP do not apply: Site Kit runs on third-party WordPress
+installations, not on a Google property, so there is no Google-owned asset to
+demonstrate impact against.
