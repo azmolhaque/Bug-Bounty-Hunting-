@@ -1,0 +1,41 @@
+environment
+  date (UTC)      : 2026-10-29T16:42:22Z
+  WordPress       : 6.9.11
+  Site Kit        : 1.190.0
+  plugin commit   : 8cf47de
+  PHP             : 8.3.6
+  database        : SQLite via sqlite-database-integration v3.1.2
+  site            : local, http://127.0.0.1:8099
+
+logged in as the contributor 'viewonly' (role: contributor, view-only Dashboard Sharing)
+
+state before
+  googlesitekit_analytics-4_site_goals_site_settings = {"activeWidgets":["ecommerce","lead"]}
+
+request
+  curl -i -X POST 'http://127.0.0.1:8099/?rest_route=/google-site-kit/v1/modules/analytics-4/data/remove-site-goals-widget' \
+       -H 'Content-Type: application/json' \
+       -H 'X-WP-Nonce: fcfe1c0e3d' \
+       -b cookies.txt \
+       --data '{"data":{"widget":"ecommerce"}}'
+
+response
+  HTTP/1.1 200 OK
+  Host: 127.0.0.1:8099
+  Date: Thu, 29 Oct 2026 16:42:23 GMT
+  Connection: close
+  X-Powered-By: PHP/8.3.6
+  Content-Type: application/json; charset=UTF-8
+  X-Robots-Tag: noindex
+  Link: <http://127.0.0.1:8099/index.php?rest_route=/>; rel="https://api.w.org/"
+  X-Content-Type-Options: nosniff
+  Access-Control-Expose-Headers: X-WP-Total, X-WP-TotalPages, Link
+  Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type
+  X-WP-Nonce: fcfe1c0e3d
+  Allow: GET, POST, PUT, PATCH
+  Expires: Wed, 11 Jan 1984 05:00:00 GMT
+  Cache-Control: no-cache, must-revalidate, max-age=0, no-store, private
+  
+  {"activeWidgets":["lead"]}
+state after
+  googlesitekit_analytics-4_site_goals_site_settings = {"activeWidgets":["lead"]}

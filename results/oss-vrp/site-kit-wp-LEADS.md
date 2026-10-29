@@ -148,7 +148,19 @@ this call. Before 1.185.0 it required an administrator.
 4. The widget is gone from every user's dashboard until the daily cron puts it
    back.
 
-**Why it was not submitted.** The attacker gets a hidden dashboard widget.
+> **2026-10-29 — REPRODUCED, and the judgement below was wrong.**
+> This was written off on a code reading. Built on a real WordPress and it
+> works: a view-only Dashboard Sharing contributor gets HTTP 200 and the
+> site-wide option changes, with 403 for the same user when sharing is off and
+> 403 for a subscriber either way. Written up in
+> `site-kit-wp-REPORT-site-goals-authz.md`, evidence in `poc/`.
+>
+> What was actually missing here was never the severity — it was § 2 criterion
+> 4, a clean reproduction. Reading the code said "this looks reachable";
+> running it said "it is", and the first run also said "no it is not" until
+> the test site was set up properly, which is exactly why the rule exists.
+
+**Why it was not submitted at first.** The attacker gets a hidden dashboard widget.
 Cross-user, persistent-ish, and genuinely an authorization flaw — but not data,
 not access, not execution. Roughly CVSS 3.1 4.3
 (`AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N`), and a triager would reasonably ask the
