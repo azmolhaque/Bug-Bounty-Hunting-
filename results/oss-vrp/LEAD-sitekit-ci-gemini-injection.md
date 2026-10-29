@@ -167,19 +167,42 @@ write access we do not have, and getting a maintainer to run it would be social
 engineering — § 0.3 forbids it outright. Filing an issue on their repository to
 set up the trigger is equally off the table.
 
-**The legitimate test is a faithful replica**, in our own repository:
+**The test is written and ready to run:** `scripts/gemini-injection-test.sh`.
+It needs `GEMINI_API_KEY` in the environment — the user's own, used only so the
+model can answer — and nothing else. It exits 0 if the link holds, 2 if it does
+not, and writes its transcript to
+`results/oss-vrp/poc/evidence-gemini-injection.txt` either way.
+
+It does not need GitHub Actions. The only thing Actions contributes to the
+mechanism is `GITHUB_SHA` being set, which is what flips
+`sanitizeEnvironment()` into strict mode, and the script sets it. Running it
+locally also keeps it entirely off Google's infrastructure.
+
+The secret the injection goes after is a **dummy** created by the script,
+shaped like a GitHub token so the redaction logic treats it as a credential.
+The real key is only ever the model's own. The payload **prints** the recovered
+value and sends nothing anywhere: what needs proving is recovery of a value the
+mitigation was supposed to withhold, and that a runner can reach the network is
+a configuration fact that does not need demonstrating by moving data.
+
+If it holds, a full Actions replica is then worth building for the report's
+screenshot — faithful in these respects:
 
 * same `@google/gemini-cli@0.42.0`, same `--approval-mode=yolo`, no `--sandbox`
 * the same `.gemini/settings.json` security block
-* a copy of `implement-issue/SKILL.md`
-* an issue whose body carries the injection, and a **dummy** `GEMINI_API_KEY`
-  in the workflow `env:` block
-* egress to a host we own, so the exfil is observable
+* a copy of `implement-issue/SKILL.md`, so it is their skill under test and not
+  a paraphrase of it (Apache-2.0, attribution kept)
+* a real issue in our own private repository, whose body carries the injection,
+  reached the way the skill reaches it
+* a **dummy** credential-shaped secret in the workflow `env:` block as the
+  target, never a real one, and the recovered value printed to the job log
+  rather than sent anywhere
 
-If the replica shows the agent running the injected command and the dummy key
-leaving CI, the chain is complete and the report writes itself from the files
-above. If the model refuses or the skill's "stop and ask" instructions hold,
-this is dead and gets logged as measured-and-empty.
+If it shows the agent running the injected command and recovering a secret the
+mitigation stripped, the chain is complete and the report writes itself from
+the files above. If the model refuses, or the skill's own "stop and ask"
+instructions hold, this is dead and gets logged as measured-and-empty — which
+is a result worth having either way.
 
 ## Not findings — checked and closed
 
