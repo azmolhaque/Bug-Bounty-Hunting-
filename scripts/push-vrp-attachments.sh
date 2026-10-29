@@ -16,8 +16,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$HERE/../results/oss-vrp/attachments"
 DEST="/sdcard/Download/sitekit-vrp"
 
+ZIP=0
+[ "${1:-}" = "--zip" ] && ZIP=1
+
 command -v adb >/dev/null || { echo "!! adb not found"; exit 1; }
 [ -d "$SRC" ]             || { echo "!! no attachments at $SRC"; exit 1; }
+[ "$ZIP" -eq 0 ] || command -v zip >/dev/null || { echo "!! --zip needs the zip command"; exit 1; }
 
 # One device, authorised. "unauthorized" means the phone is waiting for the
 # "Allow USB debugging" prompt to be accepted.
@@ -32,6 +36,20 @@ esac
 echo "== pushing to $DEST =="
 adb shell mkdir -p "$DEST" >/dev/null 2>&1
 fail=0
+
+if [ "$ZIP" -eq 1 ]; then
+  tmp="$(mktemp -d)"
+  for d in "$SRC"/*/; do
+    name="$(basename "$d")"
+    ( cd "$SRC" && zip -q -r "$tmp/$name.zip" "$name" )
+    if adb push "$tmp/$name.zip" "$DEST/$name.zip" >/dev/null 2>&1; then
+      printf '  ok   %s.zip (%s)\n' "$name" "$(du -h "$tmp/$name.zip" | cut -f1)"
+    else
+      printf '  FAIL %s.zip\n' "$name"; fail=1
+    fi
+  done
+  rm -rf "$tmp"
+else
 for d in "$SRC"/*/; do
   name="$(basename "$d")"
   adb shell mkdir -p "$DEST/$name" >/dev/null 2>&1
@@ -43,14 +61,38 @@ for d in "$SRC"/*/; do
     fi
   done
 done
+fi
+
+# adb push writes the bytes and tells nobody. Android's file pickers read
+# MediaStore, not the filesystem, so files pushed this way are invisible in the
+# picker — the folder shows up and the files inside do not, which reads like
+# the push failed. Scanning each file is what makes them selectable.
+echo
+echo "== telling MediaStore the files are there =="
+scanned=0
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  if adb shell "content call --uri content://media/external/file --method scan_file --arg '$f'" >/dev/null 2>&1 \
+     || adb shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d 'file://$f'" >/dev/null 2>&1; then
+    scanned=$((scanned+1))
+  fi
+done < <(adb shell "find $DEST -type f" 2>/dev/null | tr -d '\r')
+echo "  scanned $scanned file(s)"
 
 echo
 echo "== what is on the phone now =="
 adb shell ls -R "$DEST" 2>/dev/null | sed 's/^/  /'
 
+# The check that matters is not "a scan ran" but "the picker can see them".
+echo
+echo "== what MediaStore can see (this is what the file picker lists) =="
+seen=$(adb shell "content query --uri content://media/external/file --projection _data --where \"_data LIKE '%sitekit-vrp%'\"" 2>/dev/null | grep -c "sitekit-vrp" || true)
+echo "  $seen row(s) under sitekit-vrp"
+[ "${seen:-0}" -gt 0 ] || echo "  !! MediaStore still shows nothing — see the note at the end"
+
 # A push that reports success and leaves nothing behind is the failure mode
 # worth checking for, so the listing above is compared against the source.
-want=$(find "$SRC" -type f | wc -l)
+want=$( [ "$ZIP" -eq 1 ] && find "$SRC" -mindepth 1 -maxdepth 1 -type d | wc -l || find "$SRC" -type f | wc -l )
 got=$(adb shell "find $DEST -type f 2>/dev/null | wc -l" 2>/dev/null | tr -d '\r')
 echo
 printf '%d file(s) in the repository, %d on the phone\n' "$want" "${got:-0}"
@@ -72,4 +114,13 @@ On the phone: bughunters.google.com -> Report a vulnerability -> Open Source
                 in your gallery
 
 Two separate reports. 01 first.
+
+If the file picker still shows "No items" inside those folders, the picker is
+filtering by type rather than missing the files. Two ways round it, in order:
+
+  1. In the picker, open the side menu and choose the phone's name (the
+     filesystem root) rather than "Downloads" or "Recent". That view lists
+     every file regardless of type.
+  2. Run ./scripts/push-vrp-attachments.sh --zip, which puts one .zip per
+     report on the phone instead. Every upload form accepts a zip.
 NOTE
