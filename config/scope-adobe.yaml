@@ -1,0 +1,76 @@
+# scope-adobe.yaml — Adobe Public Bug Bounty Program (Intigriti)
+# Source: https://app.intigriti.com/researcher/programs/adobe/adobepublic/detail
+# Snapshot parsed: 2026-11-02. RE-VERIFY against the live page before each run —
+# Intigriti scope changes and the page has a "View changes" history.
+#
+# Platform notes (RULES OF ENGAGEMENT — enforced by you, not this file):
+#   - Self-register with your @intigriti.me address. 2FA + ID check required.
+#   - Automated tooling: MAX 20 requests/sec. Cap concurrency accordingly.
+#   - Every request MUST carry:
+#       User-Agent: <browser/tool UA> <intigriti:{Username}>
+#       X-Intigriti-Username: {Username}
+#   - Report MUST include your testing IP (curl ifconfig.me).
+#   - No DoS / resource-exhaustion. Data exfil beyond minimal PoC is PROHIBITED.
+#   - UNVALIDATED AI OUTPUT = N/A + possible ban. Prove every finding by hand.
+#
+# TIER = reward band (Intigriti/Adobe severity x tier table), NOT Google tiers:
+#   Tier 1 (AI bonus features): $150 - $15,000
+#   Tier 2 (high-value web/mobile/product): $100 - $10,000
+#   Tier 3 (enterprise/identity/supporting): $75 - $5,000
+
+program:  "Adobe Public Bug Bounty Program"
+platform: "app.intigriti.com"
+handle:   ""   # <-- your Intigriti username (also goes in the required headers)
+report_url: "https://app.intigriti.com/researcher/programs/adobe/adobepublic/detail"
+
+# ---------------------------------------------------------------------------
+# IN SCOPE  (leading-wildcard "*.x" also matches apex x, per scope-check.sh)
+# ---------------------------------------------------------------------------
+in_scope:
+
+  # --- Tier 2 wildcards (broadest recon surface) ---------------------------
+  - "*.acrobat.adobe.com"          # Acrobat Web  (+ Tier1 AI features here)
+  - "*.lightroom.adobe.com"        # Lightroom Web (+ Tier1 AI features here)
+  - "photos.adobe.io"              # listed under Lightroom Web
+
+  # --- Tier 2 single web assets --------------------------------------------
+  - "stock.adobe.com"              # Adobe Stock (+ Stock AI Studio Tier1)
+  - "contributor.stock.adobe.com"
+  - "firefly.adobe.com"            # Firefly (+ Firefly AI Tier1)
+  - "photoshop.adobe.com"          # Photoshop Web (+ Photoshop AI Tier1)
+  - "new.express.adobe.com"        # Express (+ Express AI Assistant Tier1)
+
+  # --- Tier 3 enterprise / identity / supporting ---------------------------
+  - "account.adobe.com"            # Adobe IMS / account security
+  - "ims-na1.adobelogin.com"
+  - "adobeid-na1.services.adobe.com"
+  - "auth.services.adobe.com"
+  - "federatedid-na1.services.adobe.com"
+  - "account.magento.com"          # Adobe Commerce web properties
+  - "commercemarketplace.adobe.com"
+  - "repo.magento.com"
+  - "magento.com"
+  - "learningmanagerstage4.adobe.com"  # Learning Manager (STAGE ONLY)
+  - "net.s2stagehance.com"             # Behance (STAGE ONLY)
+  - "portfolio.ccpsx.com"              # Portfolio
+  - "fonts.adobe.com"                  # Adobe Fonts
+
+  # Source-available products (test your OWN local/cloud install — no live cap):
+  #   Adobe Commerce / Commerce B2B / Magento Open Source  (Tier 2)
+  #   Adobe ColdFusion WITH Lockdown installer, latest version (Tier 2;
+  #     CF Administrator = Tier 3). Without Lockdown = OUT OF SCOPE.
+
+# ---------------------------------------------------------------------------
+# OUT OF SCOPE  (checked first; always wins)
+# ---------------------------------------------------------------------------
+out_of_scope:
+  - "www.behance.net"              # production Behance — stage only is in scope
+  - "express.adobe.com"
+  - "express-embed.adobe.com"
+  - "coldfusion.adobe.com"
+  - "tracker.adobe.com"
+  - "adobesign.com"                # Adobe Sign prod excluded for Acrobat Web
+  - "www.adobesign.com"
+  # mcp.adobeaemcloud.com per-user sandbox escapes are out unless impact
+  # crosses beyond your own environment — handle as a rule, not a host block.
+  # NOTE: any adobe asset NOT listed in in_scope is OUT by default-deny.

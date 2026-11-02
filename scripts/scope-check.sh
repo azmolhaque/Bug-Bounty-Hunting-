@@ -29,7 +29,8 @@ if [ "${1:-}" = "--program" ]; then
   case "$2" in
     marriott) SCOPE_FILE="$SCRIPT_DIR/../config/marriott-scope.yaml" ;;
     google)   SCOPE_FILE="$SCRIPT_DIR/../config/scope.yaml" ;;
-    *)        die_ambiguous "unknown program '$2' (known: marriott, google)" ;;
+    adobe)    SCOPE_FILE="$SCRIPT_DIR/../config/scope-adobe.yaml" ;;
+    *)        die_ambiguous "unknown program '$2' (known: marriott, google, adobe)" ;;
   esac
   shift 2
 fi
