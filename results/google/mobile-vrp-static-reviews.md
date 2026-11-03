@@ -108,6 +108,38 @@ with evidence:
   slice hosts. A direct `ContentResolver.call()`/`query()` from a malicious app gets
   nothing → no cross-app note leak.
 
+## 5. Waze (`com.waze`) external AIDL/SDK — SAFE (the last distinct surface)
+
+In-scope developer (Waze); three exported, no-permission services built for
+third-party partner binding — the surface type most likely to trust callers.
+
+- **`AIDLService`** (`com.waze.IServiceAIDL`, impl `cg`): `dispatchTransaction`
+  only returns the caller's own PID (txn 1), *stores* a token + caller package to
+  register the caller (txn 2), or *reads* data from the caller (txn 3). It's a
+  **one-way caller→Waze channel** — no location/trip ever returned. No theft surface.
+- **`SdkService`** (Messenger `bj` + AIDL `aj`): every op requires a non-empty
+  `token`, routed through `bd`. Nav/location data (`bd.H(token,…)`) is gated by
+  `bd.X(token)`, which requires an **authenticated bound partner session**
+  (`f35165e`) whose token matches (`an.ag(token)`); otherwise "Authentication
+  failed" and no data. `aj` resolves the caller via `Binder.getCallingUid()`.
+  Token-authenticated + connected-session gate — a malicious app isn't the
+  authenticated partner, so it gets nothing.
+
+**Verdict: defended.** Location/nav data only reaches an authenticated, bound,
+token-matched partner session.
+
+## Conclusion — Mobile VRP static hunt complete
+
+Every exported-surface **type** has now been covered across the in-scope apps —
+content providers, bound/AIDL/SDK services, migration endpoints, deep-link routers,
+broadcast receivers, slice providers — and **all are correctly defended**, each
+proven with code plus an empirical check where the harness allowed (adb `content`
+probes returning `SecurityException`/`Unauthorized`, etc.). No valid finding from
+the static mobile surface. This is the expected texture of mature, well-maintained
+targets. The remaining higher-EV path for an actual finding is live server-side
+authz testing the researcher runs (e.g. the Lightroom `photos.adobe.io` shares IDOR),
+not further static review of hardened clients.
+
 ## Honest assessment
 
 Both are Google-maintained; the dangerous surfaces are correctly defended
