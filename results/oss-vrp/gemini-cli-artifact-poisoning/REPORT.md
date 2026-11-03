@@ -92,7 +92,7 @@ SHA:  '${{ needs.download_repo_name.outputs.head_sha  || github.event.workflow_r
 
 **Sink — `e2e_linux` (and `e2e_mac`, `e2e_windows`, `evals`):**
 ```yaml
-- uses: actions/checkout@v5
+- uses: 'actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955' # ratchet:actions/checkout@v5
   with:
     ref:        '${{ needs.parse_run_context.outputs.sha }}'        # attacker SHA
     repository: '${{ needs.parse_run_context.outputs.repository }}' # attacker repo
@@ -105,6 +105,25 @@ SHA:  '${{ needs.download_repo_name.outputs.head_sha  || github.event.workflow_r
     BUILD_SANDBOX_FLAGS: '--cache-from type=gha --cache-to type=gha,mode=max'   # default-branch cache
   run: npm run test:integration:sandbox:none          # attacker-defined script
 ```
+
+**Why the pinned checkout matters.** `actions/checkout` added a built-in refusal
+to check out fork-PR code under `pull_request_target`/`workflow_run`
+(`assertSafePrCheckout`, opt-out input `allow-unsafe-pr-checkout`) in **PR #2454,
+merged 2026-06-16** — first in **v7.0.0**, then backported to v6/v5/v4. But the
+pinned SHA `08eba0b27e820071cde6df949e0beb9ba4906955` is **v4.3.0 (2025-08-11)**,
+which **predates that refusal and does not contain it**, and no
+`allow-unsafe-pr-checkout` is set (the input does not exist in v4.3.0). So the
+built-in mitigation that *would* block this chain on a current checkout is absent
+here: the privileged job checks out and runs the attacker tree with no objection.
+(The `# ratchet:...@v5` comment is stale; the SHA that actually runs is v4.3.0.)
+
+With no `actions: read`, the cross-run artifact download fails, so the context
+falls back to `repository = github.repository` (base) and
+`sha = github.event.workflow_run.head_sha` (the fork PR's head commit).
+`checkout(base, fork_head_sha)` still fetches the fork's PR-head tree, because
+GitHub keeps the PR head commit reachable from the base repository — so the
+attacker's `package.json`/payload is what runs, regardless of the `repository:`
+fallback.
 
 The `if: github.repository == 'google-gemini/gemini-cli'` guards do not mitigate:
 in a `workflow_run` run `github.repository` is always the base repo, so the guards

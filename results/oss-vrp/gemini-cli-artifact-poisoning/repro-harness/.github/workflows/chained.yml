@@ -64,7 +64,15 @@ jobs:
     if: ${{ always() }}          # <-- as in the real workflow
     steps:
       - name: 'Checkout (fallback: base repo @ workflow_run.head_sha)'
-        uses: 'actions/checkout@v5'
+        # PINNED to the EXACT SHA google-gemini/gemini-cli pins.
+        # 08eba0b27e820071cde6df949e0beb9ba4906955 == actions/checkout v4.3.0
+        # (released 2025-08-11). This PREDATES PR #2454 (merged 2026-06-16,
+        # shipped v7.0.0 + backported to v6/v5/v4), which added assertSafePrCheckout
+        # and the `allow-unsafe-pr-checkout` opt-in. v4.3.0 has NO such refusal.
+        # NOTE: the floating `actions/checkout@v5` tag now resolves to a BACKPORTED
+        # patched build and DOES refuse — that is why the earlier @v5 fork test was
+        # blocked. The target does NOT use the floating tag; it pins this old SHA.
+        uses: 'actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955' # == v4.3.0, matches gemini-cli
         with:
           ref: '${{ needs.parse_run_context.outputs.sha }}'
           repository: '${{ needs.parse_run_context.outputs.repository }}'
