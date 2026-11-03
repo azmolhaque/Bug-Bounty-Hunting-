@@ -72,6 +72,18 @@ Pure-ADB scenario-3 sweep (shell UID ≈ malicious app) across the candidate set
   then `getCanonicalPath()` containment check against the base dir.
   **Empirically confirmed:** `adb shell content query` (non-systemui caller) →
   `SecurityException: Unauthorized access to content provider`. Rejected.
+  - **Nest full exported-surface coverage** (not just the provider):
+    - `DeepLinkRoutingActivity` → `uh.b` chain-of-responsibility router. `k()` is a
+      null-guard passthrough and `nestmobile://` is host-unrestricted, BUT `uh.c.b()`
+      normalizes `nestmobile://X` → `https://home.nest.com/X`, and the dangerous-pattern
+      grep (`parseUri|setComponent|setClassName|Class.forName`) is **empty across every
+      handler** — each builds an Intent to a fixed `…Activity.class`. No intent
+      redirection; attacker URL can't name the destination. Safe fallback to HomeActivity.
+    - Exported receivers (`UpdateNotificationChannels`, `RegisterGeofencesWithOS`,
+      `SecureSunsetNotificationScheduleReset`): all trigger a **fixed internal refresh**
+      regardless of broadcast content; `RegisterGeofencesWithOS` reads `intent.getData()`
+      only as an equality guard (`== package:com.google.android.gms`), never as a sink.
+      No attacker data reaches a sensitive action. Safe.
 
 ## Honest assessment
 
