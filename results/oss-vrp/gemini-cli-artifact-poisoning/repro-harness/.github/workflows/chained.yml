@@ -1,7 +1,11 @@
-# 1:1 reduction of gemini-cli .github/workflows/chained_e2e.yml
-# PRIVILEGED workflow_run context: base-branch workflow file, SECRETS available,
-# and — critically — GITHUB_REF = default branch, so any gha cache it writes is
-# created in the DEFAULT-BRANCH scope (readable by every build).
+# FAITHFUL reduction of gemini-cli chained_e2e.yml for the FALLBACK test.
+# Matches the real workflow where it matters:
+#   - permissions: contents: read ONLY (NO actions: read) -> cross-run download fails
+#   - parse_run_context + e2e_linux carry `if: always()` -> they run EVEN WHEN the
+#     download job fails, falling back to github.event.workflow_run.head_sha.
+# Question under test: with the download broken, does the always() fallback still
+# check out and execute the fork PR's attacker code via checkout(base, head_sha)?
+#   -> run this with a real CROSS-FORK PR (head repo must be a fork of the base).
 name: 'Chained'
 
 on:
@@ -10,7 +14,7 @@ on:
     types: ['completed']
 
 permissions:
-  contents: 'read'        # same as the real workflow: contents: read, statuses: write
+  contents: 'read'        # NO actions: read — matches the real workflow
 
 jobs:
   download_repo_name:
@@ -20,7 +24,7 @@ jobs:
       repo_name: '${{ steps.out.outputs.repo_name }}'
       head_sha: '${{ steps.out.outputs.head_sha }}'
     steps:
-      - name: 'Download the poisoned artifact'
+      - name: 'Download the poisoned artifact (expected to FAIL without actions:read)'
         uses: 'actions/download-artifact@v4'
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
@@ -39,40 +43,47 @@ jobs:
   parse_run_context:
     runs-on: 'ubuntu-latest'
     needs: 'download_repo_name'
+    if: ${{ always() }}          # <-- as in the real workflow: runs even if download failed
     outputs:
       repository: '${{ steps.ctx.outputs.REPO }}'
       sha: '${{ steps.ctx.outputs.SHA }}'
     steps:
       - id: 'ctx'
         env:
-          # No validation / allow-list — attacker strings flow straight through.
+          # Faithful fallback chain from the real workflow:
           REPO: '${{ needs.download_repo_name.outputs.repo_name || github.repository }}'
-          SHA:  '${{ needs.download_repo_name.outputs.head_sha || github.event.workflow_run.head_sha }}'
+          SHA:  '${{ needs.download_repo_name.outputs.head_sha || github.event.workflow_run.head_sha || github.sha }}'
         run: |
           echo "REPO=$REPO" >> "$GITHUB_OUTPUT"
           echo "SHA=$SHA"   >> "$GITHUB_OUTPUT"
+          echo "::notice::FALLBACK-CONTEXT :: checkout will use repository=$REPO ref=$SHA"
 
   e2e_linux:
     runs-on: 'ubuntu-latest'
     needs: 'parse_run_context'
+    if: ${{ always() }}          # <-- as in the real workflow
     steps:
-      - name: 'Checkout'                 # <-- checks out ATTACKER repo @ ATTACKER sha
+      - name: 'Checkout (fallback: base repo @ workflow_run.head_sha)'
         uses: 'actions/checkout@v5'
         with:
           ref: '${{ needs.parse_run_context.outputs.sha }}'
           repository: '${{ needs.parse_run_context.outputs.repository }}'
           persist-credentials: false
+      - name: 'Show what got checked out'
+        run: |
+          echo "::notice::CHECKED-OUT-HEAD :: $(git rev-parse HEAD 2>/dev/null || echo none)"
+          test -f poc.js && echo "::notice::ATTACKER-FILE-PRESENT :: poc.js is in the checkout" || echo "::notice::ATTACKER-FILE-ABSENT :: poc.js NOT in the checkout (fallback did not fetch fork code)"
       - uses: 'actions/setup-node@v4'
         with:
           node-version: '20.x'
-      - name: 'Install dependencies'     # <-- attacker package.json lifecycle scripts run here
+      - name: 'Install dependencies'
         run: 'npm ci || npm install || true'
-      - name: 'Build project'            # <-- attacker "build" script -> ACE
+      - name: 'Build project'              # attacker "build" -> PoC-ACE if fork code ran
         run: 'npm run build || true'
-      - name: 'Set up buildx'            # needed for the gha-cache poisoning demo
+      - name: 'Set up buildx'
         uses: 'docker/setup-buildx-action@v3'
-      - name: 'Run E2E tests'            # <-- attacker-defined script runs WITH the secret + the cache flags
+      - name: 'Run E2E tests'
         env:
-          FAKE_SECRET: '${{ secrets.FAKE_SECRET }}'                       # mirrors GEMINI_API_KEY
-          BUILD_SANDBOX_FLAGS: '--cache-from type=gha --cache-to type=gha,mode=max'  # as in the real workflow
+          FAKE_SECRET: '${{ secrets.FAKE_SECRET }}'
+          BUILD_SANDBOX_FLAGS: '--cache-from type=gha --cache-to type=gha,mode=max'
         run: 'npm run test:integration:sandbox:none || true'
