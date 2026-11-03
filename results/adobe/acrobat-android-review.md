@@ -78,12 +78,36 @@ is explicitly `cleartext=false`, and **user-CA trust is only inside
 `<debug-overrides>`** (release builds don't trust user CAs → casual MITM blocked).
 The global cleartext default is a TLS-best-practice nit → explicitly out of scope.
 
+## Surface 3 — WebView / JS bridges — SAFE (all bridges accounted for)
+
+Enumerated every `addJavascriptInterface` in Adobe's own code and triaged by
+what the WebView loads and what the bridge exposes:
+
+- **Locked down:** `PVJavascriptExecutor`, `pdfn/webview/*`, `nonpdf/docx` set
+  `setAllowFileAccessFromFileURLs(false)` + `setAllowUniversalAccessFromFileURLs(false)`.
+- **Out of scope:** `marketingPages` paywall bridges (billing/licensing bypass
+  excluded), `marketing.mobile.*` (Adobe Experience Platform 3rd-party SDK).
+- **`libs/jot/ui/F1` (the only `setAllowFileAccess(true)` + bridge):** loads a
+  **fixed local asset** `https://appassets.androidplatform.net/assets/jot.html`
+  (WebViewAssetLoader virtual domain) + a fixed `acrobat.adobe.com` component.
+  Not attacker-controllable → `JotJSBridge` callbacks unreachable by an attacker.
+  File access is just to serve the bundled asset. **Safe.**
+- **Acrobat PDF-JS bridge** (`reader/javascript/a.java` → `_app`/`_doc`/`_field`/
+  `_event`): the exposed `@JavascriptInterface` methods are the standard Acrobat
+  **Forms JS API**, scoped to the *open document's own form model*
+  (`getField`/`setValue`/`getPageIndex`/event getters). None read a caller path,
+  return tokens, or cross a user boundary. `submitForm(url,…)` is intended PDF
+  form submission of the doc's own data. The WebView runs Adobe's **own bundled**
+  `App.js`/`Doc.js` via `evaluateJavascript` — a controlled engine, not a free
+  native bridge for a malicious PDF's raw JS. **Safe.**
+
+**Verdict: no reachable WebView issue.**
+
 ## Not yet examined (if this app is revisited)
 
 Exported receivers (`ARInstallReferrerBroadcastReceiver`,
-`ARAppUpdateBroadcastReceiver`, `PackageInstallNotificationBroadcast`), the
-`ICAppLinkReceiverActivity` (`icmobilelib://iam-action`), and WebView usage
-(`addJavascriptInterface`) — none traced yet. Lower prior than the two above.
+`ARAppUpdateBroadcastReceiver`, `PackageInstallNotificationBroadcast`) and the
+`ICAppLinkReceiverActivity` (`icmobilelib://iam-action`). Lowest prior.
 
 ## Honest assessment
 
