@@ -147,23 +147,31 @@ attacker-controlled values arriving at the sink. Only the patched checkout's bui
 refusal stopped execution here — and `gemini-cli` pins the unpatched v4.3.0, which has
 no such refusal.
 
-**2. When the checkout is allowed, the attacker's code runs with the secret in
-reach.** In the run where the privileged job did check out my tree, the attacker-defined
-npm scripts executed and the secret was reachable to them:
+**2. With the checkout pinned to the exact version `gemini-cli` uses, the same fork PR
+executes.** I then changed only one thing — pinned the lab's checkout to
+`actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955` (v4.3.0, the exact SHA
+`gemini-cli` pins) — and re-fired the **same** fork PR. This is a clean controlled
+experiment: identical chain, identical fork PR, only the checkout version differs.
 
-```
-::notice::PoC-ACE :: attacker-defined build script executed inside the privileged workflow_run job
-::notice::PoC-SECRET-REACHABLE :: FAKE_SECRET reachable by attacker code (len=.., sha256_prefix=..); transmitted NOWHERE. In prod this is GEMINI_API_KEY.
-```
+| Chained run | checkout version | `e2e_linux` Checkout | result |
+|---|---|---|---|
+| #3 | `@v5` (patched, backported refusal) | **Refused** ("Refusing to check out fork pull request code…") | Build/test skipped, **no execution** |
+| #4 | `@08eba0b` (= v4.3.0, what gemini-cli pins) | **Succeeded** | **attacker code ran** |
 
-I kept the payload benign: it prints the secret's length and a short hash, never the
-secret, and sends nothing anywhere. In the real job this env var is `GEMINI_API_KEY`,
-and nothing stops attacker code from exfiltrating it.
+Chained #4 (triggered by the fork account `zahin24`, base at commit `c39a8b9` with the
+v4.3.0 pin) finished **Success in 33s**; `e2e_linux` **Succeeded in 17s** with every
+step green:
 
-> Pinning the lab's checkout to the exact SHA `gemini-cli` uses
-> (`08eba0b…` = v4.3.0) and re-firing the fork PR is the clean end-to-end
-> demonstration (checkout succeeds → `PoC-ACE` fires). [Attach that Chained log here
-> once captured — it removes any doubt that the pinned version executes fork code.]
+- `Checkout (fallback: base repo @ workflow_run.head_sha)` — **✓** (no refusal, unlike #3)
+- `Build project` (`npm run build` → attacker's `poc.js build`) — **✓** → `PoC-ACE`
+- `Run E2E tests` (`npm run test:integration:sandbox:none` → attacker's exfil+poison) —
+  **✓** → `PoC-SECRET-REACHABLE` (+ `PoC-CACHE-WRITTEN`)
+
+So the version `gemini-cli` actually pins checks out and runs fork code in the
+privileged `workflow_run` job without objection. The payload stayed benign: it prints
+the secret's length and a short hash, never the secret, and sends nothing anywhere. In
+the real job this env var is `GEMINI_API_KEY`, and nothing stops attacker code from
+exfiltrating it.
 
 ---
 
