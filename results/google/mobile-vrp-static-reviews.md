@@ -55,6 +55,24 @@ EnterKey, Migration, Settings) is `exported="false"`.
 **Verdict:** the highest-value surface (TOTP-seed migration) is signature-gated;
 everything else is locked down or intended. No finding.
 
+## 3. Provider sweep — Fitbit + Nest (exported content providers) — SAFE
+
+Pure-ADB scenario-3 sweep (shell UID ≈ malicious app) across the candidate set.
+
+- **Fitbit (`com.fitbit.FitbitMobile`)** — despite a provider literally named
+  `ExternalAppsRequestContentProvider` (`…external-apps`), it has **no
+  `android:exported`** attribute → defaults to `false` on modern targetSdk.
+  Fitbit exports **zero** content providers. Not reachable.
+- **Nest (`com.nest.android`)** — `CameraNotificationImageProvider`
+  (`…camera_notification_images`) **is** `exported="true"` with no manifest
+  permission (home-camera snapshot thumbnails — the strongest-looking lead), but
+  its `openFile`→`a(uri)` has two correct in-code guards:
+  (1) caller pinned to `com.android.systemui` via `getCallingPackage()`, and
+  (2) path-traversal guard — `new File(cacheDir/"notification_previews", path)`
+  then `getCanonicalPath()` containment check against the base dir.
+  **Empirically confirmed:** `adb shell content query` (non-systemui caller) →
+  `SecurityException: Unauthorized access to content provider`. Rejected.
+
 ## Honest assessment
 
 Both are Google-maintained; the dangerous surfaces are correctly defended
