@@ -1,0 +1,67 @@
+# Google Mobile VRP — Android app static reviews (no findings)
+
+**Date:** 2026-11-03
+**Researcher:** Md. Azmol Haque Rony (`cindrasec`)
+**Method:** pull from device → apktool + jadx → manifest triage → trace each
+exported/sensitive component to its caller/permission check.
+**Scope:** Google Mobile VRP (`config/scope-mobile-vrp.yaml`). Attacker model =
+scenario 3 (malicious app on device). Qualifying classes hunted: exported-component
+data theft, intent redirection, unsafe PendingIntent, FileProvider path traversal.
+
+## Bottom line
+
+**No findings.** Both apps' highest-value surfaces traced to their sinks and
+confirmed safe with evidence. Recorded so the ground isn't re-walked.
+
+## 1. Health Connect (`com.google.android.apps.healthdata`) — SAFE (thin UI front-end)
+
+Key realization: this app is the **phone UI / onboarding front-end**; the actual
+health-data storage and permission *enforcement* live in the **AOSP framework
+module** `android.health.connect` → **out of Mobile VRP scope** (Android & Google
+Devices SRP). The in-scope app surface:
+
+- **`GatewayActivity`/`DefaultGateway`** (tiktok nav gateway, exported, no perm):
+  routes `androidx.health.ACTION_*` deep links via the tiktok `createPeer()`
+  compile-time nav framework. **No** `getParcelableExtra`/`EXTRA_INTENT`/
+  `setComponent` anywhere in the gateway package → **not intent redirection**.
+  The actions (REQUEST_PERMISSIONS, MANAGE_HEALTH_DATA, REQUEST_EXERCISE_ROUTE)
+  are intended public entry points → consent/management UIs.
+- **REQUEST_EXERCISE_ROUTE** (location-bearing) is only a consent view
+  (`ReadExerciseRoutesPermissionView`); the route data return is framework-enforced.
+- Exported `SearchIndexablesProvider` = `READ_SEARCH_INDEXABLES` (system perm),
+  serves UI labels not health data. QuickSettings = BIND_QUICK_SETTINGS_TILE.
+
+**Verdict:** in-scope surface is a thin allowlist router; enforcement is in the
+out-of-scope framework. No reachable sink.
+
+## 2. Google Authenticator (`com.google.android.apps.authenticator2`) — SAFE
+
+Good baseline: `allowBackup="false"` (no adb-backup seed theft),
+`usesCleartextTraffic="false"`, every sensitive screen (AddFirstOtp, EditOtp,
+EnterKey, Migration, Settings) is `exported="false"`.
+
+- **`MainActivity`** (exported, `otpauth://`): the *intended* add-account entry.
+  An attacker sending `otpauth://` only adds their own seed to the victim's app —
+  no exfiltration. Not a theft vector.
+- **`TargetEndpointService`** (exported, no manifest permission, `grpc://…/TargetService`):
+  the OS-migration endpoint that transfers Authenticator accounts (the **TOTP
+  seeds**) — the one jackpot shape. **Signature-pinned in code:** `onBind`
+  registers a grpc-binder `SecurityPolicy` restricting the caller to
+  **`com.google.android.apps.restore`** with signing-cert hash
+  `56BE132B…0622EC87` (`kcj.a`). Every RPC is rejected unless the calling UID
+  resolves to that package + cert. A malicious app cannot present Google's
+  signing certificate → cannot bind/pull seeds. Correct osmigration security model.
+
+**Verdict:** the highest-value surface (TOTP-seed migration) is signature-gated;
+everything else is locked down or intended. No finding.
+
+## Honest assessment
+
+Both are Google-maintained; the dangerous surfaces are correctly defended
+(signature pinning, non-exported sensitive screens, framework-enforced data).
+This is the expected texture of hardened targets. Across this engagement the
+static reviews (Magento, Acrobat ×3, Lightroom, Health Connect, Authenticator)
+are all clean — real bug-hunting on mature targets is mostly ruling things out
+with evidence. The remaining higher-EV avenue is live/dynamic testing the
+researcher runs with their own accounts (e.g. the Lightroom `photos.adobe.io`
+shares IDOR), not more static review of hardened apps.
