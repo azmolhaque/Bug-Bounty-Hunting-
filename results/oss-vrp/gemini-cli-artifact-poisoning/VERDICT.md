@@ -64,6 +64,32 @@ the checkout now **succeeds**, `poc.js` is present, and `PoC-ACE` +
 pins. Only after that log is in hand is the finding "reproduced from clean state"
 per CLAUDE.md §9.4.
 
+## RESOLVED — code-level proof (2026-11-03): the pinned version cannot refuse
+
+`actions/checkout` `action.yml`, fetched read-only at two tags:
+
+- **v4.3.0** (`= 08eba0b…`, the pinned SHA): **20 inputs, NO `allow-unsafe-pr-checkout`.**
+  The refusal feature — and therefore the refusal code (`assertSafePrCheckout`) —
+  does not exist in this version.
+- **v4.4.0** (the v4-line backport of PR #2454): **21 inputs, `allow-unsafe-pr-checkout`
+  present**, described as *"Required to check out fork pull request code from a workflow
+  triggered by `pull_request_target` or `workflow_run`."*
+
+So the version gemini-cli pins has no mechanism to refuse a fork-PR checkout in a
+`workflow_run` context. The `@v5`-tag fork test refused only because the floating tag
+resolves to a patched build that contains that mechanism. **Conclusion: this is NOT a
+false positive.** The full chain is established by:
+1. the earlier own-lab confirmation run (artifact flow → privileged `workflow_run`
+   context → SHA/repo fallback → `npm` exec → secret in step env; `PoC-ACE` +
+   `PoC-SECRET-REACHABLE` fired),
+2. the `@v5` fork test, which shows the *only* thing that blocks the fork path on a
+   patched checkout is that built-in refusal, and
+3. this `action.yml` evidence, which shows the pinned v4.3.0 does not contain it.
+
+Gold-standard corroboration (optional, nice-to-have): re-fire the **fork** PR with the
+checkout pinned to `08eba0b` and capture `ATTACKER-FILE-PRESENT` + `PoC-ACE` in the
+`Chained` log. Not required for the conclusion, but it removes all doubt for a triager.
+
 ## Fragility note (state honestly in any report)
 
 The immediate exploitability rides on the old pin. A routine checkout bump (ratchet /

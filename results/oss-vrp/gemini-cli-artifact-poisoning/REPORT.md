@@ -153,6 +153,20 @@ chain with no human in the loop.
   share a build cache between attacker-reachable and release builds.
 - Prefer ephemeral, isolated runners for any workflow reachable by fork PRs.
 
+## The pinned checkout has no fork-PR refusal (verified, read-only)
+
+`actions/checkout`'s `action.yml` at the two relevant tags:
+
+- **v4.3.0** (the pinned SHA `08eba0b…`): 20 inputs, **no `allow-unsafe-pr-checkout`** —
+  the fork-PR-checkout refusal (`assertSafePrCheckout`, PR #2454) is absent.
+- **v4.4.0** (the v4 backport): 21 inputs, `allow-unsafe-pr-checkout` present
+  ("Required to check out fork pull request code from a workflow triggered by
+  `pull_request_target` or `workflow_run`").
+
+So the version in use cannot refuse the fork-PR checkout that this chain relies on; a
+current checkout would, which is why the fix includes bumping it (and not setting
+`allow-unsafe-pr-checkout: true`).
+
 ## Evidence attached
 
 - `Detect-ArtifactPoisoning.ps1` output (read-only, public API) — 10/10 chain
