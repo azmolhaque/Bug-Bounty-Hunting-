@@ -1,0 +1,78 @@
+# 1:1 reduction of gemini-cli .github/workflows/chained_e2e.yml
+# PRIVILEGED workflow_run context: base-branch workflow file, SECRETS available,
+# and — critically — GITHUB_REF = default branch, so any gha cache it writes is
+# created in the DEFAULT-BRANCH scope (readable by every build).
+name: 'Chained'
+
+on:
+  workflow_run:
+    workflows: ['Trigger']
+    types: ['completed']
+
+permissions:
+  contents: 'read'        # same as the real workflow: contents: read, statuses: write
+
+jobs:
+  download_repo_name:
+    runs-on: 'ubuntu-latest'
+    if: "github.event_name == 'workflow_run'"
+    outputs:
+      repo_name: '${{ steps.out.outputs.repo_name }}'
+      head_sha: '${{ steps.out.outputs.head_sha }}'
+    steps:
+      - name: 'Download the poisoned artifact'
+        uses: 'actions/download-artifact@v4'
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          name: 'repo_name'
+          run-id: '${{ github.event.workflow_run.id }}'
+          path: '${{ runner.temp }}/artifacts'
+      - id: 'out'
+        uses: 'actions/github-script@v7'
+        with:
+          script: |
+            const fs = require('fs'); const path = require('path');
+            const t = '${{ runner.temp }}/artifacts';
+            core.setOutput('repo_name', fs.readFileSync(path.join(t,'repo_name'),'utf8').trim());
+            core.setOutput('head_sha',  fs.readFileSync(path.join(t,'head_sha'),'utf8').trim());
+
+  parse_run_context:
+    runs-on: 'ubuntu-latest'
+    needs: 'download_repo_name'
+    outputs:
+      repository: '${{ steps.ctx.outputs.REPO }}'
+      sha: '${{ steps.ctx.outputs.SHA }}'
+    steps:
+      - id: 'ctx'
+        env:
+          # No validation / allow-list — attacker strings flow straight through.
+          REPO: '${{ needs.download_repo_name.outputs.repo_name || github.repository }}'
+          SHA:  '${{ needs.download_repo_name.outputs.head_sha || github.event.workflow_run.head_sha }}'
+        run: |
+          echo "REPO=$REPO" >> "$GITHUB_OUTPUT"
+          echo "SHA=$SHA"   >> "$GITHUB_OUTPUT"
+
+  e2e_linux:
+    runs-on: 'ubuntu-latest'
+    needs: 'parse_run_context'
+    steps:
+      - name: 'Checkout'                 # <-- checks out ATTACKER repo @ ATTACKER sha
+        uses: 'actions/checkout@v5'
+        with:
+          ref: '${{ needs.parse_run_context.outputs.sha }}'
+          repository: '${{ needs.parse_run_context.outputs.repository }}'
+          persist-credentials: false
+      - uses: 'actions/setup-node@v4'
+        with:
+          node-version: '20.x'
+      - name: 'Install dependencies'     # <-- attacker package.json lifecycle scripts run here
+        run: 'npm ci || npm install || true'
+      - name: 'Build project'            # <-- attacker "build" script -> ACE
+        run: 'npm run build || true'
+      - name: 'Set up buildx'            # needed for the gha-cache poisoning demo
+        uses: 'docker/setup-buildx-action@v3'
+      - name: 'Run E2E tests'            # <-- attacker-defined script runs WITH the secret + the cache flags
+        env:
+          FAKE_SECRET: '${{ secrets.FAKE_SECRET }}'                       # mirrors GEMINI_API_KEY
+          BUILD_SANDBOX_FLAGS: '--cache-from type=gha --cache-to type=gha,mode=max'  # as in the real workflow
+        run: 'npm run test:integration:sandbox:none || true'

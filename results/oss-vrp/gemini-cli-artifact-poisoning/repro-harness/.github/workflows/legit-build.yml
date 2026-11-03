@@ -1,0 +1,33 @@
+# The VICTIM legit build. Stands in for any later trusted build (a maintainer's
+# push to main, a release build) that shares the default-branch gha cache scope.
+# It checks out TRUSTED source and builds the SAME sandbox Dockerfile the attacker
+# poisoned. If buildx restores the attacker-produced layer, provenance matches.
+name: 'Legit Build (victim)'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+
+permissions:
+  contents: 'read'
+
+jobs:
+  legit:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v5'          # the TRUSTED repo source (no attacker code)
+      - uses: 'docker/setup-buildx-action@v3'
+      - name: 'Build the shared sandbox image using the gha cache'
+        run: |
+          # This is the repo's own (trusted) sandbox Dockerfile — identical instruction
+          # to the one the attacker job built, so buildx keys to the same cache entry.
+          printf 'FROM alpine:3.20\nRUN echo "built-at-$(date +%%s%%N)-$RANDOM" > /BUILD_PROVENANCE\n' > Dockerfile.shared
+          docker buildx build -f Dockerfile.shared --cache-from type=gha,scope=sandbox -t poc:legit --load .
+          PROV="$(docker run --rm poc:legit cat /BUILD_PROVENANCE)"
+          echo "::notice::LEGIT-BUILD-PROVENANCE :: $PROV"
+      - name: 'Verdict'
+        run: |
+          echo "Compare LEGIT-BUILD-PROVENANCE above with PoC-CACHE-WRITTEN from the Chained run."
+          echo "If they are IDENTICAL, the trusted build restored the attacker-produced cache layer"
+          echo "-> build-integrity compromise via default-branch gha cache poisoning."
