@@ -85,6 +85,29 @@ Pure-ADB scenario-3 sweep (shell UID ≈ malicious app) across the candidate set
       only as an equality guard (`== package:com.google.android.gms`), never as a sink.
       No attacker data reaches a sensitive action. Safe.
 
+## 4. Keep (`com.google.android.keep`) — SAFE (strongest leads, chased hard)
+
+Keep was the richest target (data-holding, custom providers). All three closed
+with evidence:
+
+- **`AndroidImageContentProvider`** (`…clipboard.image`, exported, **reads open** —
+  no readPermission): parent `gus.b(uri)` builds `new File(filesDir/"image",
+  uri.getQueryParameter("IMAGE_ID"))` — attacker-controlled — BUT guards it:
+  `file.getParentFile().equals(base)` requires a *direct child* of `files/image/`,
+  so any `../` fails. **Empirically confirmed:** `content read … IMAGE_ID=../databases/`
+  → `SecurityException: Caller does not have permission to access …/files/image/../databases`.
+  No traversal.
+- **`SourceEndpointService`** (osmigration SOURCE — hands over notes): `onCreate`
+  pins the caller to `com.google.android.apps.restore` via the SecurityPolicy
+  (confirmed with `--show-bad-code`), same pattern as Authenticator. Not open.
+- **`KeepSliceProvider`** (`…slices`, exported, no permission): `onBindSlice`
+  (`b(uri)`) returns note content by `note_id`/`account` with no in-provider caller
+  check — BUT the androidx base `fda` stubs the generic ContentProvider surface:
+  `call()` returns **null**, `query()` returns **null**. So note content is reachable
+  **only** via `SliceManager.bindSlice()`, which the platform gates to user-authorized
+  slice hosts. A direct `ContentResolver.call()`/`query()` from a malicious app gets
+  nothing → no cross-app note leak.
+
 ## Honest assessment
 
 Both are Google-maintained; the dangerous surfaces are correctly defended
