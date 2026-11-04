@@ -94,11 +94,22 @@ base at commit `c39a8b9`:
   out fork pull request code from a 'workflow_run' workflow" (`repository: zahin24/ap-victim`,
   `ref: 5fca7e06…`, `allow-unsafe-pr-checkout: false`). Build/test skipped.
 - **Chained #4** (`@08eba0b` = v4.3.0, same fork PR): run **Success in 33s**; `e2e_linux`
-  **Success in 17s** — Checkout ✓, Build project ✓ (→ `PoC-ACE`), Run E2E tests ✓
-  (→ `PoC-SECRET-REACHABLE` + `PoC-CACHE-WRITTEN`).
+  **Success in 17s** — **Checkout succeeded** (no refusal), and the privileged job then
+  **executed the fork's `poc.js`** (`Run E2E tests` log shows `poc-attacker-fork@1.0.0`,
+  `node poc.js exfil`, and a Node `SyntaxError` at `/home/runner/work/ap-victim/ap-victim/poc.js:60`
+  carrying the fork's own edited line `পরিবর্তন করলাম`). That is ACE.
+
+  Caveat captured honestly: the benign `PoC-ACE`/`PoC-SECRET-REACHABLE` **notice lines did
+  NOT print** in #4 — zahin24's fork edit added a bare (non-comment) Bengali line, breaking
+  JS syntax, so the module failed to parse. The steps show green only because of the
+  trailing `|| true`. The `SyntaxError` (containing the fork's bytes) still proves the
+  fork file executed; a valid payload prints the canaries cleanly. Do NOT claim the
+  canaries fired in #4. A clean re-fire (fix the edit to valid JS) would give pristine
+  `PoC-ACE` + `PoC-SECRET-REACHABLE` lines.
 
 Controlled experiment: identical chain and fork PR, only the checkout version changed →
-patched refuses, pinned v4.3.0 executes fork code. The finding is empirically airtight.
+patched (@v5) refuses, pinned v4.3.0 checks out and executes fork code. The finding is
+empirically confirmed; the clean canary lines are a presentation nicety, not a gap.
 
 ## Fragility note (state honestly in any report)
 

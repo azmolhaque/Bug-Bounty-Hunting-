@@ -159,19 +159,44 @@ experiment: identical chain, identical fork PR, only the checkout version differ
 | #4 | `@08eba0b` (= v4.3.0, what gemini-cli pins) | **Succeeded** | **attacker code ran** |
 
 Chained #4 (triggered by the fork account `zahin24`, base at commit `c39a8b9` with the
-v4.3.0 pin) finished **Success in 33s**; `e2e_linux` **Succeeded in 17s** with every
-step green:
+v4.3.0 pin) finished **Success in 33s**; `e2e_linux` **Succeeded in 17s**. The two things
+that matter:
 
-- `Checkout (fallback: base repo @ workflow_run.head_sha)` — **✓** (no refusal, unlike #3)
-- `Build project` (`npm run build` → attacker's `poc.js build`) — **✓** → `PoC-ACE`
-- `Run E2E tests` (`npm run test:integration:sandbox:none` → attacker's exfil+poison) —
-  **✓** → `PoC-SECRET-REACHABLE` (+ `PoC-CACHE-WRITTEN`)
+1. `Checkout (fallback: base repo @ workflow_run.head_sha)` — **succeeded** (no refusal,
+   unlike #3). The pinned v4.3.0 checked out the fork's tree.
+2. The job then **executed the fork's `poc.js`** in the privileged context. The
+   `Run E2E tests` step log is the proof — Node ran the attacker's npm script and the
+   attacker's file:
 
-So the version `gemini-cli` actually pins checks out and runs fork code in the
-privileged `workflow_run` job without objection. The payload stayed benign: it prints
-the secret's length and a short hash, never the secret, and sends nothing anywhere. In
-the real job this env var is `GEMINI_API_KEY`, and nothing stops attacker code from
-exfiltrating it.
+```
+2026-11-03T23:54:26.0084788Z ##[group]Run npm run test:integration:sandbox:none || true
+env:
+  FAKE_SECRET: ***
+  BUILD_SANDBOX_FLAGS: --cache-from type=gha --cache-to type=gha,mode=max
+> poc-attacker-fork@1.0.0 test:integration:sandbox:none
+> node poc.js exfil && node poc.js poison
+/home/runner/work/ap-victim/ap-victim/poc.js:60
+পরিবর্তন করলাম
+        ^^^^^
+SyntaxError: Unexpected identifier 'করলাম'
+    at ... Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+Node.js v20.20.2
+```
+
+That is arbitrary code execution: the privileged `workflow_run` job fetched and ran the
+**fork's** `package.json`/`poc.js` (note `poc-attacker-fork@1.0.0` and the fork's own
+just-edited line `পরিবর্তন করলাম` at `poc.js:60`), with `FAKE_SECRET` and the
+`type=gha` cache flags in the step env. Node executed the attacker file; it threw a
+`SyntaxError` only because that particular lab edit wasn't valid JavaScript — the
+execution of fork-controlled code in the trusted context is exactly the finding.
+
+> Note on the canaries: because that edit broke the file's syntax, the benign
+> `PoC-ACE` / `PoC-SECRET-REACHABLE` notice lines did not print in this run (the step is
+> green only due to the trailing `|| true`). A valid payload prints them cleanly; the
+> `SyntaxError` here, carrying the fork's own bytes, is itself unambiguous proof that
+> the fork's file ran. The payload is benign by design: it would print only the secret's
+> length and a short hash, never the secret, and transmits nothing. In the real job the
+> env var is `GEMINI_API_KEY`, and nothing stops attacker code from exfiltrating it.
 
 ---
 
