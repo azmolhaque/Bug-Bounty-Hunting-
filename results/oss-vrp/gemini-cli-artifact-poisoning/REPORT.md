@@ -187,6 +187,16 @@ module throw a `SyntaxError` before the canaries printed; the step was green onl
 the trailing `|| true`. #5 fixed the edit and printed the canaries cleanly. Both runs
 show the fork's code executing in the privileged job.)
 
+**Cache: write proven, serve-to-trusted-build NOT demonstrated.** The attacker step
+wrote a layer to the `type=gha` cache (`PoC-CACHE-WRITTEN :: built-at-1793750917-18864`).
+I then ran the victim's own "Legit Build" to see whether a trusted build would restore
+that poisoned layer. It did **not** — the trusted build re-ran the layer and produced a
+fresh provenance (`LEGIT-BUILD-PROVENANCE :: built-at-1793751605-21664`, i.e. it did not
+match, and the `RUN` step executed rather than cache-hitting). So in my lab the
+attacker can *write* to the shared gha cache, but I did **not** demonstrate a trusted
+build consuming the poisoned layer. I therefore do **not** claim build-integrity
+compromise — I flag it as a possibility, not a proven impact.
+
 The before/after is a clean controlled experiment — same chain, same fork PR, only the
 checkout version changed:
 
@@ -203,21 +213,23 @@ checkout version changed:
   Google repository, reachable by any fork pull request (see "Exploitability").
 - **Disclosure of `secrets.GEMINI_API_KEY`**, a billable Google API credential, to
   attacker code that can exfiltrate it.
-- **Default-branch build-cache influence.** The ACE job runs with
-  `--cache-to type=gha,mode=max` in the `workflow_run` context (default-branch cache
-  scope), so an attacker-written layer can land in a scope later builds restore from.
-
 GitHub's own refusal message (above) independently enumerates the trust at stake here:
 the base repo's `GITHUB_TOKEN`, **secrets**, **default-branch cache scope**, and
 **runner access**.
 
+The headline impact is the ACE and the `GEMINI_API_KEY` disclosure, both demonstrated.
+
 ### Stated but not demonstrated (for your assessment, not claimed)
 
-The e2e jobs target **self-hosted runners** (`gemini-cli-ubuntu-16-core`,
-`gemini-cli-windows-16-core`) on a public repo. If those runners are non-ephemeral,
-ACE additionally enables runner persistence, theft of other jobs' secrets, and lateral
-movement. Runner ephemerality is internal to Google and I did not test it — flagging,
-not claiming.
+- **Self-hosted runner compromise.** The e2e jobs target **self-hosted runners**
+  (`gemini-cli-ubuntu-16-core`, `gemini-cli-windows-16-core`) on a public repo. If those
+  runners are non-ephemeral, ACE additionally enables runner persistence, theft of other
+  jobs' secrets, and lateral movement. Runner ephemerality is internal to Google and I
+  did not test it — flagging, not claiming.
+- **Build-cache poisoning → build integrity.** Attacker code can write to the `type=gha`
+  cache (shown: `PoC-CACHE-WRITTEN`), but in my lab a subsequent trusted build did not
+  restore the poisoned layer (it produced a different provenance). So a build-integrity
+  compromise is plausible but **not demonstrated**; I do not claim it.
 
 ### What the attacker does *not* get (so the scope is precise)
 

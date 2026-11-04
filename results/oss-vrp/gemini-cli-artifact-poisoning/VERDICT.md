@@ -109,7 +109,21 @@ base at commit `c39a8b9`:
 
 Controlled experiment: identical chain and fork PR, only the checkout version changed →
 patched (@v5) refuses, pinned v4.3.0 checks out and executes fork code. The finding is
-empirically confirmed; the clean canary lines are a presentation nicety, not a gap.
+empirically confirmed.
+
+- **Chained #5** (v4.3.0, clean payload): `PoC-SECRET-REACHABLE :: len=18,
+  sha256_prefix=5526dde5807f` + `PoC-CACHE-WRITTEN :: built-at-1793750917-18864`. ACE +
+  secret-reachability PROVEN with pristine canaries.
+- **Cache poisoning NOT proven.** Legit Build (victim) produced
+  `LEGIT-BUILD-PROVENANCE :: built-at-1793751605-21664` — did NOT match the attacker's
+  layer and the RUN step re-executed (no cache hit). So the trusted build did not serve
+  the poisoned layer in this lab. Report claims cache *write* only; build-integrity
+  compromise is flagged as potential, not claimed (CLAUDE.md §2.6).
+
+**Final: VALID.** Headline impact = ACE in privileged workflow_run + GEMINI_API_KEY
+disclosure, both demonstrated end-to-end with the exact pinned version. Dedup: distinct
+from CVE-2026-12537 (agent workspace-trust); config still live at main HEAD. Not WAI
+(GitHub itself labels the pattern "pwn request").
 
 ## Fragility note (state honestly in any report)
 
