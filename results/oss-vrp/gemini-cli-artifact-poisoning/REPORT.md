@@ -150,53 +150,50 @@ no such refusal.
 **2. With the checkout pinned to the exact version `gemini-cli` uses, the same fork PR
 executes.** I then changed only one thing — pinned the lab's checkout to
 `actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955` (v4.3.0, the exact SHA
-`gemini-cli` pins) — and re-fired the **same** fork PR. This is a clean controlled
-experiment: identical chain, identical fork PR, only the checkout version differs.
+`gemini-cli` pins) — and re-fired the **same** fork PR.
 
-| Chained run | checkout version | `e2e_linux` Checkout | result |
-|---|---|---|---|
-| #3 | `@v5` (patched, backported refusal) | **Refused** ("Refusing to check out fork pull request code…") | Build/test skipped, **no execution** |
-| #4 | `@08eba0b` (= v4.3.0, what gemini-cli pins) | **Succeeded** | **attacker code ran** |
-
-Chained #4 (triggered by the fork account `zahin24`, base at commit `c39a8b9` with the
-v4.3.0 pin) finished **Success in 33s**; `e2e_linux` **Succeeded in 17s**. The two things
-that matter:
-
-1. `Checkout (fallback: base repo @ workflow_run.head_sha)` — **succeeded** (no refusal,
-   unlike #3). The pinned v4.3.0 checked out the fork's tree.
-2. The job then **executed the fork's `poc.js`** in the privileged context. The
-   `Run E2E tests` step log is the proof — Node ran the attacker's npm script and the
-   attacker's file:
+The clean run is **Chained #5** (triggered by the fork account `zahin24`, base at commit
+`c39a8b9` with the v4.3.0 pin): run **Success in 34s**, `e2e_linux` **Success in 17s**,
+Checkout green (no refusal). Its `Run E2E tests` step (the attacker's own npm script)
+prints the canaries verbatim — the fork's code ran in the privileged job, and the secret
+was in its hands:
 
 ```
-2026-11-03T23:54:26.0084788Z ##[group]Run npm run test:integration:sandbox:none || true
+2026-11-04T00:08:36.5255418Z ##[group]Run npm run test:integration:sandbox:none || true
 env:
   FAKE_SECRET: ***
   BUILD_SANDBOX_FLAGS: --cache-from type=gha --cache-to type=gha,mode=max
 > poc-attacker-fork@1.0.0 test:integration:sandbox:none
 > node poc.js exfil && node poc.js poison
-/home/runner/work/ap-victim/ap-victim/poc.js:60
-পরিবর্তন করলাম
-        ^^^^^
-SyntaxError: Unexpected identifier 'করলাম'
-    at ... Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
-Node.js v20.20.2
+
+##[notice]PoC-SECRET-REACHABLE :: FAKE_SECRET reachable by attacker code (len=18, sha256_prefix=5526dde5807f); transmitted NOWHERE. In prod this is GEMINI_API_KEY.
+...
+#6 [2/2] RUN echo "built-at-$(date +%s%N)-$RANDOM" > /BUILD_PROVENANCE
+...
+##[notice]PoC-CACHE-WRITTEN :: attacker layer provenance="built-at-1793750917-18864" cached under scope=sandbox (default-branch scope in workflow_run). Run "Legit Build (victim)" next and compare its LEGIT-BUILD-PROVENANCE.
 ```
 
-That is arbitrary code execution: the privileged `workflow_run` job fetched and ran the
-**fork's** `package.json`/`poc.js` (note `poc-attacker-fork@1.0.0` and the fork's own
-just-edited line `পরিবর্তন করলাম` at `poc.js:60`), with `FAKE_SECRET` and the
-`type=gha` cache flags in the step env. Node executed the attacker file; it threw a
-`SyntaxError` only because that particular lab edit wasn't valid JavaScript — the
-execution of fork-controlled code in the trusted context is exactly the finding.
+So, with the exact version `gemini-cli` pins (v4.3.0), a fork PR's code runs in the
+privileged `workflow_run` job, reads the secret from the step env
+(`PoC-SECRET-REACHABLE`, here a fake `len=18` secret), and writes a Docker layer into
+the `type=gha` cache (`PoC-CACHE-WRITTEN`). The payload is benign by design: it prints
+only the secret's length and a short hash, never the secret, and transmits nothing. In
+the real job the env var is `GEMINI_API_KEY`, and nothing stops attacker code from
+exfiltrating it.
 
-> Note on the canaries: because that edit broke the file's syntax, the benign
-> `PoC-ACE` / `PoC-SECRET-REACHABLE` notice lines did not print in this run (the step is
-> green only due to the trailing `|| true`). A valid payload prints them cleanly; the
-> `SyntaxError` here, carrying the fork's own bytes, is itself unambiguous proof that
-> the fork's file ran. The payload is benign by design: it would print only the secret's
-> length and a short hash, never the secret, and transmits nothing. In the real job the
-> env var is `GEMINI_API_KEY`, and nothing stops attacker code from exfiltrating it.
+(An earlier run, #4, had the same checkout succeed and Node execute the fork's
+`poc.js`, but a malformed lab edit — a bare non-ASCII line at `poc.js:60` — made the
+module throw a `SyntaxError` before the canaries printed; the step was green only via
+the trailing `|| true`. #5 fixed the edit and printed the canaries cleanly. Both runs
+show the fork's code executing in the privileged job.)
+
+The before/after is a clean controlled experiment — same chain, same fork PR, only the
+checkout version changed:
+
+| Chained run | checkout | `e2e_linux` Checkout | outcome |
+|---|---|---|---|
+| #3 | `@v5` (patched, has the refusal) | **Refused** | no execution |
+| #5 | `@08eba0b` = **v4.3.0** (what gemini-cli pins) | **Succeeded** | `PoC-SECRET-REACHABLE` + `PoC-CACHE-WRITTEN` |
 
 ---
 
@@ -241,6 +238,25 @@ is: land one trivial legitimate PR to become a recognized contributor, after whi
 every later fork PR runs the full chain with no human in the loop.
 
 ---
+
+## This is not a duplicate of the known gemini-cli CVE
+
+The publicly known critical gemini-cli issue — **GHSA-wpqr-6v78-jr5g / CVE-2026-12537**
+(fixed in `@google/gemini-cli` 0.39.1 and `run-gemini-cli` 0.1.22) — is a **different**
+bug: the gemini-cli *agent* running in headless CI trusts attacker-controlled workspace
+config / tool-allowlist and executes it. That is a flaw in the CLI's trust model.
+
+This report is a plain **GitHub Actions configuration** bug in `chained_e2e.yml`: the
+workflow itself feeds artifact-derived, attacker-controlled strings into
+`actions/checkout` (`ref`/`repository`) and runs `npm` on the result. No gemini-cli
+agent is involved — it is the classic `workflow_run` "pwn request"/artifact-poisoning
+pattern. As of 2026-11-03 the vulnerable configuration is still present at `main` HEAD;
+the most recent change to the file (PR #26897, 2026-05-12) only added
+`persist-credentials: false`, which does not address this. I found no public report or
+advisory describing this specific `chained_e2e.yml` checkout data flow. (I could not
+fetch the arXiv agentic-workflow-injection paper from this environment to cross-check;
+that line of work concerns AI-agent prompt injection, a different class from this
+checkout misconfiguration.)
 
 ## Suggested fix
 
