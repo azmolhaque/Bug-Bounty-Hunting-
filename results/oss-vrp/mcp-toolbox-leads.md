@@ -33,3 +33,23 @@ Date: 2026-11-04. Read-only analysis.
 - Verdict: clean missing-fork-guard, but impact too low to submit standalone.
 
 ## Status: logged as leads; continuing to scan for a cleaner, higher-impact finding.
+
+---
+
+## Broader scan conclusion (2026-11-04)
+
+Rigorously audited ~10 repos across 6 Google orgs (googleapis, firebase, google-github-actions,
+GoogleChrome, googleforgames, google + syzkaller):
+- google-github-actions/auth: fork-guarded (defended)
+- googleapis/mcp-toolbox {conformance, docs-deploy}: marginal (gated + zizmor-accepted / low-impact)
+- googleapis/mcp-toolbox-sdk-python/conformance: defended (contents:read, no secrets)
+- google/syzkaller/upload-coverage: no exec (low)
+- firebase/genkit {e2e-tests, samples, tests, python}: all safe (pull_request not pull_request_target,
+  contents:read, no secrets, persist-credentials:false, SHA-pinned)
+
+Finding: Google OSS GitHub Actions CI is broadly HARDENED (pull_request over pull_request_target,
+scoped perms, persist-credentials:false, SHA pins, guards, zizmor). The only live Google OSS VRP
+category is supply-chain/Actions (product vulns paused); that category is heavily mined + hardened
+=> very low yield for a clean, non-duplicate, reward-worthy finding from a read-only session.
+Recommendation: pivot to a program where product vulns are rewardable and live-testable (e.g. Adobe
+Intigriti photos.adobe.io / Lightroom IDOR), guided with the user's own test accounts.
