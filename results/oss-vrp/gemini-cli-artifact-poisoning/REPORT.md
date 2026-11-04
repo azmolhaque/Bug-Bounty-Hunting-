@@ -83,11 +83,15 @@ The `if: github.repository == 'google-gemini/gemini-cli'` guards on these jobs d
 help: in a `workflow_run` run `github.repository` is always the base repo, so the
 guard is always true. It only stops forks from running the workflow on themselves.
 
-Because there is no `actions: read`, the cross-run artifact download fails, and the
-context falls back to `repository = github.repository` (the base repo) and
-`sha = github.event.workflow_run.head_sha` (the fork PR's head commit). Checking out
-the base repo at the fork's head SHA still lands the attacker's tree, because GitHub
-keeps a PR's head commit reachable from the base repository.
+In my faithful reproduction (top-level `permissions: contents: read` only — the same
+actions scope as the real workflow, i.e. no `actions: read`), the privileged job's
+artifact download **succeeded**, so `repository` resolved to the fork's
+`repo_name` from the artifact and `ref` to the fork's head SHA — the checkout ran
+against the fork directly (`repository: <attacker-fork>`, `ref: <fork head sha>`).
+Even if that download were blocked, the chain still lands the attacker's tree via the
+`|| github.event.workflow_run.head_sha` fallback (checking out the base repo at the
+fork's head commit, which GitHub keeps reachable from the base repository). Either way,
+the fork's attacker-controlled commit is what gets checked out.
 
 ---
 
