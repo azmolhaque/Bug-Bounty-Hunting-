@@ -1,25 +1,60 @@
 # Hunt Log — wiz.io (Google VRP TIER1)
-Started: 2026-06-11 | Last updated: 2026-06-14
+Started: 2026-06-11 | Last updated: 2026-06-24
 
-## CURRENT STATUS (2026-06-15)
+## CURRENT STATUS (2026-06-24)
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ VERIFIED — **SUBMIT NOW (standalone High 8.2)** |
+| 1 | **F001 win-test.wiz.io subdomain takeover** | ✅ **TRIAGING** — Issue #524181553 — **Priority P4→P2 (2026-06-24)**; Component routed to Wiz product security (3 hops: 310426→310543→1609699→1610896). Assignee removed = team queue, not rejected. DO NOT add comments. |
 | 2 | Chain 1 (F001 → CSP bypass) | ❌ CLOSED — no win-test in script-src on app.wiz.io or www.wiz.io |
-| 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first; cannot probe allowlist without valid client_id; mentioned in report as unconfirmed escalation path |
-| 4 | ACTION A (WizCLI binary strings) | ✅ DONE — revealed Chain 11 |
-| 5 | **Chain 11 (AI Remediation cross-tenant PR injection)** | 🔥 CRITICAL CANDIDATE — needs trial account |
-| 6 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 Needs trial account |
-| 7 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 Needs trial account |
-| 8 | Chain 9 (forensics-package IDOR) | 🔒 Needs trial account + 2nd account |
-| 9 | ACTION B (PR preview GraphQL) | ⏳ Run on Pi |
-| 10 | ACTION D (Ghost CMS API key) | ⏳ Run on Pi |
-| 11 | test.wiz.io | 🆕 Live subdomain — referenced in Auth0 error page logo; add to recon |
+| 3 | Chain 2 (F001 → OAuth redirect_uri hijack) | ❌ INCONCLUSIVE/CLOSED — Auth0 validates client_id first |
+| 4 | Chain 11 (AI Remediation cross-tenant PR injection) | ❌ DEAD — `isAIRemediationRecommendationEnabled: False` + `WIZ_SYSTEM_OPEN_REMEDIATION_PULL_REQUEST` in disabledWorkflowIntegrationActions (LD flags confirmed 2026-06-19) |
+| 5 | Chain 14 (MSSP CreateMemberTenantRequest) | ❌ DEAD — `isMsspEnabled: False` globally (LD flags confirmed 2026-06-19) |
+| 6 | Chain 3 (Webhook SSRF → Grafana/IMDS) | 🔒 STILL LIVE — no disabling flag found; needs trial account |
+| 7 | Chain 4 (GraphQL cross-tenant IDOR) | 🔒 STILL LIVE — needs trial account |
+| 8 | Chain 13 (CopyResourceForensicsToExternalAccount IDOR) | 🔒 STILL LIVE — forensics enabled in LD flags; needs trial + 2nd account |
+| 9 | **fedramp.wiz.io** | ❌ DEAD — TLS handshake failure (FIPS ciphers, IP-restricted to US gov networks) |
+| 10 | **gov.wiz.io** | ⚠️ PARTIALLY MAPPED — login page accessible from mobile; all paths 403 from Pi |
+| 11 | **auth.gov.wiz.io** | ✅ LIVE — AWS GovCloud us-gov-west-1 ALB; custom auth service; email oracle confirmed |
+| 12 | LaunchDarkly flag enumeration | ✅ DONE — 300+ flags extracted; Chain 11/14 killed; forensics/webhook chains confirmed live |
+| 13 | S3 wizio-public CloudFormation IAM | ✅ DONE — bucket listing denied; CFN permissions scoped with conditions; not reportable |
 
-**NEXT ACTION:** Submit F001 to Google/Wiz bug bounty program. Submission texts at:
-- `findings/submission/F001-problem-description.md` — paste into "Problem description"
-- `findings/submission/F001-impact-analysis.md` — paste into "Impact" field
+**SUBMITTED 2026-06-15:** Issue **#524181553** — Wiz.io subdomain takeover.
+**TRIAGE UPDATE 2026-06-18:** Assigned to wo...@google.com (human pickup, 3 days after submission).
+**TRIAGE UPDATE 2026-06-24:** Priority P4→P2. Component routed to Wiz product security (1610896). Second reviewer ca...@google.com touched the issue today — two engineers have now reviewed. Status still "New" = deliberating, not rejected.
+**NEXT ACTION:** Monitor for verdict comment (expected 1–3 days). Do NOT add comments. If they ask to re-verify the CNAME is still live → respond same day with fresh `dig` output + `curl -sI` showing DEPLOYMENT_NOT_FOUND.
+
+**FO-9 CLAIMABILITY GAP (2026-07-10) — the report's one unproven link.** The
+submitted POC (Section 2.1) *asserts* the free-Vercel claim "verifies ownership
+→ passes immediately," but we never actually attempted the claim. `DEPLOYMENT_NOT_FOUND`
+is only the PRECONDITION. The persistent EXPIRED Wiz cert (serial `06D355…`,
+notAfter Dec 16 2025) is a strong tell the domain is **still bound to Wiz's Vercel
+team** — in which case a free-account claim is REFUSED and the takeover is NOT
+exploitable (precondition-only). Built `runbooks/PI-RUNBOOK-wiz-takeover-verify.sh`
+(pre/post/release phases) to settle it decisively per FO-9: attempt the real claim,
+serve a BENIGN canary ("PoC 524181553", no cookie capture), screenshot fresh-cert +
+canary, then RELEASE. Two honest outcomes:
+  * claim succeeds → report confirmed with self-made proof (respond to triager with it);
+  * claim refused → report is precondition-only; do NOT defend it (FO-12), pivot to
+    Looker Studio H1 (owner-credential retention on Copy).
+Run pre-check first; only proceed to the claim if still DEPLOYMENT_NOT_FOUND.
+
+**FO-9 VERDICT (2026-07-10T20:38Z, IP 180.148.212.32) — CLAIMABILITY NOT PROVEN;
+treat F001 as precondition-only. STOP DEFENDING.** Pre-check re-ran clean:
+CNAME still `37e7f43d8158e70f.vercel-dns-013.com`, body still `DEPLOYMENT_NOT_FOUND`,
+but the served TLS cert is UNCHANGED — serial `06D355B91521BADCB06BBEB409F290FC5094`,
+SAN `DNS:win-test.wiz.io`, notBefore Sep 17 2025 / notAfter Dec 16 2025. A domain
+that has been RELEASED from Vercel does not keep serving the original owner's
+certificate — Vercel presents its own fallback. That Wiz's own expired cert for
+this exact host is STILL being served is strong evidence the domain remains BOUND
+to Wiz's Vercel team, i.e. `DEPLOYMENT_NOT_FOUND` = "attached, no deployment," NOT
+"free to claim." Under modern Vercel a free-account claim of a still-bound domain
+is refused ("already in use by another team"). Decision (FO-1 EV + FO-12): do not
+sink more time proving the negative; the P2 report's takeover link is unproven and
+we will NOT argue it if the triager closes it. If the triager asks us to re-verify,
+answer honestly: CNAME dangles, but the host still serves Wiz's own cert so the
+domain appears still-bound and we could not demonstrate a claim. PIVOT to the
+higher-EV fresh hunt: Looker Studio H1 (cross-tenant owner-credential retention).
 
 ---
 
@@ -71,6 +106,11 @@ Started: 2026-06-11 | Last updated: 2026-06-14
 | 2026-06-15 | 4 | Chain 1 CLOSED | Pi confirms: app.wiz.io `script-src` = `'self' sha384` only; www.wiz.io `script-src` = `'self' unsafe-inline` + CDN; win-test NOT in any script-src/connect-src |
 | 2026-06-15 | 4 | Chain 2 CLOSED (inconclusive) | auth0.demo.wiz.io + auth0.e2e.wiz.io LIVE OIDC tenants; redirect_uri probe: Auth0 validates client_id first → "Oops!" page → cannot determine allowlist; auth.app.wiz.io production Auth0 = VPC-internal (403 from awselb/2.0); side-note: test.wiz.io live (found in Auth0 error page logo URL) |
 | 2026-06-15 | 6 | F001 SUBMISSION DECISION | Submit standalone High 8.2 — all chain paths closed or inconclusive. Submission texts in findings/submission/. |
+| 2026-06-15 | 6 | **F001 SUBMITTED** | Google VRP Issue **#524181553** — "Subdomain Takeover on win-test.wiz.io via Dangling Vercel CNAME — Proven Session Cookie Theft + Chrome Extension Abuse Vector"; Status: New (P4/S4 auto-triage); awaiting human review |
+| 2026-06-19 | 2 | LaunchDarkly flag enumeration | LD client ID `5f2bbaa730af0f08855ad7e9` — 300+ flags enumerated; key kills: Chain 11 dead (`isAIRemediationRecommendationEnabled:False`, PR action disabled), Chain 14 dead (`isMsspEnabled:False`); Chain 13 live (`dataForensics.enabled:True`), Chain 3 live (no disabling flag); `isRedAgentSafeMutationsEnabled:False` (Red Agent mutations may bypass flag server-side) |
+| 2026-06-19 | 2 | fedramp.wiz.io probe | Resolves 4 CloudFront IPs (3.164.36.x); ERR_SSL_VERSION_OR_CIPHER_MISMATCH in browser; TLS handshake failure even with FIPS ciphers from Pi → IP-restricted to US government networks. CLOSED. |
+| 2026-06-19 | 2 | gov.wiz.io probe | Resolves 4 CloudFront IPs (18.164.144.x); MX: gov-wiz-io.mail.protection.outlook.com; all paths 403 from Pi; login page accessible from mobile; accepts Gmail (no free-email block unlike commercial); magic-link auth flow; no magic link received in Gmail (no tenant associated) |
+| 2026-06-19 | 2 | **auth.gov.wiz.io — LIVE** | DNS: `09e3f2a2-default-auth-7d02-27039775.us-gov-west-1.elb.amazonaws.com` (IPs: 160.1.77.171, 40.38.146.104, 40.38.76.198); custom auth service on AWS GovCloud; HTTP/2 from Pi; sets `wiz-session-id` cookie on `/health` scoped to `Path=/api`; live endpoints: `/health`(200), `/api/login`(POST→Unauthorized/BadReq), `/api/me`(401), `/api/logout`(POST-only), `/api/register`(POST-only), `/api/callback`(400), `/oauth/token`(400); **email oracle confirmed** (3-way: unknown domain→404, @wiz.io domain→BadReq, known account→Unauthorized); surface exhausted without gov credentials |
 
 ## Key Findings
 

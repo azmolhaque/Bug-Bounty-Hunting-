@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Control build. Same source as AndroidManifest.xml, same signing key, and
+  it sends the same broadcast at the same component. The only difference is
+  that it declares no permissions at all.
+
+  Built with:
+      PKG=com.cindrasec.mvrpctl MANIFEST=AndroidManifest.control.xml
+
+  The package rename changes the manifest package only, not the class names,
+  so the activity is still com.cindrasec.mvrpprobe.MainActivity.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cindrasec.mvrpprobe">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <application
+        android:label="poc-control"
+        android:allowBackup="false"
+        android:hasCode="true">
+        <activity
+            android:name="com.cindrasec.mvrpprobe.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name="com.cindrasec.mvrpprobe.SinkReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

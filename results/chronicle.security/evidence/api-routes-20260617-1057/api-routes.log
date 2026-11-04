@@ -1,0 +1,554 @@
+=== CHRONICLE SOAR API ROUTE PROBE — 20260617-1057 ===
+IN-SCOPE: app.siemplify-soar.com matches '*.siemplify-soar.com'
+
+[1] Fetching Swagger v1 JSON...
+[1] Swagger loaded: 448 paths
+
+[2] Extracting all Swagger paths...
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+  File "/usr/lib/python3.13/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.13/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: ''
+GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders
+POST /api/external/v1/agents/AddAgent
+POST /api/external/v1/agents/AddOrUpdatePublisher
+POST /api/external/v1/agents/DeleteAgent
+POST /api/external/v1/agents/DeletePublishers
+GET /api/external/v1/agents/GetAgentByIdentifier/{agentIdentifier}
+GET /api/external/v1/agents/GetAgentInformationByIdentifier/{agentIdentifier}
+GET /api/external/v1/agents/GetAgentInformationByIntegrationInstance/{integrationInstanceId}
+GET /api/external/v1/agents/GetAgents
+POST /api/external/v1/agents/GetAgentsByEnvironment
+POST /api/external/v1/agents/GetAgentsInformationByIdentifiers
+GET /api/external/v1/agents/GetAvailableEnvironmentsForAgents
+GET /api/external/v1/agents/GetEnabledAgents
+GET /api/external/v1/agents/GetPublisherById/{publisherId}
+GET /api/external/v1/agents/GetPublishers
+POST /api/external/v1/agents/GetSecondaryAgentsByPrimaryIdentifiers
+GET /api/external/v1/agents/GetValidAgentsForConnector/{environment}/{integration}
+GET /api/external/v1/agents/GetValidAgentsForIdeConnector/{environment}/{integration}
+POST /api/external/v1/agents/RedeployAgent
+GET /api/external/v1/agents/TestPublisherConnectivity/{publisherId}
+POST /api/external/v1/agents/UpdateAgent
+GET /api/external/v1/agents/integration-upgrade-unsupported-agents
+GET /api/external/v1/agents/valid-for-jobs
+POST /api/external/v1/approval-link/Apply
+POST /api/external/v1/attackssimulator/CreateSimulatedCustomCase
+POST /api/external/v1/attackssimulator/DeleteUseCase
+GET /api/external/v1/attackssimulator/ExportCustomCase/{customCaseName}
+POST /api/external/v1/attackssimulator/GenerateUseCases
+POST /api/external/v1/attackssimulator/GetCustomCaseDetails
+GET /api/external/v1/attackssimulator/GetCustomCases
+POST /api/external/v1/attackssimulator/ImportCustomCase
+GET /api/external/v1/attackssimulator/IsCustomCaseExists/{alertName}
+POST /api/external/v1/attackssimulator/SimulateAlert
+POST /api/external/v1/case-overview/GetAlertOverviewData
+POST /api/external/v1/case-overview/GetAlertsEntities
+GET /api/external/v1/case-overview/GetCaseEntities/{caseId}
+POST /api/external/v1/case-overview/GetCaseOverviewData
+GET /api/external/v1/case-overview/GetFullOverviewTemplateDetails/{templateIdentifier}
+POST /api/external/v1/case-overview/GetOverviewTemplate
+GET /api/external/v1/case-overview/GetOverviewTemplateCards
+POST /api/external/v1/case-overview/PreviewOverviewWidget
+POST /api/external/v1/case-overview/ResolveOverviewWidget
+POST /api/external/v1/case-overview/SaveOverviewTemplate
+GET /api/external/v1/casechat/attachments/preview/{attachmentId}
+GET /api/external/v1/casechat/attachments/{attachmentId}
+POST /api/external/v1/casechat/pin/{messageId}
+POST /api/external/v1/casechat/unpin/{messageId}
+POST /api/external/v1/casechat/{caseId}
+GET /api/external/v1/casechat/{caseId}
+GET /api/external/v1/casechat/{caseId}/new-messages-count
+POST /api/external/v1/cases-queue/GetAlertNames
+POST /api/external/v1/cases-queue/GetCaseCardsByRequest
+GET /api/external/v1/cases-queue/alert-vendors
+POST /api/external/v1/cases-queue/bulk-operations/ExecuteBulkAssignCase
+POST /api/external/v1/cases-queue/bulk-operations/ExecuteBulkCloseCase
+POST /api/external/v1/cases-queue/bulk-operations/MergeCases
+POST /api/external/v1/cases-queue/bulk-operations/ValidateCasesAssigneeForCloseCase
+GET /api/external/v1/cases-queue/saved-filter
+POST /api/external/v1/cases-queue/saved-filter
+DELETE /api/external/v1/cases-queue/saved-filter
+POST /api/external/v1/cases/AddCaseComment
+POST /api/external/v1/cases/AddCaseTag
+POST /api/external/v1/cases/AddEvidence
+POST /api/external/v1/cases/AddOrUpdateCaseTask
+POST /api/external/v1/cases/AssignUserToCase
+POST /api/external/v1/cases/ChangeCaseDescription
+POST /api/external/v1/cases/ChangeCaseImportanceStatus
+POST /api/external/v1/cases/ChangeCasePriority
+POST /api/external/v1/cases/ChangeCaseStage
+POST /api/external/v1/cases/CloseAlert
+POST /api/external/v1/cases/CloseCase
+POST /api/external/v1/cases/CreateCase
+POST /api/external/v1/cases/CreateCaseEntity
+POST /api/external/v1/cases/CreateCaseInsight
+POST /api/external/v1/cases/CreateManualCase
+POST /api/external/v1/cases/CreateWarRoomIncidentFromCase
+POST /api/external/v1/cases/ExecuteBulkAddCaseTag
+POST /api/external/v1/cases/ExecuteBulkAssign
+POST /api/external/v1/cases/ExecuteBulkChangeCasePriority
+POST /api/external/v1/cases/ExecuteBulkChangeCaseStage
+POST /api/external/v1/cases/ExecuteBulkCloseCase
+POST /api/external/v1/cases/ExecuteBulkReopenCase
+POST /api/external/v1/cases/ExecuteManualAction
+POST /api/external/v1/cases/ExecuteStep
+POST /api/external/v1/cases/GenerateCaseReport
+GET /api/external/v1/cases/GetActionResultById/{resultIdStr}
+POST /api/external/v1/cases/GetCaseCardsByRequest
+GET /api/external/v1/cases/GetCaseExists/{caseId}
+GET /api/external/v1/cases/GetCaseFullDetails/{caseId}
+GET /api/external/v1/cases/GetEvidenceData/{evidenceId}
+GET /api/external/v1/cases/GetWallItemsForWarRoom/{id}
+POST /api/external/v1/cases/GetWorkflowInstanceSummary
+POST /api/external/v1/cases/IsCaseUpdated
+POST /api/external/v1/cases/PauseAlertSla
+POST /api/external/v1/cases/RaiseIncident
+POST /api/external/v1/cases/ReassignCaseTask
+POST /api/external/v1/cases/RemoveCaseTag
+POST /api/external/v1/cases/RenameCase
+POST /api/external/v1/cases/ResumeAlertSla
+POST /api/external/v1/cases/Skip
+POST /api/external/v1/cases/UnraiseIncident
+POST /api/external/v1/cases/UpdateAlertPriority
+GET /api/external/v1/cases/comments
+POST /api/external/v1/cases/comments
+GET /api/external/v1/cases/comments/file/{fileId}
+PATCH /api/external/v1/cases/comments/mark-as-deleted/{id}
+PUT /api/external/v1/cases/comments/{id}
+GET /api/external/v1/cases/homepagecases/GetByRequest
+GET /api/external/v1/cases/homepagecases/GetHomepageCasesCount
+GET /api/external/v1/cases/insights/{caseId}
+POST /api/external/v1/cases/requests/GenerateCollaboratorRequest
+GET /api/external/v1/cases/requests/GetByRequest
+GET /api/external/v1/cases/requests/GetCollaboratorRequestCount
+POST /api/external/v1/cases/tasks
+PUT /api/external/v1/cases/tasks
+GET /api/external/v1/cases/tasks/GetByRequest
+GET /api/external/v1/cases/tasks/GetTasksCountForUser
+PUT /api/external/v1/cases/tasks/MarkAsDone
+GET /api/external/v1/cases/tasks/{id}
+DELETE /api/external/v1/cases/tasks/{id}
+PATCH /api/external/v1/cases/wall/favourite
+GET /api/external/v1/cases/wall/{caseId}
+GET /api/external/v1/configuration-items/{tenantId}
+PUT /api/external/v1/configuration-items/{tenantId}
+POST /api/external/v1/connectors
+GET /api/external/v1/connectors/cards
+POST /api/external/v1/connectors/fetch-sample-data
+POST /api/external/v1/connectors/template
+GET /api/external/v1/connectors/template-cards
+POST /api/external/v1/connectors/update-from-ide
+GET /api/external/v1/connectors/{identifier}
+DELETE /api/external/v1/connectors/{identifier}
+GET /api/external/v1/connectors/{identifier}/statistics
+POST /api/external/v1/dashboards/AddOrUpdateDashboard
+POST /api/external/v1/dashboards/AddOrUpdateDashboardWidget
+POST /api/external/v1/dashboards/DeleteDashboard
+POST /api/external/v1/dashboards/DeleteDashboardWidget
+POST /api/external/v1/dashboards/GetDashboardWidgetCaseIds
+GET /api/external/v1/dashboards/GetDashboardWidgetDefinitions
+POST /api/external/v1/dashboards/GetDashboardWidgetValues
+POST /api/external/v1/dashboards/ImportDashboard
+POST /api/external/v1/dashboards/SaveDashboardAsReportTemplate
+POST /api/external/v1/dynamic-cases/AddCaseComment
+POST /api/external/v1/dynamic-cases/AddCaseTag
+POST /api/external/v1/dynamic-cases/AddComment
+POST /api/external/v1/dynamic-cases/AddEvidence
+POST /api/external/v1/dynamic-cases/AddOrUpdateCaseTask
+POST /api/external/v1/dynamic-cases/AddOrUpdateEntityProperty
+POST /api/external/v1/dynamic-cases/AssignUserToCase
+POST /api/external/v1/dynamic-cases/ChangeCaseDescription
+POST /api/external/v1/dynamic-cases/ChangeCaseImportanceStatus
+POST /api/external/v1/dynamic-cases/ChangeCaseStage
+POST /api/external/v1/dynamic-cases/CloseAlert
+POST /api/external/v1/dynamic-cases/CloseCase
+POST /api/external/v1/dynamic-cases/CreateCase
+POST /api/external/v1/dynamic-cases/CreateCaseEntity
+POST /api/external/v1/dynamic-cases/ExecuteBulkReopenCase
+POST /api/external/v1/dynamic-cases/GenerateCaseReport
+POST /api/external/v1/dynamic-cases/GetAlertEvents
+GET /api/external/v1/dynamic-cases/GetCaseDetails/{caseId}
+POST /api/external/v1/dynamic-cases/GetCaseWallActivities
+POST /api/external/v1/dynamic-cases/GetCaseWallActivities/count
+GET /api/external/v1/dynamic-cases/GetEvidenceData/{evidenceId}
+GET /api/external/v1/dynamic-cases/GetWallActivities/{caseId}
+GET /api/external/v1/dynamic-cases/GetWallActivitiesForCommandCenter/{id}
+GET /api/external/v1/dynamic-cases/GetWallActivitiesV2/{caseId}
+POST /api/external/v1/dynamic-cases/IngestCaseInOtherEnvironment
+POST /api/external/v1/dynamic-cases/IsCaseUpdated
+PUT /api/external/v1/dynamic-cases/MarkCommentAsDeleted/{id}
+POST /api/external/v1/dynamic-cases/MarkTaskAsDone
+POST /api/external/v1/dynamic-cases/MoveAlertToNewCase
+POST /api/external/v1/dynamic-cases/RaiseIncident
+POST /api/external/v1/dynamic-cases/RemoveCaseTag
+POST /api/external/v1/dynamic-cases/RenameCase
+POST /api/external/v1/dynamic-cases/ReopenAlert
+POST /api/external/v1/dynamic-cases/UnraiseIncident
+POST /api/external/v1/dynamic-cases/UpdateAlertPriority
+POST /api/external/v1/dynamic-cases/UpdateCasePriority
+PUT /api/external/v1/dynamic-cases/UpdateComment
+POST /api/external/v1/dynamic-cases/request
+POST /api/external/v1/entity-search/count
+POST /api/external/v1/entity-search/entities
+GET /api/external/v1/external-authentication-settings
+POST /api/external/v1/external-authentication-settings
+GET /api/external/v1/external-authentication-settings/{id}
+DELETE /api/external/v1/external-authentication-settings/{id}
+PATCH /api/external/v1/external-authentication-settings/{id}
+PUT /api/external/v1/external-authentication-settings/{id}
+GET /api/external/v1/federation/cases
+PATCH /api/external/v1/federation/cases/batch-patch
+GET /api/external/v1/federation/platforms
+DELETE /api/external/v1/federation/platforms/{id}
+POST /api/external/v1/homepage/attachments
+PUT /api/external/v1/homepage/attachments
+GET /api/external/v1/homepage/attachments/GetByRequest
+GET /api/external/v1/homepage/attachments/{id}
+DELETE /api/external/v1/homepage/attachments/{id}
+POST /api/external/v1/homepage/contacts
+PUT /api/external/v1/homepage/contacts
+GET /api/external/v1/homepage/contacts/GetByRequest
+GET /api/external/v1/homepage/contacts/{id}
+DELETE /api/external/v1/homepage/contacts/{id}
+POST /api/external/v1/homepage/links
+PUT /api/external/v1/homepage/links
+GET /api/external/v1/homepage/links/GetByRequest
+GET /api/external/v1/homepage/links/{id}
+DELETE /api/external/v1/homepage/links/{id}
+POST /api/external/v1/homepage/notes
+PUT /api/external/v1/homepage/notes
+GET /api/external/v1/homepage/notes/GetByRequest
+GET /api/external/v1/homepage/notes/{id}
+DELETE /api/external/v1/homepage/notes/{id}
+POST /api/external/v1/homepage/rss
+PUT /api/external/v1/homepage/rss
+GET /api/external/v1/homepage/rss/GetByRequest
+GET /api/external/v1/homepage/rss/GetRssCount
+GET /api/external/v1/homepage/rss/{id}
+DELETE /api/external/v1/homepage/rss/{id}
+POST /api/external/v1/idp-group-mapping
+GET /api/external/v1/idp-group-mapping
+GET /api/external/v1/idp-group-mapping/count
+GET /api/external/v1/idp-group-mapping/{id}
+PUT /api/external/v1/idp-group-mapping/{id}
+DELETE /api/external/v1/idp-group-mapping/{id}
+POST /api/external/v1/idpMapping
+GET /api/external/v1/idpMapping
+POST /api/external/v1/integrations/CreateIntegrationInstance
+POST /api/external/v1/integrations/DeleteIntegrationInstance
+POST /api/external/v1/integrations/GetAllEnvironmentCards
+POST /api/external/v1/integrations/GetEnvironmentInstalledIntegrations
+GET /api/external/v1/integrations/GetInstalledIntegrations
+GET /api/external/v1/integrations/GetIntegrationDefaultInstance/{integrationIdentifier}
+GET /api/external/v1/integrations/GetIntegrationInstanceSettings/{integrationInstanceId}
+POST /api/external/v1/integrations/GetOptionalIntegrationInstances
+GET /api/external/v1/integrations/GetPlaybooksNamesUsingIntegrationInstance/{integrationInstanceId}
+POST /api/external/v1/jobs/DeleteJobData
+GET /api/external/v1/jobs/GetInstalledJobs
+GET /api/external/v1/jobs/GetJobTemplates
+POST /api/external/v1/jobs/RunJob
+POST /api/external/v1/jobs/SaveOrUpdateJobData
+POST /api/external/v1/jobs/instances
+PUT /api/external/v1/jobs/instances
+GET /api/external/v1/jobs/instances
+POST /api/external/v1/jobs/instances/run
+DELETE /api/external/v1/jobs/instances/{id}
+GET /api/external/v1/logging/agents/{agentIdentifier}
+POST /api/external/v1/logging/python
+GET /api/external/v1/notifications/CloseAllNotifications
+GET /api/external/v1/notifications/CloseSystemNotification/{recordId}
+GET /api/external/v1/notifications/CloseUserNotification/{recordId}
+GET /api/external/v1/notifications/GetUnreadNotificationCount
+GET /api/external/v1/notifications/GetUserNotificationSettings
+GET /api/external/v1/notifications/GetUserNotifications
+POST /api/external/v1/notifications/SaveUserNotificationSettings
+POST /api/external/v1/ontology/AddOrUpdateMappingRules
+POST /api/external/v1/ontology/AddOrUpdateVisualFamily
+POST /api/external/v1/ontology/AddOrUpdateVisualFamilyRules
+GET /api/external/v1/ontology/DeleteFamilyData/{familyId}
+POST /api/external/v1/ontology/DeleteMappingRule
+POST /api/external/v1/ontology/DeleteVisualFamilyRule
+POST /api/external/v1/ontology/DuplicateVisualFamilyForSettings
+POST /api/external/v1/ontology/ExportOntology
+POST /api/external/v1/ontology/ExportVisualFamily
+POST /api/external/v1/ontology/GetFamily
+POST /api/external/v1/ontology/GetMappingRules
+GET /api/external/v1/ontology/GetRelatedEntitiesByFamilyName/{familyName}
+GET /api/external/v1/ontology/GetVisualFamilies
+POST /api/external/v1/ontology/ImportOntology
+POST /api/external/v1/ontology/ImportVisualFamily
+POST /api/external/v1/ontology/IsOntologyOrVisualFamilyExists
+POST /api/external/v1/ontology/IsVisualFamilyExists
+POST /api/external/v1/ontology/UpdateVisualFamilyImage
+POST /api/external/v1/permissions
+PUT /api/external/v1/permissions
+POST /api/external/v1/permissions/Duplicate/{id}
+GET /api/external/v1/permissions/GetAllEnvironmentStatus
+GET /api/external/v1/permissions/GetAllEnvironmentStatus/{permissionGroupId}
+GET /api/external/v1/permissions/GetPermissionsGroupCards
+GET /api/external/v1/permissions/GetPermissionsGroupTemplateByType/{permissionType}
+GET /api/external/v1/permissions/GetPermissionsGroupTypes
+GET /api/external/v1/permissions/{id}
+DELETE /api/external/v1/permissions/{id}
+POST /api/external/v1/playbooks/AddOrUpdatePlaybookCategory
+POST /api/external/v1/playbooks/AttacheNestedWorkflowToCase
+POST /api/external/v1/playbooks/AttacheWorkflowToCase
+POST /api/external/v1/playbooks/CheckWorkflowNameInDifferentEnvironments
+POST /api/external/v1/playbooks/DeleteWorkflow
+POST /api/external/v1/playbooks/DeleteWorkflows
+POST /api/external/v1/playbooks/DuplicateNestedWorkflows
+POST /api/external/v1/playbooks/DuplicateWorkflow
+POST /api/external/v1/playbooks/DuplicateWorkflows
+POST /api/external/v1/playbooks/ExecuteStep
+POST /api/external/v1/playbooks/ExportDefinitions
+GET /api/external/v1/playbooks/ExportWorkflowWithBlocksByIdentifier/{apiWfIdentifier}
+GET /api/external/v1/playbooks/GetActionResultsOfWFId/{wfInstanceId}
+GET /api/external/v1/playbooks/GetCaseEntities/{caseId}
+GET /api/external/v1/playbooks/GetContextGroupByKey/{key}
+POST /api/external/v1/playbooks/GetDebugStepCaseData
+POST /api/external/v1/playbooks/GetEnabledWFCards
+POST /api/external/v1/playbooks/GetOverviewTemplate
+GET /api/external/v1/playbooks/GetOverviewTemplate/{templateIdentifier}
+POST /api/external/v1/playbooks/GetPendingStep
+GET /api/external/v1/playbooks/GetPendingStepsCountForUser
+GET /api/external/v1/playbooks/GetPendingStepsUserRelated
+POST /api/external/v1/playbooks/GetPlaybookSimulationEnrichment
+POST /api/external/v1/playbooks/GetPlaybookStatsMap
+POST /api/external/v1/playbooks/GetTestCases
+POST /api/external/v1/playbooks/GetTriggerTags
+POST /api/external/v1/playbooks/GetWorkFlowVersionLogs
+GET /api/external/v1/playbooks/GetWorkflowCategories
+GET /api/external/v1/playbooks/GetWorkflowFullInfoByIdentifier/{apiWfIdentifier}
+GET /api/external/v1/playbooks/GetWorkflowFullInfoWithEnvFilterByIdentifier/{apiWfIdentifier}
+POST /api/external/v1/playbooks/GetWorkflowStepInstance
+POST /api/external/v1/playbooks/GetWorkflowsInvolvingAction
+POST /api/external/v1/playbooks/ImportDefinitions
+POST /api/external/v1/playbooks/MoveDefinitionsToCategory
+POST /api/external/v1/playbooks/RemoveCategories
+POST /api/external/v1/playbooks/RerunBlock
+POST /api/external/v1/playbooks/RerunPlaybook
+POST /api/external/v1/playbooks/RestoreWorkflowDefinition
+POST /api/external/v1/playbooks/RunPlaybookInDebug
+POST /api/external/v1/playbooks/SaveLogVersionOfWorkflowDefinitions
+POST /api/external/v1/playbooks/SaveWorkflowDefinitions
+GET /api/external/v1/playbooks/action-widget-template
+POST /api/external/v1/playbooks/permissions
+POST /api/external/v1/playbooks/permissions/options
+DELETE /api/external/v1/playbooks/permissions/{identifier}
+GET /api/external/v1/predefined-widgets/cases
+POST /api/external/v1/reports/AddOrUpdateReportSchedule
+POST /api/external/v1/reports/AddOrUpdateReportTemplate
+POST /api/external/v1/reports/AddOrUpdateReportWidget
+GET /api/external/v1/reports/DeleteReportSchedule/{id}
+POST /api/external/v1/reports/DuplicateReportTemplate
+POST /api/external/v1/reports/GenerateReportTemplate
+POST /api/external/v1/reports/GetReportSchedules
+GET /api/external/v1/reports/GetReportTemplates
+POST /api/external/v1/reports/ImportReportTemplate
+GET /api/external/v1/reports/RefreshAdvancedReports
+GET /api/external/v1/reports/RemoveReportTemplate/{templateId}
+GET /api/external/v1/reports/RemoveReportWidget/{widgetId}
+POST /api/external/v1/reports/ShareAdvancedReport
+GET /api/external/v1/resources/DownloadAuditControllerActionsCsv
+GET /api/external/v1/resources/GetActionResultsById/{caseId}/{actionResultId}
+GET /api/external/v1/resources/GetCaseFullDetailsById/{parentId}/{caseId}
+GET /api/external/v1/resources/GetEntityInsightsById/{caseId}/{insightsId}
+POST /api/external/v1/retention/delete-cases
+POST /api/external/v1/retention/system
+POST /api/external/v1/retention/user
+POST /api/external/v1/search/CaseSearchEverything
+POST /api/external/v1/search/EntitySearchEverything
+POST /api/external/v1/search/GetCasesFilterUserAndRoles
+POST /api/external/v1/search/GetCasesFilterValues
+POST /api/external/v1/search/GetEntitiesFilterValues
+POST /api/external/v1/search/GetSearchResultsAsCsv
+POST /api/external/v1/settings/AddCaseStageDefinitionRecord
+POST /api/external/v1/settings/AddCollaboratorRequest
+POST /api/external/v1/settings/AddLicenseAgreementSignature
+POST /api/external/v1/settings/AddOrUpdateCaseAssignmentPolicySettings
+POST /api/external/v1/settings/AddOrUpdateEnvironmentRecords
+POST /api/external/v1/settings/AddOrUpdateModelBlockRecords
+POST /api/external/v1/settings/AddOrUpdateMoveCaseBetweenEnvironmentsPolicySettings
+POST /api/external/v1/settings/AddOrUpdateNetworkDetailsRecords
+POST /api/external/v1/settings/AddOrUpdateRootCauseClose
+POST /api/external/v1/settings/AddOrUpdateTrackingListRecords
+POST /api/external/v1/settings/AddOrUpdateUserProfile
+POST /api/external/v1/settings/AddSlaDefinitionsRecord
+POST /api/external/v1/settings/AddTagDefinitionsRecords
+DELETE /api/external/v1/settings/DeleteCollaboratorRequest/{id}
+POST /api/external/v1/settings/ExportAuditLastWeekAsCsv
+POST /api/external/v1/settings/ExportAuditLastWeekAsCsvV2
+GET /api/external/v1/settings/GetAdvancedReportsSettings
+GET /api/external/v1/settings/GetAllCollaboratorRequests
+GET /api/external/v1/settings/GetAllModelBlockRecords
+POST /api/external/v1/settings/GetAnalysts
+POST /api/external/v1/settings/GetBlockListDetails
+GET /api/external/v1/settings/GetCaseAssigmentPolicySettings
+POST /api/external/v1/settings/GetCaseStageDefinitionRecords
+GET /api/external/v1/settings/GetCollaboratorRequestsByUser
+GET /api/external/v1/settings/GetEnvironmentInstanceUrls
+POST /api/external/v1/settings/GetEnvironments
+GET /api/external/v1/settings/GetLatestLicenseAgreement
+GET /api/external/v1/settings/GetMaximumAlertsGroupingConfiguration
+GET /api/external/v1/settings/GetMoveCaseBetweenEnvironmentsPolicySettings
+POST /api/external/v1/settings/GetNetworkDetails
+GET /api/external/v1/settings/GetProxySettings
+GET /api/external/v1/settings/GetPublicCertificate
+GET /api/external/v1/settings/GetRootCauseCloseRecords
+POST /api/external/v1/settings/GetSlaDefinitions
+GET /api/external/v1/settings/GetSlaDefinitionsRecords
+GET /api/external/v1/settings/GetSystemEventEntityTypes
+GET /api/external/v1/settings/GetSystemVersion
+POST /api/external/v1/settings/GetTagDefinitionsRecords
+GET /api/external/v1/settings/GetTrackingListRecords
+POST /api/external/v1/settings/GetTrackingListRecordsFiltered
+POST /api/external/v1/settings/GetUserImage
+POST /api/external/v1/settings/GetUserProfileCards
+POST /api/external/v1/settings/GetUserProfiles
+POST /api/external/v1/settings/GetUserProfilesByEnvironments
+GET /api/external/v1/settings/IsPermittedToEnvironment/{environmentName}
+POST /api/external/v1/settings/RemoveAllNetworkDetailsRecords
+POST /api/external/v1/settings/RemoveCaseStageDefinitionRecords
+POST /api/external/v1/settings/RemoveEnvironmentRecords
+POST /api/external/v1/settings/RemoveModelBlockRecords
+POST /api/external/v1/settings/RemoveNetworkDetailsRecords
+POST /api/external/v1/settings/RemoveRootCauseClose
+POST /api/external/v1/settings/RemoveSlaDefinitionRecords
+POST /api/external/v1/settings/RemoveTagDefinitionRecords
+POST /api/external/v1/settings/RemoveTrackingListRecords
+POST /api/external/v1/settings/SaveAdvancedReportsSettings
+GET /api/external/v1/settings/TestAdvancedReportsSettings
+POST /api/external/v1/settings/TestProxySettings
+POST /api/external/v1/settings/UpdateAlertGroupingRule
+PUT /api/external/v1/settings/UpdateCollaboratorRequest
+POST /api/external/v1/settings/UpdateUserImage
+POST /api/external/v1/settings/UploadCustomActionResultJson
+POST /api/external/v1/settings/batch-delete-custom-lists
+GET /api/external/v1/settings/environment-load-balancing-status
+GET /api/external/v1/settings/environment-priorities
+PATCH /api/external/v1/settings/environment-priorities/{environment}
+GET /api/external/v1/settings/environment-priorities/{environment}
+GET /api/external/v1/settings/form-dynamic-parameters
+POST /api/external/v1/settings/form-dynamic-parameters
+GET /api/external/v1/settings/form-dynamic-parameters/{id}
+PUT /api/external/v1/settings/form-dynamic-parameters/{id}
+DELETE /api/external/v1/settings/form-dynamic-parameters/{id}
+DELETE /api/external/v1/settings/networks/permitted
+DELETE /api/external/v1/settings/networks/{identifier}
+POST /api/external/v1/settings/reset-environment-priorities
+GET /api/external/v1/settings/tag-definition/names
+POST /api/external/v1/settings/toggle-environment-load-balancing
+POST /api/external/v1/socroles/AddOrUpdateSocRole
+POST /api/external/v1/socroles/DeleteSocRole
+GET /api/external/v1/socroles/GetSocRole/{id}
+GET /api/external/v1/socroles/GetSocRoles
+POST /api/external/v1/socroles/GetSocRolesByEnvironments
+GET /api/external/v1/socroles/HasAssignedUsers/{id}
+POST /api/external/v1/store/ExportUseCase
+GET /api/external/v1/store/GetHtmlViewPresets
+GET /api/external/v1/store/GetIntegrationDependencies/{integrationIdentifier}
+POST /api/external/v1/store/GetIntegrationFullDetails
+GET /api/external/v1/store/GetIntegrationsStoreData
+GET /api/external/v1/store/GetPowerUpsStoreData
+GET /api/external/v1/store/GetReportsStoreData
+GET /api/external/v1/store/GetUsecasesCards
+POST /api/external/v1/store/ReinstallAllIntegrations
+POST /api/external/v1/store/SaveIntegrationConfigurationProperties
+GET /api/external/v1/store/TestIntegration/{integrationInstanceId}
+POST /api/external/v1/warroom/CloseIncident
+POST /api/external/v1/warroom/CreateIncident
+POST /api/external/v1/warroom/CreateWarRoomAssessment
+POST /api/external/v1/warroom/CreateWarRoomComment
+POST /api/external/v1/warroom/CreateWarRoomDecision
+POST /api/external/v1/warroom/CreateWarRoomFact
+GET /api/external/v1/warroom/CreateWarRoomReport/{incidentId}
+POST /api/external/v1/warroom/CreateWarRoomTask
+GET /api/external/v1/warroom/GetChatChannelCards/{incidentId}
+POST /api/external/v1/warroom/GetChatChannelConversation
+GET /api/external/v1/warroom/GetDepartments
+GET /api/external/v1/warroom/GetFilterDepartments/{incidentId}
+GET /api/external/v1/warroom/GetForgotPasswordTimeLimit
+GET /api/external/v1/warroom/GetIncident/{id}
+GET /api/external/v1/warroom/GetIncidentUserById/{id}
+GET /api/external/v1/warroom/GetLastSeverityScore/{id}
+GET /api/external/v1/warroom/GetWarRoomAuditors
+GET /api/external/v1/warroom/GetWarRoomUserForIncident/{incidentId}
+POST /api/external/v1/warroom/GetWarRoomWallItems
+POST /api/external/v1/warroom/SaveSeverityScore
+POST /api/external/v1/warroom/SendChatMessage
+POST /api/external/v1/warroom/UpdateWarRoomAssessment
+POST /api/external/v1/warroom/UpdateWarRoomComment
+POST /api/external/v1/warroom/UpdateWarRoomDecision
+POST /api/external/v1/warroom/UpdateWarRoomFact
+POST /api/external/v1/warroom/UpdateWarRoomTask
+POST /api/external/v1/webhooks-management
+PUT /api/external/v1/webhooks-management
+GET /api/external/v1/webhooks-management/Cards
+GET /api/external/v1/webhooks-management/ExportLogs/{identifier}
+GET /api/external/v1/webhooks-management/Logs
+POST /api/external/v1/webhooks-management/Revoke/{identifier}
+GET /api/external/v1/webhooks-management/{identifier}
+DELETE /api/external/v1/webhooks-management/{identifier}
+GET /api/external/v1/webhooks-management/{identifier}/statistics
+POST /api/external/v1/{tenantId}/configuration-items:batchUpdate
+POST /api/external/v1/{tenantId}/pubsub-backfill:trigger
+[2] Total path+method combinations: 484
+
+[3] Probing all /api/external/ paths (this will take a few minutes)...
+    JSON non-401 responses will be logged to: /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/api-routes-20260617-1057/unauth-json-hits.txt
+
+[1/484] [2/484] [3/484] [4/484] [5/484] [6/484] [7/484] [8/484] [9/484] [10/484] [11/484] [12/484] [13/484] [14/484] [15/484] [16/484] [17/484] [18/484] [19/484] [20/484] [21/484] [22/484] [23/484] [24/484] *** HIT [500] POST /api/external/v1/approval-link/Apply (JSON response, not blocked by auth!)
+{
+    "errorCode": 2000,
+    "errorMessage": "An error has occurred. When reporting the issue to SecOps support, provide the identifier: b57828d0c06546b596eae4259d9b5bf9 and describe the action that has failed.",
+    "innerException": null,
+    "innerExceptionType": null,
+    "correlationId": "b57828d0c06546b596eae4259d9b5bf9"
+}
+---
+[25/484] [26/484] [27/484] [28/484] [29/484] [30/484] [31/484] [32/484] [33/484] [34/484] [35/484] [36/484] [37/484] [38/484] [39/484] [40/484] [41/484] [42/484] [43/484] [44/484] [45/484] [46/484] [47/484] [48/484] [49/484] [50/484] [51/484] [52/484] [53/484] [54/484] [55/484] [56/484] [57/484] [58/484] [59/484] [60/484] [61/484] [62/484] [63/484] [64/484] [65/484] [66/484] [67/484] [68/484] [69/484] [70/484] [71/484] [72/484] [73/484] [74/484] [75/484] [76/484] [77/484] [78/484] [79/484] [80/484] [81/484] [82/484] [83/484] [84/484] [85/484] [86/484] [87/484] [88/484] [89/484] [90/484] [91/484] [92/484] [93/484] [94/484] [95/484] [96/484] [97/484] [98/484] [99/484] [100/484] [101/484] [102/484] [103/484] [104/484] [105/484] [106/484] [107/484] [108/484] [109/484] [110/484] [111/484] [112/484] [113/484] [114/484] [115/484] [116/484] [117/484] [118/484] [119/484] [120/484] [121/484] [122/484] [123/484] [124/484] [125/484] [126/484] [127/484] [128/484] [129/484] [130/484] [131/484] [132/484] [133/484] [134/484] [135/484] [136/484] [137/484] [138/484] [139/484] [140/484] [141/484] [142/484] [143/484] [144/484] [145/484] [146/484] [147/484] [148/484] [149/484] [150/484] [151/484] [152/484] [153/484] [154/484] [155/484] [156/484] [157/484] [158/484] [159/484] [160/484] [161/484] [162/484] [163/484] [164/484] [165/484] [166/484] [167/484] [168/484] [169/484] [170/484] [171/484] [172/484] [173/484] [174/484] [175/484] [176/484] [177/484] [178/484] [179/484] [180/484] [181/484] [182/484] [183/484] [184/484] [185/484] [186/484] [187/484] [188/484] [189/484] [190/484] [191/484] [192/484] [193/484] [194/484] [195/484] [196/484] [197/484] [198/484] [199/484] [200/484] [201/484] [202/484] [203/484] [204/484] [205/484] [206/484] [207/484] [208/484] [209/484] [210/484] [211/484] [212/484] [213/484] [214/484] [215/484] [216/484] [217/484] [218/484] [219/484] [220/484] [221/484] [222/484] [223/484] [224/484] [225/484] [226/484] [227/484] [228/484] [229/484] [230/484] [231/484] [232/484] [233/484] [234/484] [235/484] [236/484] [237/484] [238/484] [239/484] [240/484] [241/484] [242/484] [243/484] [244/484] [245/484] [246/484] [247/484] [248/484] [249/484] [250/484] [251/484] [252/484] [253/484] [254/484] [255/484] [256/484] [257/484] [258/484] [259/484] [260/484] [261/484] [262/484] [263/484] [264/484] [265/484] [266/484] [267/484] [268/484] [269/484] [270/484] [271/484] [272/484] [273/484] [274/484] [275/484] [276/484] [277/484] [278/484] [279/484] [280/484] [281/484] [282/484] [283/484] [284/484] [285/484] [286/484] [287/484] [288/484] [289/484] [290/484] [291/484] [292/484] [293/484] [294/484] [295/484] [296/484] [297/484] [298/484] [299/484] [300/484] [301/484] [302/484] [303/484] [304/484] [305/484] [306/484] [307/484] [308/484] [309/484] [310/484] [311/484] [312/484] [313/484] [314/484] [315/484] [316/484] [317/484] [318/484] [319/484] [320/484] [321/484] [322/484] [323/484] [324/484] [325/484] [326/484] [327/484] [328/484] [329/484] [330/484] [331/484] [332/484] [333/484] [334/484] [335/484] [336/484] [337/484] [338/484] [339/484] [340/484] [341/484] [342/484] [343/484] [344/484] [345/484] [346/484] [347/484] [348/484] [349/484] [350/484] [351/484] [352/484] [353/484] [354/484] [355/484] [356/484] [357/484] [358/484] [359/484] [360/484] [361/484] [362/484] [363/484] [364/484] [365/484] [366/484] [367/484] [368/484] [369/484] [370/484] [371/484] [372/484] [373/484] [374/484] [375/484] [376/484] [377/484] [378/484] [379/484] [380/484] [381/484] [382/484] [383/484] [384/484] [385/484] [386/484] scripts/scan-chronicle-api-routes.sh: line 116: warning: command substitution: ignored null byte in input
+[387/484] [388/484] [389/484] [390/484] [391/484] [392/484] [393/484] [394/484] [395/484] [396/484] [397/484] [398/484] [399/484] [400/484] [401/484] [402/484] [403/484] [404/484] [405/484] [406/484] [407/484] [408/484] [409/484] [410/484] [411/484] [412/484] [413/484] [414/484] [415/484] [416/484] [417/484] [418/484] [419/484] [420/484] [421/484] [422/484] [423/484] [424/484] [425/484] [426/484] [427/484] [428/484] [429/484] [430/484] [431/484] [432/484] [433/484] [434/484] [435/484] [436/484] [437/484] [438/484] [439/484] [440/484] [441/484] [442/484] [443/484] [444/484] [445/484] [446/484] [447/484] [448/484] [449/484] [450/484] [451/484] [452/484] [453/484] [454/484] [455/484] [456/484] [457/484] [458/484] [459/484] [460/484] [461/484] [462/484] [463/484] [464/484] [465/484] [466/484] [467/484] [468/484] [469/484] [470/484] [471/484] [472/484] [473/484] [474/484] [475/484] [476/484] [477/484] [478/484] [479/484] [480/484] [481/484] [482/484] [483/484] [484/484] 
+[4] Checking Swagger for endpoints with explicit security: [] (no-auth override)...
+
+[5] Probing known-public endpoints explicitly...
+scripts/scan-chronicle-api-routes.sh: line 201: warning: command substitution: ignored null byte in input
+  [200][json=no] GET /api/external/v1/settings/GetPublicCertificate
+  [401][json=no] GET /api/external/v1/settings/GetLatestLicenseAgreement
+  [401][json=no] GET /api/external/v1/settings/GetSystemVersion
+  [401][json=no] GET /api/external/v1/warroom/GetForgotPasswordTimeLimit
+  [401][json=no] GET /api/external/v1/warroom/GetDepartments
+  [401][json=no] GET /api/external/v1/store/GetIntegrationsStoreData
+  [401][json=no] GET /api/external/v1/store/GetUsecasesCards
+  [404][json=no] GET /api/external/v1/store/GetMarketplaceCountsData
+
+=== API ROUTE PROBE COMPLETE — 20260617-1057 ===
+Total probes      : 484
+All results (TSV) : /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/api-routes-20260617-1057/all-probes.tsv
+Non-auth JSON hits: 2
+Log               : /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/api-routes-20260617-1057/api-routes.log
+
+REVIEW:
+  1. Non-auth JSON hits (real API data without auth): /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/api-routes-20260617-1057/unauth-json-hits.txt
+  2. 405s in hits file = confirmed real endpoints with wrong method tested
+  3. Any 200 JSON = unauthenticated data exposure → report
+
+NOTE: Re-run with SOAR_TOKEN=<token> to compare authenticated vs unauthenticated responses

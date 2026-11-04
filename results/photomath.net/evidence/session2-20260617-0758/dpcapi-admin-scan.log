@@ -1,0 +1,67 @@
+=== dpcapi-admin DEEP SCAN — 20260617-0758 ===
+IN-SCOPE: dpcapi-admin.photomath.com matches 'dpcapi-admin.photomath.com'
+[*] Phase 1 — Known live path verification
+[200] /healthz
+alive 
+
+
+---
+
+[*] Phase 2 — Standard health/info paths
+[200] /healthz
+alive 
+
+
+---
+
+[*] Phase 3 — API version prefixes
+
+[*] Phase 4 — DPC domain paths (Data Processing/Content)
+
+[*] Phase 5 — Common API doc / debug paths
+
+[*] Phase 6 — API paths derived from portal URL mining (user ID 273638 found)
+
+[*] Phase 7 — Also probe the non-admin DPC API for comparison
+IN-SCOPE: dpcapi.photomath.net matches 'dpcapi.photomath.net'
+--- dpcapi.photomath.net (non-admin, for path comparison) ---
+  [dpcapi.net][000000] /healthz: 
+  [dpcapi.net][000000] /health: 
+  [dpcapi.net][000000] /readyz: 
+  [dpcapi.net][000000] /api: 
+  [dpcapi.net][000000] /api/v1: 
+  [dpcapi.net][000000] /api/v2: 
+  [dpcapi.net][000000] /swagger: 
+  [dpcapi.net][000000] /version: 
+  [dpcapi.net][000000] /api/quiz: 
+  [dpcapi.net][000000] /api/users: 
+  [dpcapi.net][000000] /api/solutions: 
+  [dpcapi.net][000000] /api/problems: 
+
+[*] Phase 8 — Response header inspection on /healthz
+--- Full headers for /healthz ---
+HTTP/2 200 
+date: Wed, 17 Jun 2026 07:59:47 GMT
+content-length: 7
+content-type: text/plain; charset=utf-8
+via: 1.1 google
+alt-svc: h3=":443"; ma=2592000
+
+alive 
+
+=== SCAN COMPLETE — 20260617-0758 ===
+Hits (non-GCLB responses): 10
+Results: /home/gorib/bug-bounty-hunting-/results/photomath.net/evidence/session2-20260617-0758/dpcapi-hits.txt
+Full log: /home/gorib/bug-bounty-hunting-/results/photomath.net/evidence/session2-20260617-0758/dpcapi-admin-scan.log
+
+=== HITS SUMMARY ===
+[200] /healthz
+alive 
+
+
+---
+[200] /healthz
+alive 
+
+
+---

@@ -1,0 +1,121 @@
+=== PHOTOMATH SESSION 2 SCAN — 20260617-0804 ===
+
+[A] argocd-dwh-eu-dev.photomath.net auth probe...
+IN-SCOPE: argocd-dwh-eu-dev.photomath.net matches 'argocd-dwh-eu-dev.photomath.net'
+[A] Response headers...
+HTTP/2 403 
+date: Wed, 17 Jun 2026 08:04:17 GMT
+content-type: text/html; charset=UTF-8
+server: Google Frontend
+content-length: 295
+via: 1.1 google
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+
+[A] ArgoCD API probes...
+[A] ArgoCD /auth/login full response...
+
+<html><head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<title>403 Forbidden</title>
+</head>
+<body text=#000000 bgcolor=#ffffff>
+<h1>Error: Forbidden</h1>
+<h2>Your client does not have permission to get URL <code>/auth/login</code> from this server.</h2>
+<h2></h2>
+</body></html>
+[A] ArgoCD JS bundle secrets check...
+[A] JS bundles found: 0
+
+[B] New subdomain probes...
+
+[B] === idp.photomath.net ===
+[B] Headers...
+  [B] connection failed
+[B] Follow redirects...
+  Final URL: https://idp.photomath.net/ -> HTTP 000failed
+[B] Response body preview...
+  (empty)
+
+[B] === glooker.photomath.net ===
+[B] Headers...
+  [B] connection failed
+[B] Follow redirects...
+  Final URL: https://glooker.photomath.net/ -> HTTP 000failed
+[B] Response body preview...
+  (empty)
+
+[B] === cms.photomath.net ===
+[B] Headers...
+  [B] connection failed
+[B] Follow redirects...
+  Final URL: https://cms.photomath.net/ -> HTTP 000failed
+[B] Response body preview...
+  (empty)
+
+[B] Looker API probe on glooker.photomath.net...
+  [000000] /api/4.0/user: 
+  [000000] /api/4.0/users: 
+  [000000] /api/4.0/content/search: 
+  [000000] /api/4.0/look/1: 
+  [000000] /api/4.0/dashboard/1: 
+  [000000] /api/4.0/connections: 
+  [000000] /api/3.1/user: 
+  [000000] /api/3.1/connections: 
+  [000000] /login: 
+  [000000] /swagger.json: 
+  [000000] /api/swagger.json: 
+  [000000] /healthz: 
+  [000000] /health: 
+
+[C] Secondary API subdomains deeper probe...
+[C] === lapi.photomath.net ===
+  [404] /: response 404 (backend NotFound), service rules for the path non-existent 
+  [200] /healthz: alive 
+  [404] /health: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /readyz: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api/v1: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api/v2: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /version: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /status: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /swagger: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /openapi.json: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /graphql: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /login: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /auth: response 404 (backend NotFound), service rules for the path non-existent 
+[C] === tlapi.photomath.net ===
+  [404] /: response 404 (backend NotFound), service rules for the path non-existent 
+  [200] /healthz: alive 
+  [404] /health: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /readyz: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api/v1: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api/v2: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /version: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /status: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /swagger: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /openapi.json: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /graphql: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /login: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /auth: response 404 (backend NotFound), service rules for the path non-existent 
+[C] === taportal.photomath.net ===
+
+[D] portal.photomath.net JS mining (with browser User-Agent)...
+IN-SCOPE: portal.photomath.net matches 'portal.photomath.net'
+[D] Portal still blocking Pi (ERR_EMPTY from curl too)
+
+[E] github.com/photomath public repos...
+[E] 0 public repos
+[E] trufflehog scan...
+
+=== SESSION 2 SCAN COMPLETE — 20260617-0804 ===
+scripts/scan-photomath-session2.sh: line 225: /home/gorib/bug-bounty-hunting-/results/photomath.net/evidence/session2-20260617-0804/argocd-hits.txt: No such file or directory
+ArgoCD hits    : 0
+ArgoCD JS      : 0 strings
+glooker hits   : 13
+scripts/scan-photomath-session2.sh: line 228: /home/gorib/bug-bounty-hunting-/results/photomath.net/evidence/session2-20260617-0804/portal-js-strings.txt: No such file or directory
+Portal JS      : 0 strings
+GitHub repos   : 0
+Log            : /home/gorib/bug-bounty-hunting-/results/photomath.net/evidence/session2-20260617-0804/session2-scan.log
+
+NEXT: git add results/photomath.net/evidence/session2-20260617-0804/ && git push

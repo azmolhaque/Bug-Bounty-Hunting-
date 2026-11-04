@@ -1,0 +1,14 @@
+  [404] /: response 404 (backend NotFound), service rules for the path non-existent 
+  [200] /healthz: alive 
+  [404] /health: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /readyz: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api/v1: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /api/v2: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /version: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /status: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /swagger: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /openapi.json: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /graphql: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /login: response 404 (backend NotFound), service rules for the path non-existent 
+  [404] /auth: response 404 (backend NotFound), service rules for the path non-existent 

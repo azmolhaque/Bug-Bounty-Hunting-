@@ -1,0 +1,642 @@
+# H12 — Business sharing surface, mapped from the Business SDK
+
+Built 2026-09-25 from `github.com/facebook/facebook-python-business-sdk`
+(`facebook_business/adobjects/`, 1112 generated objects). The SDK is generated from Meta's
+internal API spec, so this is the real edge list, not the documentation's curated subset.
+
+**Zero requests sent to Meta.** Source reading only. No accounts required to produce this.
+
+---
+
+## The sharing model, as the API actually implements it
+
+`/business` carries **four parallel asset families**. Understanding that they are parallel
+is the whole point — each one is a separate authorization decision, and they were clearly
+added at different times.
+
+| Family | Meaning | Edges |
+|---|---|---|
+| `owned_*` | assets this business owns | `owned_ad_accounts`, `owned_apps`, `owned_businesses`, `owned_instagram_accounts`, `owned_instagram_assets`, `owned_offsite_signal_container_business_objects`, `owned_pages`, `owned_pixels`, `owned_product_catalogs`, `owned_whats_app_business_accounts` |
+| `client_*` | assets shared **to** this business (it acts as agency) | `client_ad_accounts`, `client_apps`, `client_instagram_assets`, `client_offsite_signal_container_business_objects`, `client_pages`, `client_pixels`, `client_product_catalogs`, `client_whats_app_business_accounts` |
+| `pending_*` | grants in flight, **both directions** | `pending_client_ad_accounts`, `pending_client_apps`, `pending_client_pages`, `pending_owned_ad_accounts`, `pending_owned_pages`, `pending_shared_offsite_signal_container_business_objects`, `pending_users` |
+| relationship | business-to-business links | `agencies`, `clients`, `managed_businesses`, `managed_partner_businesses`, `owned_businesses` |
+
+Note the asymmetry: **`client_*` has eight asset types, `pending_*` has five.** Three asset
+types can be shared but have no pending-state edge exposed. Asymmetries in a generated API
+are where the hand-written authorization checks diverge.
+
+## The state machine — the single most promising construct
+
+`BusinessAssetSharingAgreement` (`businessassetsharingagreement.py`):
+
+```
+Fields:  initiator · recipient · relationship_type · request_type · request_status
+
+RequestStatus: PENDING · IN_PROGRESS · APPROVE · DECLINE · CANCELED · EXPIRED
+               PENDING_EMAIL_VERIFICATION · PENDING_INTEGRITY_REVIEW
+               MMA_DIRECT_ASSETS_{PENDING,APPROVED,DECLINED,EXPIRED}
+```
+
+Twelve states, two parties, and an explicit `initiator` / `recipient` split. A two-party
+state machine with twelve states is the highest-yield authorization target on this surface.
+
+Paired request edges on `/business`:
+- `initiated_audience_sharing_requests`
+- `received_audience_sharing_requests`
+
+## Ranked targets
+
+Each tied to a **published** payout sub-tier. Numbers from `00-PROGRAM.md`.
+
+### T1 — Self-approval of a sharing agreement · *business & page take-over, $50k*
+
+`request_status` is a writable-looking field on an object that names its own `initiator`
+and `recipient`. Test whether the **recipient** can drive the status to `APPROVE` directly,
+rather than the initiator granting it. If the check is "are you a party to this agreement"
+rather than "are you the party entitled to *this* transition", it falls.
+
+### T2 — Revocation that does not revoke · *Ads Audience $7.5k / page admin disclosure $5k*
+
+Six of the twelve states are terminal-negative: `DECLINE`, `CANCELED`, `EXPIRED`,
+`MMA_DIRECT_ASSETS_{DECLINED,EXPIRED}`. For each, establish access, drive to that state,
+then re-issue the **same token** against the asset. Stale authorization after revocation is
+clean, cheap to demonstrate, and hard to argue is intended.
+
+*Carry the Adobe lesson: prove revocation against the Graph API JSON, never against a page
+that returns 200 because it is a JS shell.*
+
+### T3 — Access before verification · *business & page take-over, $50k*
+
+`PENDING_EMAIL_VERIFICATION` and `PENDING_INTEGRITY_REVIEW` are states that exist
+specifically to gate access behind a check. Does the grant function while in them? If yes,
+both gates are decorative.
+
+### T4 — Audience reachable outside the sharing relationship · *Ads Audience, $7.5k*
+
+Meta's own wording is *"being able to use audiences outside of shared relationships between
+businesses."* `CustomAudience` exposes `get_shared_account_info`, plus
+`get_ad_accounts` / `create_ad_account` / `delete_ad_accounts` — an audience is bound **to
+ad accounts**, and ad accounts are shared **to businesses**. Two hops, two different grant
+systems, one of which predates the other. Test whether binding an unshared audience to a
+shared ad account leaks it across the boundary.
+
+`CustomAudienceSharingStatus` carries only `sharing_relationship_id` + `status` — a thin
+object. Check whether `sharing_relationship_id` is validated against the caller at all.
+
+### T5 — System user tokens across the boundary · *developer platform privacy assertions, $25k*
+
+`create_system_user_access_token` mints a token bound to a system user, which is itself
+scoped by `AssignedUser` (`business`, `user_type`). A system user in the agency business
+holding a token — does its reach honour per-asset assignment, or per-business relationship?
+This is the closest analogue to the Exoscale `parameters.bucket` binding work.
+
+### T6 — Nested tenancy · *business & page take-over, $50k*
+
+`create_owned_business`, `create_managed_business`, `create_managed_partner_business`,
+`get_owned_businesses`. Businesses can own businesses. Every nesting level is a chance for
+an authorization check to test the wrong ancestor. Does a grant to a parent implicitly reach
+a child, or vice versa?
+
+### T7 — Shared phone numbers · *contact point deanonymization, $10k*
+
+`create_share_pre_verified_number`, `delete_share_pre_verified_numbers`,
+`get_pre_verified_numbers`. Phone numbers shared **between businesses**. A contact point
+crossing a tenant boundary is simultaneously an access-control bug and a deanonymization
+bug, and Meta pays for the latter separately.
+
+---
+
+## What this does and does not give us
+
+It gives us the complete attack list before spending a single authenticated request, so the
+first token-holding session is execution rather than exploration. It is the Exoscale play —
+build the surface from vendor SDK source rather than docs — applied to a target that is not
+a security vendor.
+
+It gives us **no finding**. Every T above is a hypothesis. None can be tested without two
+accounts, two businesses and a live sharing relationship.
+
+## Next action
+
+Account creation is now the only blocker. Phase 1 of `H12-PROCEDURE.md`, unchanged:
+two test accounts → two businesses → share **one Page at the narrowest role** → everything
+else stays unshared as negative controls.
+
+Then T1–T7 in order, one variable at a time, with the positive control, negative baseline,
+token-debugger provenance and catch-all sentinel from Phase 2 in place before the first
+attack request.
+
+---
+
+## Addendum — 2026-09-25, second SDK pass
+
+### T1 is a one-request test
+
+`BusinessAssetSharingAgreement.api_update` exists, and its entire parameter spec is:
+
+```python
+param_types = { 'request_response': 'string' }
+request = FacebookRequest(node_id=self['id'], method='POST', endpoint='/')
+```
+
+So approving or declining a business asset sharing agreement is:
+
+```
+POST /v23.0/<agreement_id>
+     request_response=<...>
+```
+
+**One string parameter, on a node addressed by ID alone.** Nothing in the request states
+who the caller is relative to the agreement — the `initiator` / `recipient` split is
+entirely implicit in the token. That is exactly the shape where a server checks *"are you a
+party to this agreement"* rather than *"are you the party entitled to make this
+transition."*
+
+This upgrades T1 from a hypothesis to a minimal, single-request PoC. If the recipient can
+POST `request_response` and drive the agreement to approval, that is an unauthorized
+cross-business grant — *business & page take-over, up to $50k*.
+
+Test order once tokens exist: B attempts the transition that only A should be able to make,
+and A attempts the one that only B should. Both directions, because the check may exist on
+one side only.
+
+### Permission vocabulary — hypothesis checked, comes back weak
+
+`Page` exposes two enum classes, `PermittedTasks` and `Tasks`. Both hold **29 entries**,
+both include the same **14** `PROFILE_PLUS_*` values. They are mirrors used in different
+parameter positions (granting versus filtering), not two competing vocabularies.
+
+So the "grant in one vocabulary, check in the other" idea does **not** hold. Recorded as a
+closed negative rather than left implied — it looked promising on first read and it is not.
+
+The 29-value task list is still useful as the granularity axis for T1/T2: it is a wide
+surface, and `PROFILE_PLUS_FULL_CONTROL` sitting in the same enum as `ANALYZE` means the
+distance between the narrowest and widest grant is large.
+
+`business.py` carries `PermittedTasks` but no `Tasks` class — a small asymmetry, noted, not
+yet meaningful.
+
+### Environment limit
+
+The agent container's egress proxy denies `graph.facebook.com`, so **no request to Meta can
+originate from the agent side.** All live probing runs from the operator's terminal. Source
+mining, which is where the value has been, is unaffected.
+
+---
+
+## Unauthenticated probe — API version liveness. 2026-09-25, operator terminal
+
+Nine requests, no auth, no account, no user data touched.
+`GET https://graph.facebook.com/v<X>/me` with no token.
+
+| Version | Response |
+|---|---|
+| v3.0 · v5.0 · v8.0 · v10.0 · v12.0 · v15.0 · v18.0 · v20.0 · v23.0 | **all identical** |
+
+```json
+{"error":{"message":"An active access token must be used to query information about the current user.",
+          "type":"OAuthException","code":2500,"fbtrace_id":"..."}}
+HTTP 400
+```
+
+**Every version back to v3.0 (April 2018) is accepted.** None is rejected as unsupported —
+the API asks for a token rather than refusing the version.
+
+Also recorded, from the bare root with no version and no path:
+
+```json
+{"error":{"message":"Unsupported get request. ...","type":"GraphMethodException",
+          "code":100,"error_subcode":33}}
+```
+
+### What this proves, and what it does not
+
+**Proves:** the version path is accepted, at least eight years back.
+
+**Does not prove:** that old *semantics* are served. Meta may route every one of these to the
+current backend and merely tolerate the version string in the path. That distinction cannot
+be resolved without a token, so this is a **mapped precondition, not a finding** (FO-8/11 —
+a reachable endpoint is not a boundary crossing).
+
+### Why it is worth having
+
+It adds a **version axis** to every target T1–T7. `BusinessAssetSharingAgreement` and the
+partner-sharing model postdate v3.0 by years. Each hypothesis therefore gets run twice —
+against v23.0 and against the oldest accepted version — on the theory that an authorization
+check added to the current handler may not exist on the legacy path.
+
+This doubles the test matrix for no extra account cost and is the kind of
+operation-others-skip that the selection rubric identifies as the operator's edge.
+
+### Two baselines banked for later
+
+Both are needed to recognise a bypass when one appears:
+
+- `OAuthException / code 2500` — no token supplied.
+- `GraphMethodException / code 100 / error_subcode 33` — Meta's **unified** "object does not
+  exist **or** you cannot see it". They deliberately collapse those two cases so the API
+  cannot be used as an existence oracle. Any response that *differs* from subcode 33 on an
+  object we should not be able to see is itself the signal.
+
+### Open
+
+Find the floor — probe v1.0, v2.0, v2.5, v2.8, v2.12. Anything below v3.0 predates Meta's
+post-2018 permissions lockdown entirely.
+
+### Control test — is the version string actually validated? 2026-09-25
+
+The v1.0-is-live result looked too good, so it was controlled before being carried forward.
+A version from 2010 answering is more plausibly *no validation* than *fifteen-year-old
+semantics still served*. Four requests with versions that have never existed:
+
+| Probe | Response | Reading |
+|---|---|---|
+| `v99.0`, `v7.3`, `v42.9` | `Unknown path components: \/me` (OAuthException 2500) | **not** parsed as a version — the string is taken as a node, and `/me` beneath it is unknown |
+| `v0.1` | `An active access token must be used…` | parsed as a **valid version** |
+| no version at all | `An active access token must be used…` | defaults to current |
+
+**Validation is real.** The earlier liveness result therefore stands on its own terms:
+v1.0 through v23.0 are genuinely accepted versions, not path normalisation. The version axis
+on T1–T7 is worth the doubled test matrix.
+
+The prediction going in was the opposite — that `v99.0` would answer like the rest and the
+legacy hypothesis would die. It did not. Four requests turned a guess into a fact, which is
+FO-17 working as intended rather than being learned the expensive way.
+
+#### A free enumeration oracle
+
+The two error strings discriminate cleanly, with no token:
+
+- `Unknown path components: \/me` → version string not recognised
+- `An active access token must be used…` → version recognised
+
+That enumerates Meta's entire accepted-version set unauthenticated. It is **not** a finding —
+supported API versions are public documentation, so nothing is disclosed that is not already
+published. It is a mapping tool for choosing which legacy paths to re-run T1–T7 against.
+
+#### Open — the `v0.1` anomaly
+
+`v0.1` parses as a version. Either it is a real ancient entry, or low/unrecognised versions
+clamp to the oldest supported. Discriminator: `v2.12` was the last v2 release and `v3.3` the
+last v3. If `v2.13` and `v3.4` are rejected while `v2.12` and `v3.3` are accepted, the set is
+a precise allowlist of real versions and `v0.1` is a genuine target. If they are accepted, it
+is a range clamp and `v0.1` means nothing.
+
+#### Resolved — precise allowlist, with one anomaly at major version 0
+
+| Accepted | Rejected | Known release history |
+|---|---|---|
+| `v2.12` | `v2.13` | v2.12 was the last v2 release |
+| `v3.3` | `v3.4` | v3.3 was the last v3 release |
+| `v7.0` | `v7.1` | v7.0 was the only v7 |
+| `v0.0`, `v0.9` | — | **no v0.x has ever existed** |
+
+Three clean boundary pairs. The set is a **precise allowlist of genuinely released
+versions** — Meta rejects plausible-but-nonexistent minors exactly. So the liveness result is
+confirmed a second time: v1.0 through v23.0 are really served, and the version axis on T1–T7
+is worth running.
+
+The anomaly: the allowlist is exact for v1 and above, and **loose for major version 0** —
+any minor is accepted.
+
+**This is not a finding.** Attacker gain is nil: `v0.x` almost certainly resolves to the
+default, i.e. the *current* version, which is the most restrictive path available. Nothing is
+bypassed and there is nothing to report. Recorded only because it implies one concrete
+authenticated test.
+
+**The test it implies:** does `v0.0` route to *current* or to *oldest*? If it silently
+resolves to the oldest supported version, it is an undocumented route into legacy semantics
+and belongs in front of every T1–T7 legacy run. Settle it in three requests once a token
+exists — compare field availability across `v0.0`, `v1.0` and `v23.0` and see which `v0.0`
+matches.
+
+---
+
+## Unauthenticated phase: closed
+
+Everything testable without an account has now been tested. Result: **no findings, and no
+leads left open that a token would not be required to pursue.** That is the correct outcome —
+the phase existed to build the map and the baselines, not to produce a bug.
+
+Carried into the authenticated session:
+
+1. Seven ranked targets (T1–T7), each against a published payout tier.
+2. T1 reduced to a single request: `POST /<agreement_id>` with `request_response`, run in
+   **both** directions.
+3. A confirmed version axis — every target re-run against a legacy version.
+4. Two error baselines: `OAuthException 2500` (no token) and `GraphMethodException 100 /
+   subcode 33` (Meta's unified does-not-exist-or-not-permitted). A deviation from subcode 33
+   on an object we should not see is itself the signal.
+5. One open routing question on `v0.0`.
+6. Two closed negatives recorded rather than left implied: the `PermittedTasks`/`Tasks`
+   vocabulary idea, and the initial assumption that version strings were unvalidated.
+
+Blocker is account creation. Nothing further can be learned without it.
+
+---
+
+## t1 — full version allowlist enumerated. 2026-09-25
+
+**50 accepted versions**, matching Meta's real release history exactly for v1 and above:
+
+```
+v1.0
+v2.0 … v2.12     (13)
+v3.0 … v3.3      (4)
+v4.0 … v25.0     (22, majors only)
+v0.0 … v0.9      (10)   <-- anomaly
+```
+
+Boundary rejections already confirmed: `v2.13`, `v3.4`, `v7.1`, `v7.3`, `v42.9`, `v99.0`.
+The allowlist is precise. Two observations worth carrying:
+
+- **v0.0 through v0.9 all accepted**, and no v0.x was ever released. Major version 0 accepts
+  any minor. Still not a finding — it almost certainly resolves to current — but the
+  routing question stands for the authenticated session.
+- **v24.0 and v25.0 accepted.** Check these against Meta's published current version. If
+  either is undocumented, an unreleased version is routable, which can expose pre-release
+  fields on objects. Cheap to confirm, worth confirming.
+
+## t2 — root path recognition. Filter was wrong; three response classes found
+
+The probe filtered on `Unknown path components`, which is the error for a bad *version*
+segment. At the root Meta answers differently, so the filter passed nearly all 525 names.
+Author error, corrected in the script.
+
+The noise was still informative. Root paths fall into **three** classes, not two:
+
+| Class | Response | Meaning |
+|---|---|---|
+| 1 | `Unsupported get request. Object with ID 'x' does not exist, cannot be loaded…` (100 / 33) | string treated as an unknown **node ID** — noise |
+| 2 | `Unsupported get request. Please read the Graph API documentation` (GraphMethodException, **no** object-ID text) | recognised, GET unsupported |
+| 3 | `(#200) Provide valid app ID` (OAuthException 200) | **recognised as a real root endpoint** |
+
+Class 3 hits so far: `adlabels`, `advideos`, `audiences`.
+Class 2 hits so far: `ad_custom_derived_metrics`, `adaccount`.
+
+Class 3 is the target. Those are root-level endpoints the API genuinely resolves and which
+ask for an app ID rather than denying the path — meaning there is a handler behind them that
+was reached before authentication was demanded. Enumerating the full class-3 set gives the
+list of root endpoints reachable without a node ID, which is where an authorization check is
+most likely to have been attached to the node rather than the route.
+
+Filter corrected to exclude class 1 only. Re-run pending.
+
+### t2 re-run — 37 of 525 root paths recognised. 2026-09-25
+
+Six response classes, not the three predicted. The class tells us **how far into the stack
+the unauthenticated request travelled**, which is the whole point:
+
+| Class | Endpoints | Depth reached |
+|---|---|---|
+| `(#200) Provide valid app ID` | adlabels · advideos · audiences · batch · captions · children · collaborators · destinations · flows · health · history · lightads · shops · steps · tagged | route resolved, app ID demanded |
+| `(#104) An access token is required` | **businesses · pages · subscriptions** · fundraisers · notification_messages_dev_support | root-level collection, user token demanded |
+| `GraphMethodException` (no object-ID text) | adaccount · feed · photos · threads · status · sharedposts · commerce_merchant_settings · partner_account_linking · cpas_lsb_image_bank · ad_custom_derived_metrics · third_party_measurement_report_dataset | recognised, GET unsupported |
+| `(#2) Service temporarily unavailable`, `is_transient:true` | **payment_configuration · payment_configurations · payment_transactions** · light_campaigns | reached a backend that then failed |
+| `(#1) An unknown error has occurred` | comments | unhandled exception |
+| `(#100) For field 'generatepreviews': The parameter ad_format is required` | **generatepreviews** | **past auth, into parameter validation** |
+
+#### P1 — `generatepreviews`
+
+The only endpoint of 525 that answered an unauthenticated GET with a **parameter**
+complaint rather than an auth complaint. It did not ask for a token or an app ID; it asked
+for `ad_format`. Either the auth check runs after parameter validation, or it does not run
+on this route.
+
+Next: supply `ad_format` and see what the following error is. If it then demands a token or
+a creative, this is merely error ordering and it dies. If it proceeds, it is an
+unauthenticated ad-preview generation endpoint.
+
+#### P2 — payment endpoints returning `(#2) is_transient`
+
+`payment_configuration`, `payment_configurations`, `payment_transactions` and
+`light_campaigns` return a transient backend failure rather than an auth denial. An
+unauthenticated request that reaches a payment backend far enough to make it fail is worth
+establishing as stable or genuinely transient. Retry several times: if it is stable, the
+route is dispatching to a payment service before authenticating.
+
+#### P3 — `comments` returning `(#1) An unknown error has occurred`
+
+An unhandled exception on an unauthenticated request. Same question as P2 — stable or not.
+
+#### P4 — root collections at `(#104)`
+
+`/v23.0/businesses`, `/v23.0/pages`, `/v23.0/subscriptions` exist as **root** collections and
+demand a user token. Normally these are reached as `/me/businesses`. A root-level collection
+of businesses is directly relevant to T1–T7: the question for the authenticated session is
+what `/businesses` returns with a token, and whether it scopes to the caller.
+
+**Discipline note:** none of the above is a finding. Every one is an error message, and an
+error message is a precondition (FO-8/11). They are ranked leads for the authenticated
+session, and P1 is the only one testable further without an account.
+
+### P1 `generatepreviews` — CLOSED, clean negative. 2026-09-25
+
+The parameter chain advanced exactly as an unauthenticated walk would:
+
+| Request | Response |
+|---|---|
+| `?` (nothing) | `(#100) The parameter ad_format is required` |
+| `?ad_format=INVALID_XYZ` | `(#100) ad_format must be one of: AUDIENCE_NETWORK_INSTREAM_VIDEO, …` |
+| `?ad_format=DESKTOP_FEED_STANDARD` | `(#100) The parameter creative is required` |
+| `?ad_format=DESKTOP_FEED_STANDARD&creative={}` | **`(#104) An access token is required to request this resource.`** |
+| `?ad_format=…&creative={"x":1}` | **`(#104) An access token is required to request this resource.`** |
+
+The enum error on `INVALID_XYZ` proves the parameter was genuinely parsed rather than
+echoed, so the walk was real. But once the required parameters are satisfied, the route
+demands a token.
+
+**Auth is enforced. It simply runs after parameter validation.** That is error ordering, not
+an authorization gap. Nothing is disclosed by it — the enum values it leaks are public
+documentation.
+
+Closed. No finding, nothing to report, and the planned authenticated follow-up (preview our
+own creative with no token) is dropped with it — the answer is already known.
+
+### P2 / P3 — CLOSED, stable errors with no data
+
+`payment_configuration`, `payment_transactions`, `light_campaigns` returned
+`(#2) Service temporarily unavailable, is_transient:true` **identically across three runs
+each**, and `comments` returned `(#1) An unknown error has occurred` identically across
+three. `is_transient` is therefore inaccurate — these are not load failures, they are how
+those routes fail. No data is returned and nothing is disclosed. Not findings. Dropped.
+
+---
+
+## Unauthenticated phase: exhausted
+
+Second and final close, this time with every lead resolved rather than merely listed.
+
+**Findings: zero.** That is the expected outcome. A fifteen-year-old program with thousands
+of full-time researchers does not leave an unauthenticated bug on a root path. The phase
+existed to build a map and a set of baselines, and it did.
+
+**What it produced, all of which transfers to the authenticated session:**
+
+1. Seven ranked targets (T1–T7), each against a published payout tier.
+2. T1 reduced to one request — `POST /<agreement_id>` with `request_response`, both directions.
+3. A confirmed version axis — 50 accepted versions, precise allowlist, boundaries proven.
+4. 37 recognised root paths out of 525, sorted into six response classes by how deep the
+   request travels. **P4 survives as a real authenticated target**: `/businesses`, `/pages`
+   and `/subscriptions` exist as root collections returning `(#104)`. What `/businesses`
+   returns with a token, and whether it scopes to the caller, bears directly on T1–T7.
+5. Error baselines for recognising a later bypass: `2500` (no token), `104` (token required),
+   `100/33` (Meta's unified does-not-exist-or-not-permitted), `200` (app ID required).
+
+**Closed negatives recorded rather than left implied:** the `PermittedTasks`/`Tasks`
+vocabulary idea, the assumption that version strings were unvalidated, `generatepreviews`,
+and the P2/P3 transient errors. Four dead ends written down with their reasoning, so none of
+them gets re-walked.
+
+**Blocker: account creation. There is no further unauthenticated work worth doing.**
+
+---
+
+## Write-side parameters, mined from the SDK — sharpens T5, T6, T7
+
+The read surface was mapped first; these are the **grant** operations, and they are where the
+authorization decisions actually get made.
+
+### `POST /{business-id}/client_pages` — `create_client_page`
+
+```
+page_id         : int
+permitted_tasks : list<permitted_tasks_enum>
+```
+
+A business claims a client page by **caller-supplied `page_id`**, with a caller-supplied task
+list. The direct question for the authenticated session: can business B post a `page_id` it
+was never granted? This is a write, so it runs only against a Page we own, from the business
+that was **not** given it.
+
+### `POST /{business-id}/access_token` — `create_system_user_access_token` · **strongest T5 refinement**
+
+```
+asset          : list<unsigned int>
+scope          : list<Permission>
+system_user_id : unsigned int
+fetch_only     : bool
+```
+
+**`asset` is a caller-supplied list of asset IDs**, and `scope` a caller-supplied permission
+list. This is structurally identical to the Exoscale `parameters.bucket` binding problem:
+does the server verify that every ID in `asset` is genuinely assigned to that system user, or
+does it mint a token against the list it was handed? Same question for `scope` against what
+the system user actually holds.
+
+Test with our own assets only: mint a token naming an asset the system user was never
+assigned, then check with the Access Token Debugger what the resulting token actually carries.
+
+### `POST /{business-id}/share_preverified_numbers` — `create_share_pre_verified_number` · T7
+
+```
+partner_business_id : string
+preverified_id      : string
+```
+
+Two caller-supplied IDs and no third binding. Cross-business phone-number sharing where both
+sides of the relationship are parameters. Contact point deanonymization pays $10k separately
+from the access-control angle.
+
+### `POST /{business-id}/managed_partner_businesses` — T6
+
+Large parameter set, including `credit_limit`, `line_of_credit_id`, `catalog_id` and
+`active_ad_account_id`. **`line_of_credit_id` is caller-supplied** — whether a child business
+can be created referencing a credit line belonging to someone else is worth one careful test
+against our own line.
+
+### `POST /{business-id}` — `Business.api_update`
+
+```
+entry_point · name · primary_page · timezone_id · two_factor_type · vertical
+```
+
+**`two_factor_type` is a security control** — it governs whether business users must use 2FA.
+If an agency can write it on a client business, that is a security-control downgrade across a
+tenant boundary. `primary_page` is also writable.
+
+---
+
+## t3 — root paths on legacy versions. Added 2026-09-25
+
+t2 only ever ran against v23.0. With 50 accepted versions this was an obvious gap, and
+calling the phase exhausted before closing it was premature — the same error as claiming a
+control absent after searching one file (FO-16).
+
+`bash probe-unauth.sh t3 1.0` re-runs the 525 names against a legacy version and diffs
+against the v23.0 baseline.
+
+**The interesting set is "ONLY on v1.0"** — a root path that resolves on a legacy version and
+not on the current one is a legacy route still reachable, and legacy routes are where an
+authorization check added later may never have been applied. "ONLY on v23.0" is expected
+(endpoints added since) and low interest.
+
+### t3 result — legacy routing is identical. The version axis is demoted
+
+```
+-- v1.0 recognised: 37   v23.0 recognised: 37
+== ONLY on v1.0  : (empty)
+== ONLY on v23.0 : (empty)
+```
+
+The same 525 names produce the **same 37 recognised root paths** on a 2010 version and on
+the current one, with no difference in either direction.
+
+**Root-level routing does not vary by version.** The version string is validated against a
+precise allowlist and then, at least for path resolution, ignored.
+
+This is a useful negative because it costs us work rather than earning it. The plan said to
+re-run every one of T1–T7 against a legacy version — roughly doubling the authenticated test
+matrix. On this evidence that is mostly wasted effort.
+
+**The axis is not dead, but it is demoted and gated.** Root-path recognition is a coarse
+probe; a version could still change *field availability* or *behaviour* on an authenticated
+request while routing identically. That is untestable without a token. So:
+
+> **Gate first.** One cheap check at the start of the authenticated session — `GET` our own
+> business on v1.0 and on v23.0 and diff the returned fields. If they differ, version
+> selects different handler behaviour and the axis is real, so run it. If identical, drop
+> the version axis entirely and halve the test matrix.
+
+One request pair decides it. Do not run the doubled matrix on spec.
+
+### Raw codegen specs — no additional surface
+
+`github.com/facebook/facebook-business-sdk-codegen`, `api_specs/specs/*.json`, 1105 spec
+files parsed recursively for every `endpoint` value:
+
+```
+raw-spec endpoints: 525   python-SDK edges: 525   NEW: 0
+```
+
+Exactly identical. The Python SDK is a complete rendering of Meta's own spec, so the edge
+list already in hand is the whole generated surface. `versions.json` and `version_path.json`
+in that repo are codegen feature flags and SDK release paths — nothing to do with API
+versions. `EndpointDecodeDict.txt` is a 461-word dictionary for splitting endpoint names.
+
+Checked and closed rather than assumed.
+
+---
+
+## Terminal work: complete
+
+Stated with justification this time rather than as an assertion. The phase was declared
+finished twice and was wrong twice; each remaining idea has now been run rather than
+dismissed:
+
+| Idea | Result |
+|---|---|
+| Version allowlist | 50 accepted, boundaries proven |
+| Root paths @ v23.0 | 37 of 525, six response classes |
+| Root paths @ v1.0 | identical to v23.0 — version axis demoted |
+| `generatepreviews` chain | auth enforced after parameter validation — closed |
+| Payment / `comments` errors | stable, no data — closed |
+| Raw codegen specs | identical to the SDK — no new surface |
+| SDK read surface | mapped: four asset families, 12-state agreement |
+| SDK write surface | mapped: `asset` list, `two_factor_type`, the grant params |
+
+**Five closed negatives** now carry their reasoning: the vocabulary idea, the
+version-validation assumption, `generatepreviews`, the P2/P3 errors, and the legacy-routing
+axis. None of them gets re-walked.
+
+Everything remaining requires a token. Next session opens with account creation.

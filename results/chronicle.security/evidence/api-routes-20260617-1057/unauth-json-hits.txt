@@ -1,0 +1,2 @@
+POST	/api/external/v1/approval-link/Apply	500	{"errorCode":2000,"errorMessage":"An error has occurred. When reporting the issue to SecOps support, provide the identifier: b57828d0c06546b596eae4259d9b5bf9 and describe the action that has failed.","innerException":null,"innerExceptionType":null,"correlationId":"b57828d0c06546b596eae4259d9b5bf9"}
+

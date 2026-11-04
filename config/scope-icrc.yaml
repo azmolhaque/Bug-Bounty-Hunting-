@@ -1,0 +1,29 @@
+# scope-icrc.yaml — ICRC Vulnerability Disclosure Program
+# Program: https://www.icrc.org/en/responsible-disclosure
+# Scope: *.icrc.org — authorized VDP
+# Date loaded: 2026-06-20
+
+program: "ICRC Vulnerability Disclosure Program"
+platform: "Direct VDP"
+handle: ""
+report_url: "https://www.icrc.org/en/responsible-disclosure"
+
+in_scope:
+  - "*.icrc.org"
+  - "icrc.org"
+
+out_of_scope:
+  # No specific exclusions listed; honor safety rules from task brief:
+  # - No DoS, no brute-force, no destructive actions
+  # - Do NOT access paths that could expose victim/detainee/missing persons data
+
+rules:
+  max_requests_per_second: 1
+  identifying_header: ""
+  forbidden_techniques:
+    - "denial of service / load testing / service degradation"
+    - "accessing victim/detainee/missing persons data"
+    - "brute-force of any kind"
+    - "destructive actions"
+    - "automated mass exploitation"
+    - "social engineering"

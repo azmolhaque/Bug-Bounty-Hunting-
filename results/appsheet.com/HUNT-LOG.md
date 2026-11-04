@@ -215,4 +215,221 @@ HTTPS URL required (client-side)
 ./scripts/appsheet-ssrf-probe.sh --idor --app-id <UUID> --token-b <API_KEY_B>
 ```
 
-Last updated: 2026-06-15 (end of Session 2)
+Last updated: 2026-06-16 (Session 7 — systemic finding confirmed)
+
+---
+
+## Session 3 — VRP Submission Prep (2026-06-16)
+
+Both findings finalized for submission to bughunters.google.com:
+
+- `findings/submission/F001-google-vrp-report.md` — staging API auth bypass,
+  CVSS 6.5 (current) / 9.1 (escalated, untested)
+- `findings/submission/F002-google-vrp-report.md` — OData connector SSRF,
+  CVSS **recalculated to 7.2 High** (the working note's 7.7 was an arithmetic
+  error; verified by hand against the CVSS 3.1 formula)
+
+**Correction:** F002's working notes cited CVE-2023-4212 as a prior AppSheet
+SSRF for dedup. That CVE is unrelated — it's a Trane thermostat command-injection
+bug, not AppSheet. Dropped that reference; the real comparable prior disclosure
+is David Nechuta's Dec 2021 Google VRP-rewarded AppSheet Workflows SSRF
+(nechudav.blogspot.com), which used a different code path (webhook executor,
+not the OData client) and was fixed via metadata-deployment blocking + stripping
+the `Metadata-Flavor` header — F002 demonstrates the OData connector's HTTP
+client independently lacks the same protections. Full dedup analysis is in the
+F002 submission report.
+
+No further IMDS/redirect/internal-port testing was performed this session per
+engagement scope — IMDS TCP-reachability remains documented as a risk signal,
+not an exploited credential path.
+
+**Status: both reports ready to submit.**
+
+---
+
+## Session 4 — Research & Next-Target Decision (2026-06-16)
+
+Ran deep research to pick the next hunting move. Confirmed via web search that
+**two** prior rewarded AppSheet connector-framework SSRF reports exist (not
+one): the known 2021 Nechuta webhook SSRF, plus a separately-fixed report,
+"SSRF in Adding apigee account sources in appsheet.com"
+(bughunters.google.com/reports/vrp/PnwRwydmr). Added this as a second
+dedup reference to F002's submission report (it strengthens, not weakens,
+F002's novelty — it shows Google fixes each connector's HTTP client
+independently rather than sharing one SSRF-safe client).
+
+**Decision: PRIMARY next target = same engagement, untested AppSheet connector
+types** (REST API connector first — flagged since Session 1/2, never
+attempted). Full reasoning in `00-plan.md` "Session 4" section. **Backup
+target = Siemplify SOAR** (TIER1, fresh recon required, scope.yaml flags
+"hundreds of SSRF connectors" — same thesis, unresearched target).
+
+Also enhanced `.claude/commands/workflow.md` (the `/workflow` orchestrator):
+wired in `js-hunter` and `subdomain-monitor` subagents, which existed but were
+never invoked anywhere in the pipeline, and added a "Recurring-Pattern Lens"
+step that makes this exact kind of cross-connector reasoning a standard part
+of Phase 3 prioritization instead of a one-off insight.
+
+**Environment note:** this session ran in a cloud sandbox with egress-gateway
+network lockdown (only github.com allowlisted) and no network path to the
+user's physical Raspberry Pi 5 (192.168.10.118) regardless of allowlisting —
+domain allowlisting opens internet egress, not a tunnel into the home LAN.
+No live requests were made against appsheet.com this session. Research used
+WebSearch/WebFetch only (these route through Anthropic-managed infrastructure,
+not the sandbox's own network stack, so they were unaffected). Live execution
+of the REST-API-connector test and the queued IDOR/staging-UUID tests must run
+from the user's local Claude Code CLI session on the Pi itself.
+
+---
+
+## Session 5 — Scope Cross-Check + Turnkey REST Connector Script (2026-06-16)
+
+Cloned `github.com/google/bughunters` fresh (github.com is the one host this
+sandbox's egress gateway allows) and diffed it against this repo's local copies:
+`config/google_domains_tiers.asciipb` and `config/acquisitions_domains_tiers.asciipb`
+are byte-identical to the canonical `domain-tiers/external_domains_*.asciipb`
+files — no scope drift, target tier classifications still accurate.
+`cloud_tiers/cloud-tiers.asciipb` (Cloud VRP service-impact tiers, separate
+from the consumer domain tiers) was not previously mirrored locally; reviewed,
+not directly relevant to the AppSheet connector thesis.
+
+Re-verified the egress lockdown is still in effect: `curl` to appsheet.com,
+api.appsheet.com, api.gcp-staging.appsheet.com, www.appsheet.com, and
+siemplify.co all return the egress-gateway's own 403 block page, not an app
+response. The earlier "Allowlist appsheet.com domains" selection has not
+taken effect in this sandbox session — still only github.com reachable by
+direct network call. No live target requests possible from here; confirmed
+again rather than assumed.
+
+Made the next action genuinely turnkey instead of hypothetical: generalized
+`scripts/appsheet-ssrf-probe.sh` with a new `--rest-connector` mode that
+reuses the proven `odata-ssrf-server.py` server/tunnel/logging path from F002
+but prints REST API connector UI steps instead of OData steps. Verified with
+`bash -n` and a live `--help`/scope-check dry run in this sandbox (scope-check
+passed; no actual request sent to appsheet.com). Ready to run as-is on the Pi:
+`./scripts/appsheet-ssrf-probe.sh --rest-connector --target imds_token`.
+
+---
+
+## Session 6 — Branch Reconciliation (2026-06-16)
+
+A second, independent Claude Code session ran in parallel on the user's Pi
+(branch `claude/appsheet-vrp-submission-lu1l7c`, real network access) while this
+sandbox session (branch `...-vq80t5`) had none. That session did real, valuable
+work this sandbox couldn't:
+
+- **Live re-verification of F001 → retracted.** Re-tested prod vs. staging from
+  a clean state across `GET /tables`, `POST /Action`, `POST /data`. Both hosts
+  now return identical `"App ... not found"` (HTTP 400); production never
+  returned `"ApplicationAccessKey is missing"` on re-test. The original
+  prod-vs-staging differential this finding was built on does not reproduce.
+  **F001 is withdrawn, not submitted.** Full disproof in
+  `findings/F001-RETRACTION.md`. This is the correct call per CLAUDE.md's
+  "verify before you believe" — a non-reproducible differential is not a finding.
+- **Independent re-confirmation of F002**, ~24h after the original capture, from
+  a different GCP backend fleet IP (`35.247.115.29` vs. the original
+  `35.203.182.241`) — strengthens F002 from a one-off capture to a stable,
+  twice-reproduced bug.
+- **A CVSS arithmetic error in their own F002 draft, caught here.** Their draft
+  scored the reported vector (`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N`) as 7.7.
+  Hand-recomputation against the official CVSS 3.1 Roundup formula — using the
+  Scope-Changed `PR:L` weight of 0.68 (not the Scope-Unchanged 0.62) — gives
+  **7.2**, matching this session's original calculation. Their secondary
+  "conservative floor" vector was also miscomputed (claimed 5.0; actual 4.6).
+  Both corrected during merge.
+- New OSINT find not previously known to this session: a 2022 AppSheet
+  Automation Bot deserialization RCE ($10,000, Google Bug Hunters report
+  `oCeVFaaoi`) — unrelated bug class (CWE-502, not SSRF) but useful subsystem
+  context, now noted in F002's dedup section.
+- A substantially more thorough multi-surface testing runbook
+  (`runbooks/PI-RUNBOOK-multiconnector-egress-gap.md`, T1-T7) covering OData,
+  Apigee/REST connector, image/file URL columns, PDF/email templates, other
+  connector types, and webhook regression — with explicit hard stops (no IMDS
+  token reads, no internal-range redirect chaining, no port scanning). This
+  supersedes this session's simpler `--rest-connector` script flag as the
+  primary next-action plan.
+
+**Reconciliation performed:** merged `origin/...-lu1l7c` into `...-vq80t5`.
+`F001-google-vrp-report.md` resolved to the WITHDRAWN version. `F002-google-vrp-report.md`
+manually merged — kept this session's structure (Apigee-connector dedup
+reference, full remediation list) plus their independent re-verification
+evidence, attack-scenario framing, and impact table; corrected CVSS to 7.2/4.6
+throughout. All of `lu1l7c`'s unique files (`F001-RETRACTION.md`,
+`F002-dedup-CVE-2023-4212.md`, `OSINT-prior-art-and-leads.md`,
+`PI-RUNBOOK-multiconnector-egress-gap.md`, updated `README-SUBMIT-GUIDE.md`)
+adopted as-is. Merged result pushed to `...-vq80t5` only, per the active branch
+rule — `lu1l7c` was never pushed to.
+
+**Status: F002 is the sole report-ready finding (CVSS 7.2 High, confirmed twice).
+F001 is permanently retired. Next action: run the T1-T7 runbook on the Pi
+(`runbooks/PI-RUNBOOK-multiconnector-egress-gap.md`), not the older
+`--rest-connector` script flag — the runbook supersedes it.**
+
+---
+
+## Session 7 — T1+T2 Confirmed, Systemic Finding (2026-06-16 evening)
+
+Ran T1 (OData) and T2 (Apigee) from the PI-RUNBOOK egress-gap checklist. Both surfaces
+confirmed EGRESS-GAP in a single session on the same OOB listener:
+
+**T1 — OData connector (F002 baseline, 3rd independent confirmation):**
+- 35.203.182.241 (GCP) → `GET /$metadata`, `Authorization: Basic Y2FuYXJ5OmNhbmFyeQ==`
+  (canary:canary), `Traceparent: 00-0c8e50f9...`, at 2026-06-16 20:56:44 UTC
+- Same behavior as original F002 and prior re-verification. Positive control confirmed.
+
+**T2 — Apigee API connector (NEW, second surface):**
+- Account → Add Apigee API connection information → OpenAPI Spec tab → OpenAPI Spec URL → Validate
+- 35.233.152.59 (GCP, different fleet IP) → `GET /`, `X-Apikey: Ahsisjsshsgyssuwhehdidieuwwysu`
+  (the API key entered in the form, forwarded verbatim), `Traceparent: 00-1d9706...`,
+  `Cache-Control: no-cache`, at 2026-06-16 20:59:14 UTC
+- Different HTTP client than OData (no `Microsoft.OData.Client` headers, fetches `/` not
+  `/$metadata`, carries `X-Apikey` not `Authorization: Basic`)
+- UI error reflected HTML body from OOB server (OpenAPI spec parse error)
+
+**Decision matrix result:** ≥2 surfaces EGRESS-GAP → consolidated systemic report.
+
+**Dedup note for T2:** a prior VRP report exists for "SSRF in Adding apigee account
+sources in appsheet.com" (bughunters.google.com/reports/vrp/PnwRwydmr, fixed). The T2
+finding uses the OpenAPI Spec URL field — a different input than what that report likely
+covered. Most probable explanation: the prior fix covered the Apigee connector's API
+endpoint URL code path but not the OpenAPI Spec URL validation code path. Either way
+(new code path or regression), T2 is currently live and forwarding credentials.
+
+**New artifacts created:**
+- `findings/submission/F003-systemic-ssrf-report.md` — primary consolidated submission
+- `runbooks/egress-test-log.md` — evidence matrix for T1/T2
+- Raw OOB log: `evidence/session3-20260616/oob_L1_20260616.log`
+
+**Current status: F003 (systemic) is PRIMARY submission. F002 (OData standalone) is
+fallback. Submit F003 to bughunters.google.com immediately.**
+
+---
+
+## Session 8 — Surface 3 Confirmed + F003 Submitted (2026-06-19)
+
+**T5 — Cloud Database connector (MySQL), TCP-layer SSRF via DNS oracle:**
+- Server field: `d8qjsaa69r8bl9bvgga06dddkcnydprf7.oast.pro`
+- 15 DNS queries (A+AAAA) from Google resolver fleet (172.217.46.x, 192.178.118.x, AS15169)
+- Timestamps: 13:05:04–13:05:08 UTC, 2026-06-19
+- TCP:3306 attempted → "Failed to connect to database" (Pi behind NAT, DNS oracle sufficient)
+- SSL Mode: None confirmed — plaintext MySQL handshake would expose credentials to attacker
+- 8 DB types (SQLServer, MySQL, Postgres, DynamoDB, MariaDB, Redshift, Oracle, BigQuery) share the same unfiltered Server field
+- EGRESS-GAP confirmed. Added to F003 as Surface 3.
+
+**Pre-submission reconfirmation (2026-06-19):**
+- Surface 1 (OData v2+v3+v4): reconfirmed, GCP IPs 35.185.223.113 + 35.203.182.241, 10:58–59 UTC
+- Surface 2 (Apigee OpenAPI Spec): reconfirmed, GCP IP 8.231.222.130 (Squid proxy), 11:01 UTC
+- Cross-scheme redirect (HTTPS→HTTP) confirmed blocked on Surfaces 1 and 2
+
+**F003 SUBMITTED to Google VRP — 2026-06-20 00:55 UTC**
+- Issue tracker: #525815219
+- URL: https://issuetracker.google.com/issues/525815219
+- Title: "AppSheet: Systemic SSRF — 3 surfaces (OData, Apigee OpenAPI Spec, Cloud Database) send unfiltered GCP-origin requests to attacker hosts, forwarding credentials and leaking internal infrastructure"
+- Program: Google VRP
+- Reported URL: https://www.appsheet.com/Account/ApigeeAuthInfo
+- Severity: High (CVSS 3.1 7.2, AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N)
+- Component: 310426
+- Initial priority: P4 / S4 (standard for new VRP submissions; awaiting triage)
+- CC: azmolhaque95@gmail.com, wo...@google.com (Google VRP team)
+- Attachments: ATT1-surface1-odata-http-capture.md, ATT2-surface2-apigee-http-capture.md, ATT3-surface3-database-dns-oracle.md, ATT4-three-surface-comparison-and-poc.md
+- Status: NEW — AWAITING TRIAGE

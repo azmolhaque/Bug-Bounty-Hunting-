@@ -43,6 +43,10 @@ domain: {
   tier: TIER0
 }
 domain: {
+  fqdn: "express.cloud.google.com"
+  tier: TIER0
+}
+domain: {
   fqdn: "ide.cloud.google.com"
   tier: TIER0
 }
@@ -60,6 +64,10 @@ domain: {
 }
 domain: {
   fqdn: "cloudsearch.google.com"
+  tier: TIER0
+}
+domain: {
+  fqdn: "connected.google.com"
   tier: TIER0
 }
 domain: {
@@ -1075,6 +1083,10 @@ domain: {
   tier: TIER2
 }
 domain: {
+  fqdn: "enterprise.gemini.google.com"
+  tier: TIER2
+}
+domain: {
   fqdn: "lti.gemini.google.com"
   tier: TIER2
 }
@@ -1692,10 +1704,6 @@ domain: {
 }
 domain: {
   fqdn: "picasa.com"
-  tier: TIER3
-}
-domain: {
-  fqdn: "picasa-software.com"
   tier: TIER3
 }
 domain: {
@@ -2326,5 +2334,13 @@ domain: {
 }
 domain: {
   fqdn: "tdcommons.org"
+  tier: TIER4
+}
+domain: {
+  fqdn: "cloud.run"
+  tier: TIER4
+}
+domain: {
+  fqdn: "ai.studio"
   tier: TIER4
 }

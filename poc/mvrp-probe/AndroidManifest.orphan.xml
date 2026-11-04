@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  mvrp-probe (orphan variant) — অনাথ permission দাবি করা যায় কিনা তার পরীক্ষা।
+
+  মূল AndroidManifest.xml-এ একটাও permission নেই, আর সেটা ইচ্ছাকৃত: ওটা
+  "একটা সাধারণ app যা পারে" প্রমাণ করার যন্ত্র। এই বৈচিত্র্যটা আলাদা, আর
+  এর একটাই কাজ — mvrp-orphan.sh যে ১৬টা অনাথ permission পেয়েছে, তার
+  প্রতিটা সত্যিই **দাবি করে grant পাওয়া যায় কিনা** সেটা মেপে দেখা।
+
+  পদ্ধতি: প্রতিটা permission একই সাথে
+    <permission ... protectionLevel="normal">   = আমরাই সংজ্ঞাদাতা
+    <uses-permission ... >                      = আর আমরাই গ্রাহক
+  normal মানে ইনস্টলেই স্বয়ংক্রিয় grant — যদি Android দাবিটা মানে।
+
+  কেন সাতটা একসাথে: এটা একটা হাইপোথিসিস আলাদা করার পরীক্ষা, নিছক
+  নিশ্চিতকরণ নয়। `android.permission.*` গুলো platform-এর নিজের নামস্থান;
+  বিক্রেতার নামস্থানগুলো (nexuslauncher, flipendo, pixel.livewallpaper,
+  systemui) নয়। দুই দল আলাদা ফল দিলে সেটাই উত্তর, আর এক ইনস্টলে পাওয়া যায়।
+
+  যাচাই:
+    adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A30 'requested permissions'
+    adb shell dumpsys package com.cindrasec.mvrpprobe | grep -A30 'install permissions'
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cindrasec.mvrpprobe">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+        <provider android:authorities="*" />
+    </queries>
+
+    <!-- ===== দল ক: বিক্রেতার নামস্থান, সংজ্ঞাদাতা app এই ডিভাইসে নেই ===== -->
+
+    <!-- AGSA-র ExportedSmartspaceTrampolineActivity সহ ৪টা component পাহারা
+         দেয়। সংজ্ঞাদাতা Pixel Launcher — Motorola ডিভাইসে অনুপস্থিত। -->
+    <permission android:name="com.google.android.apps.nexuslauncher.permission.QSB"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="com.google.android.apps.nexuslauncher.permission.QSB" />
+
+    <permission android:name="com.android.systemui.permission.SEND_ALERT_BROADCASTS"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="com.android.systemui.permission.SEND_ALERT_BROADCASTS" />
+
+    <permission android:name="com.google.android.flipendo.SAVER_STATE_UPDATE"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="com.google.android.flipendo.SAVER_STATE_UPDATE" />
+
+    <permission android:name="com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="com.google.pixel.livewallpaper.permission.DOWNLOAD_LIVE_WALLPAPER" />
+
+    <!-- Google Home-এর manifest-ভুল। android:permission একটাই নাম নেয়, কিন্তু
+         ওরা লিখেছে দুটো, `|` দিয়ে জোড়া। Android পুরো স্ট্রিংটাকেই একটা নাম
+         ধরে, আর সেই নামে কোনো permission নেই — তাই বৈধ কলারও কেউ নেই।
+         নামটা দাবি করলে আমরাই একমাত্র যে LockProximityReceiver-এ পৌঁছাতে পারি। -->
+    <permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="android.permission.BLUETOOTH|android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- Google Home-এর দ্বিতীয় অনাথ-পাহারা দেওয়া component:
+         [activity] ...titan.dock.activity.FirstDockActivity
+         সংজ্ঞাদাতা com.google.android.settings.setup.dock — Pixel-only, তাই
+         এই ডিভাইসে অনুপস্থিত। একই app, ভিন্ন permission, একই বাইপাস। -->
+    <permission android:name="com.google.android.settings.setup.dock.RUN_DOCK_SETUP"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="com.google.android.settings.setup.dock.RUN_DOCK_SETUP" />
+
+    <!-- ===== দল খ: platform নামস্থান, এই OS সংস্করণে এখনো সংজ্ঞায়িত নয় ===== -->
+
+    <!-- GMS-এর GmsAppFunctionService পাহারা দেয় (Tier 1), সাথে Wellbeing
+         আর Maestro-তে একই। API 36-এ যোগ হয়েছে; ডিভাইস API 35। -->
+    <permission android:name="android.permission.BIND_APP_FUNCTION_SERVICE"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="android.permission.BIND_APP_FUNCTION_SERVICE" />
+
+    <permission android:name="android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="android.permission.BIND_ALTERNATIVE_MESSAGE_TRANSPORT_SERVICE" />
+
+    <permission android:name="android.permission.BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE"
+                android:protectionLevel="normal" />
+    <uses-permission android:name="android.permission.BIND_INTRUSION_DETECTION_EVENT_TRANSPORT_SERVICE" />
+
+    <application
+        android:label="mvrp-probe-orphan"
+        android:allowBackup="false"
+        android:hasCode="true">
+        <activity
+            android:name="com.cindrasec.mvrpprobe.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

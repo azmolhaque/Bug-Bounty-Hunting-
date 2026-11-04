@@ -1,0 +1,20 @@
+{
+    "data": {
+        "id": "support",
+        "type": "user",
+        "links": {
+            "self": "https://www.virustotal.com/api/v3/users/support"
+        },
+        "attributes": {
+            "private": false,
+            "is_service_account": false,
+            "first_name": "Support",
+            "last_name": "Harrogate",
+            "user_since": 1408545887,
+            "certified": false,
+            "collections_count": 0,
+            "status": "active",
+            "reputation": 1
+        }
+    }
+}

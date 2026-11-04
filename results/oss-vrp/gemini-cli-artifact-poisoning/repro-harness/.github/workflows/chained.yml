@@ -1,0 +1,102 @@
+# FAITHFUL reduction of gemini-cli chained_e2e.yml for the FALLBACK test.
+# Matches the real workflow where it matters:
+#   - permissions: contents: read ONLY (NO actions: read) -> cross-run download fails
+#   - parse_run_context + e2e_linux carry `if: always()` -> they run EVEN WHEN the
+#     download job fails, falling back to github.event.workflow_run.head_sha.
+# Question under test: with the download broken, does the always() fallback still
+# check out and execute the fork PR's attacker code via checkout(base, head_sha)?
+#   -> run this with a real CROSS-FORK PR (head repo must be a fork of the base).
+name: 'Chained'
+
+on:
+  workflow_run:
+    workflows: ['Trigger']
+    types: ['completed']
+
+permissions:
+  contents: 'read'        # NO actions: read — matches the real workflow
+
+jobs:
+  download_repo_name:
+    runs-on: 'ubuntu-latest'
+    if: "github.event_name == 'workflow_run'"
+    outputs:
+      repo_name: '${{ steps.out.outputs.repo_name }}'
+      head_sha: '${{ steps.out.outputs.head_sha }}'
+    steps:
+      # EMPIRICAL NOTE (2026-11-04): with permissions: contents: read only (NO
+      # actions: read) + github-token: GITHUB_TOKEN, this cross-run download SUCCEEDS
+      # in practice (observed in Chained #5). So REPO resolves to the fork's repo_name
+      # from the artifact and the checkout runs against the fork directly. The
+      # workflow_run.head_sha fallback below is a backup path, not the primary one.
+      - name: 'Download the poisoned artifact (observed: SUCCEEDS with contents:read + GITHUB_TOKEN)'
+        uses: 'actions/download-artifact@v4'
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          name: 'repo_name'
+          run-id: '${{ github.event.workflow_run.id }}'
+          path: '${{ runner.temp }}/artifacts'
+      - id: 'out'
+        uses: 'actions/github-script@v7'
+        with:
+          script: |
+            const fs = require('fs'); const path = require('path');
+            const t = '${{ runner.temp }}/artifacts';
+            core.setOutput('repo_name', fs.readFileSync(path.join(t,'repo_name'),'utf8').trim());
+            core.setOutput('head_sha',  fs.readFileSync(path.join(t,'head_sha'),'utf8').trim());
+
+  parse_run_context:
+    runs-on: 'ubuntu-latest'
+    needs: 'download_repo_name'
+    if: ${{ always() }}          # <-- as in the real workflow: runs even if download failed
+    outputs:
+      repository: '${{ steps.ctx.outputs.REPO }}'
+      sha: '${{ steps.ctx.outputs.SHA }}'
+    steps:
+      - id: 'ctx'
+        env:
+          # Faithful fallback chain from the real workflow:
+          REPO: '${{ needs.download_repo_name.outputs.repo_name || github.repository }}'
+          SHA:  '${{ needs.download_repo_name.outputs.head_sha || github.event.workflow_run.head_sha || github.sha }}'
+        run: |
+          echo "REPO=$REPO" >> "$GITHUB_OUTPUT"
+          echo "SHA=$SHA"   >> "$GITHUB_OUTPUT"
+          echo "::notice::FALLBACK-CONTEXT :: checkout will use repository=$REPO ref=$SHA"
+
+  e2e_linux:
+    runs-on: 'ubuntu-latest'
+    needs: 'parse_run_context'
+    if: ${{ always() }}          # <-- as in the real workflow
+    steps:
+      - name: 'Checkout (fallback: base repo @ workflow_run.head_sha)'
+        # PINNED to the EXACT SHA google-gemini/gemini-cli pins.
+        # 08eba0b27e820071cde6df949e0beb9ba4906955 == actions/checkout v4.3.0
+        # (released 2025-08-11). This PREDATES PR #2454 (merged 2026-06-16,
+        # shipped v7.0.0 + backported to v6/v5/v4), which added assertSafePrCheckout
+        # and the `allow-unsafe-pr-checkout` opt-in. v4.3.0 has NO such refusal.
+        # NOTE: the floating `actions/checkout@v5` tag now resolves to a BACKPORTED
+        # patched build and DOES refuse — that is why the earlier @v5 fork test was
+        # blocked. The target does NOT use the floating tag; it pins this old SHA.
+        uses: 'actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955' # == v4.3.0, matches gemini-cli
+        with:
+          ref: '${{ needs.parse_run_context.outputs.sha }}'
+          repository: '${{ needs.parse_run_context.outputs.repository }}'
+          persist-credentials: false
+      - name: 'Show what got checked out'
+        run: |
+          echo "::notice::CHECKED-OUT-HEAD :: $(git rev-parse HEAD 2>/dev/null || echo none)"
+          test -f poc.js && echo "::notice::ATTACKER-FILE-PRESENT :: poc.js is in the checkout" || echo "::notice::ATTACKER-FILE-ABSENT :: poc.js NOT in the checkout (fallback did not fetch fork code)"
+      - uses: 'actions/setup-node@v4'
+        with:
+          node-version: '20.x'
+      - name: 'Install dependencies'
+        run: 'npm ci || npm install || true'
+      - name: 'Build project'              # attacker "build" -> PoC-ACE if fork code ran
+        run: 'npm run build || true'
+      - name: 'Set up buildx'
+        uses: 'docker/setup-buildx-action@v3'
+      - name: 'Run E2E tests'
+        env:
+          FAKE_SECRET: '${{ secrets.FAKE_SECRET }}'
+          BUILD_SANDBOX_FLAGS: '--cache-from type=gha --cache-to type=gha,mode=max'
+        run: 'npm run test:integration:sandbox:none || true'

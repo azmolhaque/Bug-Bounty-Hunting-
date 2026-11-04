@@ -1,0 +1,47 @@
+# api-surface.txt — what a gateway or service answers to, as opposed to what a
+# person logs in to. For acq-paths.sh via PATHS_FILE.
+#
+# Written for the intrinsic.ai edge cluster, where edge.intrinsic.ai answers
+# 401 and edge-dev / edge-qa answer 404 from the same nginx. The question is
+# whether the dev and qa gateways serve anything without the credential the
+# production one demands, and that question is not asked by /admin.
+#
+# Kept short on purpose. acq-paths.sh sends one request per path per host and
+# compares against a baseline, so a list of five hundred entries is a scan,
+# not a probe, and CLAUDE.md § 7 asks for conservative concurrency on someone
+# else's infrastructure.
+
+# liveness and identity, which gateways answer before anything else
+/healthz
+/health
+/readyz
+/livez
+/status
+/version
+/-/healthy
+/-/ready
+
+# the two that carry credentials when they are exposed
+/metrics
+/debug/pprof/
+
+# interface descriptions: a schema is not a finding, but it names the methods
+/openapi.json
+/swagger.json
+/swagger-ui/
+/.well-known/openid-configuration
+/graphql
+
+# generic API roots, to see whether anything is mounted at all
+/api
+/api/
+/api/v1
+/v1
+/v2
+/rpc
+
+# the gRPC reflection service, which lists every method a server exposes.
+# Reached over HTTP/1.1 it will not speak gRPC, but the status it returns
+# distinguishes "a gRPC server is here" from "nothing is mounted".
+/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo
+/grpc.health.v1.Health/Check

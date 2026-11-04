@@ -62,6 +62,28 @@ rejected reports beats one hundred low-quality submissions.
 5. **It is in scope and not a known duplicate.** Checked against the program's
    known-issues list and your own `results/` history.
 
+6. **The boundary is actually crossed, and the report claims ONLY what was proven
+   (METHODOLOGY FO-8/9/11).** A precondition (misconfig, reachable endpoint,
+   dangling CNAME, SSRF-to-own-server, schema/field-name dump, verbose error) is
+   NOT a finding — you must have *evidence in hand* of the actual cross: another
+   user's data, a usable credential/token, code exec, protected data returned by an
+   unauth request, or a claimed takeover with a served canary. The title and
+   severity state ONLY what you demonstrated — never "would be possible if…". If
+   your one-sentence answer to "what did the attacker actually GET?" is metadata /
+   names / a hostname / your own OOB hit / a precondition → **DROP it.**
+
+7. **It is written in plain human voice, not AI-report style (METHODOLOGY FO-10).**
+   No VERDICT blocks, differential tables, "smoking gun / Executive Summary",
+   self-scored CVSS argued up to Critical, or speculative escalation chains.
+   Triagers auto-close these as **Spam**, which damages your platform signal.
+   First-person, factual, real terminal output. Claim exactly what you proved.
+
+> **Reputation is a resource.** Every N/A / WAI / Spam close lowers the trust your
+> future reports get. One verified boundary-crossing report beats ten polished
+> informational ones. After 2+ closes on a program, STOP and rebuild with a single
+> clean, high-impact, plainly-written finding. Never re-argue a rejection with the
+> same evidence (FO-12).
+
 ---
 
 ## 3. Hard Rejection List — Never Submit These Standalone
@@ -91,12 +113,32 @@ they chain to a confirmed Medium+ impact:
 - Stack traces / verbose errors with no exploitable data exposed
 - Publicly accessible API documentation (Swagger, OpenAPI) that reveals no auth
   credentials and no exploitable logic
+- Diagnostic / health / `/about` endpoints leaking hostname / uptime / clock /
+  connection-count (informational — Cameyo `/about` → Won't-Fix)
+- Absolute-path / internal-path / stack-frame disclosure with no data access
+- Schema / field-name / object-name enumeration WITHOUT reading any record data
+  (Salesforce guest "873 fields", records not readable → N/A)
+- SSRF that only reaches attacker-owned infrastructure, or reaches IMDS/internal
+  hosts but reads NOTHING sensitive (no creds/token/data — VT IMDS-root → Low ceiling)
+- Connector / webhook fetching a user-supplied URL and forwarding user-supplied
+  creds to it, where nothing internal is actually read (AppSheet SSRF, 525815004 —
+  closed 2026-09-21 as **Duplicate**, NOT as WAI. The "WAI" label came from an AI
+  triage note published to the thread by mistake on 2026-07-04 and retracted by
+  Google two days later as "not a final decision". Keep the heuristic; the class
+  was never officially ruled intended behaviour.)
+  Also: the twin report 525815219 is still open at P2. Do not test AppSheet
+  connector SSRF — further work there duplicates our own submission.
 
 **DNS / Infrastructure:**
 - SPF, DKIM, DMARC email misconfigs (treated as informational in most VRP)
 - Subdomain takeover on a host with no user traffic, no shared cookies, no OAuth
   redirect use — must prove the subdomain is reachable by real users OR shares
   cookie domain / OAuth allowlist with a sensitive origin
+- Subdomain takeover claimed on PRECONDITION only (`DEPLOYMENT_NOT_FOUND`, dangling
+  CNAME) WITHOUT actually claiming the host and serving a benign canary — modern
+  Vercel/Netlify block claiming domains still bound to another team; claimability
+  must be PROVEN, not assumed (Wiz `win-test.wiz.io` — precondition shown, claim
+  unproven)
 
 **Rate Limiting:**
 - Rate limiting absent on non-sensitive endpoints (no credential brute-force
@@ -210,5 +252,15 @@ A finding is **done** (report-ready) when ALL are true:
 6. Deduplicated against known issues and prior findings.
 7. Report exists in `results/<target>/findings/` with: title, summary, severity,
    repro steps, proof, impact, remediation, references.
+8. **Evidence checklist complete** (mandatory after M018 closed-as-Spam incident,
+   2026-06-23). A finding cannot be submitted without ALL of the following:
+   - Researcher metadata: date, time, external IP (`curl ifconfig.me`), tool version
+   - Verbatim copy-pasteable curl command that reproduces the finding
+   - Verbatim HTTP response body pasted (not described — the actual bytes)
+   - HTTP status code + response size from the actual test
+   - Before/after differential (expected secure behavior vs. observed insecure behavior)
+   - At least one screenshot of the actual terminal showing the finding
+   - Report written in first-person human voice, not polished AI prose
+   See `results/<target>/REPORTING-STANDARDS.md` for the full template.
 
 Anything short of this is a **lead**, not a finding. Label it honestly.

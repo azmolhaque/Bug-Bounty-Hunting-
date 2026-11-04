@@ -1,0 +1,29 @@
+# Webpass DNS records (passive enumeration)
+# Date: 2026-06-20
+
+# A Records
+work.webpass.net.   300   IN A  34.72.62.205
+api.webpass.net.    900   IN A  34.70.170.54
+www.webpass.net.    300   IN A  34.120.232.54
+webpass.net.        300   IN A  34.120.232.54
+
+# MX Records (Google Workspace)
+webpass.net.  900  IN MX  1  aspmx.l.google.com
+webpass.net.  900  IN MX  5  alt1.aspmx.l.google.com
+webpass.net.  900  IN MX  5  alt2.aspmx.l.google.com
+webpass.net.  900  IN MX  10 alt3.aspmx.l.google.com
+webpass.net.  900  IN MX  10 alt4.aspmx.l.google.com
+
+# NS Records (Google Cloud DNS)
+webpass.net.  86400  IN NS  ns-cloud-d1.googledomains.com
+webpass.net.  86400  IN NS  ns-cloud-d2.googledomains.com
+webpass.net.  86400  IN NS  ns-cloud-d3.googledomains.com
+webpass.net.  86400  IN NS  ns-cloud-d4.googledomains.com
+
+# TXT Records
+_dmarc.webpass.net.  300  IN TXT  "v=DMARC1; p=none; rua=mailto:mailauth-reports@google.com"
+google._domainkey.webpass.net.  300  IN TXT  "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqE0fUva4KeoTUBz4kcryLgokzcVnHE2EKRBoStwk87m2YQtq98HWJUhsIEOdtVsX6zX6/gvC3Xs/rAKx2D4BvUzWJKkSnzjtg1XTxkpgFBQfo83LFhGH8rW6PUmF2Qxyl1RMOYV/GpQ1rrPknmoH//NqzdwwviXOGLKVwqhjMeU+RelZxJEKGTe8mO/m0ftxK..."
+
+# SPF: No SPF TXT record on webpass.net apex
+# DMARC p=none: Non-enforcing DMARC (monitoring only, mailauth-reports@google.com)
+# DKIM: Google Workspace signing key present

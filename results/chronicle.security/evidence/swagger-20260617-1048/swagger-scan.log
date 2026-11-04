@@ -1,0 +1,1467 @@
+=== CHRONICLE SOAR SWAGGER SCAN — 20260617-1048 ===
+IN-SCOPE: app.siemplify-soar.com matches '*.siemplify-soar.com'
+
+[1] Fetching Swagger UI and JSON schemas...
+[1] Fetching swagger.json for v1...
+[1] v1: 7554408 bytes — valid JSON
+[1] v1: 448 paths
+  GET                  /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders
+  POST                 /api/external/v1/agents/AddAgent
+  POST                 /api/external/v1/agents/AddOrUpdatePublisher
+  POST                 /api/external/v1/agents/DeleteAgent
+  POST                 /api/external/v1/agents/DeletePublishers
+  GET                  /api/external/v1/agents/GetAgentByIdentifier/{agentIdentifier}
+  GET                  /api/external/v1/agents/GetAgentInformationByIdentifier/{agentIdentifier}
+  GET                  /api/external/v1/agents/GetAgentInformationByIntegrationInstance/{integrationInstanceId}
+  GET                  /api/external/v1/agents/GetAgents
+  POST                 /api/external/v1/agents/GetAgentsByEnvironment
+  POST                 /api/external/v1/agents/GetAgentsInformationByIdentifiers
+  GET                  /api/external/v1/agents/GetAvailableEnvironmentsForAgents
+  GET                  /api/external/v1/agents/GetEnabledAgents
+  GET                  /api/external/v1/agents/GetPublisherById/{publisherId}
+  GET                  /api/external/v1/agents/GetPublishers
+  POST                 /api/external/v1/agents/GetSecondaryAgentsByPrimaryIdentifiers
+  GET                  /api/external/v1/agents/GetValidAgentsForConnector/{environment}/{integration}
+  GET                  /api/external/v1/agents/GetValidAgentsForIdeConnector/{environment}/{integration}
+  POST                 /api/external/v1/agents/RedeployAgent
+  GET                  /api/external/v1/agents/TestPublisherConnectivity/{publisherId}
+  POST                 /api/external/v1/agents/UpdateAgent
+  GET                  /api/external/v1/agents/integration-upgrade-unsupported-agents
+  GET                  /api/external/v1/agents/valid-for-jobs
+  POST                 /api/external/v1/approval-link/Apply
+  POST                 /api/external/v1/attackssimulator/CreateSimulatedCustomCase
+  POST                 /api/external/v1/attackssimulator/DeleteUseCase
+  GET                  /api/external/v1/attackssimulator/ExportCustomCase/{customCaseName}
+  POST                 /api/external/v1/attackssimulator/GenerateUseCases
+  POST                 /api/external/v1/attackssimulator/GetCustomCaseDetails
+  GET                  /api/external/v1/attackssimulator/GetCustomCases
+  POST                 /api/external/v1/attackssimulator/ImportCustomCase
+  GET                  /api/external/v1/attackssimulator/IsCustomCaseExists/{alertName}
+  POST                 /api/external/v1/attackssimulator/SimulateAlert
+  POST                 /api/external/v1/case-overview/GetAlertOverviewData
+  POST                 /api/external/v1/case-overview/GetAlertsEntities
+  GET                  /api/external/v1/case-overview/GetCaseEntities/{caseId}
+  POST                 /api/external/v1/case-overview/GetCaseOverviewData
+  GET                  /api/external/v1/case-overview/GetFullOverviewTemplateDetails/{templateIdentifier}
+  POST                 /api/external/v1/case-overview/GetOverviewTemplate
+  GET                  /api/external/v1/case-overview/GetOverviewTemplateCards
+  POST                 /api/external/v1/case-overview/PreviewOverviewWidget
+  POST                 /api/external/v1/case-overview/ResolveOverviewWidget
+  POST                 /api/external/v1/case-overview/SaveOverviewTemplate
+  GET                  /api/external/v1/casechat/attachments/preview/{attachmentId}
+  GET                  /api/external/v1/casechat/attachments/{attachmentId}
+  POST                 /api/external/v1/casechat/pin/{messageId}
+  POST                 /api/external/v1/casechat/unpin/{messageId}
+  POST GET             /api/external/v1/casechat/{caseId}
+  GET                  /api/external/v1/casechat/{caseId}/new-messages-count
+  POST                 /api/external/v1/cases-queue/GetAlertNames
+  POST                 /api/external/v1/cases-queue/GetCaseCardsByRequest
+  GET                  /api/external/v1/cases-queue/alert-vendors
+  POST                 /api/external/v1/cases-queue/bulk-operations/ExecuteBulkAssignCase
+  POST                 /api/external/v1/cases-queue/bulk-operations/ExecuteBulkCloseCase
+  POST                 /api/external/v1/cases-queue/bulk-operations/MergeCases
+  POST                 /api/external/v1/cases-queue/bulk-operations/ValidateCasesAssigneeForCloseCase
+  GET POST DELETE      /api/external/v1/cases-queue/saved-filter
+  POST                 /api/external/v1/cases/AddCaseComment
+  POST                 /api/external/v1/cases/AddCaseTag
+  POST                 /api/external/v1/cases/AddEvidence
+  POST                 /api/external/v1/cases/AddOrUpdateCaseTask
+  POST                 /api/external/v1/cases/AssignUserToCase
+  POST                 /api/external/v1/cases/ChangeCaseDescription
+  POST                 /api/external/v1/cases/ChangeCaseImportanceStatus
+  POST                 /api/external/v1/cases/ChangeCasePriority
+  POST                 /api/external/v1/cases/ChangeCaseStage
+  POST                 /api/external/v1/cases/CloseAlert
+  POST                 /api/external/v1/cases/CloseCase
+  POST                 /api/external/v1/cases/CreateCase
+  POST                 /api/external/v1/cases/CreateCaseEntity
+  POST                 /api/external/v1/cases/CreateCaseInsight
+  POST                 /api/external/v1/cases/CreateManualCase
+  POST                 /api/external/v1/cases/CreateWarRoomIncidentFromCase
+  POST                 /api/external/v1/cases/ExecuteBulkAddCaseTag
+  POST                 /api/external/v1/cases/ExecuteBulkAssign
+  POST                 /api/external/v1/cases/ExecuteBulkChangeCasePriority
+  POST                 /api/external/v1/cases/ExecuteBulkChangeCaseStage
+  POST                 /api/external/v1/cases/ExecuteBulkCloseCase
+  POST                 /api/external/v1/cases/ExecuteBulkReopenCase
+  POST                 /api/external/v1/cases/ExecuteManualAction
+  POST                 /api/external/v1/cases/ExecuteStep
+  POST                 /api/external/v1/cases/GenerateCaseReport
+  GET                  /api/external/v1/cases/GetActionResultById/{resultIdStr}
+  POST                 /api/external/v1/cases/GetCaseCardsByRequest
+  GET                  /api/external/v1/cases/GetCaseExists/{caseId}
+  GET                  /api/external/v1/cases/GetCaseFullDetails/{caseId}
+  GET                  /api/external/v1/cases/GetEvidenceData/{evidenceId}
+  GET                  /api/external/v1/cases/GetWallItemsForWarRoom/{id}
+  POST                 /api/external/v1/cases/GetWorkflowInstanceSummary
+  POST                 /api/external/v1/cases/IsCaseUpdated
+  POST                 /api/external/v1/cases/PauseAlertSla
+  POST                 /api/external/v1/cases/RaiseIncident
+  POST                 /api/external/v1/cases/ReassignCaseTask
+  POST                 /api/external/v1/cases/RemoveCaseTag
+  POST                 /api/external/v1/cases/RenameCase
+  POST                 /api/external/v1/cases/ResumeAlertSla
+  POST                 /api/external/v1/cases/Skip
+  POST                 /api/external/v1/cases/UnraiseIncident
+  POST                 /api/external/v1/cases/UpdateAlertPriority
+  GET POST             /api/external/v1/cases/comments
+  GET                  /api/external/v1/cases/comments/file/{fileId}
+  PATCH                /api/external/v1/cases/comments/mark-as-deleted/{id}
+  PUT                  /api/external/v1/cases/comments/{id}
+  GET                  /api/external/v1/cases/homepagecases/GetByRequest
+  GET                  /api/external/v1/cases/homepagecases/GetHomepageCasesCount
+  GET                  /api/external/v1/cases/insights/{caseId}
+  POST                 /api/external/v1/cases/requests/GenerateCollaboratorRequest
+  GET                  /api/external/v1/cases/requests/GetByRequest
+  GET                  /api/external/v1/cases/requests/GetCollaboratorRequestCount
+  POST PUT             /api/external/v1/cases/tasks
+  GET                  /api/external/v1/cases/tasks/GetByRequest
+  GET                  /api/external/v1/cases/tasks/GetTasksCountForUser
+  PUT                  /api/external/v1/cases/tasks/MarkAsDone
+  GET DELETE           /api/external/v1/cases/tasks/{id}
+  PATCH                /api/external/v1/cases/wall/favourite
+  GET                  /api/external/v1/cases/wall/{caseId}
+  GET PUT              /api/external/v1/configuration-items/{tenantId}
+  POST                 /api/external/v1/connectors
+  GET                  /api/external/v1/connectors/cards
+  POST                 /api/external/v1/connectors/fetch-sample-data
+  POST                 /api/external/v1/connectors/template
+  GET                  /api/external/v1/connectors/template-cards
+  POST                 /api/external/v1/connectors/update-from-ide
+  GET DELETE           /api/external/v1/connectors/{identifier}
+  GET                  /api/external/v1/connectors/{identifier}/statistics
+  POST                 /api/external/v1/dashboards/AddOrUpdateDashboard
+  POST                 /api/external/v1/dashboards/AddOrUpdateDashboardWidget
+  POST                 /api/external/v1/dashboards/DeleteDashboard
+  POST                 /api/external/v1/dashboards/DeleteDashboardWidget
+  POST                 /api/external/v1/dashboards/GetDashboardWidgetCaseIds
+  GET                  /api/external/v1/dashboards/GetDashboardWidgetDefinitions
+  POST                 /api/external/v1/dashboards/GetDashboardWidgetValues
+  POST                 /api/external/v1/dashboards/ImportDashboard
+  POST                 /api/external/v1/dashboards/SaveDashboardAsReportTemplate
+  POST                 /api/external/v1/dynamic-cases/AddCaseComment
+  POST                 /api/external/v1/dynamic-cases/AddCaseTag
+  POST                 /api/external/v1/dynamic-cases/AddComment
+  POST                 /api/external/v1/dynamic-cases/AddEvidence
+  POST                 /api/external/v1/dynamic-cases/AddOrUpdateCaseTask
+  POST                 /api/external/v1/dynamic-cases/AddOrUpdateEntityProperty
+  POST                 /api/external/v1/dynamic-cases/AssignUserToCase
+  POST                 /api/external/v1/dynamic-cases/ChangeCaseDescription
+  POST                 /api/external/v1/dynamic-cases/ChangeCaseImportanceStatus
+  POST                 /api/external/v1/dynamic-cases/ChangeCaseStage
+  POST                 /api/external/v1/dynamic-cases/CloseAlert
+  POST                 /api/external/v1/dynamic-cases/CloseCase
+  POST                 /api/external/v1/dynamic-cases/CreateCase
+  POST                 /api/external/v1/dynamic-cases/CreateCaseEntity
+  POST                 /api/external/v1/dynamic-cases/ExecuteBulkReopenCase
+  POST                 /api/external/v1/dynamic-cases/GenerateCaseReport
+  POST                 /api/external/v1/dynamic-cases/GetAlertEvents
+  GET                  /api/external/v1/dynamic-cases/GetCaseDetails/{caseId}
+  POST                 /api/external/v1/dynamic-cases/GetCaseWallActivities
+  POST                 /api/external/v1/dynamic-cases/GetCaseWallActivities/count
+  GET                  /api/external/v1/dynamic-cases/GetEvidenceData/{evidenceId}
+  GET                  /api/external/v1/dynamic-cases/GetWallActivities/{caseId}
+  GET                  /api/external/v1/dynamic-cases/GetWallActivitiesForCommandCenter/{id}
+  GET                  /api/external/v1/dynamic-cases/GetWallActivitiesV2/{caseId}
+  POST                 /api/external/v1/dynamic-cases/IngestCaseInOtherEnvironment
+  POST                 /api/external/v1/dynamic-cases/IsCaseUpdated
+  PUT                  /api/external/v1/dynamic-cases/MarkCommentAsDeleted/{id}
+  POST                 /api/external/v1/dynamic-cases/MarkTaskAsDone
+  POST                 /api/external/v1/dynamic-cases/MoveAlertToNewCase
+  POST                 /api/external/v1/dynamic-cases/RaiseIncident
+  POST                 /api/external/v1/dynamic-cases/RemoveCaseTag
+  POST                 /api/external/v1/dynamic-cases/RenameCase
+  POST                 /api/external/v1/dynamic-cases/ReopenAlert
+  POST                 /api/external/v1/dynamic-cases/UnraiseIncident
+  POST                 /api/external/v1/dynamic-cases/UpdateAlertPriority
+  POST                 /api/external/v1/dynamic-cases/UpdateCasePriority
+  PUT                  /api/external/v1/dynamic-cases/UpdateComment
+  POST                 /api/external/v1/dynamic-cases/request
+  POST                 /api/external/v1/entity-search/count
+  POST                 /api/external/v1/entity-search/entities
+  GET POST             /api/external/v1/external-authentication-settings
+  GET DELETE PATCH PUT /api/external/v1/external-authentication-settings/{id}
+  GET                  /api/external/v1/federation/cases
+  PATCH                /api/external/v1/federation/cases/batch-patch
+  GET                  /api/external/v1/federation/platforms
+  DELETE               /api/external/v1/federation/platforms/{id}
+  POST PUT             /api/external/v1/homepage/attachments
+  GET                  /api/external/v1/homepage/attachments/GetByRequest
+  GET DELETE           /api/external/v1/homepage/attachments/{id}
+  POST PUT             /api/external/v1/homepage/contacts
+  GET                  /api/external/v1/homepage/contacts/GetByRequest
+  GET DELETE           /api/external/v1/homepage/contacts/{id}
+  POST PUT             /api/external/v1/homepage/links
+  GET                  /api/external/v1/homepage/links/GetByRequest
+  GET DELETE           /api/external/v1/homepage/links/{id}
+  POST PUT             /api/external/v1/homepage/notes
+  GET                  /api/external/v1/homepage/notes/GetByRequest
+  GET DELETE           /api/external/v1/homepage/notes/{id}
+  POST PUT             /api/external/v1/homepage/rss
+  GET                  /api/external/v1/homepage/rss/GetByRequest
+  GET                  /api/external/v1/homepage/rss/GetRssCount
+  GET DELETE           /api/external/v1/homepage/rss/{id}
+  POST GET             /api/external/v1/idp-group-mapping
+  GET                  /api/external/v1/idp-group-mapping/count
+  GET PUT DELETE       /api/external/v1/idp-group-mapping/{id}
+  POST GET             /api/external/v1/idpMapping
+  POST                 /api/external/v1/integrations/CreateIntegrationInstance
+  POST                 /api/external/v1/integrations/DeleteIntegrationInstance
+  POST                 /api/external/v1/integrations/GetAllEnvironmentCards
+  POST                 /api/external/v1/integrations/GetEnvironmentInstalledIntegrations
+  GET                  /api/external/v1/integrations/GetInstalledIntegrations
+  GET                  /api/external/v1/integrations/GetIntegrationDefaultInstance/{integrationIdentifier}
+  GET                  /api/external/v1/integrations/GetIntegrationInstanceSettings/{integrationInstanceId}
+  POST                 /api/external/v1/integrations/GetOptionalIntegrationInstances
+  GET                  /api/external/v1/integrations/GetPlaybooksNamesUsingIntegrationInstance/{integrationInstanceId}
+  POST                 /api/external/v1/jobs/DeleteJobData
+  GET                  /api/external/v1/jobs/GetInstalledJobs
+  GET                  /api/external/v1/jobs/GetJobTemplates
+  POST                 /api/external/v1/jobs/RunJob
+  POST                 /api/external/v1/jobs/SaveOrUpdateJobData
+  POST PUT GET         /api/external/v1/jobs/instances
+  POST                 /api/external/v1/jobs/instances/run
+  DELETE               /api/external/v1/jobs/instances/{id}
+  GET                  /api/external/v1/logging/agents/{agentIdentifier}
+  POST                 /api/external/v1/logging/python
+  GET                  /api/external/v1/notifications/CloseAllNotifications
+  GET                  /api/external/v1/notifications/CloseSystemNotification/{recordId}
+  GET                  /api/external/v1/notifications/CloseUserNotification/{recordId}
+  GET                  /api/external/v1/notifications/GetUnreadNotificationCount
+  GET                  /api/external/v1/notifications/GetUserNotificationSettings
+  GET                  /api/external/v1/notifications/GetUserNotifications
+  POST                 /api/external/v1/notifications/SaveUserNotificationSettings
+  POST                 /api/external/v1/ontology/AddOrUpdateMappingRules
+  POST                 /api/external/v1/ontology/AddOrUpdateVisualFamily
+  POST                 /api/external/v1/ontology/AddOrUpdateVisualFamilyRules
+  GET                  /api/external/v1/ontology/DeleteFamilyData/{familyId}
+  POST                 /api/external/v1/ontology/DeleteMappingRule
+  POST                 /api/external/v1/ontology/DeleteVisualFamilyRule
+  POST                 /api/external/v1/ontology/DuplicateVisualFamilyForSettings
+  POST                 /api/external/v1/ontology/ExportOntology
+  POST                 /api/external/v1/ontology/ExportVisualFamily
+  POST                 /api/external/v1/ontology/GetFamily
+  POST                 /api/external/v1/ontology/GetMappingRules
+  GET                  /api/external/v1/ontology/GetRelatedEntitiesByFamilyName/{familyName}
+  GET                  /api/external/v1/ontology/GetVisualFamilies
+  POST                 /api/external/v1/ontology/ImportOntology
+  POST                 /api/external/v1/ontology/ImportVisualFamily
+  POST                 /api/external/v1/ontology/IsOntologyOrVisualFamilyExists
+  POST                 /api/external/v1/ontology/IsVisualFamilyExists
+  POST                 /api/external/v1/ontology/UpdateVisualFamilyImage
+  POST PUT             /api/external/v1/permissions
+  POST                 /api/external/v1/permissions/Duplicate/{id}
+  GET                  /api/external/v1/permissions/GetAllEnvironmentStatus
+  GET                  /api/external/v1/permissions/GetAllEnvironmentStatus/{permissionGroupId}
+  GET                  /api/external/v1/permissions/GetPermissionsGroupCards
+  GET                  /api/external/v1/permissions/GetPermissionsGroupTemplateByType/{permissionType}
+  GET                  /api/external/v1/permissions/GetPermissionsGroupTypes
+  GET DELETE           /api/external/v1/permissions/{id}
+  POST                 /api/external/v1/playbooks/AddOrUpdatePlaybookCategory
+  POST                 /api/external/v1/playbooks/AttacheNestedWorkflowToCase
+  POST                 /api/external/v1/playbooks/AttacheWorkflowToCase
+  POST                 /api/external/v1/playbooks/CheckWorkflowNameInDifferentEnvironments
+  POST                 /api/external/v1/playbooks/DeleteWorkflow
+  POST                 /api/external/v1/playbooks/DeleteWorkflows
+  POST                 /api/external/v1/playbooks/DuplicateNestedWorkflows
+  POST                 /api/external/v1/playbooks/DuplicateWorkflow
+  POST                 /api/external/v1/playbooks/DuplicateWorkflows
+  POST                 /api/external/v1/playbooks/ExecuteStep
+  POST                 /api/external/v1/playbooks/ExportDefinitions
+  GET                  /api/external/v1/playbooks/ExportWorkflowWithBlocksByIdentifier/{apiWfIdentifier}
+  GET                  /api/external/v1/playbooks/GetActionResultsOfWFId/{wfInstanceId}
+  GET                  /api/external/v1/playbooks/GetCaseEntities/{caseId}
+  GET                  /api/external/v1/playbooks/GetContextGroupByKey/{key}
+  POST                 /api/external/v1/playbooks/GetDebugStepCaseData
+  POST                 /api/external/v1/playbooks/GetEnabledWFCards
+  POST                 /api/external/v1/playbooks/GetOverviewTemplate
+  GET                  /api/external/v1/playbooks/GetOverviewTemplate/{templateIdentifier}
+  POST                 /api/external/v1/playbooks/GetPendingStep
+  GET                  /api/external/v1/playbooks/GetPendingStepsCountForUser
+  GET                  /api/external/v1/playbooks/GetPendingStepsUserRelated
+  POST                 /api/external/v1/playbooks/GetPlaybookSimulationEnrichment
+  POST                 /api/external/v1/playbooks/GetPlaybookStatsMap
+  POST                 /api/external/v1/playbooks/GetTestCases
+  POST                 /api/external/v1/playbooks/GetTriggerTags
+  POST                 /api/external/v1/playbooks/GetWorkFlowVersionLogs
+  GET                  /api/external/v1/playbooks/GetWorkflowCategories
+  GET                  /api/external/v1/playbooks/GetWorkflowFullInfoByIdentifier/{apiWfIdentifier}
+  GET                  /api/external/v1/playbooks/GetWorkflowFullInfoWithEnvFilterByIdentifier/{apiWfIdentifier}
+  POST                 /api/external/v1/playbooks/GetWorkflowStepInstance
+  POST                 /api/external/v1/playbooks/GetWorkflowsInvolvingAction
+  POST                 /api/external/v1/playbooks/ImportDefinitions
+  POST                 /api/external/v1/playbooks/MoveDefinitionsToCategory
+  POST                 /api/external/v1/playbooks/RemoveCategories
+  POST                 /api/external/v1/playbooks/RerunBlock
+  POST                 /api/external/v1/playbooks/RerunPlaybook
+  POST                 /api/external/v1/playbooks/RestoreWorkflowDefinition
+  POST                 /api/external/v1/playbooks/RunPlaybookInDebug
+  POST                 /api/external/v1/playbooks/SaveLogVersionOfWorkflowDefinitions
+  POST                 /api/external/v1/playbooks/SaveWorkflowDefinitions
+  GET                  /api/external/v1/playbooks/action-widget-template
+  POST                 /api/external/v1/playbooks/permissions
+  POST                 /api/external/v1/playbooks/permissions/options
+  DELETE               /api/external/v1/playbooks/permissions/{identifier}
+  GET                  /api/external/v1/predefined-widgets/cases
+  POST                 /api/external/v1/reports/AddOrUpdateReportSchedule
+  POST                 /api/external/v1/reports/AddOrUpdateReportTemplate
+  POST                 /api/external/v1/reports/AddOrUpdateReportWidget
+  GET                  /api/external/v1/reports/DeleteReportSchedule/{id}
+  POST                 /api/external/v1/reports/DuplicateReportTemplate
+  POST                 /api/external/v1/reports/GenerateReportTemplate
+  POST                 /api/external/v1/reports/GetReportSchedules
+  GET                  /api/external/v1/reports/GetReportTemplates
+  POST                 /api/external/v1/reports/ImportReportTemplate
+  GET                  /api/external/v1/reports/RefreshAdvancedReports
+  GET                  /api/external/v1/reports/RemoveReportTemplate/{templateId}
+  GET                  /api/external/v1/reports/RemoveReportWidget/{widgetId}
+  POST                 /api/external/v1/reports/ShareAdvancedReport
+  GET                  /api/external/v1/resources/DownloadAuditControllerActionsCsv
+  GET                  /api/external/v1/resources/GetActionResultsById/{caseId}/{actionResultId}
+  GET                  /api/external/v1/resources/GetCaseFullDetailsById/{parentId}/{caseId}
+  GET                  /api/external/v1/resources/GetEntityInsightsById/{caseId}/{insightsId}
+  POST                 /api/external/v1/retention/delete-cases
+  POST                 /api/external/v1/retention/system
+  POST                 /api/external/v1/retention/user
+  POST                 /api/external/v1/search/CaseSearchEverything
+  POST                 /api/external/v1/search/EntitySearchEverything
+  POST                 /api/external/v1/search/GetCasesFilterUserAndRoles
+  POST                 /api/external/v1/search/GetCasesFilterValues
+  POST                 /api/external/v1/search/GetEntitiesFilterValues
+  POST                 /api/external/v1/search/GetSearchResultsAsCsv
+  POST                 /api/external/v1/settings/AddCaseStageDefinitionRecord
+  POST                 /api/external/v1/settings/AddCollaboratorRequest
+  POST                 /api/external/v1/settings/AddLicenseAgreementSignature
+  POST                 /api/external/v1/settings/AddOrUpdateCaseAssignmentPolicySettings
+  POST                 /api/external/v1/settings/AddOrUpdateEnvironmentRecords
+  POST                 /api/external/v1/settings/AddOrUpdateModelBlockRecords
+  POST                 /api/external/v1/settings/AddOrUpdateMoveCaseBetweenEnvironmentsPolicySettings
+  POST                 /api/external/v1/settings/AddOrUpdateNetworkDetailsRecords
+  POST                 /api/external/v1/settings/AddOrUpdateRootCauseClose
+  POST                 /api/external/v1/settings/AddOrUpdateTrackingListRecords
+  POST                 /api/external/v1/settings/AddOrUpdateUserProfile
+  POST                 /api/external/v1/settings/AddSlaDefinitionsRecord
+  POST                 /api/external/v1/settings/AddTagDefinitionsRecords
+  DELETE               /api/external/v1/settings/DeleteCollaboratorRequest/{id}
+  POST                 /api/external/v1/settings/ExportAuditLastWeekAsCsv
+  POST                 /api/external/v1/settings/ExportAuditLastWeekAsCsvV2
+  GET                  /api/external/v1/settings/GetAdvancedReportsSettings
+  GET                  /api/external/v1/settings/GetAllCollaboratorRequests
+  GET                  /api/external/v1/settings/GetAllModelBlockRecords
+  POST                 /api/external/v1/settings/GetAnalysts
+  POST                 /api/external/v1/settings/GetBlockListDetails
+  GET                  /api/external/v1/settings/GetCaseAssigmentPolicySettings
+  POST                 /api/external/v1/settings/GetCaseStageDefinitionRecords
+  GET                  /api/external/v1/settings/GetCollaboratorRequestsByUser
+  GET                  /api/external/v1/settings/GetEnvironmentInstanceUrls
+  POST                 /api/external/v1/settings/GetEnvironments
+  GET                  /api/external/v1/settings/GetLatestLicenseAgreement
+  GET                  /api/external/v1/settings/GetMaximumAlertsGroupingConfiguration
+  GET                  /api/external/v1/settings/GetMoveCaseBetweenEnvironmentsPolicySettings
+  POST                 /api/external/v1/settings/GetNetworkDetails
+  GET                  /api/external/v1/settings/GetProxySettings
+  GET                  /api/external/v1/settings/GetPublicCertificate
+  GET                  /api/external/v1/settings/GetRootCauseCloseRecords
+  POST                 /api/external/v1/settings/GetSlaDefinitions
+  GET                  /api/external/v1/settings/GetSlaDefinitionsRecords
+  GET                  /api/external/v1/settings/GetSystemEventEntityTypes
+  GET                  /api/external/v1/settings/GetSystemVersion
+  POST                 /api/external/v1/settings/GetTagDefinitionsRecords
+  GET                  /api/external/v1/settings/GetTrackingListRecords
+  POST                 /api/external/v1/settings/GetTrackingListRecordsFiltered
+  POST                 /api/external/v1/settings/GetUserImage
+  POST                 /api/external/v1/settings/GetUserProfileCards
+  POST                 /api/external/v1/settings/GetUserProfiles
+  POST                 /api/external/v1/settings/GetUserProfilesByEnvironments
+  GET                  /api/external/v1/settings/IsPermittedToEnvironment/{environmentName}
+  POST                 /api/external/v1/settings/RemoveAllNetworkDetailsRecords
+  POST                 /api/external/v1/settings/RemoveCaseStageDefinitionRecords
+  POST                 /api/external/v1/settings/RemoveEnvironmentRecords
+  POST                 /api/external/v1/settings/RemoveModelBlockRecords
+  POST                 /api/external/v1/settings/RemoveNetworkDetailsRecords
+  POST                 /api/external/v1/settings/RemoveRootCauseClose
+  POST                 /api/external/v1/settings/RemoveSlaDefinitionRecords
+  POST                 /api/external/v1/settings/RemoveTagDefinitionRecords
+  POST                 /api/external/v1/settings/RemoveTrackingListRecords
+  POST                 /api/external/v1/settings/SaveAdvancedReportsSettings
+  GET                  /api/external/v1/settings/TestAdvancedReportsSettings
+  POST                 /api/external/v1/settings/TestProxySettings
+  POST                 /api/external/v1/settings/UpdateAlertGroupingRule
+  PUT                  /api/external/v1/settings/UpdateCollaboratorRequest
+  POST                 /api/external/v1/settings/UpdateUserImage
+  POST                 /api/external/v1/settings/UploadCustomActionResultJson
+  POST                 /api/external/v1/settings/batch-delete-custom-lists
+  GET                  /api/external/v1/settings/environment-load-balancing-status
+  GET                  /api/external/v1/settings/environment-priorities
+  PATCH GET            /api/external/v1/settings/environment-priorities/{environment}
+  GET POST             /api/external/v1/settings/form-dynamic-parameters
+  GET PUT DELETE       /api/external/v1/settings/form-dynamic-parameters/{id}
+  DELETE               /api/external/v1/settings/networks/permitted
+  DELETE               /api/external/v1/settings/networks/{identifier}
+  POST                 /api/external/v1/settings/reset-environment-priorities
+  GET                  /api/external/v1/settings/tag-definition/names
+  POST                 /api/external/v1/settings/toggle-environment-load-balancing
+  POST                 /api/external/v1/socroles/AddOrUpdateSocRole
+  POST                 /api/external/v1/socroles/DeleteSocRole
+  GET                  /api/external/v1/socroles/GetSocRole/{id}
+  GET                  /api/external/v1/socroles/GetSocRoles
+  POST                 /api/external/v1/socroles/GetSocRolesByEnvironments
+  GET                  /api/external/v1/socroles/HasAssignedUsers/{id}
+  POST                 /api/external/v1/store/ExportUseCase
+  GET                  /api/external/v1/store/GetHtmlViewPresets
+  GET                  /api/external/v1/store/GetIntegrationDependencies/{integrationIdentifier}
+  POST                 /api/external/v1/store/GetIntegrationFullDetails
+  GET                  /api/external/v1/store/GetIntegrationsStoreData
+  GET                  /api/external/v1/store/GetPowerUpsStoreData
+  GET                  /api/external/v1/store/GetReportsStoreData
+  GET                  /api/external/v1/store/GetUsecasesCards
+  POST                 /api/external/v1/store/ReinstallAllIntegrations
+  POST                 /api/external/v1/store/SaveIntegrationConfigurationProperties
+  GET                  /api/external/v1/store/TestIntegration/{integrationInstanceId}
+  POST                 /api/external/v1/warroom/CloseIncident
+  POST                 /api/external/v1/warroom/CreateIncident
+  POST                 /api/external/v1/warroom/CreateWarRoomAssessment
+  POST                 /api/external/v1/warroom/CreateWarRoomComment
+  POST                 /api/external/v1/warroom/CreateWarRoomDecision
+  POST                 /api/external/v1/warroom/CreateWarRoomFact
+  GET                  /api/external/v1/warroom/CreateWarRoomReport/{incidentId}
+  POST                 /api/external/v1/warroom/CreateWarRoomTask
+  GET                  /api/external/v1/warroom/GetChatChannelCards/{incidentId}
+  POST                 /api/external/v1/warroom/GetChatChannelConversation
+  GET                  /api/external/v1/warroom/GetDepartments
+  GET                  /api/external/v1/warroom/GetFilterDepartments/{incidentId}
+  GET                  /api/external/v1/warroom/GetForgotPasswordTimeLimit
+  GET                  /api/external/v1/warroom/GetIncident/{id}
+  GET                  /api/external/v1/warroom/GetIncidentUserById/{id}
+  GET                  /api/external/v1/warroom/GetLastSeverityScore/{id}
+  GET                  /api/external/v1/warroom/GetWarRoomAuditors
+  GET                  /api/external/v1/warroom/GetWarRoomUserForIncident/{incidentId}
+  POST                 /api/external/v1/warroom/GetWarRoomWallItems
+  POST                 /api/external/v1/warroom/SaveSeverityScore
+  POST                 /api/external/v1/warroom/SendChatMessage
+  POST                 /api/external/v1/warroom/UpdateWarRoomAssessment
+  POST                 /api/external/v1/warroom/UpdateWarRoomComment
+  POST                 /api/external/v1/warroom/UpdateWarRoomDecision
+  POST                 /api/external/v1/warroom/UpdateWarRoomFact
+  POST                 /api/external/v1/warroom/UpdateWarRoomTask
+  POST PUT             /api/external/v1/webhooks-management
+  GET                  /api/external/v1/webhooks-management/Cards
+  GET                  /api/external/v1/webhooks-management/ExportLogs/{identifier}
+  GET                  /api/external/v1/webhooks-management/Logs
+  POST                 /api/external/v1/webhooks-management/Revoke/{identifier}
+  GET DELETE           /api/external/v1/webhooks-management/{identifier}
+  GET                  /api/external/v1/webhooks-management/{identifier}/statistics
+  POST                 /api/external/v1/{tenantId}/configuration-items:batchUpdate
+  POST                 /api/external/v1/{tenantId}/pubsub-backfill:trigger
+[1] Fetching swagger.json for v2...
+[1] v2: 445 bytes — valid JSON
+[1] v2: 0 paths
+[1] Fetching swagger.json for v3...
+[1] v3: 445 bytes — valid JSON
+[1] v3: 0 paths
+[1] Fetching swagger/index.html...
+[1] Swagger HTML title/urls:
+<title>Swagger UI
+
+[2] Extracting all unique paths...
+GET     /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders               [AUTH?] params=[providerName,providerType,LegacyControllerBaseUrl] Retrieves all the external authentication provider
+POST    /api/external/v1/agents/AddAgent                                                 [AUTH?] params=[] Adds an Agent to your environment.
+POST    /api/external/v1/agents/AddOrUpdatePublisher                                     [AUTH?] params=[] Adds or updates the publisher settings
+POST    /api/external/v1/agents/DeleteAgent                                              [AUTH?] params=[] Deletes an Agent in your environment.
+POST    /api/external/v1/agents/DeletePublishers                                         [AUTH?] params=[] Deletes the publisher configured in your environme
+GET     /api/external/v1/agents/GetAgentByIdentifier/{agentIdentifier}                   [AUTH?] params=[agentIdentifier] Returns a list of all the Agents configured in you
+GET     /api/external/v1/agents/GetAgentInformationByIdentifier/{agentIdentifier}        [AUTH?] params=[agentIdentifier] Returns the Agent settings by agent identifiers.
+GET     /api/external/v1/agents/GetAgentInformationByIntegrationInstance/{integrationInstanceId} [AUTH?] params=[integrationInstanceId] Returns the Agent settings for each integration in
+GET     /api/external/v1/agents/GetAgents                                                [AUTH?] params=[] Returns the list of all Agents configured in your 
+POST    /api/external/v1/agents/GetAgentsByEnvironment                                   [AUTH?] params=[] Returns a list of all Agents by their environment.
+POST    /api/external/v1/agents/GetAgentsInformationByIdentifiers                        [AUTH?] params=[] Returns List of Agent information data by agent id
+GET     /api/external/v1/agents/GetAvailableEnvironmentsForAgents                        [AUTH?] params=[] Returns a list of all the optional environments to
+GET     /api/external/v1/agents/GetEnabledAgents                                         [AUTH?] params=[] Returns a list of all the enabled Agents in your e
+GET     /api/external/v1/agents/GetPublisherById/{publisherId}                           [AUTH?] params=[publisherId] Returns the list of publishers configured in your 
+GET     /api/external/v1/agents/GetPublishers                                            [AUTH?] params=[] Returns the list of publishers configured in your 
+POST    /api/external/v1/agents/GetSecondaryAgentsByPrimaryIdentifiers                   [AUTH?] params=[] Returns a list of Secondary Agents by the given Pr
+GET     /api/external/v1/agents/GetValidAgentsForConnector/{environment}/{integration}   [AUTH?] params=[environment,integration] Returns a list with all agents, flagged for connec
+GET     /api/external/v1/agents/GetValidAgentsForIdeConnector/{environment}/{integration} [AUTH?] params=[environment,integration] Returns a list with all agents, flagged for connec
+POST    /api/external/v1/agents/RedeployAgent                                            [AUTH?] params=[] 
+GET     /api/external/v1/agents/TestPublisherConnectivity/{publisherId}                  [AUTH?] params=[publisherId] Test connectivity with the publisher by publisher 
+POST    /api/external/v1/agents/UpdateAgent                                              [AUTH?] params=[] Updates the Agent settings.
+GET     /api/external/v1/agents/integration-upgrade-unsupported-agents                   [AUTH?] params=[requiredPythonVersion,integrationIdentifier,toggleStagingProduction] Returns a list of agents that are configured with 
+GET     /api/external/v1/agents/valid-for-jobs                                           [AUTH?] params=[integration] Returns a list with all agents, flagged for job in
+POST    /api/external/v1/approval-link/Apply                                             [AUTH?] params=[] 
+POST    /api/external/v1/attackssimulator/CreateSimulatedCustomCase                      [AUTH?] params=[] Creates a custom (simulated) case.
+POST    /api/external/v1/attackssimulator/DeleteUseCase                                  [AUTH?] params=[] Deletes a given use case.
+GET     /api/external/v1/attackssimulator/ExportCustomCase/{customCaseName}              [AUTH?] params=[customCaseName] Exports a custom (simulated) case as a json file.
+POST    /api/external/v1/attackssimulator/GenerateUseCases                               [AUTH?] params=[] Simulates a case (the case will be presented in th
+POST    /api/external/v1/attackssimulator/GetCustomCaseDetails                           [AUTH?] params=[] Returns the details of a custom (simulated) case i
+GET     /api/external/v1/attackssimulator/GetCustomCases                                 [AUTH?] params=[] Returns a list of all of the custom (simulated) ca
+POST    /api/external/v1/attackssimulator/ImportCustomCase                               [AUTH?] params=[] Import a custom (simulated) case from a json file.
+GET     /api/external/v1/attackssimulator/IsCustomCaseExists/{alertName}                 [AUTH?] params=[alertName] Returns true if customCase name already exists.
+POST    /api/external/v1/attackssimulator/SimulateAlert                                  [AUTH?] params=[] Simulate a specific alert within a case in your en
+POST    /api/external/v1/case-overview/GetAlertOverviewData                              [AUTH?] params=[] 
+POST    /api/external/v1/case-overview/GetAlertsEntities                                 [AUTH?] params=[] 
+GET     /api/external/v1/case-overview/GetCaseEntities/{caseId}                          [AUTH?] params=[caseId] 
+POST    /api/external/v1/case-overview/GetCaseOverviewData                               [AUTH?] params=[] 
+GET     /api/external/v1/case-overview/GetFullOverviewTemplateDetails/{templateIdentifier} [AUTH?] params=[templateIdentifier] 
+POST    /api/external/v1/case-overview/GetOverviewTemplate                               [AUTH?] params=[] 
+GET     /api/external/v1/case-overview/GetOverviewTemplateCards                          [AUTH?] params=[] 
+POST    /api/external/v1/case-overview/PreviewOverviewWidget                             [AUTH?] params=[] 
+POST    /api/external/v1/case-overview/ResolveOverviewWidget                             [AUTH?] params=[] 
+POST    /api/external/v1/case-overview/SaveOverviewTemplate                              [AUTH?] params=[] 
+GET     /api/external/v1/casechat/attachments/preview/{attachmentId}                     [AUTH?] params=[attachmentId] 
+GET     /api/external/v1/casechat/attachments/{attachmentId}                             [AUTH?] params=[attachmentId] 
+POST    /api/external/v1/casechat/pin/{messageId}                                        [AUTH?] params=[messageId] 
+POST    /api/external/v1/casechat/unpin/{messageId}                                      [AUTH?] params=[messageId] 
+POST    /api/external/v1/casechat/{caseId}                                               [AUTH?] params=[caseId] 
+GET     /api/external/v1/casechat/{caseId}                                               [AUTH?] params=[caseId,pagesize,page,startMessageId,includeStartMessage,searchTerm] 
+GET     /api/external/v1/casechat/{caseId}/new-messages-count                            [AUTH?] params=[caseId] 
+POST    /api/external/v1/cases-queue/GetAlertNames                                       [AUTH?] params=[] Returns the list of alert names by environment.
+POST    /api/external/v1/cases-queue/GetCaseCardsByRequest                               [AUTH?] params=[] Returns minimal data related to the case (CaseCard
+GET     /api/external/v1/cases-queue/alert-vendors                                       [AUTH?] params=[] Returns all alert vendors.
+POST    /api/external/v1/cases-queue/bulk-operations/ExecuteBulkAssignCase               [AUTH?] params=[] 
+POST    /api/external/v1/cases-queue/bulk-operations/ExecuteBulkCloseCase                [AUTH?] params=[] Used to perform bulk close case action on several 
+POST    /api/external/v1/cases-queue/bulk-operations/MergeCases                          [AUTH?] params=[] Merge cases into a new Case.
+POST    /api/external/v1/cases-queue/bulk-operations/ValidateCasesAssigneeForCloseCase   [AUTH?] params=[] Used to perform bulk close case action on several 
+GET     /api/external/v1/cases-queue/saved-filter                                        [AUTH?] params=[] Return saved filters for user.
+POST    /api/external/v1/cases-queue/saved-filter                                        [AUTH?] params=[] Add or Update filter.
+DELETE  /api/external/v1/cases-queue/saved-filter                                        [AUTH?] params=[] Delete filter by filterId.
+POST    /api/external/v1/cases/AddCaseComment                                            [AUTH?] params=[] Adds a comment to the case that will be presented 
+POST    /api/external/v1/cases/AddCaseTag                                                [AUTH?] params=[] Adds a tag to the given case which can later on be
+POST    /api/external/v1/cases/AddEvidence                                               [AUTH?] params=[] Adds an attachment to a given case.
+POST    /api/external/v1/cases/AddOrUpdateCaseTask                                       [AUTH?] params=[] Adds or updates a task  assigned to a specific use
+POST    /api/external/v1/cases/AssignUserToCase                                          [AUTH?] params=[] Assigns a specific user to a case (the user assign
+POST    /api/external/v1/cases/ChangeCaseDescription                                     [AUTH?] params=[] Change the description of a given case (the descri
+POST    /api/external/v1/cases/ChangeCaseImportanceStatus                                [AUTH?] params=[] Changes the "is important" status of a case. You c
+POST    /api/external/v1/cases/ChangeCasePriority                                        [AUTH?] params=[] Used to change the priority of a given case (for e
+POST    /api/external/v1/cases/ChangeCaseStage                                           [AUTH?] params=[] Changes the case handling stage (for example, "Inv
+POST    /api/external/v1/cases/CloseAlert                                                [AUTH?] params=[] Moves the requested alert in a given case to a new
+POST    /api/external/v1/cases/CloseCase                                                 [AUTH?] params=[] Changes the given case status to closed.
+POST    /api/external/v1/cases/CreateCase                                                [AUTH?] params=[] Used to inject cases into the Siemplify Data Proce
+POST    /api/external/v1/cases/CreateCaseEntity                                          [AUTH?] params=[] Used to manually add an entity to an alert in a gi
+POST    /api/external/v1/cases/CreateCaseInsight                                         [AUTH?] params=[] Creates an insight for a case.
+POST    /api/external/v1/cases/CreateManualCase                                          [AUTH?] params=[] Creates a manual case that will be displayed in yo
+POST    /api/external/v1/cases/CreateWarRoomIncidentFromCase                             [AUTH?] params=[] Creates an incident in the Command Center from a g
+POST    /api/external/v1/cases/ExecuteBulkAddCaseTag                                     [AUTH?] params=[] Used to perform bulk tag addition on several cases
+POST    /api/external/v1/cases/ExecuteBulkAssign                                         [AUTH?] params=[] Used to perform bulk assign case action on several
+POST    /api/external/v1/cases/ExecuteBulkChangeCasePriority                             [AUTH?] params=[] Used to perform bulk case priority change action o
+POST    /api/external/v1/cases/ExecuteBulkChangeCaseStage                                [AUTH?] params=[] Used to perform bulk case stage changes on several
+POST    /api/external/v1/cases/ExecuteBulkCloseCase                                      [AUTH?] params=[] Used to perform bulk close case action on several 
+POST    /api/external/v1/cases/ExecuteBulkReopenCase                                     [AUTH?] params=[] Used to perform bulk reopen case action on several
+POST    /api/external/v1/cases/ExecuteManualAction                                       [AUTH?] params=[] Execute a given playbook action.
+POST    /api/external/v1/cases/ExecuteStep                                               [AUTH?] params=[] Executes a single step which is part of a playbook
+POST    /api/external/v1/cases/GenerateCaseReport                                        [AUTH?] params=[] Generate a report for a specific case. The report 
+GET     /api/external/v1/cases/GetActionResultById/{resultIdStr}                         [AUTH?] params=[resultIdStr] Returns the action result details by identifier.
+POST    /api/external/v1/cases/GetCaseCardsByRequest                                     [AUTH?] params=[] Returns minimal data related to the case (CaseCard
+GET     /api/external/v1/cases/GetCaseExists/{caseId}                                    [AUTH?] params=[caseId] Returns a bool value if case exists filtered by ca
+GET     /api/external/v1/cases/GetCaseFullDetails/{caseId}                               [AUTH?] params=[caseId] Returns all the data related to a single case, bas
+GET     /api/external/v1/cases/GetEvidenceData/{evidenceId}                              [AUTH?] params=[evidenceId] Returns the attachment file content in a case as a
+GET     /api/external/v1/cases/GetWallItemsForWarRoom/{id}                               [AUTH?] params=[id] Returns all the wall items (Case history) and tran
+POST    /api/external/v1/cases/GetWorkflowInstanceSummary                                [AUTH?] params=[] Returns the summary of an executed playbook for a 
+POST    /api/external/v1/cases/IsCaseUpdated                                             [AUTH?] params=[] Checks the modification time of a given case ident
+POST    /api/external/v1/cases/PauseAlertSla                                             [AUTH?] params=[] Used to pause alert sla.
+POST    /api/external/v1/cases/RaiseIncident                                             [AUTH?] params=[] Raises the case to "Incident" stage. Raising an in
+POST    /api/external/v1/cases/ReassignCaseTask                                          [AUTH?] params=[] Reassigns a case task to a specific user or role.
+POST    /api/external/v1/cases/RemoveCaseTag                                             [AUTH?] params=[] Removes a case tag that was added to a given case.
+POST    /api/external/v1/cases/RenameCase                                                [AUTH?] params=[] Changes the case title as presented in the case qu
+POST    /api/external/v1/cases/ResumeAlertSla                                            [AUTH?] params=[] Used to resume alert sla.
+POST    /api/external/v1/cases/Skip                                                      [AUTH?] params=[] Will skip a pending playbook action, resulting in 
+POST    /api/external/v1/cases/UnraiseIncident                                           [AUTH?] params=[] Removes the incident flag from a case.
+POST    /api/external/v1/cases/UpdateAlertPriority                                       [AUTH?] params=[] Used to update the priority of an alert.
+GET     /api/external/v1/cases/comments                                                  [AUTH?] params=[CaseId,AlertIdentifier,UserOwnerId,Spec.TimeFilterType,Spec.FromTimestamp] Get all case comments by filter
+POST    /api/external/v1/cases/comments                                                  [AUTH?] params=[] Create case comment
+GET     /api/external/v1/cases/comments/file/{fileId}                                    [AUTH?] params=[fileId] Download file attached to a comment
+PATCH   /api/external/v1/cases/comments/mark-as-deleted/{id}                             [AUTH?] params=[id] Mark case comment as deleted
+PUT     /api/external/v1/cases/comments/{id}                                             [AUTH?] params=[id] Update case comment
+GET     /api/external/v1/cases/homepagecases/GetByRequest                                [AUTH?] params=[Filters,SlaFilters,PriorityFilters,SortBy,RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/cases/homepagecases/GetHomepageCasesCount                       [AUTH?] params=[] 
+GET     /api/external/v1/cases/insights/{caseId}                                         [AUTH?] params=[caseId,AlertIdentifier,EntityIdentifier,Type] Returns all case insights by case id and filter pa
+POST    /api/external/v1/cases/requests/GenerateCollaboratorRequest                      [AUTH?] params=[] Generate alert of the request template in your env
+GET     /api/external/v1/cases/requests/GetByRequest                                     [AUTH?] params=[Filters,SortBy,RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/cases/requests/GetCollaboratorRequestCount                      [AUTH?] params=[] 
+POST    /api/external/v1/cases/tasks                                                     [AUTH?] params=[] 
+PUT     /api/external/v1/cases/tasks                                                     [AUTH?] params=[] 
+GET     /api/external/v1/cases/tasks/GetByRequest                                        [AUTH?] params=[Filters,StatusFilter,SortBy,RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/cases/tasks/GetTasksCountForUser                                [AUTH?] params=[] 
+PUT     /api/external/v1/cases/tasks/MarkAsDone                                          [AUTH?] params=[] 
+GET     /api/external/v1/cases/tasks/{id}                                                [AUTH?] params=[id] 
+DELETE  /api/external/v1/cases/tasks/{id}                                                [AUTH?] params=[id] 
+PATCH   /api/external/v1/cases/wall/favourite                                            [AUTH?] params=[] Sets a wall item as favorite
+GET     /api/external/v1/cases/wall/{caseId}                                             [AUTH?] params=[caseId] Get case wall activities
+GET     /api/external/v1/configuration-items/{tenantId}                                  [AUTH?] params=[tenantId,key,category] 
+PUT     /api/external/v1/configuration-items/{tenantId}                                  [AUTH?] params=[tenantId] 
+POST    /api/external/v1/connectors                                                      [AUTH?] params=[] Adds a new connector instance or updates an existi
+GET     /api/external/v1/connectors/cards                                                [AUTH?] params=[] Provides basic information per each accessible con
+POST    /api/external/v1/connectors/fetch-sample-data                                    [AUTH?] params=[] Executes the connector once for testing purposes.
+POST    /api/external/v1/connectors/template                                             [AUTH?] params=[] Retrieves detailed information regarding a specifi
+GET     /api/external/v1/connectors/template-cards                                       [AUTH?] params=[] Provides basic information per each accessible con
+POST    /api/external/v1/connectors/update-from-ide                                      [AUTH?] params=[] Updates the connector instance to its connector de
+GET     /api/external/v1/connectors/{identifier}                                         [AUTH?] params=[identifier] Retrieves detailed information regarding a specifi
+DELETE  /api/external/v1/connectors/{identifier}                                         [AUTH?] params=[identifier] Deletes a connector instance according to the give
+GET     /api/external/v1/connectors/{identifier}/statistics                              [AUTH?] params=[identifier] Details the statistics associated with the specifi
+POST    /api/external/v1/dashboards/AddOrUpdateDashboard                                 [AUTH?] params=[] Adds a new dashboard or updates an existing one (d
+POST    /api/external/v1/dashboards/AddOrUpdateDashboardWidget                           [AUTH?] params=[] Adds a new dashboard widget or update an existing 
+POST    /api/external/v1/dashboards/DeleteDashboard                                      [AUTH?] params=[dashboardtId] Deletes a dashboard with a given dashboard identif
+POST    /api/external/v1/dashboards/DeleteDashboardWidget                                [AUTH?] params=[dashboardWidgetId] Deletes a dashboard widget with a given widget ID.
+POST    /api/external/v1/dashboards/GetDashboardWidgetCaseIds                            [AUTH?] params=[] Returns a list of the Case IDs involved in the wid
+GET     /api/external/v1/dashboards/GetDashboardWidgetDefinitions                        [AUTH?] params=[] Returns all available widget definitions. Please n
+POST    /api/external/v1/dashboards/GetDashboardWidgetValues                             [AUTH?] params=[] Returns specific dashboard widget (including filte
+POST    /api/external/v1/dashboards/ImportDashboard                                      [AUTH?] params=[] Imports a dashboard into the platform (json file).
+POST    /api/external/v1/dashboards/SaveDashboardAsReportTemplate                        [AUTH?] params=[] Saves the dashboard as a report template. The repo
+POST    /api/external/v1/dynamic-cases/AddCaseComment                                    [AUTH?] params=[] 
+POST    /api/external/v1/dynamic-cases/AddCaseTag                                        [AUTH?] params=[] Adds a tag to the given case which can later on be
+POST    /api/external/v1/dynamic-cases/AddComment                                        [AUTH?] params=[] Adds a comment (could be with attachment) to a giv
+POST    /api/external/v1/dynamic-cases/AddEvidence                                       [AUTH?] params=[] Adds an evidence (attachment) to a given case.
+POST    /api/external/v1/dynamic-cases/AddOrUpdateCaseTask                               [AUTH?] params=[] Adds or updates a task assigned to a specific user
+POST    /api/external/v1/dynamic-cases/AddOrUpdateEntityProperty                         [AUTH?] params=[] Add or update property of involved entity and uniq
+POST    /api/external/v1/dynamic-cases/AssignUserToCase                                  [AUTH?] params=[] Assigns a specific user to a case - the user assig
+POST    /api/external/v1/dynamic-cases/ChangeCaseDescription                             [AUTH?] params=[] Change the description of a given case - the descr
+POST    /api/external/v1/dynamic-cases/ChangeCaseImportanceStatus                        [AUTH?] params=[] Changes the "is important" status of a case. You c
+POST    /api/external/v1/dynamic-cases/ChangeCaseStage                                   [AUTH?] params=[] Changes the case handling stage (for example, "Inv
+POST    /api/external/v1/dynamic-cases/CloseAlert                                        [AUTH?] params=[] Close alert in a case. New alert related operation
+POST    /api/external/v1/dynamic-cases/CloseCase                                         [AUTH?] params=[] Close a case. New case related operations are not 
+POST    /api/external/v1/dynamic-cases/CreateCase                                        [AUTH?] params=[] Used to inject cases into the Siemplify Data Proce
+POST    /api/external/v1/dynamic-cases/CreateCaseEntity                                  [AUTH?] params=[] Used to manually add an entity to an alert in a gi
+POST    /api/external/v1/dynamic-cases/ExecuteBulkReopenCase                             [AUTH?] params=[] Reopen alert cases in bulk
+POST    /api/external/v1/dynamic-cases/GenerateCaseReport                                [AUTH?] params=[] Generate case report
+POST    /api/external/v1/dynamic-cases/GetAlertEvents                                    [AUTH?] params=[] Provides information for the alert events
+GET     /api/external/v1/dynamic-cases/GetCaseDetails/{caseId}                           [AUTH?] params=[caseId] Provides Detailed information for the requested ca
+POST    /api/external/v1/dynamic-cases/GetCaseWallActivities                             [AUTH?] params=[] 
+POST    /api/external/v1/dynamic-cases/GetCaseWallActivities/count                       [AUTH?] params=[] Gets the count of wall activities for a case, filt
+GET     /api/external/v1/dynamic-cases/GetEvidenceData/{evidenceId}                      [AUTH?] params=[evidenceId] Get file attached to a comment
+GET     /api/external/v1/dynamic-cases/GetWallActivities/{caseId}                        [AUTH?] params=[caseId] Get all wall activity of the case
+GET     /api/external/v1/dynamic-cases/GetWallActivitiesForCommandCenter/{id}            [AUTH?] params=[id] Returns all the wall items (Case history) and tran
+GET     /api/external/v1/dynamic-cases/GetWallActivitiesV2/{caseId}                      [AUTH?] params=[caseId] Get all wall activity of the case
+POST    /api/external/v1/dynamic-cases/IngestCaseInOtherEnvironment                      [AUTH?] params=[] Move the requested case to a new environment
+POST    /api/external/v1/dynamic-cases/IsCaseUpdated                                     [AUTH?] params=[] Checks the modification time of a given case ident
+PUT     /api/external/v1/dynamic-cases/MarkCommentAsDeleted/{id}                         [AUTH?] params=[id] Mark comment as deleted.
+POST    /api/external/v1/dynamic-cases/MarkTaskAsDone                                    [AUTH?] params=[] Mark task as done in case wall by the logged-in us
+POST    /api/external/v1/dynamic-cases/MoveAlertToNewCase                                [AUTH?] params=[] Move alert to new case
+POST    /api/external/v1/dynamic-cases/RaiseIncident                                     [AUTH?] params=[] Raises the case to "Incident" stage. Raising an in
+POST    /api/external/v1/dynamic-cases/RemoveCaseTag                                     [AUTH?] params=[] Removes a case tag that was added to a given case
+POST    /api/external/v1/dynamic-cases/RenameCase                                        [AUTH?] params=[] Changes the case title
+POST    /api/external/v1/dynamic-cases/ReopenAlert                                       [AUTH?] params=[] Reopen alert in a case
+POST    /api/external/v1/dynamic-cases/UnraiseIncident                                   [AUTH?] params=[] Removes the incident flag from a case
+POST    /api/external/v1/dynamic-cases/UpdateAlertPriority                               [AUTH?] params=[] Change the priority of the alert
+POST    /api/external/v1/dynamic-cases/UpdateCasePriority                                [AUTH?] params=[] Change the priority of the case
+PUT     /api/external/v1/dynamic-cases/UpdateComment                                     [AUTH?] params=[] Updates a comment and it's attachment(if needed) i
+POST    /api/external/v1/dynamic-cases/request                                           [AUTH?] params=[] Adds an evidence (attachment) to a given case.
+POST    /api/external/v1/entity-search/count                                             [AUTH?] params=[] Return the total amount of relevant entities given
+POST    /api/external/v1/entity-search/entities                                          [AUTH?] params=[] Returns relevant page of entities given the reques
+GET     /api/external/v1/external-authentication-settings                                [AUTH?] params=[providerName,providerType] Retrieves all the external authentication provider
+POST    /api/external/v1/external-authentication-settings                                [AUTH?] params=[] Adds a new external provider instance.
+GET     /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Retrieves detailed information on a specific exter
+DELETE  /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Deletes a specific external provider instance from
+PATCH   /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Patches an existing external provider instance.
+PUT     /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Updates an existing external provider instance.
+GET     /api/external/v1/federation/cases                                                [AUTH?] params=[continuationToken,pageSize] 
+PATCH   /api/external/v1/federation/cases/batch-patch                                    [AUTH?] params=[] 
+GET     /api/external/v1/federation/platforms                                            [AUTH?] params=[] 
+DELETE  /api/external/v1/federation/platforms/{id}                                       [AUTH?] params=[id] 
+POST    /api/external/v1/homepage/attachments                                            [AUTH?] params=[] 
+PUT     /api/external/v1/homepage/attachments                                            [AUTH?] params=[] 
+GET     /api/external/v1/homepage/attachments/GetByRequest                               [AUTH?] params=[RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/homepage/attachments/{id}                                       [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/attachments/{id}                                       [AUTH?] params=[id] 
+POST    /api/external/v1/homepage/contacts                                               [AUTH?] params=[] 
+PUT     /api/external/v1/homepage/contacts                                               [AUTH?] params=[] 
+GET     /api/external/v1/homepage/contacts/GetByRequest                                  [AUTH?] params=[RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/homepage/contacts/{id}                                          [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/contacts/{id}                                          [AUTH?] params=[id] 
+POST    /api/external/v1/homepage/links                                                  [AUTH?] params=[] 
+PUT     /api/external/v1/homepage/links                                                  [AUTH?] params=[] 
+GET     /api/external/v1/homepage/links/GetByRequest                                     [AUTH?] params=[RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/homepage/links/{id}                                             [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/links/{id}                                             [AUTH?] params=[id] 
+POST    /api/external/v1/homepage/notes                                                  [AUTH?] params=[] 
+PUT     /api/external/v1/homepage/notes                                                  [AUTH?] params=[] 
+GET     /api/external/v1/homepage/notes/GetByRequest                                     [AUTH?] params=[RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/homepage/notes/{id}                                             [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/notes/{id}                                             [AUTH?] params=[id] 
+POST    /api/external/v1/homepage/rss                                                    [AUTH?] params=[] 
+PUT     /api/external/v1/homepage/rss                                                    [AUTH?] params=[] 
+GET     /api/external/v1/homepage/rss/GetByRequest                                       [AUTH?] params=[RequestedPage,PageSize,SearchTerm] 
+GET     /api/external/v1/homepage/rss/GetRssCount                                        [AUTH?] params=[] 
+GET     /api/external/v1/homepage/rss/{id}                                               [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/rss/{id}                                               [AUTH?] params=[id] 
+POST    /api/external/v1/idp-group-mapping                                               [AUTH?] params=[] Creates a new mapping configuration between Identi
+GET     /api/external/v1/idp-group-mapping                                               [AUTH?] params=[RequestedPage,PageSize,OrderBy,SortBy,SearchTerm,SocRoleId,PermissionsGroupId,Environment,ExternalProviderName,WorkforcePoolId,IsDefault] Retrieves a list of idp-group-mappings.
+GET     /api/external/v1/idp-group-mapping/count                                         [AUTH?] params=[RequestedPage,PageSize,OrderBy,SortBy,SearchTerm,SocRoleId,PermissionsGroupId,Environment,ExternalProviderName,WorkforcePoolId,IsDefault] Retrieves count of idp-group-mappings.
+GET     /api/external/v1/idp-group-mapping/{id}                                          [AUTH?] params=[id] Retrieves specific mapping configuration by id.
+PUT     /api/external/v1/idp-group-mapping/{id}                                          [AUTH?] params=[id] Updates an existing mapping configuration between 
+DELETE  /api/external/v1/idp-group-mapping/{id}                                          [AUTH?] params=[id] Deletes a mapping configuration according to a giv
+POST    /api/external/v1/idpMapping                                                      [AUTH?] params=[] 
+GET     /api/external/v1/idpMapping                                                      [AUTH?] params=[externalProviderName] 
+POST    /api/external/v1/integrations/CreateIntegrationInstance                          [AUTH?] params=[] Creates a new integration instance.
+POST    /api/external/v1/integrations/DeleteIntegrationInstance                          [AUTH?] params=[] Deletes a specific integration instance.
+POST    /api/external/v1/integrations/GetAllEnvironmentCards                             [AUTH?] params=[] Returns all the environments as cards (a summary o
+POST    /api/external/v1/integrations/GetEnvironmentInstalledIntegrations                [AUTH?] params=[] Returns all the environments of the installed inte
+GET     /api/external/v1/integrations/GetInstalledIntegrations                           [AUTH?] params=[] Returns all the details of the installed integrati
+GET     /api/external/v1/integrations/GetIntegrationDefaultInstance/{integrationIdentifier} [AUTH?] params=[integrationIdentifier] Returns the integration's default instance by a gi
+GET     /api/external/v1/integrations/GetIntegrationInstanceSettings/{integrationInstanceId} [AUTH?] params=[integrationInstanceId] Returns the settings of an integration instance.
+POST    /api/external/v1/integrations/GetOptionalIntegrationInstances                    [AUTH?] params=[] Returns a list of the instances that are available
+GET     /api/external/v1/integrations/GetPlaybooksNamesUsingIntegrationInstance/{integrationInstanceId} [AUTH?] params=[integrationInstanceId] Returns the names of the playbooks using a specifi
+POST    /api/external/v1/jobs/DeleteJobData                                              [AUTH?] params=[] Removes a job from the platform. Please note that 
+GET     /api/external/v1/jobs/GetInstalledJobs                                           [AUTH?] params=[] Returns a list of the installed jobs in the platfo
+GET     /api/external/v1/jobs/GetJobTemplates                                            [AUTH?] params=[] Returns a list of the job templates in the system 
+POST    /api/external/v1/jobs/RunJob                                                     [AUTH?] params=[] Runs a specific job according to a specific job id
+POST    /api/external/v1/jobs/SaveOrUpdateJobData                                        [AUTH?] params=[] Adds or updates a job in the platform.
+POST    /api/external/v1/jobs/instances                                                  [AUTH?] params=[] Adds a new Job instance
+PUT     /api/external/v1/jobs/instances                                                  [AUTH?] params=[] Updates existing job instance
+GET     /api/external/v1/jobs/instances                                                  [AUTH?] params=[] Returns a list of the installed jobs instances in 
+POST    /api/external/v1/jobs/instances/run                                              [AUTH?] params=[] Runs a specific job instance.
+DELETE  /api/external/v1/jobs/instances/{id}                                             [AUTH?] params=[id] Removes a job from the platform. Please note that 
+GET     /api/external/v1/logging/agents/{agentIdentifier}                                [AUTH?] params=[agentIdentifier,hoursBack,Filter,PageToken,PageSize,SortOrder,Resource,Pod] Downloads logs of remote agents.
+POST    /api/external/v1/logging/python                                                  [AUTH?] params=[] Returns the logs of python executions.
+GET     /api/external/v1/notifications/CloseAllNotifications                             [AUTH?] params=[] Closes all System and User notifications which wil
+GET     /api/external/v1/notifications/CloseSystemNotification/{recordId}                [AUTH?] params=[recordId] Closes a System Notification based on a given noti
+GET     /api/external/v1/notifications/CloseUserNotification/{recordId}                  [AUTH?] params=[recordId] Closes a User Notification based on a given notifi
+GET     /api/external/v1/notifications/GetUnreadNotificationCount                        [AUTH?] params=[] Counts the number of unread user notifications.
+GET     /api/external/v1/notifications/GetUserNotificationSettings                       [AUTH?] params=[] Returns the current user's notification preference
+GET     /api/external/v1/notifications/GetUserNotifications                              [AUTH?] params=[] Returns the last 30 User notifications.
+POST    /api/external/v1/notifications/SaveUserNotificationSettings                      [AUTH?] params=[] Updates the user's notification preferences.
+POST    /api/external/v1/ontology/AddOrUpdateMappingRules                                [AUTH?] params=[] 
+POST    /api/external/v1/ontology/AddOrUpdateVisualFamily                                [AUTH?] params=[] 
+POST    /api/external/v1/ontology/AddOrUpdateVisualFamilyRules                           [AUTH?] params=[] 
+GET     /api/external/v1/ontology/DeleteFamilyData/{familyId}                            [AUTH?] params=[familyId] 
+POST    /api/external/v1/ontology/DeleteMappingRule                                      [AUTH?] params=[] 
+POST    /api/external/v1/ontology/DeleteVisualFamilyRule                                 [AUTH?] params=[] 
+POST    /api/external/v1/ontology/DuplicateVisualFamilyForSettings                       [AUTH?] params=[] 
+POST    /api/external/v1/ontology/ExportOntology                                         [AUTH?] params=[] 
+POST    /api/external/v1/ontology/ExportVisualFamily                                     [AUTH?] params=[] 
+POST    /api/external/v1/ontology/GetFamily                                              [AUTH?] params=[] 
+POST    /api/external/v1/ontology/GetMappingRules                                        [AUTH?] params=[] 
+GET     /api/external/v1/ontology/GetRelatedEntitiesByFamilyName/{familyName}            [AUTH?] params=[familyName] 
+GET     /api/external/v1/ontology/GetVisualFamilies                                      [AUTH?] params=[] 
+POST    /api/external/v1/ontology/ImportOntology                                         [AUTH?] params=[] 
+POST    /api/external/v1/ontology/ImportVisualFamily                                     [AUTH?] params=[] 
+POST    /api/external/v1/ontology/IsOntologyOrVisualFamilyExists                         [AUTH?] params=[] 
+POST    /api/external/v1/ontology/IsVisualFamilyExists                                   [AUTH?] params=[] 
+POST    /api/external/v1/ontology/UpdateVisualFamilyImage                                [AUTH?] params=[] 
+POST    /api/external/v1/permissions                                                     [AUTH?] params=[] 
+PUT     /api/external/v1/permissions                                                     [AUTH?] params=[] 
+POST    /api/external/v1/permissions/Duplicate/{id}                                      [AUTH?] params=[id] 
+GET     /api/external/v1/permissions/GetAllEnvironmentStatus                             [AUTH?] params=[permissionGroupIds] 
+GET     /api/external/v1/permissions/GetAllEnvironmentStatus/{permissionGroupId}         [AUTH?] params=[permissionGroupId] 
+GET     /api/external/v1/permissions/GetPermissionsGroupCards                            [AUTH?] params=[] 
+GET     /api/external/v1/permissions/GetPermissionsGroupTemplateByType/{permissionType}  [AUTH?] params=[permissionType] 
+GET     /api/external/v1/permissions/GetPermissionsGroupTypes                            [AUTH?] params=[] 
+GET     /api/external/v1/permissions/{id}                                                [AUTH?] params=[id] 
+DELETE  /api/external/v1/permissions/{id}                                                [AUTH?] params=[id] 
+POST    /api/external/v1/playbooks/AddOrUpdatePlaybookCategory                           [AUTH?] params=[] Adds or Updates a playbook category.
+POST    /api/external/v1/playbooks/AttacheNestedWorkflowToCase                           [AUTH?] params=[] Attaches a nested workflow (Playbook block) to a c
+POST    /api/external/v1/playbooks/AttacheWorkflowToCase                                 [AUTH?] params=[] Attaches a workflow (playbook) to a case and start
+POST    /api/external/v1/playbooks/CheckWorkflowNameInDifferentEnvironments              [AUTH?] params=[] Checks if the workflow's name already exists in a 
+POST    /api/external/v1/playbooks/DeleteWorkflow                                        [AUTH?] params=[] Deletes workflow
+POST    /api/external/v1/playbooks/DeleteWorkflows                                       [AUTH?] params=[] Deletes a list of workflows (playbooks).
+POST    /api/external/v1/playbooks/DuplicateNestedWorkflows                              [AUTH?] params=[] Duplicates a list of nested workflows (Playbook bl
+POST    /api/external/v1/playbooks/DuplicateWorkflow                                     [AUTH?] params=[] Duplicate a workflow (playbook).
+POST    /api/external/v1/playbooks/DuplicateWorkflows                                    [AUTH?] params=[] Duplicates a list of workflows (playbooks).
+POST    /api/external/v1/playbooks/ExecuteStep                                           [AUTH?] params=[] Runs the playbook step.
+POST    /api/external/v1/playbooks/ExportDefinitions                                     [AUTH?] params=[] Export workflows (playbooks) as a zip file.
+GET     /api/external/v1/playbooks/ExportWorkflowWithBlocksByIdentifier/{apiWfIdentifier} [AUTH?] params=[apiWfIdentifier] Exports a workflow (playbook) including the full d
+GET     /api/external/v1/playbooks/GetActionResultsOfWFId/{wfInstanceId}                 [AUTH?] params=[wfInstanceId] Returns action results by workflow (playbook) inst
+GET     /api/external/v1/playbooks/GetCaseEntities/{caseId}                              [AUTH?] params=[caseId] Returns case entities by case id.
+GET     /api/external/v1/playbooks/GetContextGroupByKey/{key}                            [AUTH?] params=[key] Returns the context group by key.
+POST    /api/external/v1/playbooks/GetDebugStepCaseData                                  [AUTH?] params=[] Returns the simulated playbook step case data.
+POST    /api/external/v1/playbooks/GetEnabledWFCards                                     [AUTH?] params=[] Returns a list of all the enabled workflows (playb
+POST    /api/external/v1/playbooks/GetOverviewTemplate                                   [AUTH?] params=[] 
+GET     /api/external/v1/playbooks/GetOverviewTemplate/{templateIdentifier}              [AUTH?] params=[templateIdentifier] 
+POST    /api/external/v1/playbooks/GetPendingStep                                        [AUTH?] params=[] 
+GET     /api/external/v1/playbooks/GetPendingStepsCountForUser                           [AUTH?] params=[] 
+GET     /api/external/v1/playbooks/GetPendingStepsUserRelated                            [AUTH?] params=[SortBy] 
+POST    /api/external/v1/playbooks/GetPlaybookSimulationEnrichment                       [AUTH?] params=[] Returns the enrichment of playbook simulation.
+POST    /api/external/v1/playbooks/GetPlaybookStatsMap                                   [AUTH?] params=[] Return statistic data related to the workflow (suc
+POST    /api/external/v1/playbooks/GetTestCases                                          [AUTH?] params=[] Return a list of test cases available in the syste
+POST    /api/external/v1/playbooks/GetTriggerTags                                        [AUTH?] params=[] Returns a list of all the tags that are relevant t
+POST    /api/external/v1/playbooks/GetWorkFlowVersionLogs                                [AUTH?] params=[] Returns a list of versions for a specific workflow
+GET     /api/external/v1/playbooks/GetWorkflowCategories                                 [AUTH?] params=[] Returns a list of all workflow categories availabl
+GET     /api/external/v1/playbooks/GetWorkflowFullInfoByIdentifier/{apiWfIdentifier}     [AUTH?] params=[apiWfIdentifier] Returns a workflow’s (playbook) full definition, i
+GET     /api/external/v1/playbooks/GetWorkflowFullInfoWithEnvFilterByIdentifier/{apiWfIdentifier} [AUTH?] params=[apiWfIdentifier] Returns a workflow’s (playbook) full definition, i
+POST    /api/external/v1/playbooks/GetWorkflowStepInstance                               [AUTH?] params=[] Returns all workflow (playbook) steps instances.
+POST    /api/external/v1/playbooks/GetWorkflowsInvolvingAction                           [AUTH?] params=[] Returns a list of actions that are part of the wor
+POST    /api/external/v1/playbooks/ImportDefinitions                                     [AUTH?] params=[] Import workflows from a zip file.
+POST    /api/external/v1/playbooks/MoveDefinitionsToCategory                             [AUTH?] params=[] Move workflows to a selected category.
+POST    /api/external/v1/playbooks/RemoveCategories                                      [AUTH?] params=[] Removes a list of categories.
+POST    /api/external/v1/playbooks/RerunBlock                                            [AUTH?] params=[] Rerun block on a given alert.
+POST    /api/external/v1/playbooks/RerunPlaybook                                         [AUTH?] params=[] Rerun playbook on a given alert.
+POST    /api/external/v1/playbooks/RestoreWorkflowDefinition                             [AUTH?] params=[] Restore workflow to a previous version.
+POST    /api/external/v1/playbooks/RunPlaybookInDebug                                    [AUTH?] params=[] Runs the playbook in simulation mode.
+POST    /api/external/v1/playbooks/SaveLogVersionOfWorkflowDefinitions                   [AUTH?] params=[] Save a new version of the workflow.
+POST    /api/external/v1/playbooks/SaveWorkflowDefinitions                               [AUTH?] params=[] Save workflow (Playbook).
+GET     /api/external/v1/playbooks/action-widget-template                                [AUTH?] params=[ActionIdentifiers,RequestedPage,PageSize,SearchTerm] 
+POST    /api/external/v1/playbooks/permissions                                           [AUTH?] params=[] Add or update permissions for a given workflow.
+* 
+POST    /api/external/v1/playbooks/permissions/options                                   [AUTH?] params=[] Return playbook access permission options. This sh
+DELETE  /api/external/v1/playbooks/permissions/{identifier}                              [AUTH?] params=[workflowOriginalIdentifier,identifier] Removes all access permissions for the given workf
+GET     /api/external/v1/predefined-widgets/cases                                        [AUTH?] params=[] Retrieves all case predefined widgets.
+POST    /api/external/v1/reports/AddOrUpdateReportSchedule                               [AUTH?] params=[] 
+POST    /api/external/v1/reports/AddOrUpdateReportTemplate                               [AUTH?] params=[] 
+POST    /api/external/v1/reports/AddOrUpdateReportWidget                                 [AUTH?] params=[] 
+GET     /api/external/v1/reports/DeleteReportSchedule/{id}                               [AUTH?] params=[id] 
+POST    /api/external/v1/reports/DuplicateReportTemplate                                 [AUTH?] params=[] 
+POST    /api/external/v1/reports/GenerateReportTemplate                                  [AUTH?] params=[] 
+POST    /api/external/v1/reports/GetReportSchedules                                      [AUTH?] params=[] 
+GET     /api/external/v1/reports/GetReportTemplates                                      [AUTH?] params=[] 
+POST    /api/external/v1/reports/ImportReportTemplate                                    [AUTH?] params=[] 
+GET     /api/external/v1/reports/RefreshAdvancedReports                                  [AUTH?] params=[] 
+GET     /api/external/v1/reports/RemoveReportTemplate/{templateId}                       [AUTH?] params=[templateId] 
+GET     /api/external/v1/reports/RemoveReportWidget/{widgetId}                           [AUTH?] params=[widgetId] 
+POST    /api/external/v1/reports/ShareAdvancedReport                                     [AUTH?] params=[] 
+GET     /api/external/v1/resources/DownloadAuditControllerActionsCsv                     [AUTH?] params=[] Returns a CSV file that contains a list of all con
+GET     /api/external/v1/resources/GetActionResultsById/{caseId}/{actionResultId}        [AUTH?] params=[caseId,actionResultId] Returns action results by ID and by action result 
+GET     /api/external/v1/resources/GetCaseFullDetailsById/{parentId}/{caseId}            [AUTH?] params=[caseId,parentId] Returns a case with full details by its ID.
+GET     /api/external/v1/resources/GetEntityInsightsById/{caseId}/{insightsId}           [AUTH?] params=[caseId,insightsId] Returns a case entity insight by insight ID.
+POST    /api/external/v1/retention/delete-cases                                          [AUTH?] params=[] 
+POST    /api/external/v1/retention/system                                                [AUTH?] params=[] Performs manual system data retention.
+POST    /api/external/v1/retention/user                                                  [AUTH?] params=[] Performs manual user data retention.
+POST    /api/external/v1/search/CaseSearchEverything                                     [AUTH?] params=[] Return a list of cases by given filters
+POST    /api/external/v1/search/EntitySearchEverything                                   [AUTH?] params=[] Return a list of entities by given filters.
+POST    /api/external/v1/search/GetCasesFilterUserAndRoles                               [AUTH?] params=[] Return a list of values.
+POST    /api/external/v1/search/GetCasesFilterValues                                     [AUTH?] params=[] Return a list of values for the cases filters.
+POST    /api/external/v1/search/GetEntitiesFilterValues                                  [AUTH?] params=[] Return a list of values for the entities filters.
+POST    /api/external/v1/search/GetSearchResultsAsCsv                                    [AUTH?] params=[] Return a list of cases as a csv file.
+POST    /api/external/v1/settings/AddCaseStageDefinitionRecord                           [AUTH?] params=[] Adds a case stage record in the system.
+POST    /api/external/v1/settings/AddCollaboratorRequest                                 [AUTH?] params=[] AddCollaboratorRequest
+POST    /api/external/v1/settings/AddLicenseAgreementSignature                           [AUTH?] params=[] AddLicenseAgreementSignature
+POST    /api/external/v1/settings/AddOrUpdateCaseAssignmentPolicySettings                [AUTH?] params=[] 
+POST    /api/external/v1/settings/AddOrUpdateEnvironmentRecords                          [AUTH?] params=[] 
+POST    /api/external/v1/settings/AddOrUpdateModelBlockRecords                           [AUTH?] params=[] Adds or updates a block item record.
+POST    /api/external/v1/settings/AddOrUpdateMoveCaseBetweenEnvironmentsPolicySettings   [AUTH?] params=[] 
+POST    /api/external/v1/settings/AddOrUpdateNetworkDetailsRecords                       [AUTH?] params=[] Adds or updates organizational network records.
+POST    /api/external/v1/settings/AddOrUpdateRootCauseClose                              [AUTH?] params=[] Adds or updates a case close root cause record.
+POST    /api/external/v1/settings/AddOrUpdateTrackingListRecords                         [AUTH?] params=[] Adds or updates a custom list record.
+POST    /api/external/v1/settings/AddOrUpdateUserProfile                                 [AUTH?] params=[] Adds or update fields in a given user profile.
+POST    /api/external/v1/settings/AddSlaDefinitionsRecord                                [AUTH?] params=[] Adds an SLA record.
+POST    /api/external/v1/settings/AddTagDefinitionsRecords                               [AUTH?] params=[] Adds a tag.
+DELETE  /api/external/v1/settings/DeleteCollaboratorRequest/{id}                         [AUTH?] params=[id] AddCollaboratorRequest
+POST    /api/external/v1/settings/ExportAuditLastWeekAsCsv                               [AUTH?] params=[] Exports audit info from last week as a CSV file.
+POST    /api/external/v1/settings/ExportAuditLastWeekAsCsvV2                             [AUTH?] params=[] Exports audit info from last week as a CSV file.
+GET     /api/external/v1/settings/GetAdvancedReportsSettings                             [AUTH?] params=[] Returns advanced reports settings.
+GET     /api/external/v1/settings/GetAllCollaboratorRequests                             [AUTH?] params=[RequestedPage,PageSize,SearchTerm] GetAllCollaboratorRequests
+GET     /api/external/v1/settings/GetAllModelBlockRecords                                [AUTH?] params=[] Returns a list of entities which the system will n
+POST    /api/external/v1/settings/GetAnalysts                                            [AUTH?] params=[] Returns the list of analysts in the User Managemen
+POST    /api/external/v1/settings/GetBlockListDetails                                    [AUTH?] params=[] Returns a list of the entities listed in the block
+GET     /api/external/v1/settings/GetCaseAssigmentPolicySettings                         [AUTH?] params=[] 
+POST    /api/external/v1/settings/GetCaseStageDefinitionRecords                          [AUTH?] params=[] Return a list of the case stages configured in the
+GET     /api/external/v1/settings/GetCollaboratorRequestsByUser                          [AUTH?] params=[RequestedPage,PageSize,SearchTerm] GetCollaboratorRequestsByUser
+GET     /api/external/v1/settings/GetEnvironmentInstanceUrls                             [AUTH?] params=[] 
+POST    /api/external/v1/settings/GetEnvironments                                        [AUTH?] params=[] Returns a list of all the environments configured 
+GET     /api/external/v1/settings/GetLatestLicenseAgreement                              [AUTH?] params=[] 
+GET     /api/external/v1/settings/GetMaximumAlertsGroupingConfiguration                  [AUTH?] params=[] Returns maximum alerts grouping configuration.
+GET     /api/external/v1/settings/GetMoveCaseBetweenEnvironmentsPolicySettings           [AUTH?] params=[] 
+POST    /api/external/v1/settings/GetNetworkDetails                                      [AUTH?] params=[] Return a list of the organizational networks confi
+GET     /api/external/v1/settings/GetProxySettings                                       [AUTH?] params=[] Returns the current proxy settings.
+GET     /api/external/v1/settings/GetPublicCertificate                                   [AUTH?] params=[] 
+GET     /api/external/v1/settings/GetRootCauseCloseRecords                               [AUTH?] params=[] Returns a list of the case close root cause config
+POST    /api/external/v1/settings/GetSlaDefinitions                                      [AUTH?] params=[] Returns SLA definitions.
+GET     /api/external/v1/settings/GetSlaDefinitionsRecords                               [AUTH?] params=[] Returns the fields configured for an SLA record.
+GET     /api/external/v1/settings/GetSystemEventEntityTypes                              [AUTH?] params=[] Returns system event entity types.
+GET     /api/external/v1/settings/GetSystemVersion                                       [AUTH?] params=[] Returns the Siemplify version of the platform.
+POST    /api/external/v1/settings/GetTagDefinitionsRecords                               [AUTH?] params=[] Returns the fields configured for a tag in the sys
+GET     /api/external/v1/settings/GetTrackingListRecords                                 [AUTH?] params=[] Returns a list of entities listed in the custom li
+POST    /api/external/v1/settings/GetTrackingListRecordsFiltered                         [AUTH?] params=[] Returns a list of entities listed in the custom li
+POST    /api/external/v1/settings/GetUserImage                                           [AUTH?] params=[] Returns the image that is configured for a user.
+POST    /api/external/v1/settings/GetUserProfileCards                                    [AUTH?] params=[] Returns a summary of all the users profile cards i
+POST    /api/external/v1/settings/GetUserProfiles                                        [AUTH?] params=[] Returns all the users profile fields.
+POST    /api/external/v1/settings/GetUserProfilesByEnvironments                          [AUTH?] params=[] Returns the user's profile fields configured for a
+GET     /api/external/v1/settings/IsPermittedToEnvironment/{environmentName}             [AUTH?] params=[environmentName] 
+POST    /api/external/v1/settings/RemoveAllNetworkDetailsRecords                         [AUTH?] params=[] Remove all the organizational network records conf
+POST    /api/external/v1/settings/RemoveCaseStageDefinitionRecords                       [AUTH?] params=[] Deletes a case stage record.
+POST    /api/external/v1/settings/RemoveEnvironmentRecords                               [AUTH?] params=[] 
+POST    /api/external/v1/settings/RemoveModelBlockRecords                                [AUTH?] params=[] Deletes a block item record.
+POST    /api/external/v1/settings/RemoveNetworkDetailsRecords                            [AUTH?] params=[] Deletes organizational network records.
+POST    /api/external/v1/settings/RemoveRootCauseClose                                   [AUTH?] params=[] Deletes case close root cause record.
+POST    /api/external/v1/settings/RemoveSlaDefinitionRecords                             [AUTH?] params=[] Deletes an SLA record.
+POST    /api/external/v1/settings/RemoveTagDefinitionRecords                             [AUTH?] params=[] Deletes a tag.
+POST    /api/external/v1/settings/RemoveTrackingListRecords                              [AUTH?] params=[] Deletes a custom list record.
+POST    /api/external/v1/settings/SaveAdvancedReportsSettings                            [AUTH?] params=[] Saves advanced reports settings.
+GET     /api/external/v1/settings/TestAdvancedReportsSettings                            [AUTH?] params=[] Validates advanced reports settings.
+POST    /api/external/v1/settings/TestProxySettings                                      [AUTH?] params=[] Test the settings configured for the proxy.
+POST    /api/external/v1/settings/UpdateAlertGroupingRule                                [AUTH?] params=[] Updates alert grouping rule.
+PUT     /api/external/v1/settings/UpdateCollaboratorRequest                              [AUTH?] params=[] UpdateCollaboratorRequest
+POST    /api/external/v1/settings/UpdateUserImage                                        [AUTH?] params=[] Update a user image in a given user profile.
+POST    /api/external/v1/settings/UploadCustomActionResultJson                           [AUTH?] params=[] Uploads custom action result in JSON format.
+POST    /api/external/v1/settings/batch-delete-custom-lists                              [AUTH?] params=[] Deletes custom list records.
+GET     /api/external/v1/settings/environment-load-balancing-status                      [AUTH?] params=[] Retrieves the current status (enabled/disabled) of
+GET     /api/external/v1/settings/environment-priorities                                 [AUTH?] params=[] Get environments' queues priority
+PATCH   /api/external/v1/settings/environment-priorities/{environment}                   [AUTH?] params=[environment] Update environment's priority for queue resources
+GET     /api/external/v1/settings/environment-priorities/{environment}                   [AUTH?] params=[environment] Get environment's queue priority
+GET     /api/external/v1/settings/form-dynamic-parameters                                [AUTH?] params=[formType] Gets a list of ActionFormParameters by FormType.
+POST    /api/external/v1/settings/form-dynamic-parameters                                [AUTH?] params=[] Creates a new ActionFormParameter.
+GET     /api/external/v1/settings/form-dynamic-parameters/{id}                           [AUTH?] params=[id] Gets an ActionFormParameter by its ID.
+PUT     /api/external/v1/settings/form-dynamic-parameters/{id}                           [AUTH?] params=[id] Updates an existing ActionFormParameter.
+DELETE  /api/external/v1/settings/form-dynamic-parameters/{id}                           [AUTH?] params=[id] Deletes an existing ActionFormParameter.
+DELETE  /api/external/v1/settings/networks/permitted                                     [AUTH?] params=[] Deletes organizational network records for all per
+DELETE  /api/external/v1/settings/networks/{identifier}                                  [AUTH?] params=[identifier] Deletes organizational network record
+POST    /api/external/v1/settings/reset-environment-priorities                           [AUTH?] params=[] Reset all environment priorities to 1 (default)
+GET     /api/external/v1/settings/tag-definition/names                                   [AUTH?] params=[RequestedPage,PageSize,SearchTerm] Get all tag definitions names.
+Supports federation
+POST    /api/external/v1/settings/toggle-environment-load-balancing                      [AUTH?] params=[] Enable or disable environment load balancing algor
+POST    /api/external/v1/socroles/AddOrUpdateSocRole                                     [AUTH?] params=[] Adds or update a SOC role in the system.
+POST    /api/external/v1/socroles/DeleteSocRole                                          [AUTH?] params=[] Deletes a SOC role defined in the platform.
+GET     /api/external/v1/socroles/GetSocRole/{id}                                        [AUTH?] params=[id] Return a list of the SOC roles by their identifier
+GET     /api/external/v1/socroles/GetSocRoles                                            [AUTH?] params=[] Return a list of the SOC roles configured in the s
+POST    /api/external/v1/socroles/GetSocRolesByEnvironments                              [AUTH?] params=[] Return a list of the SOC roles configured in the s
+GET     /api/external/v1/socroles/HasAssignedUsers/{id}                                  [AUTH?] params=[id] Checks if a specific SOC role has users assigned t
+POST    /api/external/v1/store/ExportUseCase                                             [AUTH?] params=[] Export a use case as a zip file.
+GET     /api/external/v1/store/GetHtmlViewPresets                                        [AUTH?] params=[] 
+GET     /api/external/v1/store/GetIntegrationDependencies/{integrationIdentifier}        [AUTH?] params=[integrationIdentifier] Returns a list of dependencies of a given integrat
+POST    /api/external/v1/store/GetIntegrationFullDetails                                 [AUTH?] params=[] Returns all the data related to an integration (ac
+GET     /api/external/v1/store/GetIntegrationsStoreData                                  [AUTH?] params=[isStaging] Returns a list of integrations that can be install
+GET     /api/external/v1/store/GetPowerUpsStoreData                                      [AUTH?] params=[] Returns a list of powerups that can be installed a
+GET     /api/external/v1/store/GetReportsStoreData                                       [AUTH?] params=[] Returns a list of reports that can be installed an
+GET     /api/external/v1/store/GetUsecasesCards                                          [AUTH?] params=[] Returns a list of the use cases in the system and 
+POST    /api/external/v1/store/ReinstallAllIntegrations                                  [AUTH?] params=[] Reinstall all the installed integrations in order 
+POST    /api/external/v1/store/SaveIntegrationConfigurationProperties                    [AUTH?] params=[] Save the integration configuration fields.
+GET     /api/external/v1/store/TestIntegration/{integrationInstanceId}                   [AUTH?] params=[integrationInstanceId] Test an integration by running a test action.
+POST    /api/external/v1/warroom/CloseIncident                                           [AUTH?] params=[] Closes an existing Command Center incident.
+POST    /api/external/v1/warroom/CreateIncident                                          [AUTH?] params=[] Creates a Command Center incident.
+POST    /api/external/v1/warroom/CreateWarRoomAssessment                                 [AUTH?] params=[] Creates a Command Center Assessment.
+POST    /api/external/v1/warroom/CreateWarRoomComment                                    [AUTH?] params=[] Creates a comment in the Command Center.
+POST    /api/external/v1/warroom/CreateWarRoomDecision                                   [AUTH?] params=[] Creates a Command Center Decision.
+POST    /api/external/v1/warroom/CreateWarRoomFact                                       [AUTH?] params=[] Creates a Command Center Fact.
+GET     /api/external/v1/warroom/CreateWarRoomReport/{incidentId}                        [AUTH?] params=[incidentId] Creates a Command Center Report for a given incide
+POST    /api/external/v1/warroom/CreateWarRoomTask                                       [AUTH?] params=[] Creates a Command Center Task under a specific use
+GET     /api/external/v1/warroom/GetChatChannelCards/{incidentId}                        [AUTH?] params=[incidentId] Returns a summary of the Command Center incident c
+POST    /api/external/v1/warroom/GetChatChannelConversation                              [AUTH?] params=[] Returns the conversation records of a specific cha
+GET     /api/external/v1/warroom/GetDepartments                                          [AUTH?] params=[] Returns a list of the departments in an incident w
+GET     /api/external/v1/warroom/GetFilterDepartments/{incidentId}                       [AUTH?] params=[incidentId] Returns a list of people involved in an incident w
+GET     /api/external/v1/warroom/GetForgotPasswordTimeLimit                              [AUTH?] params=[] Returns the forgotten password time limit in hours
+GET     /api/external/v1/warroom/GetIncident/{id}                                        [AUTH?] params=[id] Retrieves data regarding a Command Center incident
+GET     /api/external/v1/warroom/GetIncidentUserById/{id}                                [AUTH?] params=[id] Returns users associated with an incident accordin
+GET     /api/external/v1/warroom/GetLastSeverityScore/{id}                               [AUTH?] params=[id] Returns the last severity score for a given incide
+GET     /api/external/v1/warroom/GetWarRoomAuditors                                      [AUTH?] params=[] Returns a list of Command Center auditors.
+GET     /api/external/v1/warroom/GetWarRoomUserForIncident/{incidentId}                  [AUTH?] params=[incidentId] Returns Command Center user for an incident based 
+POST    /api/external/v1/warroom/GetWarRoomWallItems                                     [AUTH?] params=[] Returns the Command Center Wall Items for a given 
+POST    /api/external/v1/warroom/SaveSeverityScore                                       [AUTH?] params=[] Saves a severity score for a given incident by ide
+POST    /api/external/v1/warroom/SendChatMessage                                         [AUTH?] params=[] Sends a chat message for a specific incident in th
+POST    /api/external/v1/warroom/UpdateWarRoomAssessment                                 [AUTH?] params=[] Updates a given Command Center Assessment.
+POST    /api/external/v1/warroom/UpdateWarRoomComment                                    [AUTH?] params=[] Updates a given Comment in the Command Center.
+POST    /api/external/v1/warroom/UpdateWarRoomDecision                                   [AUTH?] params=[] Updates a given Command Center Decision.
+POST    /api/external/v1/warroom/UpdateWarRoomFact                                       [AUTH?] params=[] Updates a given Command Center Fact.
+POST    /api/external/v1/warroom/UpdateWarRoomTask                                       [AUTH?] params=[] Updates a given Command Center Task under a specif
+POST    /api/external/v1/webhooks-management                                             [AUTH?] params=[] 
+PUT     /api/external/v1/webhooks-management                                             [AUTH?] params=[] 
+GET     /api/external/v1/webhooks-management/Cards                                       [AUTH?] params=[] 
+GET     /api/external/v1/webhooks-management/ExportLogs/{identifier}                     [AUTH?] params=[identifier] 
+GET     /api/external/v1/webhooks-management/Logs                                        [AUTH?] params=[WebhookIdentifier,MinimumLogLevel] 
+POST    /api/external/v1/webhooks-management/Revoke/{identifier}                         [AUTH?] params=[identifier] 
+GET     /api/external/v1/webhooks-management/{identifier}                                [AUTH?] params=[identifier] 
+DELETE  /api/external/v1/webhooks-management/{identifier}                                [AUTH?] params=[identifier] 
+GET     /api/external/v1/webhooks-management/{identifier}/statistics                     [AUTH?] params=[identifier] 
+POST    /api/external/v1/{tenantId}/configuration-items:batchUpdate                      [AUTH?] params=[tenantId] 
+POST    /api/external/v1/{tenantId}/pubsub-backfill:trigger                              [AUTH?] params=[tenantId] 
+[2] Total unique paths: 486
+
+[3] Extracting URL-parameter fields (SSRF surface)...
+[v1] GET /api/external/v1/logging/agents/{agentIdentifier} → param: Resource (in=path)
+[v1] GET /api/1p/external/v1/{LegacyControllerBaseUrl}:getExternalProviders → param: LegacyControllerBaseUrl (in=path)
+[v1] GET /api/external/v1/webhooks-management/Logs → param: WebhookIdentifier (in=query)
+[3] SSRF-relevant parameter paths: 3
+
+[4] Extracting ID-parameterized paths (IDOR surface)...
+DELETE  /api/external/v1/cases/tasks/{id}                                                [AUTH?] params=[id] 
+DELETE  /api/external/v1/connectors/{identifier}                                         [AUTH?] params=[identifier] Deletes a connector instance according to the give
+DELETE  /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Deletes a specific external provider instance from
+DELETE  /api/external/v1/federation/platforms/{id}                                       [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/attachments/{id}                                       [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/contacts/{id}                                          [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/links/{id}                                             [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/notes/{id}                                             [AUTH?] params=[id] 
+DELETE  /api/external/v1/homepage/rss/{id}                                               [AUTH?] params=[id] 
+DELETE  /api/external/v1/idp-group-mapping/{id}                                          [AUTH?] params=[id] Deletes a mapping configuration according to a giv
+DELETE  /api/external/v1/jobs/instances/{id}                                             [AUTH?] params=[id] Removes a job from the platform. Please note that 
+DELETE  /api/external/v1/permissions/{id}                                                [AUTH?] params=[id] 
+DELETE  /api/external/v1/playbooks/permissions/{identifier}                              [AUTH?] params=[workflowOriginalIdentifier,identifier] Removes all access permissions for the given workf
+DELETE  /api/external/v1/settings/DeleteCollaboratorRequest/{id}                         [AUTH?] params=[id] AddCollaboratorRequest
+DELETE  /api/external/v1/settings/form-dynamic-parameters/{id}                           [AUTH?] params=[id] Deletes an existing ActionFormParameter.
+DELETE  /api/external/v1/settings/networks/{identifier}                                  [AUTH?] params=[identifier] Deletes organizational network record
+DELETE  /api/external/v1/webhooks-management/{identifier}                                [AUTH?] params=[identifier] 
+GET     /api/external/v1/agents/GetAgentByIdentifier/{agentIdentifier}                   [AUTH?] params=[agentIdentifier] Returns a list of all the Agents configured in you
+GET     /api/external/v1/agents/GetAgentInformationByIdentifier/{agentIdentifier}        [AUTH?] params=[agentIdentifier] Returns the Agent settings by agent identifiers.
+GET     /api/external/v1/agents/GetAgentInformationByIntegrationInstance/{integrationInstanceId} [AUTH?] params=[integrationInstanceId] Returns the Agent settings for each integration in
+GET     /api/external/v1/agents/GetPublisherById/{publisherId}                           [AUTH?] params=[publisherId] Returns the list of publishers configured in your 
+GET     /api/external/v1/agents/GetValidAgentsForConnector/{environment}/{integration}   [AUTH?] params=[environment,integration] Returns a list with all agents, flagged for connec
+GET     /api/external/v1/agents/GetValidAgentsForIdeConnector/{environment}/{integration} [AUTH?] params=[environment,integration] Returns a list with all agents, flagged for connec
+GET     /api/external/v1/agents/TestPublisherConnectivity/{publisherId}                  [AUTH?] params=[publisherId] Test connectivity with the publisher by publisher 
+GET     /api/external/v1/attackssimulator/IsCustomCaseExists/{alertName}                 [AUTH?] params=[alertName] Returns true if customCase name already exists.
+GET     /api/external/v1/casechat/attachments/{attachmentId}                             [AUTH?] params=[attachmentId] 
+GET     /api/external/v1/casechat/attachments/preview/{attachmentId}                     [AUTH?] params=[attachmentId] 
+GET     /api/external/v1/casechat/{caseId}                                               [AUTH?] params=[caseId,pagesize,page,startMessageId,includeStartMessage,searchTerm] 
+GET     /api/external/v1/casechat/{caseId}/new-messages-count                            [AUTH?] params=[caseId] 
+GET     /api/external/v1/case-overview/GetCaseEntities/{caseId}                          [AUTH?] params=[caseId] 
+GET     /api/external/v1/case-overview/GetFullOverviewTemplateDetails/{templateIdentifier} [AUTH?] params=[templateIdentifier] 
+GET     /api/external/v1/cases/comments/file/{fileId}                                    [AUTH?] params=[fileId] Download file attached to a comment
+GET     /api/external/v1/cases/GetActionResultById/{resultIdStr}                         [AUTH?] params=[resultIdStr] Returns the action result details by identifier.
+GET     /api/external/v1/cases/GetCaseExists/{caseId}                                    [AUTH?] params=[caseId] Returns a bool value if case exists filtered by ca
+GET     /api/external/v1/cases/GetCaseFullDetails/{caseId}                               [AUTH?] params=[caseId] Returns all the data related to a single case, bas
+GET     /api/external/v1/cases/GetEvidenceData/{evidenceId}                              [AUTH?] params=[evidenceId] Returns the attachment file content in a case as a
+GET     /api/external/v1/cases/GetWallItemsForWarRoom/{id}                               [AUTH?] params=[id] Returns all the wall items (Case history) and tran
+GET     /api/external/v1/cases/insights/{caseId}                                         [AUTH?] params=[caseId,AlertIdentifier,EntityIdentifier,Type] Returns all case insights by case id and filter pa
+GET     /api/external/v1/cases/tasks/{id}                                                [AUTH?] params=[id] 
+GET     /api/external/v1/cases/wall/{caseId}                                             [AUTH?] params=[caseId] Get case wall activities
+GET     /api/external/v1/configuration-items/{tenantId}                                  [AUTH?] params=[tenantId,key,category] 
+GET     /api/external/v1/connectors/{identifier}                                         [AUTH?] params=[identifier] Retrieves detailed information regarding a specifi
+GET     /api/external/v1/connectors/{identifier}/statistics                              [AUTH?] params=[identifier] Details the statistics associated with the specifi
+GET     /api/external/v1/dynamic-cases/GetCaseDetails/{caseId}                           [AUTH?] params=[caseId] Provides Detailed information for the requested ca
+GET     /api/external/v1/dynamic-cases/GetEvidenceData/{evidenceId}                      [AUTH?] params=[evidenceId] Get file attached to a comment
+GET     /api/external/v1/dynamic-cases/GetWallActivities/{caseId}                        [AUTH?] params=[caseId] Get all wall activity of the case
+GET     /api/external/v1/dynamic-cases/GetWallActivitiesForCommandCenter/{id}            [AUTH?] params=[id] Returns all the wall items (Case history) and tran
+GET     /api/external/v1/dynamic-cases/GetWallActivitiesV2/{caseId}                      [AUTH?] params=[caseId] Get all wall activity of the case
+GET     /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Retrieves detailed information on a specific exter
+GET     /api/external/v1/homepage/attachments/{id}                                       [AUTH?] params=[id] 
+GET     /api/external/v1/homepage/contacts/{id}                                          [AUTH?] params=[id] 
+GET     /api/external/v1/homepage/links/{id}                                             [AUTH?] params=[id] 
+GET     /api/external/v1/homepage/notes/{id}                                             [AUTH?] params=[id] 
+GET     /api/external/v1/homepage/rss/{id}                                               [AUTH?] params=[id] 
+GET     /api/external/v1/idp-group-mapping/{id}                                          [AUTH?] params=[id] Retrieves specific mapping configuration by id.
+GET     /api/external/v1/integrations/GetIntegrationDefaultInstance/{integrationIdentifier} [AUTH?] params=[integrationIdentifier] Returns the integration's default instance by a gi
+GET     /api/external/v1/integrations/GetIntegrationInstanceSettings/{integrationInstanceId} [AUTH?] params=[integrationInstanceId] Returns the settings of an integration instance.
+GET     /api/external/v1/integrations/GetPlaybooksNamesUsingIntegrationInstance/{integrationInstanceId} [AUTH?] params=[integrationInstanceId] Returns the names of the playbooks using a specifi
+GET     /api/external/v1/logging/agents/{agentIdentifier}                                [AUTH?] params=[agentIdentifier,hoursBack,Filter,PageToken,PageSize,SortOrder,Resource,Pod] Downloads logs of remote agents.
+GET     /api/external/v1/notifications/CloseSystemNotification/{recordId}                [AUTH?] params=[recordId] Closes a System Notification based on a given noti
+GET     /api/external/v1/notifications/CloseUserNotification/{recordId}                  [AUTH?] params=[recordId] Closes a User Notification based on a given notifi
+GET     /api/external/v1/ontology/DeleteFamilyData/{familyId}                            [AUTH?] params=[familyId] 
+GET     /api/external/v1/permissions/GetAllEnvironmentStatus/{permissionGroupId}         [AUTH?] params=[permissionGroupId] 
+GET     /api/external/v1/permissions/{id}                                                [AUTH?] params=[id] 
+GET     /api/external/v1/playbooks/ExportWorkflowWithBlocksByIdentifier/{apiWfIdentifier} [AUTH?] params=[apiWfIdentifier] Exports a workflow (playbook) including the full d
+GET     /api/external/v1/playbooks/GetActionResultsOfWFId/{wfInstanceId}                 [AUTH?] params=[wfInstanceId] Returns action results by workflow (playbook) inst
+GET     /api/external/v1/playbooks/GetCaseEntities/{caseId}                              [AUTH?] params=[caseId] Returns case entities by case id.
+GET     /api/external/v1/playbooks/GetOverviewTemplate/{templateIdentifier}              [AUTH?] params=[templateIdentifier] 
+GET     /api/external/v1/playbooks/GetWorkflowFullInfoByIdentifier/{apiWfIdentifier}     [AUTH?] params=[apiWfIdentifier] Returns a workflow’s (playbook) full definition, i
+GET     /api/external/v1/playbooks/GetWorkflowFullInfoWithEnvFilterByIdentifier/{apiWfIdentifier} [AUTH?] params=[apiWfIdentifier] Returns a workflow’s (playbook) full definition, i
+GET     /api/external/v1/reports/DeleteReportSchedule/{id}                               [AUTH?] params=[id] 
+GET     /api/external/v1/reports/RemoveReportTemplate/{templateId}                       [AUTH?] params=[templateId] 
+GET     /api/external/v1/reports/RemoveReportWidget/{widgetId}                           [AUTH?] params=[widgetId] 
+GET     /api/external/v1/resources/GetActionResultsById/{caseId}/{actionResultId}        [AUTH?] params=[caseId,actionResultId] Returns action results by ID and by action result 
+GET     /api/external/v1/resources/GetCaseFullDetailsById/{parentId}/{caseId}            [AUTH?] params=[caseId,parentId] Returns a case with full details by its ID.
+GET     /api/external/v1/resources/GetEntityInsightsById/{caseId}/{insightsId}           [AUTH?] params=[caseId,insightsId] Returns a case entity insight by insight ID.
+GET     /api/external/v1/settings/form-dynamic-parameters/{id}                           [AUTH?] params=[id] Gets an ActionFormParameter by its ID.
+GET     /api/external/v1/socroles/GetSocRole/{id}                                        [AUTH?] params=[id] Return a list of the SOC roles by their identifier
+GET     /api/external/v1/socroles/HasAssignedUsers/{id}                                  [AUTH?] params=[id] Checks if a specific SOC role has users assigned t
+GET     /api/external/v1/store/GetIntegrationDependencies/{integrationIdentifier}        [AUTH?] params=[integrationIdentifier] Returns a list of dependencies of a given integrat
+GET     /api/external/v1/store/TestIntegration/{integrationInstanceId}                   [AUTH?] params=[integrationInstanceId] Test an integration by running a test action.
+GET     /api/external/v1/warroom/CreateWarRoomReport/{incidentId}                        [AUTH?] params=[incidentId] Creates a Command Center Report for a given incide
+GET     /api/external/v1/warroom/GetChatChannelCards/{incidentId}                        [AUTH?] params=[incidentId] Returns a summary of the Command Center incident c
+GET     /api/external/v1/warroom/GetFilterDepartments/{incidentId}                       [AUTH?] params=[incidentId] Returns a list of people involved in an incident w
+GET     /api/external/v1/warroom/GetIncident/{id}                                        [AUTH?] params=[id] Retrieves data regarding a Command Center incident
+GET     /api/external/v1/warroom/GetIncidentUserById/{id}                                [AUTH?] params=[id] Returns users associated with an incident accordin
+GET     /api/external/v1/warroom/GetLastSeverityScore/{id}                               [AUTH?] params=[id] Returns the last severity score for a given incide
+GET     /api/external/v1/warroom/GetWarRoomUserForIncident/{incidentId}                  [AUTH?] params=[incidentId] Returns Command Center user for an incident based 
+GET     /api/external/v1/webhooks-management/ExportLogs/{identifier}                     [AUTH?] params=[identifier] 
+GET     /api/external/v1/webhooks-management/{identifier}                                [AUTH?] params=[identifier] 
+GET     /api/external/v1/webhooks-management/{identifier}/statistics                     [AUTH?] params=[identifier] 
+PATCH   /api/external/v1/cases/comments/mark-as-deleted/{id}                             [AUTH?] params=[id] Mark case comment as deleted
+PATCH   /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Patches an existing external provider instance.
+POST    /api/external/v1/casechat/{caseId}                                               [AUTH?] params=[caseId] 
+POST    /api/external/v1/casechat/pin/{messageId}                                        [AUTH?] params=[messageId] 
+POST    /api/external/v1/casechat/unpin/{messageId}                                      [AUTH?] params=[messageId] 
+POST    /api/external/v1/permissions/Duplicate/{id}                                      [AUTH?] params=[id] 
+POST    /api/external/v1/{tenantId}/configuration-items:batchUpdate                      [AUTH?] params=[tenantId] 
+POST    /api/external/v1/{tenantId}/pubsub-backfill:trigger                              [AUTH?] params=[tenantId] 
+POST    /api/external/v1/webhooks-management/Revoke/{identifier}                         [AUTH?] params=[identifier] 
+PUT     /api/external/v1/cases/comments/{id}                                             [AUTH?] params=[id] Update case comment
+PUT     /api/external/v1/configuration-items/{tenantId}                                  [AUTH?] params=[tenantId] 
+PUT     /api/external/v1/dynamic-cases/MarkCommentAsDeleted/{id}                         [AUTH?] params=[id] Mark comment as deleted.
+PUT     /api/external/v1/external-authentication-settings/{id}                           [AUTH?] params=[id] Updates an existing external provider instance.
+PUT     /api/external/v1/idp-group-mapping/{id}                                          [AUTH?] params=[id] Updates an existing mapping configuration between 
+PUT     /api/external/v1/settings/form-dynamic-parameters/{id}                           [AUTH?] params=[id] Updates an existing ActionFormParameter.
+[4] IDOR candidate paths: 106
+
+[5] Probing select endpoints without auth...
+[5][200] GET /healthz — health check
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][200] GET /health — health check
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/v1/health — API health
+    BODY: 
+
+[5][404] GET /api/v1/version — version info
+    BODY: 
+
+[5][404] GET /api/v2/health — API v2 health
+    BODY: 
+
+[5][200] GET /external/v1/cases/getpage — list cases
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/cases — list cases v2
+    BODY: 
+
+[5][200] GET /external/v1/cases/1 — get case 1
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][200] GET /external/v1/cases/2 — get case 2
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][200] GET /external/v1/integrations/instances/list — list integration instances
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][200] GET /external/v1/integrations/GetIntegrationInstance — get integration instance
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/integrations/instances — integration instances
+    BODY: 
+
+[5][200] GET /external/v1/connectors — list connectors
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][405] GET /api/external/v1/connectors — list connectors v2
+    BODY: 
+
+[5][200] GET /external/v1/connectors/1 — get connector 1
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][200] GET /external/v1/playbooks — list playbooks
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/playbooks — list playbooks v2
+    BODY: 
+
+[5][200] GET /external/v1/webhooks — list webhooks
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/webhooks — list webhooks v2
+    BODY: 
+
+[5][200] GET /external/v1/alerts — list alerts
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/alerts — list alerts v2
+    BODY: 
+
+[5][200] GET /external/v1/settings — settings
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/settings — settings v2
+    BODY: 
+
+[5][200] GET /external/v1/marketplace — marketplace
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/marketplace/integrations — marketplace integrations
+    BODY: 
+
+[5][200] GET /homepage — homepage
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/v1/homepage — API homepage
+    BODY: 
+
+[5][200] GET /external/v1/security/users — list users
+    BODY: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+[5][404] GET /api/external/v1/security/roles — list roles
+    BODY: 
+
+
+[6] Checking Swagger-defined models for sensitive data structures...
+[v1] Schema: Siemplify.Api.DataModel.Cases.ApiSlaExpiration — fields: ['slaExpirationTime', 'criticalExpirationTime', 'expirationStatus']
+[v1] Schema: Siemplify.Api.DataModel.Cases.AttachWorkflowToCaseRequest — fields: ['cyberCaseId', 'alertGroupIdentifier', 'alertIdentifier', 'shouldRunAutomatic', 'wfName', 'originalWorkflowDefinitionIdentifier']
+[v1] Schema: Siemplify.Api.DataModel.Cases.CaseInfo — fields: ['creatorUserId', 'events', 'environment', 'sourceSystemName', 'ticketId', 'description', 'displayId', 'reason', 'name', 'deviceVendor']
+[v1] Schema: Siemplify.Api.DataModel.Cases.CaseInfoAttachment — fields: ['base64Blob', 'type', 'name', 'description', 'isImportant']
+[v1] Schema: Siemplify.Api.DataModel.Cases.CasePriority — fields: []
+[v1] Schema: Siemplify.Api.DataModel.Cases.CaseType — fields: []
+[v1] Schema: Siemplify.Api.DataModel.Cases.CasesPackage — fields: ['cases', 'type', 'connectorIdentifier', 'debugOutput']
+[v1] Schema: Siemplify.Api.DataModel.Cases.IngestionSourceType — fields: []
+[v1] Schema: Siemplify.Api.DataModel.Cases.LoadDataTypeEnumQueue — fields: []
+[v1] Schema: Siemplify.Api.DataModel.Cases.SlaExpirationEnum — fields: []
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiAddCommentToCaseRequest — fields: ['caseId', 'alertIdentifier', 'comment']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiAddOrRemoveTagToCaseRequest — fields: ['caseId', 'alertIdentifier', 'tag']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiAssignUserToCaseRequest — fields: ['caseId', 'alertIdentifier', 'userId']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiCaseImportanceRequest — fields: ['caseId', 'alertIdentifier', 'isImportant']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiCaseUpdatesRequest — fields: ['caseId', 'currentModificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiChangeCaseDescriptionRequest — fields: ['caseId', 'description']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiChangeCasePriorityRequest — fields: ['caseId', 'alertIdentifier', 'priority']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiChangeCaseStageRequest — fields: ['caseId', 'alertIdentifier', 'stage']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiCloseCaseRequest — fields: ['caseId', 'alertIdentifier', 'rootCause', 'comment', 'reason']
+[v1] Schema: Siemplify.Api.DataModel.ExternalApi.ApiRenameCaseNameRequest — fields: ['caseId', 'title']
+[v1] Schema: Siemplify.Common.Agents.DataModel.AgentAvailabilityConnectorEnum — fields: []
+[v1] Schema: Siemplify.Common.Agents.DataModel.AgentConnectorsMigrationStatusEnum — fields: []
+[v1] Schema: Siemplify.Common.AttacksSimulation.DataModel.CustomSimulatedCaseKeyValue — fields: ['key', 'value']
+[v1] Schema: Siemplify.Common.AttacksSimulation.DataModel.CustomSimulatedCaseRequest — fields: ['alertSource', 'ruleName', 'alertProduct', 'alertName', 'eventName', 'additionalAlertFields', 'additionalEventFields']
+[v1] Schema: Siemplify.Common.AttacksSimulation.DataModel.IngestCaseInOtherEnvironmentRequest — fields: ['caseId', 'environment', 'shouldCloseOldCase', 'shouldDeleteOldCase']
+[v1] Schema: Siemplify.Common.CaseChat.ApiDataModels.ApiCaseChatAttachment — fields: ['id', 'name', 'contentType', 'contentUrl', 'previewUrl']
+[v1] Schema: Siemplify.Common.CaseChat.ApiDataModels.ApiCaseChatMessage — fields: ['id', 'username', 'pinned', 'text', 'creationTime', 'attachments']
+[v1] Schema: Siemplify.Common.Cases.DataModel.CaseSummaryData — fields: ['fields']
+[v1] Schema: Siemplify.Common.Cases.DataModel.CasesQueryRequest — fields: ['pageSize', 'sortType', 'pageNumber', 'liveQueueSettings']
+[v1] Schema: Siemplify.Common.Cases.DataModel.LiveQueueSettingsDataModel — fields: ['environments', 'analysts', 'stages', 'priorities', 'tags', 'startTimeUnixTimeInMs', 'endTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.Cases.DataModel.Requests.AddEvidenceRequest — fields: ['caseIdentifier', 'alertIdentifier', 'base64Blob', 'type', 'name', 'description', 'isImportant']
+[v1] Schema: Siemplify.Common.Cases.DataModel.Requests.ApiAddOrUpdateCaseTask — fields: ['caseId', 'priority', 'isImportant', 'status', 'ownerComment', 'content', 'creatorUserId', 'owner', 'dueDateUnixTimeMs', 'completionComment']
+[v1] Schema: Siemplify.Common.Cases.DataModel.Requests.ApiRaiseIncidentRequest — fields: ['caseId', 'alertIdentifier']
+[v1] Schema: Siemplify.Common.Cases.DataModel.Requests.ApiUnraiseIncidentRequest — fields: ['caseId']
+[v1] Schema: Siemplify.Common.Cases.DataModel.SortTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.Cases.DataModel.SummaryFieldData — fields: ['fieldName', 'values']
+[v1] Schema: Siemplify.Common.Cases.DataModel.SummaryValueData — fields: ['value', 'count', 'percentage']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.AlertCard — fields: ['id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs', 'identifier', 'status', 'name', 'priority', 'workflowsStatus', 'slaExpirationUnixTime', 'slaCriticalExpirationUnixTime']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.ApiSla — fields: ['slaExpirationTime', 'criticalExpirationTime', 'expirationStatus', 'remainingTimeSinceLastPause']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.CaseCard — fields: ['id', 'displayId', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs', 'title', 'description', 'isTouched', 'isMerged', 'isImportant', 'isIncident']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.CaseDetails — fields: ['id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs', 'name', 'priority', 'isImportant', 'isIncident', 'startTimeUnixTimeInMs', 'endTimeUnixTimeInMs', 'assignedUser']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.PlatformReference — fields: ['platform', 'uri']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AddAttachmentRequest — fields: ['caseId', 'alertIdentifier', 'base64Blob', 'type', 'name', 'description', 'isImportant']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AddCaseCommentRequest — fields: ['caseId', 'comment']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AddCaseTagRequest — fields: ['caseId', 'alertIdentifier', 'tag']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AddCommentRequest — fields: ['caseId', 'alertIdentifier', 'base64Blob', 'type', 'name', 'comment', 'isImportant']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AddOrUpdateCaseTaskRequest — fields: ['id', 'caseId', 'alertIdentifier', 'priority', 'isImportant', 'status', 'ownerComment', 'content', 'creator', 'owner']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AlertEntitiesRequest — fields: ['caseId', 'alertGroupIdentifiers']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ApiAddCaseCommentRequest — fields: ['caseId', 'alertIdentifier', 'base64Blob', 'fileType', 'fileName', 'comment']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ApiUpdateCaseCommentRequest — fields: ['attachmentId', 'base64Blob', 'fileType', 'fileName', 'comment']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ApiUpdateWallItemFavoriteRequest — fields: ['isFavorite', 'recordId', 'type', 'activityKind']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.AssignUserToCaseRequest — fields: ['caseId', 'alertIdentifier', 'userId']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.BulkAssignRequest — fields: ['casesIds', 'userName']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.BulkCloseCaseRequest — fields: ['casesIds', 'closeReason', 'rootCause', 'closeComment', 'dynamicParameters']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.BulkReopenCaseRequest — fields: ['casesIds', 'reopenComment']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CaseImportanceRequest — fields: ['caseId', 'isImportant']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CaseModificationFilter — fields: ['modifiedSince', 'lastCaseId']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CaseQueueFilter — fields: ['type', 'operator', 'values', 'includeUsers']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CaseQueueFilterTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CasesQueueRequest — fields: ['filterOperator', 'filters', 'startTime', 'endTime', 'statuses', 'isVisibleInQueue', 'timeRangeFilter', 'caseModificationFilter', 'sortType', 'sortBy']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ChangeCaseDescriptionRequest — fields: ['caseId', 'description']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ChangeCaseStageRequest — fields: ['caseId', 'stage']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CloseCaseRequest — fields: ['caseId', 'rootCause', 'comment', 'reason', 'dynamicParameters']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CompareOperatorsEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.CreateEntityRequest — fields: ['caseId', 'alertIdentifier', 'entities']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.DomainEntityDataModel — fields: ['caseId', 'identifier', 'entityType', 'isInternal', 'isSuspicious', 'isArtifact', 'isEnriched', 'isVulnerable', 'isPivot', 'environment']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.GetAlertEventsRequest — fields: ['alertIdentifier', 'caseId']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.IsCaseUpdatedRequest — fields: ['caseId', 'currentModificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.Models.WallActivityFilterEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.PaginatedCaseWallRequest — fields: ['activities', 'caseId', 'SortOrder', 'users', 'alert', 'requestedPage', 'pageSize', 'searchTerm']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.RaiseIncidentRequest — fields: ['caseId']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.RemoveCaseTagRequest — fields: ['caseId', 'alertIdentifier', 'tag']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.RenameCaseNameRequest — fields: ['caseId', 'title']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ResolveOverviewRequest — fields: ['caseId', 'alertIdentifier', 'widgetDefinitionIdentifier', 'forceRefresh', 'isFirstRequest']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.SortTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.TimeFilterOptions — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.UnraiseIncidentRequest — fields: ['caseId']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.UpdateAlertPriorityRequest — fields: ['alertIdentifier', 'alertName', 'previousPriority', 'caseId', 'priority']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.UpdateCasePriorityRequest — fields: ['caseId', 'priority']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.UpdateCommentRequest — fields: ['id', 'attachmentId', 'caseId', 'alertIdentifier', 'base64Blob', 'type', 'name', 'comment', 'isImportant']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Requests.ValidateCasesAssigneeForCloseCaseRequest — fields: ['casesIds']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Responses.AlertEvent — fields: ['fields', 'identifier', 'caseId', 'alertIdentifier', 'name', 'product', 'port', 'sourceSystemName', 'outcome', 'time']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Responses.CasesQueueResponse — fields: ['caseCards', 'pageSize', 'requestedPage', 'totalCount']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Responses.PaginatedCaseWallResponse — fields: ['objectsList', 'metadata']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Results.BaseWidgetResultsData — fields: ['title', 'order', 'type', 'gridColumns', 'description', 'identifier', 'jsonData', 'errorJsonData', 'resultStatus']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Results.CaseQueueFilterData — fields: ['id', 'name', 'filterOperator', 'filters', 'timeRangeFilter', 'startTime', 'endTime', 'creatorUserId']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Results.OverviewData — fields: ['name', 'creator', 'playbookDefinitionIdentifier', 'widgets']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Results.OverviewWidgetMetadataResult — fields: ['title', 'description', 'identifier', 'order', 'templateIdentifier', 'type', 'width', 'configuration', 'presentIfEmpty', 'conditionsGroup']
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.Results.ResultStatusEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.DataModel.SlaExpiration — fields: ['slaExpirationTime', 'criticalExpirationTime', 'expirationStatus']
+[v1] Schema: Siemplify.Common.CasesV2.Enums.CasesEnums+HomepageCasesFiltersEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.Enums.CasesEnums+HomepageCasesPriorityFiltersEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.Enums.CasesEnums+HomepageCasesSlaFiltersEnum — fields: []
+[v1] Schema: Siemplify.Common.CasesV2.Enums.CasesEnums+HomepageCasesSortByEnum — fields: []
+[v1] Schema: Siemplify.Common.CommandCenter.DataModel.Enums.CommandCenterUserTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.Configuration.DataModel.PythonVersionSettings — fields: ['pythonVersion', 'pythonExecutableName', 'pythonSitePackagesPath', 'virtualEnvPythonExecutableName']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorCard — fields: ['identifier', 'isEnabled', 'isRemote', 'displayName', 'status']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorConnectivityStatusEnum — fields: []
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorInstanceEdit — fields: ['identifier', 'connectorDefinitionName', 'integration', 'displayName', 'description', 'environment', 'isEnabled', 'runIntervalInSeconds', 'isRemote', 'agentIdentifier']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorInstanceParameterValue — fields: ['name', 'value']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorSampleAlertsResults — fields: ['isSuccess', 'debugOutput', 'sampleCases']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorSampleData — fields: ['alertName', 'product', 'startTime', 'endTime', 'eventCount', 'caseInfoJson']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorStatus — fields: ['connectorIdentifier', 'connectivityStatus', 'amountAlertsInLastDay', 'avgAlertsPerDay']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorTemplate — fields: ['identifier', 'connectorDefinitionName', 'displayName', 'description', 'environment', 'isCustom', 'isEnabled', 'isRemote', 'agentIdentifier', 'integration']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorTemplateCard — fields: ['displayName', 'integration', 'connectorDefinitionName']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.ConnectorTemplateParameter — fields: ['name', 'value', 'description', 'type', 'isMandatory', 'isAdvanced']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.IntegrationConnectorCards — fields: ['integration', 'cards']
+[v1] Schema: Siemplify.Common.ConnectorsManagement.DataModel.NewConnectorTemplate — fields: ['integration', 'connectorDefinitionName', 'agentIdentifier', 'isRemote']
+[v1] Schema: Siemplify.Common.DataRetention.DataModel.ExecuteCaseDeletionRequest — fields: ['batchSize', 'caseIds']
+[v1] Schema: Siemplify.Common.Homepage.DataModels.UserAttachment — fields: ['name', 'isFileExtensionSafe', 'type', 'thumbnail', 'sizeInKB', 'description', 'blob', 'creatorUserId', 'id', 'creationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.Homepage.DataModels.UserAttachmentBlob — fields: ['attachmentId', 'data', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.Homepage.DataModels.UserContactDetails — fields: ['contactName', 'phoneNumber', 'email', 'description', 'creatorUserId', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.Homepage.DataModels.UserNote — fields: ['note', 'title', 'creatorUserId', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.Homepage.DataModels.UserWebsiteLink — fields: ['url', 'name', 'description', 'creatorUserId', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.Integrations.DataModel.EnvironmentInstancesFilterSettings — fields: ['environments', 'integrations', 'configuration', 'remote']
+[v1] Schema: Siemplify.Common.Notifications.DataModel.UserNotificationMessage — fields: ['recipient', 'sender', 'message', 'isClosed', 'objectId', 'notificationObjectType', 'dataType', 'dataBase64', 'context', 'caseId']
+[v1] Schema: Siemplify.Common.Orchestration.DataModel.Playbooks.ApiIntegrationInstanceDataModel — fields: ['identifier', 'integrationIdentifier', 'environmentIdentifier', 'instanceName', 'instanceDescription', 'isConfigured', 'isRemote', 'isSystemDefault']
+[v1] Schema: Siemplify.Common.OrderByDescriptor`1[[Siemplify.Common.SearchEverything.DataModel.SearchEverythingCaseProperty, Siemplify.Common.SearchEverything, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['sortOrder', 'sortBy']
+[v1] Schema: Siemplify.Common.PermissionsV2.DataModels.RestrictedCaseWallActionTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.PermissionsV2.DataModels.UserAccountState — fields: []
+[v1] Schema: Siemplify.Common.PermissionsV2.DataModels.UserLicenseAgreement — fields: ['userName', 'licenseAgreementId', 'signatureTime', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Common.PermissionsV2.DataModels.UserRoleEnum — fields: []
+[v1] Schema: Siemplify.Common.PermissionsV2.DataModels.UserType — fields: []
+[v1] Schema: Siemplify.Common.ProxySettings — fields: ['username', 'password', 'proxyServerAddressXml', 'targetAddressXml', 'ignoreAddressXml']
+[v1] Schema: Siemplify.Common.Queues.DataModel.CaseIngestionQueueErrorRecord — fields: ['identifier', 'sourceIdentifier', 'sourceType', 'connectorIp', 'size', 'sourceSystemName', 'alertTicketId', 'alertProduct', 'alertType', 'alertTime']
+[v1] Schema: Siemplify.Common.Queues.DataModel.CaseIngestionQueueRecord — fields: ['identifier', 'sourceIdentifier', 'sourceType', 'connectorIp', 'size', 'sourceSystemName', 'alertTicketId', 'alertProduct', 'alertType', 'alertTime']
+[v1] Schema: Siemplify.Common.Queues.DataModel.Responses.QueueItemsResponse`1[[Siemplify.Common.Queues.DataModel.CaseIngestionQueueErrorRecord, Siemplify.Common.Queues, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['pageSize', 'pageNumber', 'totalCount', 'records']
+[v1] Schema: Siemplify.Common.Queues.DataModel.Responses.QueueItemsResponse`1[[Siemplify.Common.Queues.DataModel.CaseIngestionQueueRecord, Siemplify.Common.Queues, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['pageSize', 'pageNumber', 'totalCount', 'records']
+[v1] Schema: Siemplify.Common.Queues.DataModel.Responses.QueueItemsResponse`1[[Siemplify.Common.Queues.DataModel.IndexerQueueErrorRecord, Siemplify.Common.Queues, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['pageSize', 'pageNumber', 'totalCount', 'records']
+[v1] Schema: Siemplify.Common.Queues.DataModel.Responses.QueueItemsResponse`1[[Siemplify.Common.Queues.DataModel.IndexerQueueRecord, Siemplify.Common.Queues, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['pageSize', 'pageNumber', 'totalCount', 'records']
+[v1] Schema: Siemplify.Common.Queues.DataModel.Responses.QueueItemsResponse`1[[Siemplify.Common.Queues.DataModel.WorkflowQueueErrorRecord, Siemplify.Common.Queues, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['pageSize', 'pageNumber', 'totalCount', 'records']
+[v1] Schema: Siemplify.Common.Queues.DataModel.Responses.QueueItemsResponse`1[[Siemplify.Common.Queues.DataModel.WorkflowQueueRecord, Siemplify.Common.Queues, Version=6.3.88.0, Culture=neutral, PublicKeyToken=null]] — fields: ['pageSize', 'pageNumber', 'totalCount', 'records']
+[v1] Schema: Siemplify.Common.ReportSystem.DataModel.AdvancedReportsSettings — fields: ['advancedReportsUrl', 'advancedReportProvider', 'advancedReportSessionLength', 'advancedReportsUsername', 'advancedReportsPassword', 'advancedReportsCacheExpiryInMs', 'advancedReportsLastRefreshInMs', 'advancedReportsIsConnectionError', 'advancedReportsDatabaseServer', 'advancedReportsDatabaseServerUsername']
+[v1] Schema: Siemplify.Common.ReportSystem.DataModel.CaseReportRequest — fields: ['caseId', 'reportKind']
+[v1] Schema: Siemplify.Common.SearchEverything.DataModel.ApiSearchEverythingCaseRequest — fields: ['startTime', 'endTime', 'tags', 'caseSource', 'priorities', 'importance', 'incident', 'environments', 'assignedUsers', 'externalAlertId']
+[v1] Schema: Siemplify.Common.SearchEverything.DataModel.CaseSearchFilterTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.SearchEverything.DataModel.SearchEverythingCaseProperty — fields: []
+[v1] Schema: Siemplify.Common.Settings.DTOs.ActionFormParameterResponseDto — fields: ['id', 'displayName', 'formType', 'parameterType', 'options', 'defaultValues', 'isMandatory', 'description']
+[v1] Schema: Siemplify.Common.Settings.DTOs.CreateActionFormParameterRequestDto — fields: ['displayName', 'formType', 'parameterType', 'options', 'defaultValues', 'isMandatory', 'description']
+[v1] Schema: Siemplify.Common.Settings.DTOs.PutActionFormParameterRequestDto — fields: ['displayName', 'formType', 'parameterType', 'options', 'defaultValues', 'isMandatory', 'description']
+[v1] Schema: Siemplify.Common.Settings.DataModel.AuditSettingsExportRequest — fields: ['auditType', 'userName']
+[v1] Schema: Siemplify.Common.Settings.DataModel.AuditSettingsExportRequestV2 — fields: ['auditType', 'usersNames']
+[v1] Schema: Siemplify.Common.Settings.DataModel.AuditSettingsRequestTypeEnum — fields: []
+[v1] Schema: Siemplify.Common.Settings.DataModel.EmailSettings — fields: ['siemplifySmtp', 'senderDisplayName', 'senderEmailAddress', 'isRequireAuthentication', 'username', 'password', 'smtpServerAddress', 'smtpPort', 'useOauthToken', 'mailServerProvider']
+[v1] Schema: Siemplify.Common.Store.DataModel.IntegrationInstancesByEnvironment — fields: ['environment', 'integrationInstances']
+[v1] Schema: Siemplify.Common.Store.DataModel.Usecases.ApiUsecaseExportRequest — fields: ['identifier', 'name', 'description', 'videoLink', 'categories', 'updaterFullName', 'updaterEmail', 'elements', 'tags', 'includeIntegrations']
+[v1] Schema: Siemplify.Common.Store.DataModel.Usecases.DisplayNameAndIdentifier — fields: ['displayName', 'identifier']
+[v1] Schema: Siemplify.Common.Store.DataModel.Usecases.UseCaseElement — fields: ['type', 'identifier']
+[v1] Schema: Siemplify.Common.Webhooks.ApiDataModels.Requests.ApiWebhookUpdateRequest — fields: ['name', 'description', 'defaultEnvironment', 'identifier', 'apiKey', 'webhookMappingRules', 'isEnabled', 'jsonExampleData']
+[v1] Schema: Siemplify.Common.Webhooks.ApiDataModels.Requests.ApiWebhooksAddRequest — fields: ['name', 'description', 'defaultEnvironment']
+[v1] Schema: Siemplify.Common.Webhooks.ApiDataModels.Responses.ApiWebhookResponse — fields: ['id', 'name', 'description', 'defaultEnvironment', 'identifier', 'postfix', 'webhookMappingRules', 'isEnabled', 'jsonExampleData']
+[v1] Schema: Siemplify.Common.Webhooks.ApiDataModels.Responses.WebhookCard — fields: ['identifier', 'name']
+[v1] Schema: Siemplify.Common.Webhooks.DataModels.ApiWebhookMapping — fields: ['mandatory', 'mapping', 'name']
+[v1] Schema: Siemplify.Common.Webhooks.DataModels.ApiWebhookMappingRules — fields: ['id', 'webhookInstanceIdentifier', 'webhookMappingsFields']
+[v1] Schema: Siemplify.Common.Webhooks.DataModels.ApiWebhookMappings — fields: ['ticketId', 'sourceSystemName', 'name', 'deviceVendor', 'ruleGenerator', 'startTime', 'environment', 'description', 'displayId', 'reason']
+[v1] Schema: Siemplify.Common.Webhooks.DataModels.ApiWebhookStatus — fields: ['amountAlertsInLastDay', 'avgAlertsPerDay']
+[v1] Schema: Siemplify.Common.Webhooks.DataModels.WebhookLogDataParsed — fields: ['rawJson', 'timestampUnixTimeMs', 'message', 'level']
+[v1] Schema: Siemplify.DataModel.Authentication.ExternalAuthentication.SamlSettingsFileType — fields: []
+[v1] Schema: Siemplify.DataModel.Authentication.ExternalAuthentication.UploadSamlSettings — fields: ['type', 'name', 'contentBase64']
+[v1] Schema: Siemplify.DataModel.Cases.CaseAssignmentPolicy — fields: []
+[v1] Schema: Siemplify.DataModel.Cases.CaseAttachment — fields: ['creator', 'caseId', 'name', 'type', 'isImportant', 'comment', 'commentId', 'description', 'evidenceThumbnail', 'sizeInKB']
+[v1] Schema: Siemplify.DataModel.Cases.CaseAttachmentBlob — fields: ['attachmentId', 'data', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.DataModel.Cases.CaseTask — fields: ['caseId', 'priority', 'isImportant', 'status', 'ownerComment', 'content', 'creator', 'creatorFullName', 'owner', 'ownerFullName']
+[v1] Schema: Siemplify.DataModel.Cases.EvidenceType — fields: []
+[v1] Schema: Siemplify.DataModel.Cases.FieldData — fields: ['originalName', 'name', 'value']
+[v1] Schema: Siemplify.DataModel.Cases.FieldGroupData — fields: ['order', 'groupName', 'isIntegration', 'isHighlight', 'items']
+[v1] Schema: Siemplify.DataModel.Cases.MoveCaseBetweenEnvironmentsPolicy — fields: []
+[v1] Schema: Siemplify.DataModel.Cases.TaskPriorityEnum — fields: []
+[v1] Schema: Siemplify.DataModel.Cases.TaskStatusEnum — fields: []
+[v1] Schema: Siemplify.DataModel.Cases.Wall.ApiCaseCommentResponse — fields: ['comment', 'lastEditorId', 'lastEditorFullName', 'fileId', 'fileType', 'fileName', 'isDeleted', 'creatorUserId', 'creatorFullName', 'id']
+[v1] Schema: Siemplify.DataModel.Cases.Wall.BaseWallActivity — fields: ['creatorUserId', 'creatorFullName', 'id', 'type', 'caseId', 'isFavorite', 'modificationTimeUnixTimeInMs', 'creationTimeUnixTimeInMs', 'alertIdentifier']
+[v1] Schema: Siemplify.DataModel.Cases.Wall.CaseCommentWallActivity — fields: ['comment', 'commentForClient', 'modificationTimeUnixTimeInMsForClient', 'lastEditor', 'lastEditorFullName', 'isDeleted', 'creatorUserId', 'creatorFullName', 'id', 'type']
+[v1] Schema: Siemplify.DataModel.Cases.Wall.CaseEvidenceWallActivity — fields: ['evidenceName', 'description', 'comment', 'commentForClient', 'modificationTimeUnixTimeInMsForClient', 'evidenceThumbnailBase64', 'evidenceId', 'commentId', 'fileType', 'lastEditor']
+[v1] Schema: Siemplify.DataModel.Cases.Wall.WallActivityEnum — fields: []
+[v1] Schema: Siemplify.DataModel.Insights.CaseInsightData — fields: ['triggeredBy', 'title', 'content', 'entityIdentifier', 'severity', 'type', 'additionalDataType', 'additionalData', 'additionalDataTitle', 'originalRequestingUser']
+[v1] Schema: Siemplify.DataModel.Managment.CaseDataStatus — fields: []
+[v1] Schema: Siemplify.DataModel.Managment.CaseStageDefinition — fields: ['name', 'order', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.DataModel.Managment.CaseTag — fields: ['tag', 'priority', 'caseId', 'indicator', 'providerType', 'canBeCaseTitle', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.DataModel.Managment.CyberCase — fields: ['creatorUserId', 'lastModifingUser', 'creationTimeDisplayName', 'modificationTimeDisplayName', 'title', 'highRiskProducts', 'priorityProcessorResult', 'touched', 'isMerged', 'isImportant']
+[v1] Schema: Siemplify.DataModel.Results.PriorityProcessorCaseResult — fields: ['caseId', 'casePriorityScore', 'casePriorityPrecentile', 'ruleExplanations', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.DataModel.Settings.ApiAlertGroupingParameter — fields: ['identifier', 'displayName']
+[v1] Schema: Siemplify.DataModel.SocRoles.SocRole — fields: ['id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.DataModel.User.UpdateUser — fields: ['userName', 'permissionType', 'email', 'loginIdentifier', 'firstName', 'lastName', 'role', 'socRoleId', 'socRoleIds', 'imageBase64']
+[v1] Schema: Siemplify.DataModel.User.UpdateUserImageRequest — fields: ['userName', 'imageBase64']
+[v1] Schema: Siemplify.DataModel.User.UploadLicenseRequest — fields: ['base64String']
+[v1] Schema: Siemplify.Server.Api.DataModel.Agents.ApiAgentConnectorAvailability — fields: ['agentAvailabilityConnectorStatus', 'id', 'identifier', 'name', 'environments', 'publisherId', 'publisherName', 'publisherSlaveName', 'accessLink', 'status']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiAlertGroupingCategory — fields: []
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiAlertGroupingRule — fields: ['category', 'subCategories', 'groupingType', 'entityGrouping', 'id', 'creationTimeUnixTimeInMs', 'modificationTimeUnixTimeInMs']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiAlertGroupingTypeEnum — fields: []
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCaseInsightData — fields: ['alertIdentifier', 'caseId', 'triggeredBy', 'title', 'content', 'entity', 'severity', 'type', 'additionalDataType', 'additionalData']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCaseRecommendationRecord — fields: ['id', 'title', 'caseRecommendationOutcomeStatus', 'priority', 'creationTime', 'scorePercent', 'isClosed', 'closedRootCause', 'closedComment']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCaseRecommendations — fields: ['similarCases', 'relevantAnalysts', 'relevantTags']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCaseTagDataModel — fields: ['caseId', 'tag', 'priority']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCreateManualCaseRequest — fields: ['title', 'reason', 'environment', 'assignedUser', 'priority', 'tags', 'playbooks', 'entities', 'alertName', 'occurenceTime']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCyberCaseCardDataModel — fields: ['title', 'isTouched', 'hasSuspiciousEntity', 'isMerged', 'isImportant', 'isIncident', 'hasWorkflow', 'environment', 'priority', 'stage']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiCyberCaseFullDataModel — fields: ['wallData', 'alerts', 'caseRecommendations', 'tags', 'insights', 'productFamilies', 'summary', 'entityCards', 'entities', 'description']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiIntegrationInstanceDataModel — fields: ['identifier', 'integrationIdentifier', 'environmentIdentifier', 'instanceName', 'instanceDescription', 'isConfigured', 'isRemote', 'isSystemDefault']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiSearchCaseResult — fields: ['id', 'title', 'time', 'closingTime', 'tags', 'products', 'alertNames', 'ticketIds', 'eventNames', 'sources']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiSearchCaseResults — fields: ['results', 'totalCount', 'pageNumber', 'pageSize']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiSecurityAlertFullDataModel — fields: ['ticketId', 'status', 'identifier', 'hasWorkflows', 'workflowsStatus', 'sourceSystemName', 'securityEventCards', 'entityCards', 'productFamilies', 'fields']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiSecurityEntityWithCasesCountDataModel — fields: ['entity', 'casesCount']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiSlaAlertType — fields: []
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiUsecaseData — fields: ['recommended', 'useCases', 'categories']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiUsecaseStoreRecordDetails — fields: ['tags', 'categories', 'order', 'downloads', 'isAvailableForCommunity', 'identifier', 'creationTimeInUnixtime', 'name', 'shortDescription', 'description']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiUserProfile — fields: ['permissionGroup', 'permissionGroups', 'socRole', 'socRoles', 'isDisabled', 'loginIdentifier', 'firstName', 'lastName', 'permissionType', 'role']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiUserProfileCard — fields: ['firstName', 'lastName', 'userName', 'accountState']
+[v1] Schema: Siemplify.Server.Api.DataModel.ApiUserProfileRequest — fields: ['userName']
+[v1] Schema: Siemplify.Server.Api.DataModel.CaseRecommendationOutcomeStatusEnum — fields: []
+[v1] Schema: Siemplify.Server.Api.DataModel.Cases.ApiCaseAssignmentPolicySettings — fields: ['assignmentPolicy']
+[v1] Schema: Siemplify.Server.Api.DataModel.Cases.ApiMoveCaseBetweenEnvironmentsPolicySettings — fields: ['moveCaseBetweenEnvironmentsPolicy']
+[v1] Schema: Siemplify.Server.Api.DataModel.Cases.ApiWallItemsForCommandCenter — fields: ['tasks', 'comments', 'attachments']
+[v1] Schema: Siemplify.Server.Api.DataModel.CommandCenter.Activities.ApiCommandCenterIncidentUserMin — fields: ['id', 'firstName', 'lastName', 'role', 'department']
+[v1] Schema: Siemplify.Server.Api.DataModel.CommandCenter.ApiCaseWallItemsIdentifier — fields: ['id', 'type']
+[v1] Schema: Siemplify.Server.Api.DataModel.CommandCenter.ApiCommandCenterIncidentUser — fields: ['incidentId', 'userId', 'isArchived', 'firstName', 'lastName', 'departmentId', 'role', 'access', 'user', 'isIncidentCreator']
+[v1] Schema: Siemplify.Server.Api.DataModel.CommandCenter.ApiCommandCenterUser — fields: ['firstName', 'lastName', 'email', 'username', 'image', 'type', 'isAuditor', 'departmentId', 'role', 'id']
+[v1] Schema: Siemplify.Server.Api.DataModel.Playbooks.ApiCaseEntities — fields: ['entities', 'entityCards']
+[v1] Schema: Siemplify.Server.Api.DataModel.Playbooks.ApiStepCaseDebugDataRequest — fields: ['stepOriginalIdentifier', 'alertIdentifier']
+[v1] Schema: Siemplify.Server.Api.DataModel.Playbooks.AttachNestedWorkflowToCaseRequest — fields: ['cyberCaseId', 'alertGroupIdentifier', 'alertIdentifier', 'wfName', 'inputParameters', 'originalWorkflowDefinitionIdentifier']
+[v1] Schema: Siemplify.Server.Api.DataModel.SocRoles.ApiAddOrUpdateSocRoleRequest — fields: ['id', 'name', 'setAsDefault', 'additionalRoleAccess']
+[v1] Schema: Siemplify.Server.Api.DataModel.SocRoles.ApiDeleteSocRoleRequest — fields: ['socRoleId']
+[v1] Schema: Siemplify.Server.Api.DataModel.SocRoles.ApiDeleteSocRoleResponse — fields: ['success', 'message', 'failReason']
+[v1] Schema: Siemplify.Server.Api.DataModel.SocRoles.ApiSocRole — fields: ['id', 'name', 'isDefault', 'usersAssigned']
+[v1] Schema: Siemplify.Server.Api.DataModel.SocRoles.ApiSocRoleAccess — fields: ['id', 'name']
+[v1] Schema: Siemplify.Server.Api.DataModel.SocRoles.ApiSocRoleWithRoleAccesses — fields: ['id', 'name', 'isDefault', 'usersAssigned', 'additionalRoleAccesses']
+[v1] Schema: Siemplify.Server.Api.DataModel.UsecaseIntegrationDetails — fields: ['identifier', 'svg', 'isMandatory']
+[v1] Schema: Siemplify.Server.Api.DataModel.WallActivity.ApiCaseTaskChangedWallActivity — fields: ['status', 'priority', 'title', 'content', 'owner', 'ownerFullName', 'completor', 'creator', 'creatorFullName', 'lastModifier']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiCloseAlertRequest — fields: ['sourceCaseId', 'alertIdentifier', 'rootCause', 'reason', 'comment', 'usefulness']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiConfigureIntegrationInstanceRequest — fields: ['instanceIdentifier', 'settings', 'instanceName', 'instanceDescription']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiCreateIntegrationInstanceRequest — fields: ['integrationIdentifier', 'environment']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiMergeCasesRequest — fields: ['casesIds', 'caseToMergeWith']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiMoveAlertToNewCaseRequest — fields: ['alertIdentifier', 'sourceCaseId', 'destinationCaseId']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiReopenAlertRequest — fields: ['caseId', 'alertIdentifier']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiSearchCasesFilterValuesRequest — fields: ['typeOfFilter', 'numberOfValuesToReturn', 'searchTerm']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiSocRolesRequest — fields: ['environments']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiTestCasesPageRequest — fields: ['searchTerm', 'requestedPage', 'pageSize', 'environments']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiUpdateAlertPriorityRequest — fields: ['alertIdentifier', 'alertName', 'previousPriority', 'caseId', 'priority']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiUsersPageRequest — fields: ['searchTerm', 'filterRole', 'requestedPage', 'pageSize', 'filterDisabledUsers', 'filterSupportUsers', 'fetchOnlySupportUsers', 'filterPermissionTypes']
+[v1] Schema: Siemplify.Server.Api.Requests.ApiUsersPageRequestByEnvironment — fields: ['environments', 'searchTerm', 'filterRole', 'requestedPage', 'pageSize', 'filterDisabledUsers', 'filterSupportUsers', 'fetchOnlySupportUsers', 'filterPermissionTypes']
+[v1] Schema: Siemplify.Server.Api.Requests.BulkChangeCasePriorityRequest — fields: ['casesIds', 'priority']
+[v1] Schema: Siemplify.Server.Api.Requests.BulkChangeCaseStageRequest — fields: ['casesIds', 'stage']
+[v1] Schema: Siemplify.Server.Api.Requests.BulkChangeCaseTagsRequest — fields: ['casesIds', 'tags']
+[v1] Schema: Siemplify.Server.Api.Requests.BulkCloseCaseRequest — fields: ['casesIds', 'closeReason', 'rootCause', 'closeComment']
+[v1] Schema: Siemplify.Server.Api.Requests.BulkReopenCaseRequest — fields: ['casesIds', 'reopenComment']
+[v1] Schema: Siemplify.Server.Api.Requests.Sla.ApiAlertSlaRequest — fields: ['caseId', 'alertIdentifier', 'message']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiCaseManipulationResponse — fields: ['isRequestValid', 'errors', 'newCaseId']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiNotificationItemSettings — fields: ['receiveEmail', 'receivePushNotification']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiPagingResponses.ApiGetCaseStageDefinitionRecordsResponse — fields: ['objectsList', 'metadata']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiPagingResponses.ApiTestCasesResponse — fields: ['objectsList', 'metadata']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiPagingResponses.ApiUserProfileCardsResponse — fields: ['objectsList', 'metadata']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiPagingResponses.ApiUserProfilesResponse — fields: ['objectsList', 'metadata']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiUserNotificationSettings — fields: ['canReceiveSystemNotifications', 'canReceiveUserNotifications', 'maxDaysToShowInFeed', 'caseAssignmentSettings', 'caseStatusChangeSettings', 'caseCommentSettings', 'taskSettings', 'sharedItemSettings', 'manualActionSettings', 'playbookActionSettings']
+[v1] Schema: Siemplify.Server.Api.Responses.ApiUserProfileLightMetadata — fields: ['firstName', 'lastName', 'userName', 'email', 'socRoleId', 'socRole', 'socRoleIds', 'socRoles', 'avatar', 'loginIdentifier']
+[v1] Schema: Siemplify.Server.Api.Responses.CaseCardsResponse — fields: ['caseCards', 'pageSize', 'pageNumber', 'totalCount']
+[v1] Schema: Siemplify.Server.Api.Responses.CasesFilterUserAndRolesResponse — fields: ['socRoles', 'users']
+[v1] Schema: Siemplify.Server.Api.Responses.Settings.ApiEnumDescriptor — fields: ['name', 'value']
+[v1] Schema: Siemplify.Server.Federation.Dtos.BatchPatchFederatedCasesRequest — fields: ['cases']
+[v1] Schema: Siemplify.Server.Federation.Dtos.BatchPatchFederatedCasesResponse — fields: []
+[v1] Schema: Siemplify.Server.Federation.Dtos.CaseCardsGetResponse — fields: ['cases', 'continuationToken', 'executionMessage']
+[v1] Schema: Siemplify.Server.ReportSystem.Reports.ApiAdvancedReportsSettings — fields: ['advancedReportsUrl', 'advancedReportsUsername', 'advancedReportsPassword', 'advancedReportsDatabaseServer', 'advancedReportsDatabaseServerUsername', 'advancedReportsDatabaseServerPassword', 'advancedReportsSiteName']
+
+=== SWAGGER SCAN COMPLETE — 20260617-1048 ===
+Swagger v1 paths    : 449
+Swagger v2 paths    : 1
+Swagger v3 paths    : 1
+Total unique paths  : 486
+SSRF param paths    : 3
+IDOR candidate paths: 106
+Unauth hits         : 874
+Log                 : /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/swagger-20260617-1048/swagger-scan.log
+
+NEXT STEPS:
+  1. Review SSRF params: /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/swagger-20260617-1048/ssrf-params.txt
+  2. Review IDOR paths: /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/swagger-20260617-1048/idor-paths.txt
+  3. Sign up for trial → get Bearer token → test IDOR between accounts
+  4. Any unauth hits: /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/swagger-20260617-1048/unauth-hits.txt
+  5. git add /home/gorib/bug-bounty-hunting-/results/chronicle.security/evidence/swagger-20260617-1048/ && git push

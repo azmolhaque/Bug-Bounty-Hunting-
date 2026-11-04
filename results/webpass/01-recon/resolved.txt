@@ -1,0 +1,6 @@
+# Live hosts with IPs and scope status
+# Format: hostname IP scope_status
+work.webpass.net   34.72.62.205   IN-SCOPE-TIER1
+webpass.net        34.120.232.54  IN-SCOPE-TIER1
+www.webpass.net    34.120.232.54  OUT-OF-SCOPE (not in VRP acquisition list)
+api.webpass.net    34.70.170.54   OUT-OF-SCOPE (not in VRP acquisition list)

@@ -1,0 +1,12 @@
+
+[0;36m═══════════════════════════════════════════════════════════[0m
+[0;36m  Cameyo Authenticated IDOR Hunt — TIER0, Google VRP      [0m
+[0;36m  Target: online.cameyo.com                               [0m
+[0;36m═══════════════════════════════════════════════════════════[0m
+
+[0;36m[*][0m No SESSION_COOKIE provided — attempting account registration
+
+[0;36m[*][0m Step 1: Fetching registration form
+  CSRF token: 
+  ViewState: 
+  Form fields found:

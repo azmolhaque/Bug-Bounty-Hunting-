@@ -1,0 +1,12 @@
+  / → HTTP 000
+  /api → HTTP 000
+  /api/v1 → HTTP 000
+  /api/v2 → HTTP 000
+  /health → HTTP 000
+  /status → HTTP 000
+  /users → HTTP 000
+  /accounts → HTTP 000
+  /payments → HTTP 000
+  /transfers → HTTP 000
+  /balance → HTTP 000
+  /admin → HTTP 000

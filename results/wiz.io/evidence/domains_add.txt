@@ -1,0 +1,4 @@
+Vercel CLI 54.13.0 (Node.js 22.22.3)
+Retrieving project…
+Adding domain win-test.wiz.io to project poc
+Error: Not authorized to use win-test.wiz.io (403)

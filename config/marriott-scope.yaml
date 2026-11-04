@@ -1,0 +1,331 @@
+# marriott-scope.yaml — Marriott Bug Bounty Program (HackerOne)
+# Program: https://hackerone.com/marriott
+# Platform: HackerOne (private → public Feb 2020)
+# Last scope review: 2026-06-21
+#
+# USAGE WITH SCOPE-CHECK:
+#   SCOPE_FILE=config/marriott-scope.yaml ./scripts/scope-check.sh <host>
+#
+# SEVERITY / BOUNTY:
+#   Critical : $8,001 – $11,000 (avg $11,000)
+#   High     : $6,000 – $8,000  (avg $4,465)
+#   Medium   : $600   – $3,429  (avg $2,202)
+#   Low      : $300   – $599    (avg $442)
+#   Total paid to date: $559,803
+#
+# RATE LIMIT RULE:
+#   DO NOT use Burp Intruder / fuzzing with 10,000+ requests — account ban.
+#   Keep concurrency conservative. Pi default: max_requests_per_second: 20
+#
+# SUBMISSION RULES (critical ones):
+#   - Include: researcher IP, test dates, browser/tools used, app version
+#   - Validate domain ownership via WHOIS to domain.administrator@marriott.com
+#   - Store evidence only within the HackerOne submission (no external hosting)
+#   - Marriott does NOT permit public disclosure without written consent
+#   - No public disclosure discussion until resolved and expressly approved
+#
+# OUT-OF-SCOPE POLICY NOTES (updated April 21, 2025):
+#   - Reflected XSS, DOM-based XSS requiring user interaction → OOS
+#   - Stored XSS on non-sensitive endpoints → chain to impact or drop
+#   - Open redirects → OOS unless chained to ATO/token theft
+#   - Leaked tokens/cookies → OOS unless proof of ATO
+#   - Web Cache Poisoning → OOS
+#   - HTML injection → OOS
+#   - MITM requiring hotel physical network → OOS
+#   - CORS on endpoints returning no sensitive data → OOS
+#   - Missing security headers → OOS (unless demonstrated exploit)
+#   - Software version disclosure → OOS (unless chained to CVE PoC)
+
+program: "Marriott Bug Bounty Program"
+platform: "hackerone.com"
+handle: "marriott"
+report_url: "https://hackerone.com/marriott/reports/new"
+
+# ---------------------------------------------------------------------------
+# IN SCOPE (80 assets — organized by severity tier and attack priority)
+# ---------------------------------------------------------------------------
+in_scope:
+
+  # ==========================================================================
+  # CRITICAL SEVERITY ASSETS — Maximum bounty; highest hunting priority
+  # ==========================================================================
+
+  # SSO — Primary auth surface, 33 prior reports (well-tested but rich)
+  - "sso.marriott.com"
+
+  # Reservation engine — 3 reports; booking flow = payment/auth bypass risk
+  - "reservations.all-inclusive.marriott.com"
+
+  # Payment Service Provider — 0 reports (FRESH); payment endpoints = Critical
+  - "psp.marriott.com"
+
+  # Employee password reset — 2 reports; bypass = cross-tenant Critical
+  - "passwordchallenge.marriott.com"
+
+  # Loyalty moments experience — 0 reports
+  - "moments.marriottbonvoy.com"
+
+  # MGS (Meeting/Group Services?) — 3 reports; multi-tenant booking
+  - "mgs.marriott.com"
+
+  # marrtool.com — unknown asset, 1 report; investigate what this is
+  - "marrtool.com"
+
+  # Franchise financial transactions — 1 report; financial logic bugs
+  - "marriottfranchisetransactions.marriott.com"
+
+  # Legal document management — 0 reports (FRESH)
+  - "lawmanager.marriott.com"
+
+  # Careers / recruiting — 2 reports
+  - "jobs.marriott.com"
+
+  # Luxury home rental — 17 reports (2%); multi-tenant property IDOR
+  - "homes-and-villas.marriott.com"
+
+  # Customer help/support — 17 reports; data access bugs common
+  - "help.marriott.com"
+
+  # DEV gateway — 2 reports; dev environments = missing auth, debug APIs
+  - "gatewaydsaptst1.marriott.com"
+
+  # DEV gateway 2 — 0 reports (FRESH); TOP PRIORITY DEV ENV
+  - "gatewaydsapdev2.marriott.com"
+
+  # Gateway wildcard — 10 reports; subdomain enum required
+  - "gateway*.marriott.com"
+
+  # E-supplier portal — 0 reports (FRESH); supplier = business logic IDOR
+  - "esupplier.marriott.com"
+
+  # Edition Hotels — 2 reports; luxury brand sub-portal
+  - "editionhotels.com"
+
+  # DCF Gateway test — 1 report; test environment → debug APIs
+  - "dcfgatewaytst1.marriott.com"
+
+  # DCF Gateway wildcard — 0 reports (FRESH); enumerate subdomains
+  - "dcfgateway*.marriott.com"
+
+  # CPP (Central Purchasing Portal?) — 3 reports
+  - "cpp.marriott.com"
+
+  # Careers — 1 report (added Jun 2025)
+  - "careers.marriott.com"
+
+  # All-inclusive booking — 11 reports (1%)
+  - "all-inclusive.marriott.com"
+
+  # iOS app (App Store ID 455004730) — 1 report; mobile IDOR
+  - "455004730"
+
+  # APC gateway wildcard — 0 reports (FRESH); NEW asset Oct 2025
+  - "*gateway-apc.marriott.com"
+
+  # Ritz Carlton flagship — 5 reports; luxury brand cross-tenant
+  - "www.ritzcarlton.com"
+
+  # ==========================================================================
+  # HIGH SEVERITY ASSETS — $6,000-$8,000; 0 reports = fresh attack surface
+  # ==========================================================================
+
+  # WeChat API integration — 0 reports (FRESH); Chinese market, API IDOR
+  - "wechat.api.marriott.com"
+
+  # Traveler portal — 2 reports
+  - "traveler.marriott.com"
+
+  # Travel agents portal — 0 reports (FRESH)
+  - "travelagents.marriott.com"
+
+  # Saviynt IAM Cloud — 0 reports (FRESH); NEW Oct 2025; IAM = Critical risk
+  # Saviynt = identity governance; misconfigured roles → privilege escalation
+  - "ssm-marriottms.saviyntcloud.com"
+
+  # MI Partner Privileges — 0 reports (FRESH); partner access control IDOR
+  - "mipartnerprivileges.marriott.com"
+
+  # iFAST portal — 0 reports (FRESH)
+  - "ifast.marriott.com"
+
+  # DEV gateway 3 — 0 reports (FRESH)
+  - "gatewaydsaptst2.marriott.com"
+
+  # Employee identity help — 0 reports (FRESH)
+  - "eidhelp.marriott.com"
+
+  # eFAST portal — 0 reports (FRESH)
+  - "efast.marriott.com"
+
+  # Device management — 0 reports (FRESH)
+  - "device.marriott.com"
+
+  # BPA2 — 0 reports (FRESH); unknown; investigate
+  - "bpa2.marriott.com"
+
+  # Auth APC endpoint — 0 reports (FRESH); auth surface = High/Critical
+  - "auth-apc.marriott.com"
+
+  # APC gateway — 0 reports (FRESH)
+  - "apcgateway.marriott.com"
+
+  # Activities booking — 1 report
+  - "activities.marriott.com"
+
+  # UAT environments — 0 reports (FRESH); user acceptance testing = weak auth
+  - "*uat.marriott.com"
+
+  # SBA wildcard — 0 reports (FRESH)
+  - "*.sba.marriott.com"
+
+  # MGS subdomain wildcard — 0 reports (FRESH)
+  - "*.mgs.marriott.com"
+
+  # Gateway wildcard — 0 reports (FRESH)
+  - "*.gateway.marriott.com"
+
+  # DCF Gateway wildcard — 0 reports (FRESH)
+  - "*.dcfgateway.marriott.com"
+
+  # Artifactory wildcard — 0 reports (FRESH); credential/key exposure risk
+  # Artifactory commonly exposes: API keys in artifacts, anonymous browse access
+  - "*.artifactory.marriott.com"
+
+  # API Gateway C wildcard — 0 reports (FRESH)
+  - "*.apigwc.marriott.com"
+
+  # API Gateway C (alternate name) — 0 reports (FRESH)
+  - "*.apigatewayc.marriott.com"
+
+  # ==========================================================================
+  # MEDIUM SEVERITY ASSETS
+  # ==========================================================================
+
+  - "www.travel-brilliantly.marriott.com"
+  - "university.marriott.com"
+  - "uber.marriott.com"
+  - "smetrics.marriott.com"
+  - "prod-mipaasiaasservices.marriott.com"
+  - "owa.marriott.com"              # OWA = Outlook Web Access; NTLM hash disclosure
+  - "ocijlbex1prd.marriott.com"
+  - "oasisprod.marriott.com"
+  - "meetmarriottbonvoy.marriott.com"
+  - "mds.marriott.com"
+  - "joinrewards.marriott.com"
+  - "joinmarriottbonvoy.com"
+  - "join.marriott.com"
+  - "www.shopmarriott.com"          # e-commerce
+  - "hotel-development.marriott.com"
+  - "hotel-deals.marriott.com"
+  - "globaldesign.marriott.com"
+  - "gifts.marriott.com"
+  - "contentportalauth.marriott.com"
+  - "contentportal.marriott.com"
+  - "ci-propertyconversionportal.marriott.com"  # 1 report
+  - "channel-portal.homes-and-villas.marriott.com"
+  - "cache.marriott.com"
+  - "bsp.marriott.com"
+  - "bilt.marriott.com"
+  - "app-insiders.marriott.com"
+
+  # ==========================================================================
+  # LOW SEVERITY ASSETS
+  # ==========================================================================
+
+  - "www.members.marriott.com"
+  - "www.giving.marriott.com"
+  - "vacation.marriott.com"
+  - "splunk-phantom-nlb.marriott.com"  # Splunk SOAR — note: security tool exposure
+  - "moments.marriott.com"
+  - "giftcards.marriott.com"
+
+# ---------------------------------------------------------------------------
+# OUT OF SCOPE — Explicitly listed as ineligible
+# ---------------------------------------------------------------------------
+out_of_scope:
+
+  # Explicitly OOS per scope page
+  - "www.travelagents.marriott.com"
+  - "www.msg-gateway.marriott.com"
+  - "www.github.com"
+  - "vacations.marriott.com"
+  - "towneplacesuites.marriott.com"
+  - "springhillsuites.marriott.com"
+  - "ofhub.marriott.com"
+  - "milux.marriott.com"
+  - "mi.bookmarriott.com"
+  - "meetings-excellence.marriott.com"
+  - "marriottlearnourbrands.com"
+  - "marriott.tech"
+  - "luxurybrands.marriott.com"
+  - "llmgw.codefest2026.marriott.com"
+  - "latinoamerica.marriott.com"
+  - "hotelexcellence.marriott.com"
+  - "gis.marriott.com"
+  - "fe.emergingtech-btsales.marriott.com"
+
+  # Unrelated companies (explicitly excluded by program)
+  - "marriottvacationsworldwide.com"
+  - "ritzcarlton-yachtcollection.com"
+  - "vistana.com"
+  - "intervalworld.com"
+  - "maritz.com"
+
+  # Not-listed assets (any asset not explicitly in in_scope is ineligible)
+  - "*.marriott.com"                # catch-all — ONLY explicitly listed assets allowed
+  - "marriott.com"                  # apex — testing individual listed subdomains only
+
+# ---------------------------------------------------------------------------
+# RULES OF ENGAGEMENT
+# ---------------------------------------------------------------------------
+rules:
+  max_requests_per_second: 20    # Conservative — Marriott bans for 10k+ burp requests
+
+  identifying_header: ""         # HackerOne programs don't require custom headers
+
+  forbidden_techniques:
+    - "fuzzing or Burp Intruder with 10,000+ requests (account ban per April 2024 policy)"
+    - "denial of service / load testing / resource exhaustion"
+    - "MITM attacks requiring physical hotel network access"
+    - "social engineering of Marriott employees"
+    - "testing real payment flows with real money"
+    - "accessing other users' booking data or loyalty points"
+    - "exfiltrating real customer PII beyond what proves impact"
+    - "testing any asset NOT explicitly listed in in_scope"
+    - "hosting evidence externally (must store only in HackerOne submission)"
+    - "public disclosure without written consent from Marriott"
+    - "reflected XSS (now OOS per April 2025 update)"
+    - "DOM-based XSS requiring user interaction (OOS per April 2025)"
+    - "open redirects without chain to ATO"
+    - "leaked tokens/cookies without proof of account takeover"
+
+  out_of_scope_bug_classes:
+    - "Reflected XSS"
+    - "DOM-based XSS requiring user interaction"
+    - "Web Cache Poisoning"
+    - "HTML injection without persistent modification"
+    - "Open redirects (unless chained to ATO)"
+    - "CSRF on logout or read-only actions"
+    - "Missing HSTS/X-Frame-Options/CSP headers (no exploit path)"
+    - "Software version disclosure (no CVE chained)"
+    - "Clickjacking on non-sensitive pages"
+    - "SPF/DKIM/DMARC misconfigs"
+    - "CORS on endpoints returning no sensitive data"
+    - "Rate limiting absent on non-sensitive endpoints"
+    - "Leaked credentials from malware logs or purchased cred packs"
+    - "Zero-days with official patch in last 31 business days"
+    - "MITM at hotels/physical locations"
+
+  reward_tiers:
+    critical: "$8,001 – $11,000 (avg $11,000)"
+    high: "$6,000 – $8,000 (avg $4,465)"
+    medium: "$600 – $3,429 (avg $2,202)"
+    low: "$300 – $599 (avg $442)"
+
+  notes: >
+    Always verify domain ownership via WHOIS to domain.administrator@marriott.com
+    when testing non-marriott.com assets (marrtool.com, editionhotels.com, etc.).
+    Test accounts: Create dedicated accounts at marriott.com/bonvoy for testing.
+    For employee-facing targets (passwordchallenge, eidhelp, esupplier): probe
+    login page only — do not attempt to impersonate employees.
+    Marriott response time targets: 2hr first response, 5d triage, 20d bounty.

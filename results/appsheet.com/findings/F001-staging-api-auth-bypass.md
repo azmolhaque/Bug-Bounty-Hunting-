@@ -1,3 +1,12 @@
+> # ⛔ RETRACTED — FALSE POSITIVE (2026-06-16)
+> This finding is **invalid and withdrawn**. See `F001-RETRACTION.md` for the disproving
+> evidence. Summary: production and staging behave **identically** for unauthenticated
+> requests (both return `"App … not found"` across GET/POST endpoints); production never
+> returns `"ApplicationAccessKey is missing"`. The auth-bypass differential does not
+> reproduce. Do not submit. Text below is preserved for the audit trail only.
+
+---
+
 # F001 — Missing Authentication on Publicly Accessible AppSheet Staging REST API
 
 **Target:** api.gcp-staging.appsheet.com  
@@ -173,5 +182,8 @@ to internal Google networks via IAP or VPC Service Controls.
 ## References
 
 - AppSheet REST API documentation: https://support.google.com/appsheet/answer/10106434
-- CVE-2023-4212: Prior AppSheet SSRF (confirms history of security gaps in AppSheet API layer)
 - Production vs staging response diff: see evidence section above
+
+> Note: earlier drafts cited "CVE-2023-4212" as a prior AppSheet SSRF. That citation is
+> incorrect — CVE-2023-4212 is a Trane thermostat command-injection issue, unrelated to
+> AppSheet — and has been removed. See `submission/F002-dedup-CVE-2023-4212.md`.

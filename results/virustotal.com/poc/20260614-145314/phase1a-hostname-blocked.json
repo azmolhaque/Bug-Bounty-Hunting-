@@ -1,0 +1,6 @@
+{
+    "error": {
+        "code": "InvalidArgumentError",
+        "message": "Unable to canonicalize url"
+    }
+}

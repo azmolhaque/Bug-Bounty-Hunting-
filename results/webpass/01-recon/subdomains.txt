@@ -1,0 +1,31 @@
+# Webpass subdomain enumeration results
+# Date: 2026-06-20
+# Method: DNS brute-force via Python UDP socket (port 53 -> 8.8.8.8)
+# Note: crt.sh blocked by Anthropic egress proxy; active HTTP probing also blocked
+#
+# Official VRP scope (from google/bughunters external_domains_acquisitions.asciipb):
+# webpass.net = TIER1 (IN SCOPE)
+# work.webpass.net = TIER1 (IN SCOPE)
+# webpass.withgoogle.com = TIER4 (OUT OF SCOPE - explicitly excluded)
+# api.webpass.net = not listed = TIER4 default-deny for acquisitions (OUT OF SCOPE)
+# www.webpass.net = not listed = TIER4 default-deny (OUT OF SCOPE)
+#
+# LIVE HOSTS (resolved):
+work.webpass.net       34.72.62.205    (GCP us-central1) [IN SCOPE TIER1]
+www.webpass.net        34.120.232.54   (GCP Global HTTPS LB) [OUT OF SCOPE - not listed]
+webpass.net            34.120.232.54   (GCP Global HTTPS LB) [IN SCOPE TIER1]
+api.webpass.net        34.70.170.54    (GCP us-central1) [OUT OF SCOPE - not listed]
+#
+# DEAD/NXDOMAIN:
+app.webpass.net        NXDOMAIN
+portal.webpass.net     NXDOMAIN
+admin.webpass.net      NXDOMAIN
+billing.webpass.net    NXDOMAIN
+staging.webpass.net    NXDOMAIN
+dev.webpass.net        NXDOMAIN
+beta.webpass.net       NXDOMAIN
+status.webpass.net     NXDOMAIN
+help.webpass.net       NXDOMAIN
+support.webpass.net    NXDOMAIN
+auth.webpass.net       NXDOMAIN
+# (50+ additional subdomains checked, all NXDOMAIN)

@@ -124,8 +124,10 @@ in_scope:
 
   # Photomath (acquired 2022) — TIER0; multiple internal/admin subdomains
   # photomath.net apex used as recon anchor; active testing only on listed subdomains
+  # VERIFY any subdomain marked [VERIFY] at bughunters.google.com before active testing
   - "photomath.net"              # recon anchor — scope gate passes for subdomain enumeration
-  - "dpcapi-admin.photomath.com"
+  - "portal.photomath.net"      # expert marketplace — confirmed prior XSS (vrp/weBR95rVi); IDOR target
+  - "dpcapi-admin.photomath.com"  # WAF returns 404 with bypass headers (bypassed)
   - "internal.photomath.com"
   - "dpcapi-admin.photomath.net"
   - "internal.photomath.net"
@@ -135,10 +137,18 @@ in_scope:
   - "dpcapi.photomath.net"
   - "lapi.photomath.net"
   - "mankey.photomath.net"
-  - "metabase.photomath.net"
+  - "metabase.photomath.net"    # NXDOMAIN — CVE-2023-38646 dead
   - "taportal.photomath.net"
   - "tlapi.photomath.net"
   - "zuja.photomath.net"
+  # Discovered in Session 2 scan (2026-06-17) — [VERIFY] scope before active testing
+  - "argocd-gke-app-eu-prod.photomath.net"   # ArgoCD prod EU — Google IAP protected
+  - "argocd-gke-app-us-prod.photomath.net"   # ArgoCD prod US — Google IAP protected
+  - "argocd-dwh-eu-dev.photomath.net"        # ArgoCD DWH dev EU — 403 NOT via IAP; highest priority
+  - "idp.photomath.net"                       # Identity Provider — type unknown; [VERIFY]
+  - "glooker.photomath.net"                   # Looker BI instance — [VERIFY]
+  - "cms.photomath.net"                       # CMS — type unknown; [VERIFY]
+  - "photomath.com"                           # .com apex for subdomain anchor
 
   # Pring (acquired ~2022) — TIER0 payment app (Japan)
   - "admin.pring.app"
@@ -223,6 +233,20 @@ in_scope:
   - "wiz.io"
   - "app.wiz.io"
 
+  # ==========================================================================
+  # EXOSCALE (Intigriti) — Swiss/EU cloud provider. Public/Open program.
+  # Tier2 EUR 50-5,000. MANDATORY: @intigriti.me signup email;
+  # X-Intigriti-Username header on EVERY request; max 10 req/sec;
+  # blacklist portal.exoscale.com/api/tickets; CUSTOMER RESOURCES OUT OF SCOPE.
+  # ==========================================================================
+  - "portal.exoscale.com"
+  - "api-*.exoscale.com"
+  - "sos-*.exo.io"
+  - "sks-*.exo.io"
+  - "*.internal.exoscale.ch"
+  - "www.exoscale.com"
+  - "community.exoscale.com"
+
   # Looker SaaS (TIER1) — cross-tenant BI; 9 vulns patched 2026; look for bypasses
   - "looker.com"
   - "lookerstudio.google.com"
@@ -269,10 +293,27 @@ in_scope:
   - "adsapi-staging.waze.com"
   - "proxy.waze.com"
   - "proxy-staging.waze.com"
+  # additional authoritative Waze hosts (present in acquisitions_domains_tiers.asciipb)
+  - "api.waze.com"
+  - "wam-api.waze.com"          # Waze Ad Manager API (multi-tenant advertiser data)
+  - "mobile-web.waze.com"
+  - "mobile-web-new.waze.com"
+  - "inbox.waze.com"
+  - "web-login-oauth.waze.com"
+  - "forum.waze.com"
+  - "wiki.waze.com"
+  - "wazeopedia.waze.com"
+  - "new-wazeopedia.waze.com"
+  - "embed.waze.com"
+  - "gapi.waze.com"
+  - "sdk.waze.com"
 
   # Fitbit (TIER1 subdomains; apex fitbit.com is TIER3)
   # 50 bugs paid in 2023; health data = max sensitivity; Mobile VRP also in scope
   - "accounts.fitbit.com"
+  - "api.fitbit.com"        # Web API (OAuth2) — authoritative in acquisitions_domains_tiers.asciipb
+  - "www.fitbit.com"        # web dashboard — authoritative in acquisitions file
+  - "m.fitbit.com"          # mobile web — authoritative in acquisitions file
   - "health-admin.fitbit.com"
   - "ngw.fitbit.com"
   - "mgmt.fitbit.com"
@@ -303,7 +344,12 @@ in_scope:
   - "homegraph.googleapis.com"
 
   # Chronicle Security / Google SecOps (TIER1)
+  # Pi scan 2026-06-17: 53,802 subs, 12,674 resolving; app.siemplify-soar.com → 200;
+  # backstory.googleapis.com/v1/feeds → 401 (real SSRF target); looker.chronicle.security found
   - "chronicle.security"
+  - "*.chronicle.security"           # covers backstory, secops, looker, auth, staging, dev subdomains
+  - "siemplify-soar.com"
+  - "*.siemplify-soar.com"           # covers 12,674 live tenant subdomains (e.g. app.siemplify-soar.com)
   - "backstory.googleapis.com"
   - "secops.googleapis.com"
   - "iafwsjwcmh.com"
@@ -322,10 +368,10 @@ in_scope:
   - "opensky.wing.com"
 
   # Siemplify SOAR (acquired Jan 2022) — TIER1/2; hundreds of SSRF connectors
+  # siemplify-soar.com + *.siemplify-soar.com covered above in Chronicle section
   - "siemplifycloud.com"
   - "siemplify.co"
   - "passbolt.siemplify.co"
-  - "siemplify-soar.com"
 
   # Dropcam / Nest Labs (TIER1)
   - "dropcam.com"

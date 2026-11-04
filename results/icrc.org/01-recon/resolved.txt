@@ -1,0 +1,22 @@
+# DNS resolution results for icrc.org
+# Date: 2026-06-20
+# Total resolved: 18
+
+www.icrc.org,150.171.110.195
+api.icrc.org,80.94.147.175
+app.icrc.org,128.65.195.27
+auth.icrc.org,80.94.147.172
+test.icrc.org,80.94.146.176
+uat.icrc.org,80.94.147.1
+elearning.icrc.org,128.65.195.27
+careers.icrc.org,130.214.193.81
+familylinks.icrc.org,150.171.109.183
+news.icrc.org,199.60.103.254
+blogs.icrc.org,150.171.110.195
+library.icrc.org,150.171.109.183
+ftp.icrc.org,80.94.146.152
+autodiscover.icrc.org,80.94.147.134
+shop.icrc.org,45.157.190.36
+extranet.icrc.org,80.94.147.215
+api-dev.icrc.org,80.94.146.108
+api-test.icrc.org,80.94.146.109

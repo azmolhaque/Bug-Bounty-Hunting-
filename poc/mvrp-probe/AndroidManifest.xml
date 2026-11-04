@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  mvrp-probe — Mobile VRP-র জন্য একটা permissionless probe app।
+
+  গুরুত্বপূর্ণ: এখানে একটাও <uses-permission> নেই, আর সেটাই পুরো বক্তব্য।
+  এই app যা করতে পারে, যেকোনো malicious app তাই করতে পারে। adb shell (uid 2000)
+  কিছু জায়গায় বাড়তি সুবিধা পায় — এই app পায় না। তাই এটা দিয়ে পাওয়া ফল
+  "একটা সাধারণ app পারে" বলার জন্য বৈধ প্রমাণ, shell-এর ফল নয়।
+
+  Mobile VRP rules: "An example application in the form of an APK" —
+  good-quality রিপোর্টের শর্ত।
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cindrasec.mvrpprobe">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <!-- Android 11+ package visibility: query দিতে না পারলে অন্য app-এর
+         component-এ পৌঁছানো যায় না। এটা permission নয়, visibility ঘোষণা,
+         আর যেকোনো app একই জিনিস লিখতে পারে। -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+        <provider android:authorities="*" />
+    </queries>
+
+    <application
+        android:label="mvrp-probe"
+        android:allowBackup="false"
+        android:hasCode="true">
+        <activity
+            android:name="com.cindrasec.mvrpprobe.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- bindtest-এর control। exported=false: শুধু আমরাই bind করতে পারি,
+             তাই এটা দিয়ে অন্য কারো পাহারা মাপা হচ্ছে না, নিজের যন্ত্র মাপা হচ্ছে। -->
+        <service
+            android:name="com.cindrasec.mvrpprobe.SelfService"
+            android:exported="false" />
+    </application>
+</manifest>

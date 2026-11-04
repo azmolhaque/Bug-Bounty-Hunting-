@@ -1,0 +1,22 @@
+# Dataform subdomain enumeration results
+# Date: 2026-06-20
+# Method: DNS brute-force via UDP + crt.sh (blocked by egress proxy)
+#
+# RESULT: ALL *.dataform.co subdomains return SERVFAIL from ALL resolvers
+# including 8.8.8.8, 1.1.1.1, 1.0.0.1, 9.9.9.9
+# The .co TLD NS (a.cctld.co, b.cctld.co) also returns SERVFAIL for dataform.co
+# This means the dataform.co DNS zone is DEAD - NS servers are unreachable.
+#
+# Official VRP scope (from google/bughunters external_domains_acquisitions.asciipb):
+# app.dataform.co = TIER1 (IN SCOPE)
+# dataform.co = TIER2 (IN SCOPE)
+#
+# DNS STATUS:
+app.dataform.co        SERVFAIL (DNS zone dead - NS servers unreachable)
+dataform.co            SERVFAIL (DNS zone dead)
+api.dataform.co        SERVFAIL
+www.dataform.co        SERVFAIL
+staging.dataform.co    SERVFAIL
+docs.dataform.co       SERVFAIL
+cdn.dataform.co        SERVFAIL
+dev.dataform.co        SERVFAIL

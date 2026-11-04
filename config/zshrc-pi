@@ -1,0 +1,499 @@
+# ═══════════════════════════════════════════════════════════════
+# ~/.zshrc — Raspberry Pi 5 Bug Bounty Lab
+# Managed via ~/bug-bounty-hunting-/config/zshrc-pi
+# Deploy: cp ~/bug-bounty-hunting-/config/zshrc-pi ~/.zshrc && source ~/.zshrc
+# ═══════════════════════════════════════════════════════════════
+# Sections:
+#   0. PATH  — single declaration, typeset -U dedup
+#   1. Oh-My-Zsh
+#   2. Environment
+#   3. Secrets  — sourced from ~/.secrets.zsh (chmod 600, NOT in git)
+#   4. Dev tools (Go, NVM, Ruby)
+#   5. Bug Bounty workflow
+#   6. AI / LLM tools
+#   7. Aliases
+#   8. Prompt extras
+# ═══════════════════════════════════════════════════════════════
+
+# ─── 0. PATH — zsh array syntax, deduped natively ──────────────
+path=(
+  /usr/local/sbin
+  /usr/local/bin
+  /usr/sbin /usr/bin /sbin /bin
+  /usr/local/go/bin
+  $HOME/go/bin
+  $HOME/.pdtm/go/bin
+  $HOME/.local/bin
+  $HOME/.npm-global/bin
+  $path
+)
+typeset -U path   # remove duplicates — zsh-native, no custom precmd needed
+export PATH
+
+# ─── 1. Oh-My-Zsh ───────────────────────────────────────────────
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="agnoster"
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+source "$ZSH/oh-my-zsh.sh"
+
+# ─── 2. Environment ─────────────────────────────────────────────
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export EDITOR='nano'
+export GOPATH="$HOME/go"
+export BB="$HOME/bug-bounty-hunting-"    # used by all bb-* functions below
+
+# Ruby gems (only loaded if ruby is installed)
+command -v ruby &>/dev/null && \
+  export PATH="$PATH:$(ruby -e 'print Gem.user_dir' 2>/dev/null)/bin"
+
+# ─── 3. Secrets ─────────────────────────────────────────────────
+# API keys, webhook URLs, tokens — NEVER commit these to git.
+# File format: export SHODAN_API_KEY="..."  etc.
+# Create once: touch ~/.secrets.zsh && chmod 600 ~/.secrets.zsh
+if [ -f "$HOME/.secrets.zsh" ]; then
+  source "$HOME/.secrets.zsh"
+else
+  echo "[zshrc] Warning: ~/.secrets.zsh not found. Run: touch ~/.secrets.zsh && chmod 600 ~/.secrets.zsh"
+fi
+
+# ─── 4. Dev tools ───────────────────────────────────────────────
+
+# NVM (Node version manager)
+export NVM_DIR="$HOME/.config/nvm"
+[ -s "$NVM_DIR/nvm.sh" ]          && source "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"
+
+# gf pattern tab-completion (tomnomnom/gf)
+for _gf_comp in ${HOME}/go/pkg/mod/github.com/tomnomnom/gf*/gf-completion.zsh; do
+  [[ -f "$_gf_comp" ]] && source "$_gf_comp" && break
+done 2>/dev/null
+unset _gf_comp
+
+# ─── 5. Bug Bounty Workflow ─────────────────────────────────────
+
+# hunt <target.com> — open/attach a persistent tmux session for that target
+unalias hunt 2>/dev/null || true
+function hunt() {
+  local target="${1:?Usage: hunt <target.com>}"
+  local session="hunt-$(echo "$target" | tr '.' '-')"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    echo "[*] Attaching to existing session: $session"
+    tmux attach -t "$session"
+  else
+    tmux new-session -d -s "$session" -x 220 -y 50
+    tmux send-keys -t "$session" "cd $BB && ./run.sh $target" Enter
+    echo "[*] Started new hunt session: $session"
+    tmux attach -t "$session"
+  fi
+}
+
+# scope <host/url> — check if a target is in scope before touching it
+scope() { bash "$BB/scripts/scope-check.sh" "$@"; }
+
+# picheck — instant Pi health snapshot
+picheck() { "$BB/scripts/pi-resource-guard.sh" --report; }
+
+# optimize [--diagnose|--clean|...] — run the Pi optimizer
+optimize() { sudo "$BB/scripts/pi-optimize.sh" "$@"; }
+
+# oob [tag] — start interactsh, print the assigned OOB URL
+oob() {
+  local tag="${1:-session-$(date +%s)}"
+  local logfile="/tmp/oob-$tag.log"
+  echo "[*] Starting interactsh OOB listener (log: $logfile)"
+  interactsh-client -server oast.pro -v 2>&1 | tee "$logfile" &
+  sleep 2
+  local url
+  url=$(grep -oE '[a-z0-9]+\.oast\.pro' "$logfile" | head -1)
+  if [ -n "$url" ]; then
+    echo "[+] OOB URL: https://$url"
+    echo "$url" > /tmp/oob-last.txt
+  else
+    echo "[-] Could not extract OOB URL — check $logfile"
+  fi
+}
+
+# lastoob — print the most recently started OOB URL
+lastoob() {
+  [ -f /tmp/oob-last.txt ] && cat /tmp/oob-last.txt || echo "No OOB URL found (run: oob)"
+}
+
+# notify [message] — send a Discord ping (needs DISCORD_WEBHOOK_URL in ~/.secrets.zsh)
+notify() {
+  local msg="${*:-$(hostname): ping}"
+  if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+    echo "[-] DISCORD_WEBHOOK_URL not set — add it to ~/.secrets.zsh"
+    return 1
+  fi
+  curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": \"[Pi5] $msg\"}" >/dev/null \
+    && echo "[+] Discord: $msg" \
+    || echo "[-] Discord notify failed"
+}
+
+# bb-status — running hunt sessions + current Pi resources
+bb-status() {
+  echo ""
+  echo "── Hunt sessions ──────────────────────────────"
+  tmux ls 2>/dev/null | grep hunt || echo "  (none)"
+  echo ""
+  echo "── Pi resources ───────────────────────────────"
+  picheck
+  echo ""
+}
+
+# bb-update — pull latest tools + templates
+bb-update() {
+  echo "[*] Updating ProjectDiscovery tools via pdtm..."
+  command -v pdtm &>/dev/null && pdtm -ua 2>/dev/null || echo "  pdtm not found"
+  echo "[*] Updating nuclei templates..."
+  command -v nuclei &>/dev/null && nuclei -update-templates -silent || echo "  nuclei not found"
+  echo "[*] Pulling repo..."
+  git -C "$BB" pull --ff-only 2>/dev/null || echo "  git pull failed"
+  echo "[+] Done."
+}
+
+# bb-clean — clear temp scan output (keeps findings/)
+bb-clean() {
+  echo "[*] Cleaning scan temp files..."
+  find /tmp -maxdepth 2 -name "*.nuclei*" -o -name "*.httpx*" \
+    -o -name "*.subfinder*" -o -name "oob-*.log" 2>/dev/null | xargs rm -f 2>/dev/null
+  pip3 cache purge 2>/dev/null || true
+  go clean -cache 2>/dev/null || true
+  echo "[+] Done. $(df -h / | awk 'NR==2{print $4" free on /"}')"
+}
+
+# shodan-ip <ip> — quick Shodan lookup (needs SHODAN_API_KEY)
+shodan-ip() {
+  local ip="${1:?Usage: shodan-ip <IP>}"
+  [ -z "${SHODAN_API_KEY:-}" ] && { echo "SHODAN_API_KEY not set"; return 1; }
+  curl -sS "https://api.shodan.io/shodan/host/$ip?key=$SHODAN_API_KEY" | python3 -m json.tool 2>/dev/null | head -60
+}
+
+# cert <domain> — fast CT log search via crt.sh
+cert() {
+  local domain="${1:?Usage: cert <domain>}"
+  curl -sS "https://crt.sh/?q=%25.$domain&output=json" 2>/dev/null | \
+    python3 -c "
+import sys, json
+try:
+  data = json.load(sys.stdin)
+  names = sorted({e['name_value'] for e in data})
+  [print(n) for n in names]
+  print(f'\n[+] {len(names)} unique entries')
+except: print('crt.sh error or rate limited')
+"
+}
+
+# ─── 6. AI / LLM tools ─────────────────────────────────────────
+# Ollama is disabled as a system service to save RAM during hunting.
+# Start it when needed: sudo systemctl start ollama && sleep 3 && ask "hello"
+export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
+
+# ask "question" — quick LLM query (starts ollama if needed)
+ask() {
+  if ! curl -sf "http://$OLLAMA_HOST/api/version" >/dev/null 2>&1; then
+    echo "[*] Ollama not running — starting..."
+    sudo systemctl start ollama && sleep 4
+  fi
+  ollama run gemma3:4b "$@"
+}
+
+# deepscan — heavy analysis model
+deepscan() {
+  if ! curl -sf "http://$OLLAMA_HOST/api/version" >/dev/null 2>&1; then
+    echo "[*] Ollama not running — starting..."
+    sudo systemctl start ollama && sleep 4
+  fi
+  ollama run gemma4-bounty "$@"
+}
+
+# autohunt <target> — AI-driven autohunt pipeline (legacy)
+autohunt() { python3 "$HOME/tools/ai-analyst/autohunt.py" "$@"; }
+
+# ─── 6b. Claude Code Integration ────────────────────────────────
+
+# hunt-ai <target> — fully autonomous Claude-driven hunt (all phases)
+# Claude reads CLAUDE.md, checks scope, runs recon → vuln discovery → triage
+hunt-ai() {
+  local target="${1:?Usage: hunt-ai <target.com>}"
+  echo "[*] Starting autonomous Claude hunt for: $target"
+  echo "[*] Claude will follow CLAUDE.md methodology (Phase 0 → 6)"
+  echo "[*] Working directory: $BB"
+  echo ""
+  cd "$BB" && claude \
+    --permission-mode auto \
+    --name "hunt-$target" \
+    -p "Target: $target
+Run the bug bounty hunting workflow per CLAUDE.md:
+1. Phase 0: Check scope.yaml — STOP if out of scope
+2. Phase 1-2: Asset discovery + attack surface mapping using subfinder, httpx, katana, gau
+3. Phase 3-4: Vulnerability discovery on the highest-priority surfaces. Use nuclei, manual testing, OOB via interactsh
+4. Phase 5: Triage all candidates — apply the Hard Rejection List from CLAUDE.md
+5. Output confirmed findings to results/$target/findings/
+6. Log all decisions to results/$target/HUNT-LOG.md
+Only report findings that pass ALL 5 criteria in CLAUDE.md Section 2."
+}
+
+# analyze — pipe any text to Claude for instant bug bounty analysis
+# Usage: cat output.txt | analyze
+#        subfinder -d target.com | analyze
+analyze() {
+  local context="${1:-recon output}"
+  local input
+  input=$(cat)
+  [ -z "$input" ] && { echo "Usage: cat file.txt | analyze  OR  command | analyze"; return 1; }
+  echo "$input" | claude -p \
+    "You are an elite bug bounty hunter. Analyze this $context for a Google VRP engagement.
+Identify: (1) highest-value attack surfaces, (2) exploitable patterns, (3) recommended next steps.
+Apply CLAUDE.md Section 3 Hard Rejection List — flag anything that would be rejected immediately.
+Input:
+$input"
+}
+
+# triage-ai [file] — score + rank findings for submission quality
+# Usage: triage-ai results/photomath.net/findings/nuclei-20260619.txt
+#        cat findings.txt | triage-ai
+triage-ai() {
+  local file="${1:-}"
+  local input
+  if [ -n "$file" ] && [ -f "$file" ]; then
+    input=$(cat "$file")
+  else
+    input=$(cat)
+  fi
+  [ -z "$input" ] && { echo "Usage: triage-ai <file>  OR  cat file | triage-ai"; return 1; }
+  echo "$input" | claude -p \
+    "Triage these bug bounty findings for Google VRP submission quality.
+For each finding:
+1. Apply CLAUDE.md Section 3 Hard Rejection List — mark REJECT if it matches any category
+2. Score 0-10 on: attacker gain, exploitability, reproduction ease
+3. Recommend: SUBMIT / CHAIN (needs elevation) / REJECT
+4. For SUBMIT findings: suggest CVSS 3.1 vector
+Output a ranked table, highest value first."
+}
+
+# claude-pipe — pipe Claude output back into the terminal (streaming)
+# Usage: claude-pipe "analyze the SSRF surface of appsheet.com"
+claude-pipe() {
+  cd "$BB" && claude -p --permission-mode auto "$@"
+}
+
+# ─── 7. Aliases ─────────────────────────────────────────────────
+
+# Shell management
+alias reload='source ~/.zshrc'
+alias zshconfig='$EDITOR ~/.zshrc'
+alias secrets='$EDITOR ~/.secrets.zsh && chmod 600 ~/.secrets.zsh'
+
+# ls (lsd if available, fallback to exa then plain ls)
+if command -v lsd &>/dev/null; then
+  alias ls='lsd'; alias ll='lsd -l'; alias la='lsd -la'; alias lt='lsd --tree --depth 2'
+elif command -v exa &>/dev/null; then
+  alias ls='exa'; alias ll='exa -l'; alias la='exa -la'; alias lt='exa --tree --level 2'
+fi
+
+# Bug bounty core
+alias bb='cd $BB'
+alias nuclei-update='nuclei -update-templates -silent'
+alias interactsh='interactsh-client -server oast.pro'
+alias iactsh='interactsh-client -server oast.pro'
+alias oob='$BB/scripts/oob-manager.sh start'
+alias oob-hits='$BB/scripts/oob-manager.sh hits'
+alias oob-watch='$BB/scripts/oob-manager.sh watch'
+alias clean='bb-clean'
+
+# Convenience wrappers that prefer ~/go/bin over system bins
+for _go_bin in httpx subfinder dnsx naabu katana nuclei ffuf dalfox; do
+  [[ -x "$HOME/go/bin/$_go_bin" ]] && alias "$_go_bin"="$HOME/go/bin/$_go_bin"
+done
+unset _go_bin
+
+# Git shortcuts
+alias gs='git status'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline -15'
+alias gd='git diff'
+alias gca='git commit --amend --no-edit'
+alias gst='git stash'
+
+# Pi health
+alias temp='awk "{printf \"%.1f°C\n\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp 2>/dev/null'
+alias memfree='free -h'
+alias memwatch='watch -n2 free -h'
+alias ports='ss -tuln'
+alias topcpu='ps aux --sort=-%cpu | head -12'
+alias topmem='ps aux --sort=-%mem | head -12'
+alias iowait='iostat -x 2 3 2>/dev/null | tail -5'
+
+# Hacking workflow shortcuts
+alias scope='bash $BB/scripts/scope-check.sh'
+alias diag='bash $BB/scripts/pi-diag.sh'
+alias workspace='bash $BB/scripts/hunt-workspace.sh'
+alias thermal-guard='bash $BB/scripts/thermal-guard.sh'
+alias screenshot='bash $BB/scripts/screenshot-targets.sh'
+alias subdmon='bash $BB/scripts/subdomain-monitor.sh'
+
+# Quick recon one-liners
+alias subs='subfinder -silent -all'
+alias subs-resolve='subfinder -silent -all | dnsx -silent'
+alias live-hosts='httpx -silent -status-code -title -tech-detect'
+alias quick-nuclei='nuclei -severity critical,high -tags cve,misconfig,exposure -silent'
+
+# ─── 7b. Advanced Workflow Functions ─────────────────────────────
+
+# recon <target> — rapid Phase 1+2: subs → resolve → probe → JS mine
+recon() {
+  local target="${1:?Usage: recon <target.com>}"
+  local outdir="$BB/results/${target}"
+  mkdir -p "$outdir"
+  echo "[*] Recon: $target → $outdir"
+  echo "[1] Subdomain discovery..."
+  subfinder -d "$target" -silent -all 2>/dev/null | anew "$outdir/subs.txt"
+  echo "    Subs: $(wc -l < "$outdir/subs.txt")"
+  echo "[2] DNS resolution..."
+  cat "$outdir/subs.txt" | dnsx -silent 2>/dev/null | anew "$outdir/resolved.txt"
+  echo "    Resolved: $(wc -l < "$outdir/resolved.txt")"
+  echo "[3] HTTP probing..."
+  cat "$outdir/resolved.txt" | httpx -silent -status-code -title -tech-detect 2>/dev/null | anew "$outdir/live.txt"
+  echo "    Live: $(wc -l < "$outdir/live.txt")"
+  echo "[+] Recon done. Live hosts: $outdir/live.txt"
+}
+
+# vuln-scan <target-or-file> — nuclei fan-out with Pi-safe concurrency
+vuln-scan() {
+  local input="${1:?Usage: vuln-scan <target.com|file.txt>}"
+  local outdir="$BB/results"
+  local TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  if [ -f "$input" ]; then
+    echo "[*] Nuclei scan on $(wc -l < "$input") targets..."
+    nuclei -list "$input" \
+      -severity critical,high,medium \
+      -tags cve,misconfig,exposure,takeover,oauth,ssrf,idor \
+      -exclude-tags dos,fuzz,intrusive \
+      -concurrency 25 -rate-limit 100 \
+      -jsonl -output "$outdir/nuclei-$TIMESTAMP.jsonl" \
+      -stats 2>/dev/null
+  else
+    echo "[*] Nuclei scan on $input..."
+    nuclei -target "$input" \
+      -severity critical,high,medium \
+      -tags cve,misconfig,exposure,takeover,oauth,ssrf,idor \
+      -exclude-tags dos,fuzz,intrusive \
+      -concurrency 25 -rate-limit 100 \
+      -jsonl -output "$outdir/nuclei-$TIMESTAMP.jsonl" \
+      -stats 2>/dev/null
+  fi
+  echo "[+] Results: $outdir/nuclei-$TIMESTAMP.jsonl"
+}
+
+# crtsh <domain> — certificate transparency recon (replaces the cert() function)
+crtsh() {
+  local domain="${1:?Usage: crtsh <domain>}"
+  curl -sS "https://crt.sh/?q=%25.$domain&output=json" 2>/dev/null | \
+    python3 -c "
+import sys, json
+try:
+  data = json.load(sys.stdin)
+  names = sorted({e['name_value'].strip() for e in data if e.get('name_value')})
+  names = [n for n in names if not n.startswith('*')]
+  [print(n) for n in names]
+  import sys; print(f'\n[+] {len(names)} unique names', file=sys.stderr)
+except Exception as e: print(f'Error: {e}', file=sys.stderr)
+"
+}
+
+# jsmine <url> — extract endpoints, params, secrets from JS at URL
+jsmine() {
+  local url="${1:?Usage: jsmine <https://target.com/app.js>}"
+  echo "[*] Mining: $url"
+  if command -v jsluice &>/dev/null; then
+    curl -sfL --max-time 30 "$url" 2>/dev/null | jsluice urls 2>/dev/null
+    echo ""
+    curl -sfL --max-time 30 "$url" 2>/dev/null | jsluice secrets 2>/dev/null
+  else
+    echo "[-] jsluice not installed: go install github.com/BishopFox/jsluice/cmd/jsluice@latest"
+  fi
+}
+
+# idortest <url-with-id> <low> <high> — brute integer IDs
+idortest() {
+  local tmpl="${1:?Usage: idortest https://api.example.com/users/ID 1 1000}"
+  local low="${2:-1}"
+  local high="${3:-1000}"
+  local token="${4:-}"
+  local AUTH=""
+  [ -n "$token" ] && AUTH="-H 'Authorization: Bearer $token'"
+  echo "[*] IDOR test: $tmpl ($low → $high)"
+  seq "$low" "$high" | while read -r id; do
+    url="${tmpl/ID/$id}"
+    code=$(curl -sk --max-time 5 $AUTH -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
+    [[ "$code" =~ ^2 ]] && echo "[HIT] $code → $url"
+  done
+}
+
+# ssrf-test <endpoint> <param> — quick SSRF test with OOB callback
+ssrf-test() {
+  local endpoint="${1:?Usage: ssrf-test <https://target.com/fetch?url=> <param>}"
+  local OOB_URL
+  OOB_URL=$(cat /tmp/oob-url.txt 2>/dev/null || echo "REPLACE_WITH_INTERACTSH_URL")
+  echo "[*] SSRF probe: ${endpoint}https://${OOB_URL}"
+  curl -sk --max-time 10 "${endpoint}https://${OOB_URL}" -o /dev/null -w "HTTP %{http_code}\n"
+  echo "[*] Check OOB hits: oob-hits"
+}
+
+# takeover-check <file-or-domain> — run subzy on a target
+takeover-check() {
+  local input="${1:?Usage: takeover-check <domain|file.txt>}"
+  if [ -f "$input" ]; then
+    subzy run --targets "$input" --hide-fails 2>/dev/null
+  else
+    echo "$input" | subzy run --stdin --hide-fails 2>/dev/null
+  fi
+}
+
+# ─── 8. Prompt extras ───────────────────────────────────────────
+
+# Right prompt: temp + active hunt sessions
+_pi_rprompt() {
+  local _temp
+  _temp=$(awk '{printf "%.0f°C", $1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "?°C")
+  local _sess
+  _sess=$(tmux ls 2>/dev/null | grep -c hunt || echo "0")
+  echo "%F{240}${_temp}%f %F{green}[${_sess}]%f"
+}
+RPROMPT='$(_pi_rprompt)'
+setopt PROMPT_SUBST
+
+# Print a smart status banner on SSH login
+_pi_banner() {
+  [[ -z "${SSH_CONNECTION:-}" ]] && return 0
+  [[ -n "${_PI_BANNER_SHOWN:-}" ]] && return 0
+  export _PI_BANNER_SHOWN=1
+  echo ""
+  local _temp; _temp=$(awk '{printf "%.0f°C", $1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "?°C")
+  local _ram;  _ram=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')
+  local _disk; _disk=$(df -h / 2>/dev/null | awk 'NR==2{print $4" free"}')
+  local _br;   _br=$(git -C "$BB" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+  local _sess; _sess=$(tmux ls 2>/dev/null | wc -l)
+  local _oob;  _oob=$(cat /tmp/oob-url.txt 2>/dev/null | head -1 || echo "none")
+  local _hunt; _hunt=$(find "$BB/results" -name "HUNT-LOG.md" 2>/dev/null | wc -l)
+  echo "  ╔══════════════════════════════════════════════╗"
+  echo "  ║  Pi5 Bug Bounty Lab                          ║"
+  echo "  ╟──────────────────────────────────────────────╢"
+  printf "  ║  Temp: %-8s  RAM: %-14s  Disk: %-8s║\n" "$_temp" "$_ram" "$_disk"
+  printf "  ║  Branch: %-10s  tmux: %-3s sessions       ║\n" "$_br" "$_sess"
+  printf "  ║  OOB: %-37s  ║\n" "$_oob"
+  printf "  ║  Targets tracked: %-28s ║\n" "$_hunt"
+  echo "  ╚══════════════════════════════════════════════╝"
+  echo ""
+  # Alert if temperature is high
+  local _tempnum; _tempnum=$(awk '{printf "%.0f", $1/1000}' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
+  (( _tempnum > 70 )) && echo "  ⚠️  Temperature ${_temp} — check active cooling!"
+  (( _tempnum > 78 )) && echo "  🔥 CRITICAL TEMPERATURE — stop scans immediately!"
+  echo ""
+}
+_pi_banner

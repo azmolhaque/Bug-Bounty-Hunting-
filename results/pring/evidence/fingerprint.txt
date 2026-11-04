@@ -1,0 +1,8 @@
+admin.pring.app → HTTP 000 | no title
+callback.pring.app → HTTP 403 | no title
+staging.callback.pring.app → HTTP 403 | no title
+api.pring.jp → HTTP 000 | no title
+dev-api.pring.jp → HTTP 000 | no title
+future-api.pring.jp → HTTP 000 | no title
+support.pring.jp → HTTP 000 | no title
+www.pring.jp → HTTP 200 | no title

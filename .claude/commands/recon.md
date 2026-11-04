@@ -28,6 +28,19 @@ Mapping) from `methodology/METHODOLOGY.md`.
    - Mine JS for hidden endpoints, keys, and internal hostnames.
    - Inventory parameters and APIs (Swagger/GraphQL).
    - Identify endpoints touching **auth, money, files, user-data, or admin**.
+   - **FO-6 live-vs-husk:** mark migrated/dead husks (redirects to vendor site,
+     "use the app", closed forms, uniform catch-all 200) as DEAD — don't rank them.
+   - **FO-9 boundary lens — this is what makes recon pay:** rank surfaces by
+     whether a bug there could cross a real boundary, NOT by how easy they are to
+     poke. UP-rank: multi-tenant object-id APIs (IDOR/BOLA), auth/OAuth flows,
+     connector/webhook SSRF that could reach *sensitive internal* data, file
+     read/write, cross-tenant sharing/copy features. DOWN-rank / tag
+     `INFORMATIONAL-ONLY (do not submit standalone — FO-11)`: diagnostic/health/
+     `/about` endpoints, verbose-error/path disclosure, version/hostname/connection
+     -count leaks, schema/field-name enumeration without record access, SSRF that
+     only reaches attacker-owned hosts, dangling CNAMEs whose claimability is
+     unproven. These generate N/A/WAI/Spam closes — surface them as leads-to-chain,
+     never as findings.
 
 4. **Write artifacts** to `results/<target>/`:
    - `01-assets/` → `subdomains.txt`, `resolved.txt`, `cidrs.txt`, `cloud.txt`

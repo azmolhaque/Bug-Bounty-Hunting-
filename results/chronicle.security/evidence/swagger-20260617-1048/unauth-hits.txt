@@ -1,0 +1,874 @@
+GET /healthz [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /health [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/v1/health [404]: 
+
+GET /api/v1/version [404]: 
+
+GET /api/v2/health [404]: 
+
+GET /external/v1/cases/getpage [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/cases [404]: 
+
+GET /external/v1/cases/1 [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /external/v1/cases/2 [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /external/v1/integrations/instances/list [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /external/v1/integrations/GetIntegrationInstance [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/integrations/instances [404]: 
+
+GET /external/v1/connectors [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/connectors [405]: 
+
+GET /external/v1/connectors/1 [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /external/v1/playbooks [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/playbooks [404]: 
+
+GET /external/v1/webhooks [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/webhooks [404]: 
+
+GET /external/v1/alerts [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/alerts [404]: 
+
+GET /external/v1/settings [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/settings [404]: 
+
+GET /external/v1/marketplace [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/marketplace/integrations [404]: 
+
+GET /homepage [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/v1/homepage [404]: 
+
+GET /external/v1/security/users [200]: <!DOCTYPE html><html lang="en-US"><head><meta charset="utf-8"><meta http-equiv="cache-control" content="max-age=0"/><meta http-equiv="cache-control" content="no-cache"/><meta http-equiv="Pragma" content="no-cache"/><title>Google SecOps</title><link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,500,600,700" rel="stylesheet" crossorigin="anonymous"><link rel="icon" id="favicon-96" type="image/png" sizes="96x96" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-96.png"><link rel="icon" id="favicon-32" type="image/png" sizes="32x32" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-32.png"><link rel="icon" id="favicon-16" type="image/png" sizes="16x16" href="https://backstory.chronicle.security/static/app/favicons/secops-favicon-16.png"><link href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD@20..48,400,0..1,200" rel="stylesheet"><base href="/"><script>window.CHRONICLE_CLIENT_CONFIG = {
+  "customerFeatures": {
+    "soarEnabled": true,
+    "secopsBrandingEnabled": true
+  }
+}
+;</script><meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+        html, body {
+         --mc-core-color-chambray-10: #212c44;
+         --loading-bg-color: #161625;
+
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background-color: var(--loading-bg-color)
+        }
+
+        .browser-message-wrapper {
+          left: 50%;
+          margin-right: -50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%)
+        }
+
+        .browser-message-text {
+          color: white;
+          font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .root-splash-screen {
+          display: flex;
+          width: 100vw;
+          height: 100vh;
+          justify-content: center;
+          align-items: center;
+          background-color: var(--loading-bg-color);
+        }
+
+        .root-splash-screen img {
+          width: 400px;
+        }
+      </style>
+      <script src="/base_assembled.js"></script><link href="/styles.css" rel="stylesheet"></head><body><app-root><div class="root-splash-screen"><img alt="Google Secops loading animation" src="https://backstory.chronicle.security/static/app/images/secops_screen_dark.gif" aria-hidden="true"/></div></app-root><div id="unsupported-browser-message" class="browser-message-wrapper browser-message-text" hidden><p>This browser does not support custom elements. Please update to the latest version.</p></div><script>
+          if (!('customElements' in window)) {
+            document.querySelector('#unsupported-browser-message').removeAttribute('hidden');
+          }
+      </script></body></html>
+<!-- Giving Good the Advantage -->
+
+
+GET /api/external/v1/security/roles [404]: 
+

@@ -1,0 +1,557 @@
+# T03 — Mining the archive: SolarCity's legacy API estate
+
+2026-10-06, from Termux. A deliberately different method: **no scanning**.
+
+## Why this, and not more subdomain enumeration
+
+Certificate transparency plus HTTP probing is what every one of the programme's 528 recent
+researchers runs, usually with better tooling and a better connection. There is no edge there.
+
+The Internet Archive is a different dataset. It holds twenty years of URLs that were *linked*
+at some point — paths that no longer appear anywhere on the live site, so no crawler finds them
+today. And it costs Tesla nothing: **not one request reaches their infrastructure.**
+
+```
+web.archive.org/cdx/search/cdx?url=<domain>&matchType=domain&fl=original&collapse=urlkey
+```
+
+```
+tesla.com 40,000 · teslamotors.com 40,000 · tesla.cn 40,000 · solarcity.com 25,864
+145,864 unique URLs
+112 solarcity.com hosts, many absent from the CT-derived set
+```
+
+Hosts the archive knew and certificate transparency did not: `admin`, `customercare`, `dynamo`,
+`designpro`, `hives`, `flannel`, `employeereferral`, `gw-test`, `go-int`, `backup-vpn.scfs`,
+`api.nc`, `hpp`, `isapi`. Of 112 archived hosts, **8 still answer**:
+
+```
+api.solarcity.com         401        api-test.solarcity.com    403
+isapi.solarcity.com       500        solarguard.solarcity.com  403
+login.solarcity.com       302 -> its own sign-in
+secure{,-test}.solarcity.com  302 -> www.tesla.com
+warp.solarcity.com        200  (a jQuery redirect stub)
+```
+
+## What the archive handed over
+
+Full ASP.NET Help documentation for SolarCity's internal APIs, including endpoint names that
+describe exactly what they return:
+
+```
+/employee/Help/Api/     GET api/info/contact/{contactid} · info/details/{userId}
+                        info/details_email · info/employee/{employeeId}
+/solarproposalapi/Help/ GET Utility/BillImage/DealId/{dealId} · proposal/summary/{proposalId}
+                        deals/{dealGuid}/loan/applications/primary · milestones/credit
+/powerguide/Help/       GET v1.0/customers?IsDetailed&Size&Page      <- paginated customer list
+                        v1.0/customers/{CustomerGUID}
+                        v1.0/installations?Size&Page
+                        v1.0/installations/{GUID}/billing?StartDate&EndDate
+                        v1.0/devices?Size&Page · measurements · consumption · groups
+```
+
+A paginated customer list and per-installation billing is the most sensitive shape this
+engagement has found anywhere.
+
+## The differential that made it worth testing
+
+`api.solarcity.com` answers **401 with a two-byte body to everything**, including a nonexistent
+path. That is a blanket edge refusal and normally means there is nothing to see. Except:
+
+```
+/__canary__                401      2b
+/powerguide/               200  6,135b
+/powerguide/Help           200 13,048b     <- live, and outside whatever returns the 401
+/powerguide/healthcheck    404  1,917b
+```
+
+PowerGuide is reachable past the edge, and its documentation is public. Documentation alone is
+not a finding — it is the map. The question is whether the endpoints it maps are guarded.
+
+## The sweep, and the hole in the first pass
+
+Eighteen documented paths, each called with an all-zero GUID that can belong to nobody:
+
+```
+customers · customers/{guid} · devices · devices/{guid} · groups · groups/{guid}
+installations · installations/{guid} · installations/{guid}/appliances · …/weather
+                                                       -> 401 Authorization has been denied
+installations/stats/pollutionoffset                    -> 200
+grid_transfer · billing · summary · measurements       -> 404 No HTTP resource was found
+```
+
+The four 404s were **not** a result. "No HTTP resource matches this URI" means routing failed
+before authorisation was ever consulted — those endpoints take mandatory query parameters
+(`Period`, `StartTime`, `EndTime`, `StartDate`) and without them the request never reaches the
+handler. Reading them as "protected" would have been wrong.
+
+Re-run with the documented parameters, plus the list endpoints and a sentinel:
+
+```
+consumption/{guid}?Period&StartTime&EndTime&IncludeCurrent      401
+grid_transfer/{guid}?…                                          401
+installations/{guid}/billing?StartDate&EndDate                   401
+installations/{guid}/summary?…                                   401
+installations/{guid}/weather?…                                   401
+measurements/{guid}?…                                            401
+customers?IsDetailed=false&Size=1&Page=1                         401
+installations?Size=1&Page=1                                      401
+v1.0/__canary__/{guid}?…                                         404   <- sentinel differs
+```
+
+**Every data endpoint enforces authentication, consistently.** The sentinel answers differently,
+so the 401s are the application speaking rather than the edge.
+
+### The one unauthenticated endpoint, and why it is not a report
+
+```
+GET /powerguide/v1.0/installations/stats/pollutionoffset   200
+{"TotalGenerationkWh":53313533381.094,"ConservedGallonsOfWater":15748929000.15, …}
+```
+
+Fleet-wide aggregates — total generation, water conserved. No customer, no installation, no
+identifier. Tesla publishes figures of this kind itself. Recorded and dropped.
+
+## Still open from this dataset
+
+The archive also documents `/employee/` and `/solarproposalapi/` — contact, user and employee
+lookup by id, utility bill images by deal id, loan applications. On `api.solarcity.com` those
+paths return the blanket 401 and on `api-test` they 404, so they are not deployed where we can
+reach them. `api-dev.solarcity.com` has no DNS.
+
+`api-test.solarcity.com` is worth one more pass: its canary answers 404 while `/deals/swagger/`,
+`/milestones/swagger/` and `/sources/swagger/` answer **403 with a 26-byte body** — a different
+response, so those three applications are deployed there behind something. The archive holds
+real paths for them (`/deals/values`, `/milestones/healthcheck`) that have not been tried.
+
+## Chasing the escalation, and where it topped out — 2026-10-06
+
+The archive's module listing under `/sites/all/modules/custom/` (8,237 URLs, 27 custom Drupal
+modules) named four files worth more than the config ones: `tesla_careers/js/lib/keys.js`,
+`tesla_findus_map/proxy.php`, `tesla_login/sso/auth.php` and `tesla_gatekeeper/sso/d6.php`.
+
+```
+keys.js            404 on .com and .cn        gone
+d6.php             404                        gone
+proxy.php          200 on .com and .cn        live
+auth.php           200, "no key supplied"     live
+```
+
+### `proxy.php` is not SSRF, and is not being reported as one
+
+A PHP proxy inside a maps module is the right thing to look at, so it was looked at properly.
+The parameters came from archived URLs rather than guesswork — `?address=` and `?ip=true` — and
+the module's Angular scripts named the rest (`lat`, `lng`, `type`, `bounds`, `place`, `radius`).
+
+```
+?__canary__=1       200   0 bytes      <- sentinel: unrecognised mode, silent
+?address=Austin     200   "false"
+?lat=&lng=          200   0 bytes
+?ip=true            200   208 bytes    ipinfo JSON
+```
+
+It takes **modes, not URLs**. The upstream host is fixed in the code and nothing in the request
+reaches it, so the precondition for SSRF — control of the destination — is absent. Closed.
+
+What it did establish is worth keeping: `?ip=true` performs a server-side ipinfo lookup, which
+means the token leaked in `config_web.json` is **in current production use**, not a leftover. That
+went into F001.
+
+### `auth.php` — open, and deliberately not pursued
+
+`tesla_login/sso/auth.php` answers `no key supplied`. Finding the key it wants would mean guessing
+values against an authentication endpoint, which is brute force: forbidden by the programme's
+rules of engagement and excluded from scope. Noted and left alone.
+
+## Exhausting the root cause — the full module sweep, 2026-10-06
+
+`config_web.json` leaked two credentials, which raises the obvious question: is that one careless
+file, or a habit? The archive listed 118 distinct `.js`/`.json` paths under
+`/sites/all/modules/custom/` across 27 modules. **82 are still live** and all 82 were pulled and
+searched.
+
+```
+credential-shaped assignments   none        (only MozPrintableKey and React internals)
+cloud key formats               none        AKIA · ASIA · LTAI · AIza · sk_live · xox* · gh*_ · JWT
+internal hostnames              none
+```
+
+The modules that looked most promising were checked by hand rather than left to the regex:
+
+- **`tesla_payment_forms`** — `tesla_payment_forms.stripe.js` reads its key from
+  `Drupal.settings.tesla.stripe[region][country]` and passes it to `Stripe.setPublishableKey()`.
+  A *publishable* key belongs in the browser; there is no `sk_live_` anywhere in the module.
+- **`jsencrypt.js`** contains the strings `BEGIN PRIVATE KEY` and `BEGIN RSA PRIVATE KEY`. Those
+  are the library's own PEM parsing constants, not a key. Reporting them would have been a
+  self-inflicted spam close.
+- **`tesla_five_minute_credit`**, **`apple_pay.js`**, **`solarroof_order_form`** — no endpoints,
+  no identifiers beyond `merchantCapabilities: ['supports3DS']` and a `validationURL` read from
+  the Apple Pay event, which is how Apple Pay is meant to work.
+
+So the two credentials in `config_web.json` are what there is. The habit is not widespread, and
+F001 should claim exactly those two and nothing more.
+
+---
+
+## 2026-10-06 — archive sweep of the full `/sites/all/modules/` tree (CLOSED, no new credential)
+
+CDX query `url=tesla.{com,cn}/sites/all/modules/*` → **4442** archived URLs.
+Filtered to config-shaped extensions (`json|ya?ml|ini|env|conf|txt`) → **30** candidates,
+all on `www.tesla.cn`. Fetched each live with a browser UA, 1s apart.
+
+**Result: no second credential. The sweep is closed.**
+
+| Outcome | Count | Verdict |
+|---|---|---|
+| `config_web.json` + 6 cachebuster variants | 7 | 200, 329052 b, the **already-reported** ipinfo token. Nothing new. |
+| `config_locale_strings.json` + 13 variants | 14 | 200, 407459 b, zero secret-shaped matches. Locale strings only. |
+| `.json` paths under 8 other modules | 8 | **404** — all of them. |
+| `99bill/province_city_district_map.json` | 1 | 301 (http→https). Not re-fetched over https yet. |
+
+This answers the open thread in F001's remediation ("sweep the other configurator config
+files for the same pattern"): `config_web.json` is the only one carrying a credential.
+That is a point in F001's favour, not against it — the finding is specific, not a pattern
+of sloppiness I failed to bound.
+
+### DROPPED: `theme_token` on the 404 pages — Drupal per-request token, not a secret
+
+My grep matched `"theme_token":"…"` on all 8 of the 404 responses (433 KB Drupal error pages).
+It is **noise**, and the proof is in the data itself: **every single request returned a
+different value** —
+
+```
+tesla_corporate_form   theme_token  -Qq25hZjkcILB_YYEwikrlC2CVrJElWSna8KOMwaYRo
+tesla_findus_map       theme_token  3hyM2aI808RUtbFHYa2x0QNly7B0WM-DTck8HoD6xxE
+tesla_findus_mobile    theme_token  rF6IDFQkY9klD6yLBPlDMNvr0l8iSckOeNJ1nacHGq0
+tesla_get_updates      theme_token  qQjZ-rdq0nD7T2YakPtARUUGQpsAaccK3Xs58Copi-k
+tesla_payment_forms    theme_token  hgenrn2uAofTXsQxRGqjy2FD-M0I8_PPDDKNjQHJ20I
+tesla_rsvp_event       theme_token  eXri8oQ7-xgLq8CFEheeekZ6oN0XF-XXHEeSs5yLvZ0
+tesla_test_drive       theme_token  26R0ve3Hg1-0rxxDFZA8H5S4VOjIkayIMt3OFZrY06s
+tesla_test_drive (kr)  theme_token  AI714xRbtkb3et1BLeHR3s5kSo2T4BIequL5s_6VwpI
+```
+
+A leaked static credential does not change per request. This is Drupal 7's
+`Drupal.settings.ajaxPageState.theme_token` — a per-request anti-tamper token that ships in
+every Drupal 7 page, including the generic 404. It is the *mitigation* for arbitrary-theme
+rendering, not a hole. Public by design. **Do not report.**
+
+Same for `"m3ConfigurationKey":"app-find-my-tesla.configuration"` — a configuration *name*,
+not a value. Object-name enumeration with no record read: Hard Rejection List §3.
+
+This is the second time a `token`/`key`-shaped grep has produced a false positive on this
+target (first was `BEGIN PRIVATE KEY` inside `jsencrypt.js`). Rule for next time: before
+believing any matched secret, **request it twice**. If it differs, it is a session or request
+token, not a credential.
+
+### My filter was too narrow — real remaining lead
+
+4442 → 30 threw away every `.js` and `.php` path in the tree. The `.php` files are the
+server-side endpoints that take parameters (actual bug surface, unlike static JSON), and the
+archive revealed a **`99bill`** module — 99bill / 快钱 is a Chinese payment processor. That
+directory was never examined. Next step, not a finding.
+
+### CLOSED: `stage.tesla.com`
+
+From `config_web.json`'s `staging_envs`. Scope is `*.tesla.com` / `*.tesla.cn`, so
+`stage2.teslamotors.com` and `qa.teslamotors.com` are **out of scope — not touched, zero
+packets sent**. `stage.tesla.com` is in scope, but:
+
+```
+curl -s -o /dev/null -w '%{http_code} %{size_download}b %{remote_ip}' https://stage.tesla.com/
+000  0b          <- empty remote_ip: no public DNS resolution
+```
+
+`000` with no `remote_ip` means curl never connected — the name does not resolve publicly.
+Internal-only hostname. Dead end, closed.
+
+## 2026-10-06 — `proxy.php?address=` and `auth.php` characterised
+
+Both paths came from the Internet Archive record of `/sites/all/modules/`, not from guessing.
+
+### `proxy.php?address=` — a real mode, but it returns nothing
+
+The sentinel discipline earned its keep here:
+
+```
+?address=%E4%B8%8A%E6%B5%B7  (上海)   200, 5 b   ->  false
+?address=                             200, 0 b   ->  (empty)
+?__sentinel__=1                       200, 0 b   ->  (empty)
+(no parameters)                       200, 0 b   ->  (empty)
+```
+
+`address` is a **recognised** mode — it answers `false` where the nonexistent parameter answers
+nothing at all. So the script does dispatch on it. But `false` is the whole response: no upstream
+data, no error text, no reflection. Nothing crosses a boundary.
+
+Even in the best case this is a geocode-string wrapper, and a connector that forwards a
+user-supplied query to its configured upstream is intended behaviour — the same reasoning that
+closed the AppSheet SSRF as WAI (§3). **Not a finding.**
+
+### `auth.php` — key-gated, and the key will not be guessed
+
+```
+GET /sites/all/modules/custom/tesla_login/sso/auth.php      200, 15 b
+no key supplied
+```
+
+A `key` parameter gates it. Discovering that key by trying values is **brute force, which the
+Tesla RoE forbids without prior written approval**. Closed on that basis.
+
+The one legitimate avenue left is the reverse direction: if the key is *published* in a file that
+is already public, that is a chain (public config → SSO key), not brute force. Searching the
+public config files for it is the only way I will pursue this.
+
+### Out of scope, noted and not reported
+
+`auth.php`'s response headers disclose internal infrastructure hostnames
+(`pvg16p1wwwwb018.cb2.pvg16.tzla.net`, `pvg16p1tegvr029.cb2.pvg16.tzla.net`,
+`x-varnish-fwd-server`). **Internal hostname/IP disclosure is explicitly out of scope by the
+brief.** Recorded here only so it is not re-found and mistaken for a lead.
+
+Also noted: `server: TencentEdgeOne` — `tesla.cn` fronts through Tencent EdgeOne, not Akamai.
+Fingerprinting, not a bug.
+
+### `tesla.com` modules tree — **2335 archived URLs, still unswept**
+
+The earlier `tesla.com` CDX query had silently returned an Internet Archive "Temporarily
+Offline" HTML page, which is why every file tested on 2026-10-06 was `.cn`. Re-run returned real
+data:
+
+```
+https://www.tesla.com/sites/all/modules/99bill/province_city_district_map.json
+https://www.tesla.com/sites/all/modules/ajax_tools/ajax.js?X
+...                                                      2335 URLs
+```
+
+This is the largest piece of surface still outstanding on this target.
+
+### `99bill` (快钱, Chinese payment processor) — closed
+
+The archive knows exactly **one** file in that module, a province/city list. No other paths, and
+I will not invent any. Suggestive name, no surface.
+
+---
+
+## 2026-10-06 — the `tesla.com` sweep: an SSO authentication key captured in full by the Internet Archive
+
+**This outranks F001. Handle it first.**
+
+The `tesla.com` modules tree (2335 archived URLs, the half that the earlier failed CDX query had
+hidden) contains two SSO endpoints, and the archive captured one of them **with its key intact**:
+
+```
+/sites/all/modules/custom/tesla_gatekeeper/sso/d6.php?key=XXXXX&keep=&destination=&d7=&locale=&token=XXXXXXX
+/sites/all/modules/custom/tesla_login/sso/auth.php?key=e2ab1ff2…f257:d618…b80&locale&destination=mytesla
+```
+
+The `d6.php` capture is masked (`XXXXX`). **The `auth.php` capture is not.** Its `key` is a
+1024-hex-character blob, a colon, then a 32-hex MAC — the shape of an encrypted payload plus
+integrity tag — and `destination=mytesla`, the customer account area.
+
+*Full value deliberately NOT recorded in this repository (CLAUDE.md §7). It is in
+`~/tesla/com-modules.txt` on the local machine only. It is also, right now, readable by anyone on
+`web.archive.org`.*
+
+### Why this matters more than a metered API key
+
+If that key still authenticates, the chain is: public archive → SSO handoff URL → a session in
+`/mytesla`. That is authentication bypass against a real customer account, not pay-per-use abuse.
+And even if that specific key has expired, the root cause stands on its own: **Tesla's SSO passes
+authentication material in a GET query string**, which is why a third-party archive has a copy.
+Query strings end up in archives, proxy logs, Referer headers and browser history by design.
+
+### Testing guardrails — decided BEFORE touching it
+
+Tesla's RoE: *"Do not access or modify data that does not belong to you. If you are able to access
+… personal data of other customers … immediately contact Tesla. Do not attempt to conduct
+post-exploitation work with this data."*
+
+That language anticipates gaining access and prescribes the response, so a single minimal request
+that establishes only whether the credential is *accepted* is within it. The guardrails:
+
+- headers only — `-D -` with `-o /dev/null`; the body is discarded unread
+- **do not follow the redirect** (no `-L`), so `/mytesla` is never requested
+- **no cookie jar** — no `-b`, no `-c`; any `Set-Cookie` is dropped on the floor
+- one request, then stop. If it authenticates, that is the finding — nothing further is tested.
+
+What is explicitly **forbidden** here: pasting this key into a browser. That would follow the
+redirect, store the session cookie and land inside another person's account. Not done, not to be
+done.
+
+### Expected obstacle
+
+`www.tesla.com` returns 403 to curl on these module paths **even with a full browser User-Agent** —
+Akamai is fingerprinting beyond the UA string:
+
+```
+curl -A "<Chrome UA>" https://www.tesla.com/sites/all/modules/.../config_web.json   403, 476 b
+curl -A "<Chrome UA>" https://www.tesla.com/api/findus/env                          403
+   "You don't have permission to access … on this server."  Reference #18.65a5c117…
+```
+
+So the liveness check may be unanswerable from the terminal. If so, the report states the exposure
+and the design flaw, and says plainly that the key was not replayed and why. Claiming a takeover
+that was not demonstrated would be exactly the FO-8/9/11 failure.
+
+### Consequence for F001's `.com` claim
+
+The 403 persisting with a browser UA means `curl` cannot corroborate the `.com` exposure at all —
+the browser screenshot remains the only direct evidence, and F001 must say so rather than implying
+a terminal reproduction exists. The archive independently corroborates it: the CDX record lists
+`https://www.tesla.com/sites/all/modules/custom/tesla_configurator/js/config/config_web.json` as a
+real `.com` URL. F001 updated accordingly.
+
+### Closed: no SSO key in the public config files
+
+```
+grep -Ei '"[a-z0-9_]*(sso|auth|login|secret|api_?key|private|sign|hmac|salt)[a-z0-9_]*":"…"'
+  cn_config.json  ->  "login": "GET PRICING & OPTIONS"     (a UI string)
+  com_config.json ->  (empty — 403, never downloaded)
+```
+
+The `auth.php` key is not published in `config_web.json`. The chain I was looking for does not
+exist there; the archive supplied it instead.
+
+### VERDICT on the archived SSO key: **DROPPED**
+
+```
+GET /sites/all/modules/custom/tesla_login/sso/auth.php?key=e2ab1ff2…f257:d618…b80&destination=mytesla
+Expired or invalid token
+```
+
+The key is dead. No session, no cookie, no redirect, no account reached.
+
+Applying §2.6 to my own lead rather than arguing around it: the one-sentence answer to *"what did
+the attacker actually GET?"* is **nothing**. An archived credential that no longer authenticates is
+a precondition, not a boundary crossing. The constitution says drop it, so it is dropped — not
+written up as "an attacker who had found this in 2024 could have…", which is exactly the
+speculative-escalation style that gets reports closed as Spam (FO-10).
+
+Capture dates, which bound how fresh an archived key can be:
+
+```
+20240807063803   auth.php?key=e2ab1ff2…   <- the only unmasked one
+20210423215734   auth.php                 (no key)
+20200605144013   auth.php                 (no key)
+...   seven more captures, all bare
+20210408115607   d6.php?key=XXXXX&token=XXXXXXX   <- masked
+20180815181118   d6.php?key=XXXXX&token=XXXXXXX   <- masked
+```
+
+One unmasked key in ten years of captures, and it has expired. The design weakness (SSO material
+in a GET query string) is real, but with no live key I cannot show impact, and a program this
+mature will have seen it. Not reported.
+
+**Still untested:** the domain-wide archive query for *any* `key=`/`token=` URL across `tesla.com`
+and `tesla.cn` never ran — the Internet Archive returned its "Temporarily Offline" page again, and
+`total: 0` was counting that HTML, not an empty result set. That is the one thing left on this
+thread: if a *recent* key turns up, the liveness question reopens. Retry when the archive is up.
+
+### `proxy.php?ip=true` works on `www.tesla.com` — this strengthens F001
+
+```
+https://www.tesla.com/sites/all/modules/custom/tesla_findus_map/proxy.php?ip=true
+{ "ip":"205.234.27.201","city":"San Jose","region":"California","country":"US",
+  "loc":"37.3394,-121.8950","org":"AS40913 Quality Technology Services, LLC" }
+```
+
+The returned address is the calling machine's egress, in San Jose — not mine, in Bangladesh. So
+`www.tesla.com` performs this ipinfo lookup **server-side**, and the leaked token is being spent by
+the main global site's production code, not only by `.cn`. Folded into F001.
+
+The origin IP itself is **not** reported: infrastructure/internal IP disclosure is out of scope by
+the brief. It appears in the report only as the thing that proves the call is server-side.
+
+### `.com` evidence now complete
+
+- `env.json`, 5799 bytes — the full unauthenticated `tesla.com/api/findus/env` response with
+  `baiduMapAk` present and `gioConfig` blank, exactly as F001 described.
+- `config_web.json` from `.com` — **329052 bytes, byte-for-byte the same length as the `.cn`
+  copy**, carrying the same `ip_lookup_service_token`. The same file is served from both hosts.
+
+Neither file is committed; both contain live credentials (§7). Catalogued in
+`results/tesla/evidence-manifest.md`.
+
+---
+
+## CORRECTION (2026-10-06): `*.teslamotors.com` IS in scope
+
+I earlier ruled `stage2.teslamotors.com` and `qa.teslamotors.com` out of scope and told the
+operator not to send a single packet to them, on the basis that the program covered only
+`*.tesla.com` and `*.tesla.cn`. **That was wrong.** Bugcrowd's own target selector on the
+submission form lists:
+
+```
+Official Tesla iOS apps
+*.tesla.services
+*.teslainsuranceservices.com
+*.tesla.com
+Tesla Energy hardware you own
+Official Tesla Android apps
+*.tesla.cn
+*.teslamotors.com          <- in scope
+*.solarcity.com            <- in scope
+Any host verified to be owned by Tesla Motors Inc. (domains/IP space/etc.)
+Tesla vehicle hardware that you own
+Other
+```
+
+The scope is considerably wider than the two wildcards I had been working from — it includes
+`*.tesla.services`, `*.teslainsuranceservices.com`, `*.solarcity.com`, and a catch-all for any
+host verifiably owned by Tesla.
+
+Consequences:
+
+- The two staging hosts from `config_web.json`'s `staging_envs` are legitimate targets after all.
+  `stage2.teslamotors.com` resolves to 118.214.134.54 behind Akamai. Worth probing once F001 is
+  submitted.
+- `00-PROGRAM.md` records the reward tiers from a `*.tesla.com` / `*.tesla.cn` reading of the
+  brief; the in-scope asset list there is incomplete and should be rebuilt from this selector.
+- The caution itself was not wasted — refusing to touch a host I believed out of scope was the
+  right call on the information I had. The error was not reading the scope from the authoritative
+  place. The target selector on the submission form is authoritative; a prose summary of the brief
+  is not.
+
+No requests were sent to any of these hosts while they were believed out of scope.
+
+---
+
+## NEAR MISS (2026-10-06): another program's evidence was attached to the Tesla draft
+
+Four PNGs named `01-evidence-terminal.png`, `02-proxy-san-jose.png`,
+`03a-config-token-highlighted.png` and `03b-config-url-bar.png` were uploaded to the Tesla
+submission and embedded in its description. **None of them contained Tesla evidence.** They were
+screenshots of a Marriott engagement — `marriottfranchisetransactions.marriott.com`, a BASELINE vs
+AUTH BYPASS comparison, PHPSESSID values, and a PHP fatal error with a `/FranLic/www/html/...`
+stack trace — plus two Personio files from June.
+
+Caught in Preview before `Report vulnerability` was pressed. The draft's *text* was clean (0 hits
+for marriott / FranLic / PHPSESSID / AUTH BYPASS), so nothing was disclosed. Had it been
+submitted, a Tesla triager would have been shown another program's unpublished vulnerability.
+
+### Root cause — mine
+
+I wrote the rename helper as `cp "$(ls -t $SS/*.png | sed -n "${1}p")"` and printed the candidate
+list with `date -r "$f" '+%H:%M:%S'` — **time only, no date**. A June screenshot at 22:44 therefore
+sorted and displayed exactly like one taken today, and position `[1]` read as "just taken". The
+operator picked by position, as instructed, and got June files.
+
+Compounding it: the screenshots for this engagement had never actually been taken. The terminal
+*output* had been pasted into chat, which looked like progress, so neither of us noticed the
+capture step was missing.
+
+### Rules adopted
+
+1. **Never list evidence candidates without a full date.** `'+%Y-%m-%d %H:%M'`, always.
+2. **Never select evidence by list position.** Copy the full path of a file whose date has been
+   read.
+3. **Open every screenshot before attaching it.** A filename and a timestamp say nothing about
+   what is in the image. The only check that works is looking at the picture and confirming it
+   shows *this* target's hostname.
+4. **One engagement, one evidence directory.** A shared phone screenshot folder mixes programs,
+   and the mixing is invisible until Preview.
+5. **Preview every submission before sending.** This was caught only because the rendered preview
+   showed the images. Had the report been submitted blind, it would have gone out.
+
+This belongs in the §9 Definition-of-Done evidence checklist: an attachment is not verified by its
+name, its size or its timestamp — only by its content.

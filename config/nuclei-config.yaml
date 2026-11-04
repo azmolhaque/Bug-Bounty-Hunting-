@@ -1,0 +1,62 @@
+# nuclei-config.yaml — Raspberry Pi 5 Bug Bounty Lab
+# Deploy: mkdir -p ~/.config/nuclei && cp ~/bug-bounty-hunting-/config/nuclei-config.yaml ~/.config/nuclei/config.yaml
+#
+# Tuned for Pi 5 (4-core ARM Cortex-A76, 16GB):
+#   - Conservative concurrency to respect rate limits and avoid banning
+#   - Aggressive enough to finish a full target scan in a session
+#   - OOB via interactsh-server oast.pro (free, no self-host needed)
+#   - Silent by default (results only, no progress spam)
+
+# ─── Rate and concurrency ────────────────────────────────────────
+concurrency: 50          # parallel template executions (Pi 5 handles 100+ but 50 is polite)
+rate-limit: 150          # max HTTP requests/second across all templates
+bulk-size: 25            # templates sent per host batch
+timeout: 10              # per-request timeout in seconds
+retries: 1               # retry failed requests once
+max-host-error: 30       # skip host after 30 errors (dead host detection)
+
+# ─── Output ──────────────────────────────────────────────────────
+silent: false            # show findings (not silent, not verbose)
+no-color: false
+markdown-export: ""      # set to a path to auto-export findings as markdown
+
+# ─── Scanning behavior ───────────────────────────────────────────
+follow-redirects: true
+max-redirects: 5
+follow-host-redirects: true   # follow redirects between same-host pages
+disable-update-check: true    # skip update nag during scans
+
+# ─── OOB (interactsh) ────────────────────────────────────────────
+# Uses public oast.pro — no self-hosting required
+# interactsh-url: https://oast.pro   # override if you run your own server
+interactsh-server: oast.pro
+interactsh-eviction: 60       # seconds to wait for OOB callbacks after scan
+
+# ─── Template filtering defaults ────────────────────────────────
+# Run with: nuclei -t ~/nuclei-templates/ -severity medium,high,critical
+# Exclude tags that cause noise or require special setup:
+exclude-tags:
+  - dos             # never DoS in bug bounty
+  - fuzz            # use explicitly with -tags fuzz when needed
+  - intrusive       # opt-in only
+  - ssl             # cert expiry etc — low signal in VRP
+
+# ─── Severity filtering (can override on CLI) ────────────────────
+# severity: medium,high,critical   # uncomment to default to medium+ only
+
+# ─── Headers added to every request ─────────────────────────────
+# Identifies our testing traffic to avoid WAF bans and for disclosure
+header:
+  - "X-Bug-Bounty: authorized-security-research"
+
+# ─── HTTP ─────────────────────────────────────────────────────────
+max-host-error: 30
+dialer-timeout: 10s
+dialer-keep-alive: 30s
+
+# ─── Passive mode ────────────────────────────────────────────────
+# Run with: nuclei -passive to use stored responses (no active requests)
+# passive: false
+
+# ─── Metrics ─────────────────────────────────────────────────────
+metrics: false           # set true to expose :9092 prometheus metrics

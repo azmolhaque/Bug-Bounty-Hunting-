@@ -1,0 +1,10 @@
+  [502] siemplify-soar.com/swagger/index.html
+  [502] siemplify-soar.com/swagger/v1/swagger.json
+  [502] siemplify-soar.com/api-docs
+  [502] siemplify-soar.com/api/swagger
+  [502] siemplify-soar.com/external/v1/cases
+  [502] siemplify-soar.com/api/v1/cases
+  [502] siemplify-soar.com/login
+  [502] siemplify-soar.com/auth/login
+  [502] siemplify-soar.com/healthz
+  [502] siemplify-soar.com/health

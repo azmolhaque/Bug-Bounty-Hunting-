@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Chronicle SOAR API",
+    "description": "This page lists all of the REST APIs associated with Chronicle SOAR",
+    "version": "2.0"
+  },
+  "paths": { },
+  "components": {
+    "securitySchemes": {
+      "AppKey": {
+        "type": "apiKey",
+        "description": "Api Key",
+        "name": "AppKey",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "AppKey": [ ]
+    }
+  ]
+}
