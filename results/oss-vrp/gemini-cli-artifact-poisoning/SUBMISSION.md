@@ -179,3 +179,24 @@ Actions configuration** bug in `chained_e2e.yml` (artifact-derived strings into
 `actions/checkout`); no gemini-cli agent is involved. I found no public report
 describing this specific `chained_e2e.yml` checkout data flow, and the configuration is
 still live at `main` HEAD.
+
+
+================================================================================
+VRP FORM ANSWERS (for reference / future submissions)
+================================================================================
+- Vulnerability type:            Remote Code Execution (RCE)
+    (2nd-best fallback: Privilege Escalation)
+- Does anyone else know?:        No, this vulnerability is private.
+- Plan to disclose publicly?:    No, I am only notifying Google.
+- Attachments uploaded:
+    01-chained3-checkout-v5-REFUSED-fork-pr.png            (@v5 refusal)
+    02-chained5-checkout-v4.3.0-SUCCESS-PoC-SECRET-REACHABLE.png (v4.3.0 ACE + secret)
+    03-lab-chained-yml-pin-v4.3.0.png                     (lab setup, pinned v4.3.0)
+
+Full "vulnerability type" dropdown options observed (Google OSS/Product VRP form):
+  XSS, CSRF, Sensitive data exposure, Remote Code Execution (RCE), Permissions Bypass,
+  Lockscreen Bypass, Site Isolation Bypass, Privilege Escalation, Security UI Spoofing,
+  Exploit Mitigation Bypass, Sandbox Escape, Memory Corruption (non-sandboxed/sandboxed),
+  Android issue, Caching, SSL vulnerability, File Inclusion, XXE, Information Leak,
+  Crypto Weakness, Auth Bypass, Mixed content, Denial of Service (DoS), Memory Corruption,
+  Open Redirect, SQL Injection (SQLi), Cross Site Script Inclusion (XSSI), Clickjacking, Other.
