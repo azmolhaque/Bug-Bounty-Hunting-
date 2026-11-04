@@ -24,7 +24,12 @@ jobs:
       repo_name: '${{ steps.out.outputs.repo_name }}'
       head_sha: '${{ steps.out.outputs.head_sha }}'
     steps:
-      - name: 'Download the poisoned artifact (expected to FAIL without actions:read)'
+      # EMPIRICAL NOTE (2026-11-04): with permissions: contents: read only (NO
+      # actions: read) + github-token: GITHUB_TOKEN, this cross-run download SUCCEEDS
+      # in practice (observed in Chained #5). So REPO resolves to the fork's repo_name
+      # from the artifact and the checkout runs against the fork directly. The
+      # workflow_run.head_sha fallback below is a backup path, not the primary one.
+      - name: 'Download the poisoned artifact (observed: SUCCEEDS with contents:read + GITHUB_TOKEN)'
         uses: 'actions/download-artifact@v4'
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
