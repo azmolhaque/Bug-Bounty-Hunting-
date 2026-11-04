@@ -45,10 +45,15 @@ default-branch cache scope, and runner access."*
 ```yaml
 env:
   REPO_NAME: '${{ github.event.inputs.repo_name || github.event.pull_request.head.repo.full_name }}'
+  HEAD_SHA:  '${{ github.event.inputs.head_sha  || github.event.pull_request.head.sha }}'
 run: |
   echo "${REPO_NAME}" > ./pr/repo_name
+  echo "${HEAD_SHA}"  > ./pr/head_sha
 # ./pr is uploaded as artifact "repo_name"
 ```
+
+Both values are attacker-controlled: on a fork PR, `head.repo.full_name` is the
+attacker's fork and `head.sha` is the attacker's commit.
 
 **Boundary crossing — `chained_e2e.yml`** (`on: workflow_run`, privileged):
 
@@ -83,15 +88,16 @@ The `if: github.repository == 'google-gemini/gemini-cli'` guards on these jobs d
 help: in a `workflow_run` run `github.repository` is always the base repo, so the
 guard is always true. It only stops forks from running the workflow on themselves.
 
-In my faithful reproduction (top-level `permissions: contents: read` only — the same
-actions scope as the real workflow, i.e. no `actions: read`), the privileged job's
-artifact download **succeeded**, so `repository` resolved to the fork's
-`repo_name` from the artifact and `ref` to the fork's head SHA — the checkout ran
-against the fork directly (`repository: <attacker-fork>`, `ref: <fork head sha>`).
-Even if that download were blocked, the chain still lands the attacker's tree via the
-`|| github.event.workflow_run.head_sha` fallback (checking out the base repo at the
-fork's head commit, which GitHub keeps reachable from the base repository). Either way,
-the fork's attacker-controlled commit is what gets checked out.
+The real `download_repo_name` step passes `github-token: '${{ secrets.GITHUB_TOKEN }}'`
+and `run-id: '${{ github.event.workflow_run.id }}'`, and in practice this cross-run
+download **succeeds** even though the workflow grants no `actions: read` (verified in my
+faithful reproduction, which uses the identical `permissions: contents: read` and
+`github-token`). So `repository` resolves to the fork's `repo_name` and `ref` to the
+fork's `head_sha` straight from the attacker's artifact, and the checkout runs against
+the fork directly (`repository: <attacker-fork>`, `ref: <fork head sha>`). Even if the
+download were blocked, the `|| github.event.workflow_run.head_sha` fallback still lands
+the fork's head commit (checked out from the base repo, where GitHub keeps PR heads
+reachable). Either way, the fork's attacker-controlled commit is what gets checked out.
 
 ---
 
@@ -247,11 +253,15 @@ The headline impact is the ACE and the `GEMINI_API_KEY` disclosure, both demonst
 
 ## Exploitability
 
-A first-time external contributor's `pull_request` CI needs a maintainer to click
-"approve and run" — which authorizes *running CI*, not reviewing the payload. A
-returning contributor (one prior merged PR) needs no approval. So the realistic path
-is: land one trivial legitimate PR to become a recognized contributor, after which
-every later fork PR runs the full chain with no human in the loop.
+Under GitHub's **default** fork-PR policy ("Require approval for first-time
+contributors"), a first-time external contributor's `pull_request` CI needs a maintainer
+to click "approve and run" — which authorizes *running CI*, not reviewing the payload —
+while a returning contributor (one prior merged PR) needs no approval. So the realistic
+path is: land one trivial legitimate PR to become a recognized contributor, after which
+every later fork PR runs the full chain with no human in the loop. (If the repo instead
+requires approval for *all* outside collaborators — a repo setting I can't observe from
+outside — each fork PR needs a click, which raises the bar but does not make the
+workflow config safe; the underlying vulnerability is unconditional.)
 
 ---
 
